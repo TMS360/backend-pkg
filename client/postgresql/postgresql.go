@@ -2,8 +2,9 @@ package postgresql
 
 import (
 	"fmt"
-	"github.com/TMS360/backend-pkg/config"
 	"log"
+
+	"github.com/TMS360/backend-pkg/config"
 
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"

@@ -6,7 +6,7 @@ import (
 
 	"github.com/go-redis/redis/v8"
 
-	"tms-auth/internal/config"
+	"github.com/TMS360/backend-pkg/config"
 )
 
 func NewClient(ctx context.Context, cfg config.RedisConfig) (*redis.Client, error) {

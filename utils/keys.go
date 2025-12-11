@@ -8,24 +8,30 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
-func LoadRSAKeys(privateKeyPath, publicKeyPath string) (*rsa.PrivateKey, *rsa.PublicKey, error) {
-	privateKeyBytes, err := os.ReadFile(privateKeyPath)
+// LoadRSAPrivateKey загружает только приватный ключ
+func LoadRSAPrivateKey(path string) (*rsa.PrivateKey, error) {
+	keyBytes, err := os.ReadFile(path)
 	if err != nil {
-		return nil, nil, fmt.Errorf("read private key: %w", err)
+		return nil, fmt.Errorf("read private key: %w", err)
 	}
-	privateKey, err := jwt.ParseRSAPrivateKeyFromPEM(privateKeyBytes)
+	key, err := jwt.ParseRSAPrivateKeyFromPEM(keyBytes)
 	if err != nil {
-		return nil, nil, fmt.Errorf("parse private key: %w", err)
-	}
-
-	publicKeyBytes, err := os.ReadFile(publicKeyPath)
-	if err != nil {
-		return nil, nil, fmt.Errorf("read public key: %w", err)
-	}
-	publicKey, err := jwt.ParseRSAPublicKeyFromPEM(publicKeyBytes)
-	if err != nil {
-		return nil, nil, fmt.Errorf("parse public key: %w", err)
+		return nil, fmt.Errorf("parse private key: %w", err)
 	}
 
-	return privateKey, publicKey, nil
+	return key, nil
+}
+
+// LoadRSAPublicKey загружает только публичный ключ
+func LoadRSAPublicKey(path string) (*rsa.PublicKey, error) {
+	keyBytes, err := os.ReadFile(path)
+	if err != nil {
+		return nil, fmt.Errorf("read public key: %w", err)
+	}
+	key, err := jwt.ParseRSAPublicKeyFromPEM(keyBytes)
+	if err != nil {
+		return nil, fmt.Errorf("parse public key: %w", err)
+	}
+
+	return key, nil
 }

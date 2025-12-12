@@ -9,6 +9,7 @@ type Config struct {
 	SigningKey        string `mapstructure:"SIGNING_KEY"`
 	HTTPServer        `mapstructure:"HTTP"`
 	PostgresSQLConfig `mapstructure:"DB"`
+	KafkaConfig       `mapstructure:"KAFKA"`
 	RedisConfig       `mapstructure:"REDIS"`
 	JWTConfig         `mapstructure:"JWT"`
 }
@@ -27,6 +28,11 @@ type PostgresSQLConfig struct {
 	Password string `mapstructure:"PASSWORD"`
 	SSLMode  string `mapstructure:"SSLMODE"`
 	TimeZone string `mapstructure:"TIMEZONE"`
+}
+
+type KafkaConfig struct {
+	Host string `mapstructure:"HOST"`
+	Port string `mapstructure:"PORT"`
 }
 
 type RedisConfig struct {

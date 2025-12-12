@@ -42,8 +42,8 @@ type RedisConfig struct {
 }
 
 type JWTConfig struct {
-	PrivateKeyPath string        `mapstructure:"PRIVATE_KEY_PATH" validate:"required"`
-	PublicKeyPath  string        `mapstructure:"PUBLIC_KEY_PATH" validate:"required"`
+	PrivateKeyPath string        `mapstructure:"PRIVATE_KEY_PATH"`
+	PublicKeyPath  string        `mapstructure:"PUBLIC_KEY_PATH"`
 	AccessTTL      time.Duration `mapstructure:"ACCESS_TTL"`
 	RefreshTTL     time.Duration `mapstructure:"REFRESH_TTL"`
 	CookieDomain   string        `mapstructure:"COOKIE_DOMAIN"`

@@ -1,5 +1,5 @@
 package utils
 
-func Test() string {
-	return "Test Package!!!!!!"
+func Pointer[T any](v T) *T {
+	return &v
 }

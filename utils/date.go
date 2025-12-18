@@ -20,43 +20,22 @@ const (
 // Поддерживает YYYY-MM-DD, DD-MM-YYYY и RFC3339/RFC3339Nano.
 // Все успешные результаты возвращаются в 00:00:00 UTC.
 func ParseDateString(dateStr string) (time.Time, error) {
-	var refDate time.Time
-	var err error
-
-	// 1. Попытка парсинга RFC3339Nano (самый строгий, JS toISOString)
-	refDate, err = time.Parse(time.RFC3339Nano, dateStr)
-	if err == nil {
-		goto success
+	// Список поддерживаемых форматов в порядке приоритета
+	formats := []string{
+		time.RFC3339Nano,
+		time.RFC3339,
+		DateFormatISO,      // DateFormatISO
+		DateFormatEuropean, // DateFormatEuropean
 	}
 
-	// 2. Попытка парсинга RFC3339 (стандартный ISO)
-	refDate, err = time.Parse(time.RFC3339, dateStr)
-	if err == nil {
-		goto success
+	for _, layout := range formats {
+		if t, err := time.Parse(layout, dateStr); err == nil {
+			// Успех! Нормализуем к UTC (ваша функция)
+			return AsDateInUTC(t), nil
+		}
 	}
 
-	// 3. Попытка парсинга YYYY-MM-DD (ISO Day)
-	refDate, err = time.Parse(DateFormatISO, dateStr)
-	if err == nil {
-		goto success
-	}
-
-	// 4. Попытка парсинга DD-MM-YYYY (Европейский)
-	refDate, err = time.Parse(DateFormatEuropean, dateStr)
-	if err == nil {
-		goto success
-	}
-
-	// Если ни один формат не сработал
-	return time.Time{}, fmt.Errorf("invalid date format: received '%s'. Expected YYYY-MM-DD, DD-MM-YYYY, or RFC3339", dateStr)
-
-success:
-	// Важно: Если мы получили дату без времени (как в форматах YYYY-MM-DD),
-	// мы должны принудительно установить время в 00:00:00 UTC,
-	// чтобы избежать проблем с часовыми поясами.
-	// Даже если время было в строке, AsDateInUTC гарантирует чистоту.
-
-	return AsDateInUTC(refDate), nil
+	return time.Time{}, fmt.Errorf("invalid date format: '%s'", dateStr)
 }
 
 // AsDateInUTC возвращает time.Time в 00:00:00 UTC,

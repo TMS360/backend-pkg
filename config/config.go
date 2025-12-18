@@ -9,6 +9,7 @@ type Config struct {
 	SigningKey        string `mapstructure:"SIGNING_KEY"`
 	HTTPServer        `mapstructure:"HTTP"`
 	PostgresSQLConfig `mapstructure:"DB"`
+	KafkaConfig       `mapstructure:"KAFKA"`
 	RedisConfig       `mapstructure:"REDIS"`
 	JWTConfig         `mapstructure:"JWT"`
 	SamsaraConfig     `mapstructure:"SAMSARA"`
@@ -31,6 +32,11 @@ type PostgresSQLConfig struct {
 	TimeZone string `mapstructure:"TIMEZONE"`
 }
 
+type KafkaConfig struct {
+	Host string `mapstructure:"HOST"`
+	Port string `mapstructure:"PORT"`
+}
+
 type RedisConfig struct {
 	Host     string `mapstructure:"HOST"`
 	Port     string `mapstructure:"PORT"`
@@ -38,8 +44,8 @@ type RedisConfig struct {
 }
 
 type JWTConfig struct {
-	PrivateKeyPath string        `mapstructure:"PRIVATE_KEY_PATH" validate:"required"`
-	PublicKeyPath  string        `mapstructure:"PUBLIC_KEY_PATH" validate:"required"`
+	PrivateKeyPath string        `mapstructure:"PRIVATE_KEY_PATH"`
+	PublicKeyPath  string        `mapstructure:"PUBLIC_KEY_PATH"`
 	AccessTTL      time.Duration `mapstructure:"ACCESS_TTL"`
 	RefreshTTL     time.Duration `mapstructure:"REFRESH_TTL"`
 	CookieDomain   string        `mapstructure:"COOKIE_DOMAIN"`

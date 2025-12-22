@@ -62,3 +62,16 @@ func GetWeekRange(refDate time.Time) (time.Time, time.Time) {
 
 	return start, end
 }
+
+// TruncateToDay сбрасывает время в 00:00:00
+func TruncateToDay(t time.Time) time.Time {
+	return time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, t.Location())
+}
+
+// GetTimeOrMax Helper для SQL (бесконечность)
+func GetTimeOrMax(t *time.Time) time.Time {
+	if t == nil {
+		return time.Date(2100, 1, 1, 0, 0, 0, 0, time.UTC)
+	}
+	return *t
+}

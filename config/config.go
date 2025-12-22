@@ -50,6 +50,7 @@ type JWTConfig struct {
 	RefreshTTL     time.Duration `mapstructure:"REFRESH_TTL"`
 	CookieDomain   string        `mapstructure:"COOKIE_DOMAIN"`
 	CookieSecure   bool          `mapstructure:"COOKIE_SECURE"`
+	CookieLaxMode  int           `mapstructure:"COOKIE_LAX_MODE"`
 }
 
 type SamsaraConfig struct {

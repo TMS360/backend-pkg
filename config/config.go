@@ -12,6 +12,8 @@ type Config struct {
 	KafkaConfig       `mapstructure:"KAFKA"`
 	RedisConfig       `mapstructure:"REDIS"`
 	JWTConfig         `mapstructure:"JWT"`
+	SamsaraConfig     `mapstructure:"SAMSARA"`
+	ClickHouseConfig  `mapstructure:"CLICKHOUSE"`
 }
 
 type HTTPServer struct {
@@ -48,4 +50,17 @@ type JWTConfig struct {
 	RefreshTTL     time.Duration `mapstructure:"REFRESH_TTL"`
 	CookieDomain   string        `mapstructure:"COOKIE_DOMAIN"`
 	CookieSecure   bool          `mapstructure:"COOKIE_SECURE"`
+	CookieLaxMode  int           `mapstructure:"COOKIE_LAX_MODE"`
+}
+
+type SamsaraConfig struct {
+	Host string `mapstructure:"HOST"`
+}
+
+type ClickHouseConfig struct {
+	Host     string `mapstructure:"HOST"`
+	Port     string `mapstructure:"PORT"`
+	DBName   string `mapstructure:"DATABASE"`
+	User     string `mapstructure:"USERNAME"`
+	Password string `mapstructure:"PASSWORD"`
 }

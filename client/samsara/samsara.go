@@ -45,11 +45,11 @@ type Client struct {
 	apiKey     string
 }
 
-func NewClient(cfg config.SamsaraConfig) (*Client, error) {
+func NewClient(cfg config.SamsaraConfig, apiKey string) (*Client, error) {
 	return &Client{
 		httpClient: &http.Client{Timeout: 10 * time.Second},
 		host:       cfg.Host,
-		apiKey:     cfg.ApiKey,
+		apiKey:     apiKey,
 	}, nil
 }
 
@@ -134,12 +134,32 @@ func (c *Client) GetVehiclesStats(ctx context.Context, vehicleIDs []int64) (loca
 	return locationResponse.Data, nil
 }
 
+func (c *Client) GetVehicleCoordinates(ctx context.Context, vehicleID int64) (locations *VehicleLocation, err error) {
+	path := fmt.Sprintf("/fleet/vehicles/%d/locations", vehicleID)
+	resp, err := c.doRequest(ctx, http.MethodGet, path, nil)
+	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		if closeErr := resp.Body.Close(); closeErr != nil && err == nil {
+			err = fmt.Errorf("failed to close response body: %w", closeErr)
+		}
+	}()
+
+	var locationResponse VehicleLocation
+	if err := json.NewDecoder(resp.Body).Decode(&locationResponse); err != nil {
+		return nil, fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	return &locationResponse, nil
+}
+
 func (c *Client) GetVehicleByVIN(ctx context.Context, vin string) (vehicle *VehicleInfo, err error) {
 	if vin == "" {
 		return nil, fmt.Errorf("VIN cannot be empty")
 	}
 
-	path := fmt.Sprintf("/fleet/vehicles/samsara.vin:%s", vin)
+	path := fmt.Sprintf("/fleet/vehicles?vin=%s", vin)
 
 	resp, err := c.doRequest(ctx, http.MethodGet, path, nil)
 	if err != nil {

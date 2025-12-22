@@ -53,8 +53,7 @@ type JWTConfig struct {
 }
 
 type SamsaraConfig struct {
-	Host   string `mapstructure:"HOST"`
-	ApiKey string `mapstructure:"API_KEY"`
+	Host string `mapstructure:"HOST"`
 }
 
 type ClickHouseConfig struct {

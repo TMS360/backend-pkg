@@ -1,10 +1,12 @@
 package postgresql
 
 import (
+	"errors"
 	"fmt"
 	"log"
 
 	"github.com/TMS360/backend-pkg/config"
+	"github.com/jackc/pgx/v5/pgconn"
 
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -46,4 +48,22 @@ func NewClient(cfg config.PostgresSQLConfig) (*gorm.DB, error) {
 	}
 
 	return db, nil
+}
+
+const (
+	// PgUniqueViolationCode is the PostgreSQL error code for unique constraint violation.
+	PgUniqueViolationCode = "23505"
+)
+
+// IsUniqueConstraintError checks if the error is a PostgreSQL unique constraint violation.
+func IsUniqueConstraintError(err error) bool {
+	// 1. Unwrap the error to see if it's a *pgconn.PgError
+	var pgErr *pgconn.PgError
+
+	// errors.As finds the first error in the chain that matches the target type
+	if errors.As(err, &pgErr) {
+		return pgErr.Code == PgUniqueViolationCode
+	}
+
+	return false
 }

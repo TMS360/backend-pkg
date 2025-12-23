@@ -27,11 +27,14 @@ type GpsCoordinates struct {
 	Latitude  float64 `json:"latitude"`
 	Longitude float64 `json:"longitude"`
 	Time      string  `json:"time"`
+	Heading   float64 `json:"heading,omitempty"`
+	Speed     float64 `json:"speedMilesPerHour,omitempty"`
 }
 
 type VehicleLocation struct {
 	ID   string          `json:"id"`
 	Name string          `json:"name"`
+	Vin  string          `json:"vin,omitempty"`
 	Gps  *GpsCoordinates `json:"gps"`
 }
 
@@ -45,11 +48,23 @@ type Client struct {
 	apiKey     string
 }
 
-func NewClient(cfg config.SamsaraConfig) (*Client, error) {
+func NewClient(cfg config.SamsaraConfig, apiKey string) (*Client, error) {
 	return &Client{
 		httpClient: &http.Client{Timeout: 10 * time.Second},
 		host:       cfg.Host,
-		apiKey:     cfg.ApiKey,
+		apiKey:     apiKey,
+	}, nil
+}
+
+func NewClientWithToken(apiKey string) (*Client, error) {
+	if apiKey == "" {
+		return nil, fmt.Errorf("API key cannot be empty")
+	}
+
+	return &Client{
+		httpClient: &http.Client{Timeout: 10 * time.Second},
+		host:       "https://api.samsara.com",
+		apiKey:     apiKey,
 	}, nil
 }
 
@@ -134,12 +149,32 @@ func (c *Client) GetVehiclesStats(ctx context.Context, vehicleIDs []int64) (loca
 	return locationResponse.Data, nil
 }
 
+func (c *Client) GetVehicleCoordinates(ctx context.Context, vehicleID int64) (locations *VehicleLocation, err error) {
+	path := fmt.Sprintf("/fleet/vehicles/%d/locations", vehicleID)
+	resp, err := c.doRequest(ctx, http.MethodGet, path, nil)
+	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		if closeErr := resp.Body.Close(); closeErr != nil && err == nil {
+			err = fmt.Errorf("failed to close response body: %w", closeErr)
+		}
+	}()
+
+	var locationResponse VehicleLocation
+	if err := json.NewDecoder(resp.Body).Decode(&locationResponse); err != nil {
+		return nil, fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	return &locationResponse, nil
+}
+
 func (c *Client) GetVehicleByVIN(ctx context.Context, vin string) (vehicle *VehicleInfo, err error) {
 	if vin == "" {
 		return nil, fmt.Errorf("VIN cannot be empty")
 	}
 
-	path := fmt.Sprintf("/fleet/vehicles/samsara.vin:%s", vin)
+	path := fmt.Sprintf("/fleet/vehicles?vin=%s", vin)
 
 	resp, err := c.doRequest(ctx, http.MethodGet, path, nil)
 	if err != nil {
@@ -157,4 +192,41 @@ func (c *Client) GetVehicleByVIN(ctx context.Context, vin string) (vehicle *Vehi
 	}
 
 	return &vehicleInfo, nil
+}
+
+func (c *Client) GetAllVehiclesLocations(ctx context.Context) ([]VehicleLocation, error) {
+	path := "/fleet/vehicles/locations"
+
+	resp, err := c.doRequest(ctx, http.MethodGet, path, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get all vehicles locations: %w", err)
+	}
+	defer resp.Body.Close()
+
+	var response VehicleLocationResponse
+	if err := json.NewDecoder(resp.Body).Decode(&response); err != nil {
+		return nil, fmt.Errorf("failed to decode vehicles locations response: %w", err)
+	}
+
+	return response.Data, nil
+}
+
+func (c *Client) GetAllVehiclesLocationsWithTime(ctx context.Context, startTime, endTime time.Time) ([]VehicleLocation, error) {
+	startTimeStr := startTime.Format(time.RFC3339)
+	endTimeStr := endTime.Format(time.RFC3339)
+
+	path := fmt.Sprintf("/fleet/vehicles/locations?startTime=%s&endTime=%s", startTimeStr, endTimeStr)
+
+	resp, err := c.doRequest(ctx, http.MethodGet, path, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get vehicles locations with time filter: %w", err)
+	}
+	defer resp.Body.Close()
+
+	var response VehicleLocationResponse
+	if err := json.NewDecoder(resp.Body).Decode(&response); err != nil {
+		return nil, fmt.Errorf("failed to decode vehicles locations response: %w", err)
+	}
+
+	return response.Data, nil
 }

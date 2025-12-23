@@ -6,24 +6,16 @@ import (
 	"time"
 
 	"github.com/ClickHouse/clickhouse-go/v2"
+	"github.com/ClickHouse/clickhouse-go/v2/lib/driver"
 	"github.com/TMS360/backend-pkg/config"
-	"github.com/google/uuid"
 )
 
 type Client struct {
-	db clickhouse.Conn
+	db driver.Conn
 }
 
-type TruckTrajectory struct {
-	Timestamp time.Time `json:"timestamp"`
-	Vin       string    `json:"vin"`
-	TruckID   uuid.UUID `json:"truck_id"`
-	Lat       float64   `json:"lat"`
-	Lon       float64   `json:"lon"`
-	Speed     int       `json:"speed"`
-}
-
-func New(cfg config.ClickHouseConfig) (*Client, error) {
+// NewClient creates a new ClickHouse client with basic connection
+func NewClient(cfg config.ClickHouseConfig) (*Client, error) {
 	conn, err := clickhouse.Open(&clickhouse.Options{
 		Addr: []string{fmt.Sprintf("%s:%s", cfg.Host, cfg.Port)},
 		Auth: clickhouse.Auth{
@@ -35,9 +27,20 @@ func New(cfg config.ClickHouseConfig) (*Client, error) {
 		MaxOpenConns:    10,
 		MaxIdleConns:    5,
 		ConnMaxLifetime: time.Hour,
+		Settings: clickhouse.Settings{
+			"max_execution_time": 60,
+		},
+		Compression: &clickhouse.Compression{
+			Method: clickhouse.CompressionLZ4,
+		},
 	})
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to connect to ClickHouse: %w", err)
+	}
+
+	// Test connection
+	if err := conn.Ping(context.Background()); err != nil {
+		return nil, fmt.Errorf("failed to ping ClickHouse: %w", err)
 	}
 
 	return &Client{db: conn}, nil
@@ -51,32 +54,27 @@ func (c *Client) Close() error {
 	return c.db.Close()
 }
 
-func (c *Client) Store(ctx context.Context, trajectory *TruckTrajectory) error {
-	return c.db.Exec(ctx, `
-		INSERT INTO tms.truck_trajectory (timestamp, vin, truck_id, lat, lon, speed)
-		VALUES (?, ?, ?, ?, ?, ?)
-	`, trajectory.Timestamp, trajectory.Vin, trajectory.TruckID, trajectory.Lat, trajectory.Lon, trajectory.Speed)
+// GetDB returns the underlying database connection
+func (c *Client) GetDB() driver.Conn {
+	return c.db
 }
 
-func (c *Client) GetByVIN(ctx context.Context, vin string, from, to time.Time) ([]*TruckTrajectory, error) {
-	rows, err := c.db.Query(ctx, `
-		SELECT timestamp, vin, truck_id, lat, lon, speed
-		FROM tms.truck_trajectory
-		WHERE vin = ? AND timestamp BETWEEN ? AND ?
-	`, vin, from, to)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
+// Exec executes a query without returning rows
+func (c *Client) Exec(ctx context.Context, query string, args ...interface{}) error {
+	return c.db.Exec(ctx, query, args...)
+}
 
-	var trajectories []*TruckTrajectory
-	for rows.Next() {
-		var t TruckTrajectory
-		if err := rows.Scan(&t.Timestamp, &t.Vin, &t.TruckID, &t.Lat, &t.Lon, &t.Speed); err != nil {
-			return nil, err
-		}
-		trajectories = append(trajectories, &t)
-	}
+// Query executes a query and returns rows
+func (c *Client) Query(ctx context.Context, query string, args ...interface{}) (driver.Rows, error) {
+	return c.db.Query(ctx, query, args...)
+}
 
-	return trajectories, nil
+// QueryRow executes a query and returns single row
+func (c *Client) QueryRow(ctx context.Context, query string, args ...interface{}) driver.Row {
+	return c.db.QueryRow(ctx, query, args...)
+}
+
+// PrepareBatch prepares batch insert
+func (c *Client) PrepareBatch(ctx context.Context, query string) (driver.Batch, error) {
+	return c.db.PrepareBatch(ctx, query)
 }

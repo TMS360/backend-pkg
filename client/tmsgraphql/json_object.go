@@ -1,4 +1,4 @@
-package model
+package tmsgraphql
 
 import (
 	"encoding/json"

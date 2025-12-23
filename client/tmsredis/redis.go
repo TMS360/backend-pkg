@@ -1,4 +1,4 @@
-package redis
+package tmsredis
 
 import (
 	"context"

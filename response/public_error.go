@@ -3,6 +3,7 @@ package response
 type PublicError interface {
 	Error() string
 	UserMessage() string
+	ErrorCode() int
 	ErrorStatus() int
 }
 
@@ -10,6 +11,7 @@ type publicError struct {
 	Technical string
 	User      string
 	Status    int
+	Code      int
 }
 
 func (e *publicError) Error() string {
@@ -22,6 +24,10 @@ func (e *publicError) UserMessage() string {
 
 func (e *publicError) ErrorStatus() int {
 	return e.Status
+}
+
+func (e *publicError) ErrorCode() int {
+	return e.Code
 }
 
 func NewError(tech, user string, status int) PublicError {

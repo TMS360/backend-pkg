@@ -1,6 +1,11 @@
 package config
 
-import "time"
+import (
+	"strings"
+	"time"
+
+	"github.com/spf13/viper"
+)
 
 type Config struct {
 	AppEnv            string `mapstructure:"APP_ENV"`
@@ -63,4 +68,18 @@ type ClickHouseConfig struct {
 	DBName   string `mapstructure:"DATABASE"`
 	User     string `mapstructure:"USERNAME"`
 	Password string `mapstructure:"PASSWORD"`
+}
+
+func mapConfig(prefixes []string) {
+	for _, key := range viper.AllKeys() {
+		for _, prefix := range prefixes {
+			target := prefix + "_"
+
+			if strings.HasPrefix(key, target) {
+				newKey := strings.Replace(key, target, prefix+".", 1)
+				viper.Set(newKey, viper.Get(key))
+				break
+			}
+		}
+	}
 }

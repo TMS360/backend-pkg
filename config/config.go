@@ -70,7 +70,7 @@ type ClickHouseConfig struct {
 	Password string `mapstructure:"PASSWORD"`
 }
 
-var Prefixes = []string{"http", "db", "kafka", "redis", "jwt"}
+var Prefixes = []string{"http", "db", "kafka", "redis", "jwt", "redis"}
 
 func MapConfig() {
 	for _, key := range viper.AllKeys() {

@@ -4,18 +4,20 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"reflect"
 
+	"github.com/TMS360/backend-pkg/events"
 	"github.com/TMS360/backend-pkg/tmsdb"
 	"gorm.io/gorm/clause"
 )
 
 type OutboxEventRepository interface {
 	// FetchPendingBatch locks and returns the next batch of events.
-	FetchPendingBatch(ctx context.Context, limit int) ([]OutboxEvent, error)
+	FetchPendingBatch(ctx context.Context, limit int) ([]*OutboxEvent, error)
 	// DeleteBatch removes processed events by ID.
 	DeleteBatch(ctx context.Context, ids []string) error
 	// CreateEvent writes the event to the DB
-	CreateEvent(ctx context.Context, topic string, payload EventPayload) error
+	CreateEvent(ctx context.Context, topic string, payload *events.EventPayload) error
 }
 
 type outboxEventRepo struct {
@@ -27,17 +29,17 @@ func NewOutboxEventRepository(tm tmsdb.TransactionManager) OutboxEventRepository
 }
 
 // FetchPendingBatch locks and returns the next batch of events.
-func (r *outboxEventRepo) FetchPendingBatch(ctx context.Context, limit int) ([]OutboxEvent, error) {
-	var events []OutboxEvent
+func (r *outboxEventRepo) FetchPendingBatch(ctx context.Context, limit int) ([]*OutboxEvent, error) {
+	var eventsList []*OutboxEvent
 
 	err := r.tm.GetDB(ctx).
 		Clauses(clause.Locking{Strength: "UPDATE", Options: "SKIP LOCKED"}).
 		Where("status = ?", "PENDING").
 		Order("created_at ASC").
 		Limit(limit).
-		Find(&events).Error
+		Find(&eventsList).Error
 
-	return events, err
+	return eventsList, err
 }
 
 // DeleteBatch removes processed events by ID.
@@ -48,7 +50,7 @@ func (r *outboxEventRepo) DeleteBatch(ctx context.Context, ids []string) error {
 }
 
 // CreateEvent writes the event to the DB
-func (r *outboxEventRepo) CreateEvent(ctx context.Context, topic string, payload EventPayload) error {
+func (r *outboxEventRepo) CreateEvent(ctx context.Context, topic string, payload *events.EventPayload) error {
 	// 1. Marshal the payload to JSON
 	payloadBytes, err := json.Marshal(payload)
 	if err != nil {
@@ -72,4 +74,35 @@ func (r *outboxEventRepo) CreateEvent(ctx context.Context, topic string, payload
 	}
 
 	return nil
+}
+
+// CalculateChanges compares two structs and returns a list of changes.
+func CalculateChanges(oldVal, newVal interface{}) []events.Change {
+	var changes []events.Change
+
+	vOld := reflect.ValueOf(oldVal).Elem()
+	vNew := reflect.ValueOf(newVal).Elem()
+	typeOf := vOld.Type()
+
+	for i := 0; i < vOld.NumField(); i++ {
+		field := typeOf.Field(i)
+
+		// Skip unexported fields or fields tagged to be ignored
+		if field.PkgPath != "" {
+			continue
+		}
+
+		valOld := vOld.Field(i).Interface()
+		valNew := vNew.Field(i).Interface()
+
+		if !reflect.DeepEqual(valOld, valNew) {
+			changes = append(changes, events.Change{
+				Field:    field.Name, // Or use field.Tag.Get("json")
+				OldValue: valOld,
+				NewValue: valNew,
+			})
+		}
+	}
+
+	return changes
 }

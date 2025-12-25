@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/TMS360/backend-pkg/eventlog"
+	"github.com/TMS360/backend-pkg/events"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
@@ -38,7 +39,7 @@ func (m *GormTransactionManager) GetDB(ctx context.Context) *gorm.DB {
 }
 
 // Publish implements the logic DIRECTLY here. No Repo.
-func (m *GormTransactionManager) Publish(ctx context.Context, aggID uuid.UUID, aggType, evtType string, payload interface{}) error {
+func (m *GormTransactionManager) Publish(ctx context.Context, aggID uuid.UUID, aggType, evtType string, payload events.EventPayload) error {
 	payloadBytes, err := json.Marshal(payload)
 	if err != nil {
 		return err

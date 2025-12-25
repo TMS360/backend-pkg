@@ -72,7 +72,7 @@ type ClickHouseConfig struct {
 
 var Prefixes = []string{"http", "db", "kafka", "redis", "jwt"}
 
-func mapConfig(prefixes []string) {
+func MapConfig(prefixes []string) {
 	if len(prefixes) == 0 {
 		prefixes = Prefixes
 	}

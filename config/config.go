@@ -72,13 +72,9 @@ type ClickHouseConfig struct {
 
 var Prefixes = []string{"http", "db", "kafka", "redis", "jwt"}
 
-func MapConfig(prefixes []string) {
-	if len(prefixes) == 0 {
-		prefixes = Prefixes
-	}
-
+func MapConfig() {
 	for _, key := range viper.AllKeys() {
-		for _, prefix := range prefixes {
+		for _, prefix := range Prefixes {
 			target := prefix + "_"
 
 			if strings.HasPrefix(key, target) {

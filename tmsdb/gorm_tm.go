@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"time"
 
-	"github.com/TMS360/backend-pkg/events"
+	"github.com/TMS360/backend-pkg/eventlog/events"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 )

@@ -1,4 +1,4 @@
-package eventlog
+package outbox
 
 import (
 	"context"
@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/TMS360/backend-pkg/events"
+	"github.com/TMS360/backend-pkg/eventlog/events"
 	"github.com/TMS360/backend-pkg/tmsdb"
 	"gorm.io/gorm/clause"
 )

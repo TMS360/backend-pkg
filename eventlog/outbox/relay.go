@@ -1,4 +1,4 @@
-package eventlog
+package outbox
 
 import (
 	"context"

@@ -2,7 +2,9 @@ package tmsdb
 
 import (
 	"context"
-	//"github.com/TMS360/backend-pkg/eventlog"
+	"encoding/json"
+	"time"
+
 	"github.com/TMS360/backend-pkg/events"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
@@ -36,24 +38,22 @@ func (m *GormTransactionManager) GetDB(ctx context.Context) *gorm.DB {
 }
 
 // Publish implements the logic DIRECTLY here. No Repo.
-func (m *GormTransactionManager) Publish(ctx context.Context, aggID uuid.UUID, aggType, evtType string, payload events.EventPayload) error {
-	//payloadBytes, err := json.Marshal(payload)
-	//if err != nil {
-	//	return err
-	//}
+func (m *GormTransactionManager) Publish(ctx context.Context, aggID uuid.UUID, aggType, evtType string, payload *events.EventPayload) error {
+	payloadBytes, err := json.Marshal(payload)
+	if err != nil {
+		return err
+	}
 
-	return nil
+	event := &OutboxEvent{
+		ID:            uuid.New(),
+		AggregateID:   aggID,
+		AggregateType: aggType,
+		EventType:     evtType,
+		Payload:       payloadBytes,
+		Status:        "PENDING",
+		CreatedAt:     time.Now(),
+	}
 
-	//event := eventlog.OutboxEvent{
-	//	ID:            uuid.New(),
-	//	AggregateID:   aggID,
-	//	AggregateType: aggType,
-	//	EventType:     evtType,
-	//	Payload:       payloadBytes,
-	//	Status:        "PENDING",
-	//	CreatedAt:     time.Now(),
-	//}
-	//
-	//// Uses the active transaction from context automatically
-	//return m.GetDB(ctx).Create(&event).Error
+	// Uses the active transaction from context automatically
+	return m.GetDB(ctx).Create(event).Error
 }

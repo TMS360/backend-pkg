@@ -13,7 +13,7 @@ import (
 
 type OutboxEventRepository interface {
 	// FetchPendingBatch locks and returns the next batch of events.
-	FetchPendingBatch(ctx context.Context, limit int) ([]*OutboxEvent, error)
+	FetchPendingBatch(ctx context.Context, limit int) ([]*tmsdb.OutboxEvent, error)
 	// DeleteBatch removes processed events by ID.
 	DeleteBatch(ctx context.Context, ids []string) error
 	// CreateEvent writes the event to the DB
@@ -29,8 +29,8 @@ func NewOutboxEventRepository(tm tmsdb.TransactionManager) OutboxEventRepository
 }
 
 // FetchPendingBatch locks and returns the next batch of events.
-func (r *outboxEventRepo) FetchPendingBatch(ctx context.Context, limit int) ([]*OutboxEvent, error) {
-	var eventsList []*OutboxEvent
+func (r *outboxEventRepo) FetchPendingBatch(ctx context.Context, limit int) ([]*tmsdb.OutboxEvent, error) {
+	var eventsList []*tmsdb.OutboxEvent
 
 	err := r.tm.GetDB(ctx).
 		Clauses(clause.Locking{Strength: "UPDATE", Options: "SKIP LOCKED"}).
@@ -46,7 +46,7 @@ func (r *outboxEventRepo) FetchPendingBatch(ctx context.Context, limit int) ([]*
 func (r *outboxEventRepo) DeleteBatch(ctx context.Context, ids []string) error {
 	return r.tm.GetDB(ctx).
 		Where("id IN ?", ids).
-		Delete(&OutboxEvent{}).Error
+		Delete(&tmsdb.OutboxEvent{}).Error
 }
 
 // CreateEvent writes the event to the DB
@@ -58,7 +58,7 @@ func (r *outboxEventRepo) CreateEvent(ctx context.Context, topic string, payload
 	}
 
 	// 2. Prepare the model
-	event := OutboxEvent{
+	event := &tmsdb.OutboxEvent{
 		AggregateID:   payload.EntityID,
 		AggregateType: payload.EntityType,
 		EventType:     payload.Action,
@@ -69,7 +69,7 @@ func (r *outboxEventRepo) CreateEvent(ctx context.Context, topic string, payload
 
 	// 3. Create using the passed transaction
 	// WithContext ensures we respect cancellations/timeouts
-	if err := r.tm.GetDB(ctx).WithContext(ctx).Create(&event).Error; err != nil {
+	if err := r.tm.GetDB(ctx).WithContext(ctx).Create(event).Error; err != nil {
 		return fmt.Errorf("failed to insert outbox event: %w", err)
 	}
 

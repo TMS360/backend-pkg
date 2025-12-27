@@ -8,6 +8,7 @@ import (
 )
 
 type Config struct {
+	AppName           string `mapstructure:"APP_NAME"`
 	AppEnv            string `mapstructure:"APP_ENV"`
 	AppDebug          bool   `mapstructure:"APP_DEBUG"`
 	AppPort           string `mapstructure:"APP_PORT"`

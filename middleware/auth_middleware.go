@@ -70,10 +70,9 @@ func RequireAuth() gin.HandlerFunc {
 
 // WithActor adds user info to the context (Used by your Middleware)
 func WithActor(ctx context.Context, userID uuid.UUID, userClaims *consts.UserClaims) context.Context {
-	return context.WithValue(ctx, consts.ActorCtx, consts.Actor{
-		ID:     userID,
-		Claims: userClaims,
-	})
+	newCtx := context.WithValue(ctx, consts.ActorCtx, consts.Actor{ID: userID, Claims: userClaims})
+	newCtx = context.WithValue(newCtx, "test_key", "test_value")
+	return newCtx
 }
 
 // GetActor safely extracts the actor.
@@ -81,6 +80,7 @@ func GetActor(ctx context.Context) (consts.Actor, error) {
 	actor, ok := ctx.Value(consts.ActorCtx).(consts.Actor)
 	if !ok {
 		fmt.Println("actor", ctx.Value(consts.ActorCtx))
+		fmt.Println("test_key", ctx.Value("test_key"))
 		return consts.Actor{}, errors.New("actor not found in context")
 	}
 	if actor.ID == uuid.Nil {

@@ -8,17 +8,16 @@ import (
 
 // EventPayload defines the standard message format for all Kafka events
 type EventPayload struct {
+	//RequestID     string      `json:"request_id"`
 	EventID       uuid.UUID   `json:"event_id"`
-	RequestID     string      `json:"request_id"`
 	ActorID       uuid.UUID   `json:"actor_id"`
-	ActorRole     string      `json:"actor_role"`
-	EntityType    string      `json:"entity_type"` // TEAM, LOAD, TRIP
+	EntityType    string      `json:"entity_type"` // users, orders, etc.
 	EntityID      uuid.UUID   `json:"entity_id"`
-	Action        string      `json:"action"` // CREATE, UPDATE, DELETE
-	SourceService string      `json:"source_service"`
+	Action        string      `json:"action"`         // created, updated, deleted
+	SourceService string      `json:"source_service"` // auth_service, order_service, etc.
 	Timestamp     time.Time   `json:"timestamp"`
-	Data          interface{} `json:"data,omitempty"`
-	Changes       []Change    `json:"changes,omitempty"`
+	Data          interface{} `json:"data,omitempty"`    // {id: 123, name: "John Doe", ...}
+	Changes       []Change    `json:"changes,omitempty"` // [{field: "name", old_value: "John", new_value: "John Doe"}, ...]
 }
 
 type Change struct {

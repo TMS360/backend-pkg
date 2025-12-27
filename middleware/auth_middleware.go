@@ -24,8 +24,6 @@ func IdentifyUser(publicKey *rsa.PublicKey) gin.HandlerFunc {
 			return
 		}
 
-		fmt.Println("authHeader", authHeader)
-
 		parts := strings.Split(authHeader, " ")
 		if len(parts) != 2 || parts[0] != "Bearer" {
 			slog.Error("Invalid Authorization header format")
@@ -49,6 +47,7 @@ func IdentifyUser(publicKey *rsa.PublicKey) gin.HandlerFunc {
 
 		claims, ok := token.Claims.(*consts.UserClaims)
 		if ok {
+			fmt.Println("claims", claims)
 			ctxWithActor := WithActor(ctx.Request.Context(), claims.UserID, claims)
 			ctx.Request = ctx.Request.WithContext(ctxWithActor)
 		}

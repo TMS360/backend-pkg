@@ -2,18 +2,16 @@ package tmsgraphql
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	"github.com/99designs/gqlgen/graphql"
-	"github.com/TMS360/backend-pkg/consts"
+	"github.com/TMS360/backend-pkg/middleware"
 	"github.com/go-playground/validator/v10"
-	"github.com/google/uuid"
 )
 
 func AuthDirective(ctx context.Context, obj interface{}, next graphql.Resolver) (interface{}, error) {
-	userId, ok := ctx.Value(consts.UserContextKey).(uuid.UUID)
-	if !ok || userId == uuid.Nil {
+	_, err := middleware.GetActor(ctx)
+	if err != nil {
 		return nil, fmt.Errorf("access denied: unauthenticated")
 	}
 
@@ -23,12 +21,15 @@ func AuthDirective(ctx context.Context, obj interface{}, next graphql.Resolver) 
 // TODO: implement hasRole directive
 func HasRoleDirective(ctx context.Context, obj interface{}, next graphql.Resolver, role string) (interface{}, error) {
 	return next(ctx)
-	claims, ok := ctx.Value(consts.ClaimsObjectKey).(*consts.UserClaims)
-	if !ok {
-		return nil, errors.New("access denied: unauthorized")
+	actor, err := middleware.GetActor(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("access denied: unauthenticated")
+	}
+	if actor.Claims == nil {
+		return nil, fmt.Errorf("access denied: unauthenticated")
 	}
 
-	for _, r := range claims.Roles {
+	for _, r := range actor.Claims.Roles {
 		if r == role {
 			return next(ctx)
 		}
@@ -40,12 +41,18 @@ func HasRoleDirective(ctx context.Context, obj interface{}, next graphql.Resolve
 // TODO: implement hasPerm directive
 func HasPermDirective(ctx context.Context, obj interface{}, next graphql.Resolver, perm string) (interface{}, error) {
 	return next(ctx)
-	permissions, ok := ctx.Value("permissions").(map[string]bool)
-	if !ok {
-		return nil, errors.New("access denied: unauthenticated")
+	actor, err := middleware.GetActor(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("access denied: unauthenticated")
 	}
-	if !permissions[perm] {
-		return nil, fmt.Errorf("access denied: missing permission '%s'", perm)
+	if actor.Claims == nil {
+		return nil, fmt.Errorf("access denied: unauthenticated")
+	}
+
+	for _, r := range actor.Claims.Permissions {
+		if r == perm {
+			return next(ctx)
+		}
 	}
 	return next(ctx)
 }

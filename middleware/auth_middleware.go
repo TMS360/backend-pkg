@@ -3,6 +3,7 @@ package middleware
 import (
 	"context"
 	"crypto/rsa"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -11,6 +12,7 @@ import (
 	"github.com/TMS360/backend-pkg/consts"
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/google/uuid"
 )
 
 // IdentifyUser извлекает и проверяет JWT из заголовка Authorization и устанавливает информацию о пользователе в контекст
@@ -45,14 +47,8 @@ func IdentifyUser(publicKey *rsa.PublicKey) gin.HandlerFunc {
 
 		claims, ok := token.Claims.(*consts.UserClaims)
 		if ok {
-			ctx.Set(consts.ClaimsObjectKey, claims)
-			ctx.Set(consts.UserContextKey, claims.UserID)
-
-			reqCtx := ctx.Request.Context()
-			reqCtx = context.WithValue(reqCtx, consts.ClaimsObjectKey, claims)
-			reqCtx = context.WithValue(reqCtx, consts.UserContextKey, claims.UserID)
-
-			ctx.Request = ctx.Request.WithContext(reqCtx)
+			ctxWithActor := WithActor(ctx.Request.Context(), claims.UserID, claims)
+			ctx.Request = ctx.Request.WithContext(ctxWithActor)
 		}
 
 		ctx.Next()
@@ -62,11 +58,41 @@ func IdentifyUser(publicKey *rsa.PublicKey) gin.HandlerFunc {
 // RequireAuth проверяет, был ли пользователь установлен в контекст предыдущим middleware
 func RequireAuth() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
-		_, exists := ctx.Get(consts.UserContextKey)
-		if !exists {
+		_, err := GetActor(ctx.Request.Context())
+		if err != nil {
 			ctx.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
 			return
 		}
 		ctx.Next()
 	}
+}
+
+// WithActor adds user info to the context (Used by your Middleware)
+func WithActor(ctx context.Context, userID uuid.UUID, userClaims *consts.UserClaims) context.Context {
+	return context.WithValue(ctx, consts.ActorCtx, consts.Actor{
+		ID:     userID,
+		Claims: userClaims,
+	})
+}
+
+// GetActor safely extracts the actor.
+func GetActor(ctx context.Context) (consts.Actor, error) {
+	actor, ok := ctx.Value(consts.ActorCtx).(consts.Actor)
+	if !ok {
+		return consts.Actor{}, errors.New("actor not found in context")
+	}
+	if actor.ID == uuid.Nil {
+		return consts.Actor{}, errors.New("invalid actor ID")
+	}
+
+	return actor, nil
+}
+
+// MustGetActor for when you are sure (or want to panic/default)
+func MustGetActor(ctx context.Context) consts.Actor {
+	actor, ok := ctx.Value(consts.ActorCtx).(consts.Actor)
+	if !ok {
+		return consts.Actor{ID: uuid.Nil, Claims: nil, IsSystem: true}
+	}
+	return actor
 }

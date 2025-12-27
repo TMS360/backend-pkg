@@ -8,8 +8,14 @@ import (
 type contextKey string
 
 // TODO: encapsulate context keys with methods to avoid collisions
-const UserContextKey contextKey = "userUuid"
-const ClaimsObjectKey contextKey = "claimsObject"
+const ActorCtx contextKey = "actor"
+
+// Actor represents the entity performing an action, typically a user
+type Actor struct {
+	ID       uuid.UUID
+	Claims   *UserClaims
+	IsSystem bool
+}
 
 // UserClaims represents the JWT claims for a user
 type UserClaims struct {

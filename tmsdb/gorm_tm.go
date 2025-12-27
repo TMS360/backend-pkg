@@ -14,11 +14,12 @@ type ctxTransactionKey struct{}
 
 // GormTransactionManager TransactionManager implementation for GORM
 type GormTransactionManager struct {
-	db *gorm.DB
+	db            *gorm.DB
+	sourceService string
 }
 
-func NewGormTransactionManager(db *gorm.DB) *GormTransactionManager {
-	return &GormTransactionManager{db: db}
+func NewGormTransactionManager(db *gorm.DB, sourceService string) *GormTransactionManager {
+	return &GormTransactionManager{db, sourceService}
 }
 
 // WithTransaction implement interface service.TransactionManager
@@ -38,8 +39,17 @@ func (m *GormTransactionManager) GetDB(ctx context.Context) *gorm.DB {
 }
 
 // Publish implements the logic DIRECTLY here. No Repo.
-func (m *GormTransactionManager) Publish(ctx context.Context, aggID uuid.UUID, aggType, evtType string, payload *events.EventPayload) error {
-	payloadBytes, err := json.Marshal(payload)
+func (m *GormTransactionManager) Publish(ctx context.Context, aggType, evtType string, aggID uuid.UUID, data interface{}) error {
+	eventPayload := events.EventPayload{
+		EventID:    uuid.New(),
+		ActorID:    payload.ActorID,
+		EntityType: aggType,
+		EntityID:   aggID,
+		Action:     evtType,
+		Timestamp:  time.Now(),
+	}
+
+	payloadBytes, err := json.Marshal(eventPayload)
 	if err != nil {
 		return err
 	}

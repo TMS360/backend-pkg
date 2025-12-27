@@ -9,18 +9,15 @@ import (
 	kafkaGo "github.com/segmentio/kafka-go"
 )
 
-type OutboxRelay struct {
+type Relay struct {
 	tm          tmsdb.TransactionManager
-	repository  OutboxEventRepository
+	repository  Repository
 	kafkaWriter *kafkaGo.Writer
 }
 
-func NewOutboxRelay(
-	tm tmsdb.TransactionManager,
-	kafkaWriter *kafkaGo.Writer,
-) *OutboxRelay {
+func NewRelay(tm tmsdb.TransactionManager, kafkaWriter *kafkaGo.Writer) *Relay {
 	repository := NewOutboxEventRepository(tm)
-	return &OutboxRelay{
+	return &Relay{
 		tm:          tm,
 		repository:  repository,
 		kafkaWriter: kafkaWriter,
@@ -28,7 +25,7 @@ func NewOutboxRelay(
 }
 
 // Start polls the DB and publishes to Kafka
-func (r *OutboxRelay) Start(ctx context.Context) {
+func (r *Relay) Start(ctx context.Context) {
 	ticker := time.NewTicker(500 * time.Millisecond)
 	defer ticker.Stop()
 
@@ -49,7 +46,7 @@ func (r *OutboxRelay) Start(ctx context.Context) {
 }
 
 // ProcessBatch processes a batch of outbox events
-func (r *OutboxRelay) ProcessBatch(ctx context.Context, limit int) error {
+func (r *Relay) ProcessBatch(ctx context.Context, limit int) error {
 	return r.tm.WithTransaction(ctx, func(ctx context.Context) error {
 		// 1. Fetch Pending Events with SKIP LOCKED
 		eventsList, err := r.repository.FetchPendingBatch(ctx, limit)

@@ -1,4 +1,4 @@
-package consumer
+package eventlog
 
 import (
 	"context"
@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/TMS360/backend-pkg/eventlog/events"
+	"github.com/TMS360/backend-pkg/eventlog/rules"
 	"github.com/segmentio/kafka-go"
 )
 
@@ -15,7 +16,7 @@ type ActionFunc func(ctx context.Context, config json.RawMessage) error
 
 type Consumer struct {
 	reader  *kafka.Reader
-	engine  *Engine
+	engine  *rules.Engine
 	actions map[string]ActionFunc // Registry of executable functions
 }
 
@@ -23,7 +24,7 @@ func NewConsumer(
 	brokers []string,
 	groupID string,
 	topics []string,
-	engine *Engine,
+	engine *rules.Engine,
 	actions map[string]ActionFunc,
 ) *Consumer {
 

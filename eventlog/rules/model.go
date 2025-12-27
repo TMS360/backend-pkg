@@ -1,4 +1,4 @@
-package consumer
+package rules
 
 import (
 	"encoding/json"

@@ -11,7 +11,7 @@ import (
 	"gorm.io/gorm/clause"
 )
 
-type OutboxEventRepository interface {
+type Repository interface {
 	// FetchPendingBatch locks and returns the next batch of events.
 	FetchPendingBatch(ctx context.Context, limit int) ([]*tmsdb.OutboxEvent, error)
 	// DeleteBatch removes processed events by ID.
@@ -20,16 +20,16 @@ type OutboxEventRepository interface {
 	CreateEvent(ctx context.Context, topic string, payload *events.EventPayload) error
 }
 
-type outboxEventRepo struct {
+type repo struct {
 	tm tmsdb.TransactionManager
 }
 
-func NewOutboxEventRepository(tm tmsdb.TransactionManager) OutboxEventRepository {
-	return &outboxEventRepo{tm}
+func NewOutboxEventRepository(tm tmsdb.TransactionManager) Repository {
+	return &repo{tm}
 }
 
 // FetchPendingBatch locks and returns the next batch of events.
-func (r *outboxEventRepo) FetchPendingBatch(ctx context.Context, limit int) ([]*tmsdb.OutboxEvent, error) {
+func (r *repo) FetchPendingBatch(ctx context.Context, limit int) ([]*tmsdb.OutboxEvent, error) {
 	var eventsList []*tmsdb.OutboxEvent
 
 	err := r.tm.GetDB(ctx).
@@ -43,14 +43,14 @@ func (r *outboxEventRepo) FetchPendingBatch(ctx context.Context, limit int) ([]*
 }
 
 // DeleteBatch removes processed events by ID.
-func (r *outboxEventRepo) DeleteBatch(ctx context.Context, ids []string) error {
+func (r *repo) DeleteBatch(ctx context.Context, ids []string) error {
 	return r.tm.GetDB(ctx).
 		Where("id IN ?", ids).
 		Delete(&tmsdb.OutboxEvent{}).Error
 }
 
 // CreateEvent writes the event to the DB
-func (r *outboxEventRepo) CreateEvent(ctx context.Context, topic string, payload *events.EventPayload) error {
+func (r *repo) CreateEvent(ctx context.Context, topic string, payload *events.EventPayload) error {
 	// 1. Marshal the payload to JSON
 	payloadBytes, err := json.Marshal(payload)
 	if err != nil {

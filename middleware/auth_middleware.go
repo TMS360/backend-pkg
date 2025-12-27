@@ -24,6 +24,8 @@ func IdentifyUser(publicKey *rsa.PublicKey) gin.HandlerFunc {
 			return
 		}
 
+		fmt.Printf("DEBUG MIDDLEWARE: Incoming Auth Header: '%s'\n", authHeader)
+
 		parts := strings.Split(authHeader, " ")
 		if len(parts) != 2 || parts[0] != "Bearer" {
 			slog.Error("Invalid Authorization header format")

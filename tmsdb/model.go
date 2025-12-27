@@ -13,7 +13,6 @@ type OutboxEvent struct {
 	AggregateType string    `gorm:"type:varchar(50);not null"`
 	EventType     string    `gorm:"type:varchar(50);not null"`
 	Payload       []byte    `gorm:"type:jsonb;not null"` // Postgres JSONB
-	Topic         string    `gorm:"type:varchar(100);not null"`
 	Status        string    `gorm:"type:varchar(20);default:'PENDING';not null;index"`
 	CreatedAt     time.Time `gorm:"not null;autoCreateTime"`
 	ProcessedAt   *time.Time

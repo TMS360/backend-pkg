@@ -64,7 +64,7 @@ func (r *Relay) ProcessBatch(ctx context.Context, limit int) error {
 
 		for _, event := range eventsList {
 			kafkaMessages = append(kafkaMessages, kafkaGo.Message{
-				Topic: event.Topic,
+				Topic: event.AggregateType,
 				Key:   []byte(event.AggregateID.String()), // Order by EntityID
 				Value: event.Payload,
 				Time:  event.CreatedAt,

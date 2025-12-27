@@ -19,7 +19,6 @@ import (
 func IdentifyUser(publicKey *rsa.PublicKey) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		authHeader := ctx.GetHeader("Authorization")
-		fmt.Printf("DEBUG MIDDLEWARE: Incoming Auth Header: '%s'\n", authHeader)
 		if authHeader == "" {
 			ctx.Next()
 			return
@@ -48,7 +47,6 @@ func IdentifyUser(publicKey *rsa.PublicKey) gin.HandlerFunc {
 
 		claims, ok := token.Claims.(*consts.UserClaims)
 		if ok {
-			fmt.Println("claims", claims)
 			ctxWithActor := WithActor(ctx.Request.Context(), claims.UserID, claims)
 			ctx.Request = ctx.Request.WithContext(ctxWithActor)
 		}
@@ -71,16 +69,12 @@ func RequireAuth() gin.HandlerFunc {
 
 // WithActor adds user info to the context (Used by your Middleware)
 func WithActor(ctx context.Context, userID uuid.UUID, userClaims *consts.UserClaims) context.Context {
-	newCtx := context.WithValue(ctx, consts.ActorCtx, consts.Actor{ID: userID, Claims: userClaims})
-	newCtx = context.WithValue(newCtx, "test_key", "test_value")
-	return newCtx
+	return context.WithValue(ctx, consts.ActorCtx, consts.Actor{ID: userID, Claims: userClaims})
 }
 
 // GetActor safely extracts the actor.
 func GetActor(ctx context.Context) (consts.Actor, error) {
 	actor, ok := ctx.Value(consts.ActorCtx).(consts.Actor)
-	fmt.Println("actor", ctx.Value(consts.ActorCtx))
-	fmt.Println("test_key", ctx.Value("test_key"))
 	if !ok {
 		return consts.Actor{}, errors.New("actor not found in context")
 	}

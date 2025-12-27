@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/TMS360/backend-pkg/eventlog/events"
+	"github.com/TMS360/backend-pkg/middleware"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
@@ -40,13 +41,25 @@ func (m *GormTransactionManager) GetDB(ctx context.Context) *gorm.DB {
 
 // Publish implements the logic DIRECTLY here. No Repo.
 func (m *GormTransactionManager) Publish(ctx context.Context, aggType, evtType string, aggID uuid.UUID, data interface{}) error {
+	actor, err := middleware.GetActor(ctx)
+	if err != nil {
+		return err
+	}
+
+	dataBytes, err := json.Marshal(data)
+	if err != nil {
+		return err
+	}
+
 	eventPayload := events.EventPayload{
-		EventID:    uuid.New(),
-		ActorID:    payload.ActorID,
-		EntityType: aggType,
-		EntityID:   aggID,
-		Action:     evtType,
-		Timestamp:  time.Now(),
+		SourceService: m.sourceService,
+		EventID:       uuid.New(),
+		ActorID:       actor.ID,
+		EntityType:    aggType,
+		EntityID:      aggID,
+		Action:        evtType,
+		Data:          json.RawMessage(dataBytes),
+		Timestamp:     time.Now(),
 	}
 
 	payloadBytes, err := json.Marshal(eventPayload)

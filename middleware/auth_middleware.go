@@ -80,6 +80,7 @@ func WithActor(ctx context.Context, userID uuid.UUID, userClaims *consts.UserCla
 func GetActor(ctx context.Context) (consts.Actor, error) {
 	actor, ok := ctx.Value(consts.ActorCtx).(consts.Actor)
 	if !ok {
+		fmt.Println("actor", ctx.Value(consts.ActorCtx))
 		return consts.Actor{}, errors.New("actor not found in context")
 	}
 	if actor.ID == uuid.Nil {

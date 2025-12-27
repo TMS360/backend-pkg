@@ -19,12 +19,11 @@ import (
 func IdentifyUser(publicKey *rsa.PublicKey) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		authHeader := ctx.GetHeader("Authorization")
+		fmt.Printf("DEBUG MIDDLEWARE: Incoming Auth Header: '%s'\n", authHeader)
 		if authHeader == "" {
 			ctx.Next()
 			return
 		}
-
-		fmt.Printf("DEBUG MIDDLEWARE: Incoming Auth Header: '%s'\n", authHeader)
 
 		parts := strings.Split(authHeader, " ")
 		if len(parts) != 2 || parts[0] != "Bearer" {

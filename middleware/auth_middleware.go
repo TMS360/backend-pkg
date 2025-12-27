@@ -78,9 +78,9 @@ func WithActor(ctx context.Context, userID uuid.UUID, userClaims *consts.UserCla
 // GetActor safely extracts the actor.
 func GetActor(ctx context.Context) (consts.Actor, error) {
 	actor, ok := ctx.Value(consts.ActorCtx).(consts.Actor)
+	fmt.Println("actor", ctx.Value(consts.ActorCtx))
+	fmt.Println("test_key", ctx.Value("test_key"))
 	if !ok {
-		fmt.Println("actor", ctx.Value(consts.ActorCtx))
-		fmt.Println("test_key", ctx.Value("test_key"))
 		return consts.Actor{}, errors.New("actor not found in context")
 	}
 	if actor.ID == uuid.Nil {

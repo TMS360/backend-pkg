@@ -3,6 +3,7 @@ package eventlog
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log"
 	"time"
 
@@ -88,7 +89,9 @@ func (c *Consumer) Start(ctx context.Context) {
 }
 
 func (c *Consumer) dispatch(ctx context.Context, event events.EventPayload) error {
-	if handlers, exists := c.systemHandlers[event.EntityType]; exists {
+
+	handlerKey := fmt.Sprintf("%s.%s", event.EntityType, event.Action)
+	if handlers, exists := c.systemHandlers[handlerKey]; exists {
 		for _, handler := range handlers {
 			log.Printf("Executing System Handler for EntityType %s", event.EntityType)
 			if err := handler(ctx, event.Data); err != nil {

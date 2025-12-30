@@ -13,10 +13,10 @@ import (
 )
 
 // SystemHandlerFunc is simpler than ActionFunc because it doesn't need DB config
-type SystemHandlerFunc func(ctx context.Context, eventData json.RawMessage) error
+type SystemHandlerFunc func(ctx context.Context, event events.EventPayload) error
 
 // ActionFunc defines the signature for your business logic functions
-type ActionFunc func(ctx context.Context, eventData json.RawMessage, config json.RawMessage) error
+type ActionFunc func(ctx context.Context, event events.EventPayload, config json.RawMessage) error
 
 type Consumer struct {
 	reader         *kafka.Reader
@@ -94,7 +94,7 @@ func (c *Consumer) dispatch(ctx context.Context, event events.EventPayload) erro
 	if handlers, exists := c.systemHandlers[handlerKey]; exists {
 		for _, handler := range handlers {
 			log.Printf("Executing System Handler for EntityType %s", event.EntityType)
-			if err := handler(ctx, event.Data); err != nil {
+			if err := handler(ctx, event); err != nil {
 				log.Printf("System handler execution failed: %v", err)
 			}
 		}
@@ -114,7 +114,7 @@ func (c *Consumer) dispatch(ctx context.Context, event events.EventPayload) erro
 		}
 
 		log.Printf("Executing Rule %s -> Action %s", rule.ID, rule.ActionType)
-		if err := handler(ctx, event.Data, rule.ActionConfig); err != nil {
+		if err := handler(ctx, event, rule.ActionConfig); err != nil {
 			log.Printf("Action execution failed: %v", err)
 		}
 	}

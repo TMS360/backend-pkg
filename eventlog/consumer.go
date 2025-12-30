@@ -83,13 +83,13 @@ func (c *Consumer) Start(ctx context.Context) {
 
 func (c *Consumer) dispatch(ctx context.Context, event events.EventPayload) error {
 	// A. Find Rules
-	rules, err := c.engine.GetMatchingRules(ctx, event.Action, event.Data)
+	matchingRules, err := c.engine.GetMatchingRules(ctx, event.EntityType, event.Action, event.Data)
 	if err != nil {
 		return err
 	}
 
 	// B. Execute Actions
-	for _, rule := range rules {
+	for _, rule := range matchingRules {
 		handler, exists := c.actions[rule.ActionType]
 		if !exists {
 			log.Printf("Warning: No handler found for ActionType: %s", rule.ActionType)

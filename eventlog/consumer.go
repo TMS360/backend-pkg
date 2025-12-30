@@ -11,13 +11,17 @@ import (
 	"github.com/segmentio/kafka-go"
 )
 
+// SystemHandlerFunc is simpler than ActionFunc because it doesn't need DB config
+type SystemHandlerFunc func(ctx context.Context, eventData json.RawMessage) error
+
 // ActionFunc defines the signature for your business logic functions
-type ActionFunc func(ctx context.Context, config json.RawMessage) error
+type ActionFunc func(ctx context.Context, eventData json.RawMessage, config json.RawMessage) error
 
 type Consumer struct {
-	reader  *kafka.Reader
-	engine  *rules.Engine
-	actions map[string]ActionFunc // Registry of executable functions
+	reader         *kafka.Reader
+	engine         *rules.Engine
+	systemHandlers map[string][]SystemHandlerFunc // Registry of system handlers
+	actions        map[string]ActionFunc          // Registry of executable functions
 }
 
 func NewConsumer(
@@ -25,6 +29,7 @@ func NewConsumer(
 	groupID string,
 	topics []string,
 	engine *rules.Engine,
+	systemHandlers map[string][]SystemHandlerFunc, // <--- Add this
 	actions map[string]ActionFunc,
 ) *Consumer {
 
@@ -39,9 +44,10 @@ func NewConsumer(
 	})
 
 	return &Consumer{
-		reader:  reader,
-		engine:  engine,
-		actions: actions,
+		reader:         reader,
+		engine:         engine,
+		systemHandlers: systemHandlers,
+		actions:        actions,
 	}
 }
 
@@ -82,24 +88,30 @@ func (c *Consumer) Start(ctx context.Context) {
 }
 
 func (c *Consumer) dispatch(ctx context.Context, event events.EventPayload) error {
+	if handlers, exists := c.systemHandlers[event.EntityType]; exists {
+		for _, handler := range handlers {
+			log.Printf("Executing System Handler for EntityType %s", event.EntityType)
+			if err := handler(ctx, event.Data); err != nil {
+				log.Printf("System handler execution failed: %v", err)
+			}
+		}
+	}
+
 	// A. Find Rules
 	matchingRules, err := c.engine.GetMatchingRules(ctx, event.EntityType, event.Action, event.Data)
 	if err != nil {
-		return err
+		log.Printf("Error getting matching rules: %v", err)
+		return nil // Fail-safe: don't block event processing
 	}
 
-	// B. Execute Actions
 	for _, rule := range matchingRules {
 		handler, exists := c.actions[rule.ActionType]
 		if !exists {
-			log.Printf("Warning: No handler found for ActionType: %s", rule.ActionType)
 			continue
 		}
 
 		log.Printf("Executing Rule %s -> Action %s", rule.ID, rule.ActionType)
-
-		// Execute the injected function
-		if err := handler(ctx, rule.ActionConfig); err != nil {
+		if err := handler(ctx, event.Data, rule.ActionConfig); err != nil {
 			log.Printf("Action execution failed: %v", err)
 		}
 	}

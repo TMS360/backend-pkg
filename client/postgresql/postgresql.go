@@ -28,7 +28,7 @@ func NewClient(cfg config.PostgresSQLConfig) (*gorm.DB, error) {
 	db.Raw("SELECT EXISTS (SELECT 1 FROM pg_database WHERE datname = ?)", cfg.DBName).Scan(&exists)
 
 	if !exists {
-		err = db.Exec(fmt.Sprintf("CREATE DATABASE %s", cfg.DBName)).Error
+		err = db.Exec(fmt.Sprintf("CREATE DATABASE \"%s\"", cfg.DBName)).Error
 		if err != nil {
 			log.Fatalf("failed to create database %s: %v", cfg.DBName, err)
 		}

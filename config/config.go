@@ -13,6 +13,7 @@ type Config struct {
 	AppDebug          bool   `mapstructure:"APP_DEBUG"`
 	AppPort           string `mapstructure:"APP_PORT"`
 	SigningKey        string `mapstructure:"SIGNING_KEY"`
+	GRPCPort          string `mapstructure:"GRPC_PORT"`
 	HTTPServer        `mapstructure:"HTTP"`
 	PostgresSQLConfig `mapstructure:"DB"`
 	KafkaConfig       `mapstructure:"KAFKA"`

@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/99designs/gqlgen/graphql"
+	"github.com/TMS360/backend-pkg/consts"
 	"github.com/TMS360/backend-pkg/middleware"
 	"github.com/go-playground/validator/v10"
 )
@@ -12,7 +13,7 @@ import (
 func AuthDirective(ctx context.Context, obj interface{}, next graphql.Resolver) (interface{}, error) {
 	_, err := middleware.GetActor(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("access denied: unauthenticated")
+		return nil, consts.ErrUnauthorized
 	}
 
 	return next(ctx)
@@ -23,10 +24,10 @@ func HasRoleDirective(ctx context.Context, obj interface{}, next graphql.Resolve
 	return next(ctx)
 	actor, err := middleware.GetActor(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("access denied: unauthenticated")
+		return nil, consts.ErrUnauthorized
 	}
 	if actor.Claims == nil {
-		return nil, fmt.Errorf("access denied: unauthenticated")
+		return nil, consts.ErrUnauthorized
 	}
 
 	for _, r := range actor.Claims.Roles {
@@ -43,10 +44,10 @@ func HasPermDirective(ctx context.Context, obj interface{}, next graphql.Resolve
 	return next(ctx)
 	actor, err := middleware.GetActor(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("access denied: unauthenticated")
+		return nil, consts.ErrUnauthorized
 	}
 	if actor.Claims == nil {
-		return nil, fmt.Errorf("access denied: unauthenticated")
+		return nil, consts.ErrUnauthorized
 	}
 
 	for _, r := range actor.Claims.Permissions {

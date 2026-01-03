@@ -12,7 +12,7 @@ import (
 func AuthDirective(ctx context.Context, obj interface{}, next graphql.Resolver) (interface{}, error) {
 	_, err := middleware.GetActor(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("access denied: unauthenticated: %w", err)
+		return nil, fmt.Errorf("access denied: unauthenticated")
 	}
 
 	return next(ctx)

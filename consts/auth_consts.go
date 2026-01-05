@@ -5,6 +5,13 @@ import (
 	"github.com/google/uuid"
 )
 
+type ActorType string
+
+const (
+	ActorCourier ActorType = "courier"
+	ActorBroker  ActorType = "broker"
+)
+
 type contextKey string
 
 // TODO: encapsulate context keys with methods to avoid collisions
@@ -20,6 +27,7 @@ type Actor struct {
 // UserClaims represents the JWT claims for a user
 type UserClaims struct {
 	UserID      uuid.UUID `json:"sub"`
+	ActorType   ActorType `json:"actor_type"`
 	Roles       []string  `json:"roles"`
 	Permissions []string  `json:"perms"`
 

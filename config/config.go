@@ -20,6 +20,7 @@ type Config struct {
 	JWTConfig         `mapstructure:"JWT"`
 	SamsaraConfig     `mapstructure:"SAMSARA"`
 	ClickHouseConfig  `mapstructure:"CLICKHOUSE"`
+	S3Config          `mapstructure:"S3"`
 }
 
 type HTTPServer struct {
@@ -71,7 +72,14 @@ type ClickHouseConfig struct {
 	Password string `mapstructure:"PASSWORD"`
 }
 
-var Prefixes = []string{"http", "db", "kafka", "redis", "jwt", "redis"}
+type S3Config struct {
+	AccessKeyID     string `mapstructure:"ACCESS_KEY_ID"`
+	SecretAccessKey string `mapstructure:"SECRET_ACCESS_KEY"`
+	Region          string `mapstructure:"REGION"`
+	BucketName      string `mapstructure:"BUCKET_NAME"`
+}
+
+var Prefixes = []string{"http", "db", "kafka", "redis", "jwt", "redis", "samsara", "clickhouse", "s3"}
 
 func MapConfig() {
 	for _, key := range viper.AllKeys() {

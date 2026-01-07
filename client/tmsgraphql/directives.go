@@ -126,12 +126,16 @@ func extractFieldInfo(ctx context.Context) FieldInfo {
 		return info
 	}
 
-	// Получаем имя поля из контекста
 	if fieldContext.Field.Field != nil {
 		info.FieldName = fieldContext.Field.Field.Name
 	}
 
-	// Пытаемся определить тип Input из аргументов
+	if path := fieldContext.Path(); path != nil {
+		if key, ok := path.Key.(string); ok {
+			info.FieldName = key
+		}
+	}
+
 	if len(fieldContext.Args) > 0 {
 		for argName, argValue := range fieldContext.Args {
 			if strings.Contains(argName, "input") || strings.Contains(argName, "Input") {
@@ -142,7 +146,10 @@ func extractFieldInfo(ctx context.Context) FieldInfo {
 					// Извлекаем имя типа (например, из "model.CreateTruckInput" получаем "CreateTruckInput")
 					parts := strings.Split(typeName, ".")
 					if len(parts) > 0 {
-						info.InputType = parts[len(parts)-1]
+						lastPart := parts[len(parts)-1]
+						// Убираем указатель если есть
+						lastPart = strings.TrimPrefix(lastPart, "*")
+						info.InputType = lastPart
 					}
 				}
 				break
@@ -150,10 +157,7 @@ func extractFieldInfo(ctx context.Context) FieldInfo {
 		}
 	}
 
-	// Если всё ещё не нашли, пробуем простое извлечение из имени поля
-	// Часто валидация вызывается для полей внутри input типов
 	if info.InputType == "" && fieldContext.Field.ObjectDefinition != nil {
-		// ObjectDefinition может содержать имя input типа
 		defName := fieldContext.Field.ObjectDefinition.Name
 		if strings.Contains(defName, "Input") {
 			info.InputType = defName

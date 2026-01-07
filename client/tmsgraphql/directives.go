@@ -130,24 +130,18 @@ func extractFieldInfo(ctx context.Context) FieldInfo {
 		info.FieldName = fieldContext.Field.Field.Name
 	}
 
-	if path := fieldContext.Path(); path != nil {
-		if key, ok := path.Key.(string); ok {
-			info.FieldName = key
-		}
+	if info.FieldName == "" && fieldContext.Field.Alias != "" {
+		info.FieldName = fieldContext.Field.Alias
 	}
 
 	if len(fieldContext.Args) > 0 {
 		for argName, argValue := range fieldContext.Args {
 			if strings.Contains(argName, "input") || strings.Contains(argName, "Input") {
-				// Это наш input аргумент
-				// Пытаемся получить тип из рефлексии
 				if argValue != nil {
 					typeName := fmt.Sprintf("%T", argValue)
-					// Извлекаем имя типа (например, из "model.CreateTruckInput" получаем "CreateTruckInput")
 					parts := strings.Split(typeName, ".")
 					if len(parts) > 0 {
 						lastPart := parts[len(parts)-1]
-						// Убираем указатель если есть
 						lastPart = strings.TrimPrefix(lastPart, "*")
 						info.InputType = lastPart
 					}

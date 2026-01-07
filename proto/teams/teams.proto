@@ -1,0 +1,23 @@
+// pkg/proto/teams/teams.proto
+syntax = "proto3";
+
+package teams;
+
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/TMS360/backend-pkg/proto/teams";
+
+service TeamsService {
+  // Returns IDs of vehicles assigned during the requested window
+  rpc GetBusyVehicles(GetBusyVehiclesRequest) returns (GetBusyVehiclesResponse);
+}
+
+message GetBusyVehiclesRequest {
+  google.protobuf.Timestamp from = 1;
+  google.protobuf.Timestamp to   = 2;
+}
+
+message GetBusyVehiclesResponse {
+  repeated string truck_ids   = 1;
+  repeated string trailer_ids = 2;
+}

@@ -1,0 +1,34 @@
+syntax = "proto3";
+
+package files;
+
+option go_package = "github.com/TMS360/backend-pkg/proto/files";
+
+service FilesService {
+  rpc GetFile (GetFileRequest) returns (GetFileResponse);
+  rpc GetFiles (GetFilesRequest) returns (GetFilesResponse);
+}
+
+message GetFileRequest {
+  string id = 1;
+}
+
+message GetFilesRequest {
+  repeated string ids = 1;
+}
+
+message File {
+  string id = 1;
+  string url = 2;
+  string filename = 3;
+  string mime_type = 4;
+  int64 size_bytes = 5;
+}
+
+message GetFileResponse {
+  File file = 1;
+}
+
+message GetFilesResponse {
+  map<string, File> files = 1;
+}

@@ -94,14 +94,8 @@ func ValidateWithMessagesDirective(v *validator.Validate, messageStore Validatio
 				inputFieldName = *pathContext.Field
 			}
 
-			// Get field context for operation name (e.g., "createTruck")
-			fieldContext := graphql.GetFieldContext(ctx)
-			operationName := ""
-			if fieldContext != nil && fieldContext.Field.Field != nil {
-				operationName = fieldContext.Field.Field.Name
-			}
-
 			// Extract input type from field arguments
+			fieldContext := graphql.GetFieldContext(ctx)
 			inputType := ""
 			if fieldContext != nil && len(fieldContext.Args) > 0 {
 				for argName, argValue := range fieldContext.Args {
@@ -118,29 +112,11 @@ func ValidateWithMessagesDirective(v *validator.Validate, messageStore Validatio
 
 			validationErrors := processValidationErrors(err, val, constraint, inputFieldName, messageStore, inputType)
 
-			// Check if we should collect errors or return immediately
-			if collector := GetValidationCollector(ctx); collector != nil {
-				collector.AddError(&gqlerror.Error{
-					Message: fmt.Sprintf("Validation failed for field '%s.%s'", operationName, inputFieldName),
-					Extensions: map[string]interface{}{
-						"code":       "VALIDATION_ERROR",
-						"field":      inputFieldName,
-						"operation":  operationName,
-						"inputType":  inputType,
-						"constraint": constraint,
-						"errors":     validationErrors,
-					},
-				})
-				// Return the value to continue validation of other fields
-				return val, nil
-			}
-
 			return nil, &gqlerror.Error{
-				Message: fmt.Sprintf("Validation failed for field '%s.%s'", operationName, inputFieldName),
+				Message: fmt.Sprintf("Validation failed for field '%s'", inputFieldName),
 				Extensions: map[string]interface{}{
 					"code":       "VALIDATION_ERROR",
 					"field":      inputFieldName,
-					"operation":  operationName,
 					"inputType":  inputType,
 					"constraint": constraint,
 					"errors":     validationErrors,

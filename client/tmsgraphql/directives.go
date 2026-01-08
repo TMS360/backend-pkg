@@ -3,11 +3,14 @@ package tmsgraphql
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/99designs/gqlgen/graphql"
 	"github.com/TMS360/backend-pkg/consts"
 	"github.com/TMS360/backend-pkg/middleware"
+	"github.com/TMS360/backend-pkg/validation"
 	"github.com/go-playground/validator/v10"
+	"github.com/vektah/gqlparser/v2/gqlerror"
 )
 
 func AuthDirective(ctx context.Context, obj interface{}, next graphql.Resolver) (interface{}, error) {
@@ -69,5 +72,234 @@ func ValidateDirective(v *validator.Validate) func(context.Context, interface{},
 			return nil, fmt.Errorf("validation failed: %s", err.Error())
 		}
 		return val, nil
+	}
+}
+
+type ValidationMessageStore interface {
+	GetMessage(inputType, field, rule string) (string, bool)
+}
+
+func ValidateWithMessagesDirective(v *validator.Validate, messageStore ValidationMessageStore) func(context.Context, interface{}, graphql.Resolver, string) (interface{}, error) {
+	return func(ctx context.Context, obj interface{}, next graphql.Resolver, constraint string) (interface{}, error) {
+		val, err := next(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		validationErr := v.Var(val, constraint)
+		if validationErr != nil {
+			// Get the path context to determine the actual field name (e.g., "vin", "number")
+			pathContext := graphql.GetPathContext(ctx)
+			inputFieldName := ""
+			if pathContext != nil && pathContext.Field != nil && *pathContext.Field != "" {
+				inputFieldName = *pathContext.Field
+			}
+
+			// Extract input type from field arguments
+			fieldContext := graphql.GetFieldContext(ctx)
+			inputType := ""
+			if fieldContext != nil && len(fieldContext.Args) > 0 {
+				for argName, argValue := range fieldContext.Args {
+					if strings.Contains(strings.ToLower(argName), "input") && argValue != nil {
+						typeName := fmt.Sprintf("%T", argValue)
+						parts := strings.Split(typeName, ".")
+						if len(parts) > 0 {
+							inputType = strings.TrimPrefix(parts[len(parts)-1], "*")
+						}
+						break
+					}
+				}
+			}
+
+			// Check if we have a validation context for collecting errors
+			if validationCtx := validation.GetValidationContext(ctx); validationCtx != nil {
+				// Collect errors in the context
+				ve, ok := validationErr.(validator.ValidationErrors)
+				if ok {
+					for _, fe := range ve {
+						fieldErr := validation.ValidationFieldError{
+							Field:      inputFieldName,
+							Rule:       fe.Tag(),
+							Value:      val,
+							Constraint: constraint,
+							InputType:  inputType,
+						}
+
+						// Get custom message or default
+						if messageStore != nil {
+							if customMsg, found := messageStore.GetMessage(inputType, inputFieldName, fe.Tag()); found {
+								fieldErr.Message = strings.ReplaceAll(customMsg, "{value}", fe.Param())
+							} else {
+								fieldErr.Message = getDefaultValidationMessage(fe.Tag(), fe.Param())
+							}
+						} else {
+							fieldErr.Message = getDefaultValidationMessage(fe.Tag(), fe.Param())
+						}
+
+						validationCtx.AddError(fieldErr)
+					}
+				}
+
+				// If we should continue validation, return the value
+				if validationCtx.ShouldContinue() {
+					return val, nil
+				}
+			}
+
+			// Fall back to immediate error return
+			validationErrors := processValidationErrors(validationErr, val, constraint, inputFieldName, messageStore, inputType)
+
+			return nil, &gqlerror.Error{
+				Message: fmt.Sprintf("Validation failed for field '%s'", inputFieldName),
+				Extensions: map[string]interface{}{
+					"code":       "VALIDATION_ERROR",
+					"field":      inputFieldName,
+					"inputType":  inputType,
+					"constraint": constraint,
+					"errors":     validationErrors,
+				},
+			}
+		}
+
+		return val, nil
+	}
+}
+
+func ValidateMessageDirective() func(context.Context, interface{}, graphql.Resolver, string, string) (interface{}, error) {
+	return func(ctx context.Context, obj interface{}, next graphql.Resolver, rule string, message string) (interface{}, error) {
+		return next(ctx)
+	}
+}
+
+type FieldInfo struct {
+	FieldName string
+	InputType string
+}
+
+func extractFieldInfo(ctx context.Context) FieldInfo {
+	info := FieldInfo{}
+
+	fieldContext := graphql.GetFieldContext(ctx)
+	if fieldContext == nil {
+		return info
+	}
+
+	if fieldContext.Field.Field != nil {
+		info.FieldName = fieldContext.Field.Field.Name
+	}
+
+	if info.FieldName == "" && fieldContext.Field.Alias != "" {
+		info.FieldName = fieldContext.Field.Alias
+	}
+
+	if len(fieldContext.Args) > 0 {
+		for argName, argValue := range fieldContext.Args {
+			if strings.Contains(argName, "input") || strings.Contains(argName, "Input") {
+				if argValue != nil {
+					typeName := fmt.Sprintf("%T", argValue)
+					parts := strings.Split(typeName, ".")
+					if len(parts) > 0 {
+						lastPart := parts[len(parts)-1]
+						lastPart = strings.TrimPrefix(lastPart, "*")
+						info.InputType = lastPart
+					}
+				}
+				break
+			}
+		}
+	}
+
+	if info.InputType == "" && fieldContext.Field.ObjectDefinition != nil {
+		defName := fieldContext.Field.ObjectDefinition.Name
+		if strings.Contains(defName, "Input") {
+			info.InputType = defName
+		}
+	}
+
+	return info
+}
+
+type ValidationError struct {
+	Field      string      `json:"field"`
+	Rule       string      `json:"rule"`
+	Value      interface{} `json:"value,omitempty"`
+	Message    string      `json:"message"`
+	Constraint string      `json:"constraint"`
+}
+
+func processValidationErrors(err error, value interface{}, constraint string, fieldName string, messageStore ValidationMessageStore, inputType string) []ValidationError {
+	validationErrors := make([]ValidationError, 0)
+
+	ve, ok := err.(validator.ValidationErrors)
+	if !ok {
+		return []ValidationError{{
+			Field:      fieldName,
+			Rule:       "validation",
+			Value:      value,
+			Message:    err.Error(),
+			Constraint: constraint,
+		}}
+	}
+
+	for _, fe := range ve {
+		valErr := ValidationError{
+			Field:      fieldName,
+			Rule:       fe.Tag(),
+			Value:      value,
+			Constraint: constraint,
+		}
+
+		if messageStore != nil {
+			if customMsg, found := messageStore.GetMessage(inputType, fieldName, fe.Tag()); found {
+				valErr.Message = strings.ReplaceAll(customMsg, "{value}", fe.Param())
+			} else {
+				valErr.Message = getDefaultValidationMessage(fe.Tag(), fe.Param())
+			}
+		} else {
+			valErr.Message = getDefaultValidationMessage(fe.Tag(), fe.Param())
+		}
+
+		validationErrors = append(validationErrors, valErr)
+	}
+
+	return validationErrors
+}
+
+func getDefaultValidationMessage(tag string, param string) string {
+	switch tag {
+	case "required":
+		return "This field is required"
+	case "min":
+		return fmt.Sprintf("Minimum value is %s", param)
+	case "max":
+		return fmt.Sprintf("Maximum value is %s", param)
+	case "len":
+		return fmt.Sprintf("Length must be exactly %s", param)
+	case "eq":
+		return fmt.Sprintf("Must be equal to %s", param)
+	case "ne":
+		return fmt.Sprintf("Must not be equal to %s", param)
+	case "gt":
+		return fmt.Sprintf("Must be greater than %s", param)
+	case "gte":
+		return fmt.Sprintf("Must be greater than or equal to %s", param)
+	case "lt":
+		return fmt.Sprintf("Must be less than %s", param)
+	case "lte":
+		return fmt.Sprintf("Must be less than or equal to %s", param)
+	case "email":
+		return "Must be a valid email address"
+	case "url":
+		return "Must be a valid URL"
+	case "alpha":
+		return "Must contain only alphabetic characters"
+	case "alphanum":
+		return "Must contain only alphanumeric characters"
+	case "numeric":
+		return "Must contain only numeric characters"
+	case "json":
+		return "Must be valid JSON"
+	default:
+		return fmt.Sprintf("Failed validation on rule: %s", tag)
 	}
 }

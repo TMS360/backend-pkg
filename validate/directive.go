@@ -70,16 +70,34 @@ func Directive() func(ctx context.Context, obj interface{}, next graphql.Resolve
 			if pathContext := graphql.GetPathContext(ctx); pathContext != nil {
 				segments := []string{}
 				current := pathContext
+				isArray := false
+
 				for current != nil {
 					if current.Field != nil {
-						segments = append([]string{*current.Field}, segments...)
-					} else if current.Index != nil {
-						segments[len(segments)-1] = fmt.Sprintf("%s[%d]", segments[len(segments)-1], *current.Index)
+						fieldStr := *current.Field
+						if current.Index != nil {
+							fieldStr = fmt.Sprintf("%s[%d]", fieldStr, *current.Index)
+							isArray = true
+						}
+						segments = append([]string{fieldStr}, segments...)
 					}
 					current = current.Parent
 				}
+
 				if len(segments) > 0 {
-					fieldName = strings.Join(segments, ".")
+					if isArray && len(segments) >= 2 {
+						fieldName = strings.Join(segments[len(segments)-2:], ".")
+					} else if len(segments) == 1 {
+						fieldName = segments[0]
+					} else if len(segments) >= 2 {
+						lastSegment := segments[len(segments)-1]
+						secondLastSegment := segments[len(segments)-2]
+						if strings.Contains(secondLastSegment, "[") {
+							fieldName = secondLastSegment + "." + lastSegment
+						} else {
+							fieldName = lastSegment
+						}
+					}
 				}
 			}
 			if fieldName == "" {

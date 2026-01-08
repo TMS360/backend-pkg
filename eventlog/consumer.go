@@ -63,6 +63,7 @@ func (c *Consumer) Start(ctx context.Context) {
 				return
 			} // Context cancelled
 			log.Printf("Consumer fetch error: %v", err)
+			time.Sleep(3 * time.Second)
 			continue
 		}
 

@@ -8,7 +8,6 @@ import (
 	"github.com/99designs/gqlgen/graphql"
 	"github.com/TMS360/backend-pkg/consts"
 	"github.com/TMS360/backend-pkg/middleware"
-	"github.com/TMS360/backend-pkg/validation"
 	"github.com/go-playground/validator/v10"
 	"github.com/vektah/gqlparser/v2/gqlerror"
 )
@@ -108,41 +107,6 @@ func ValidateWithMessagesDirective(v *validator.Validate, messageStore Validatio
 						}
 						break
 					}
-				}
-			}
-
-			// Check if we have a validation context for collecting errors
-			if validationCtx := validation.GetValidationContext(ctx); validationCtx != nil {
-				// Collect errors in the context
-				ve, ok := validationErr.(validator.ValidationErrors)
-				if ok {
-					for _, fe := range ve {
-						fieldErr := validation.ValidationFieldError{
-							Field:      inputFieldName,
-							Rule:       fe.Tag(),
-							Value:      val,
-							Constraint: constraint,
-							InputType:  inputType,
-						}
-
-						// Get custom message or default
-						if messageStore != nil {
-							if customMsg, found := messageStore.GetMessage(inputType, inputFieldName, fe.Tag()); found {
-								fieldErr.Message = strings.ReplaceAll(customMsg, "{value}", fe.Param())
-							} else {
-								fieldErr.Message = getDefaultValidationMessage(fe.Tag(), fe.Param())
-							}
-						} else {
-							fieldErr.Message = getDefaultValidationMessage(fe.Tag(), fe.Param())
-						}
-
-						validationCtx.AddError(fieldErr)
-					}
-				}
-
-				// If we should continue validation, return the value
-				if validationCtx.ShouldContinue() {
-					return val, nil
 				}
 			}
 

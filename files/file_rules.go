@@ -18,7 +18,7 @@ type FileRule struct {
 	AllowedMimeTypes []string
 }
 
-var FileRules = map[FilePurpose]FileRule{
+var FileRules = map[FilePurpose]*FileRule{
 	PurposeUserAvatar: {
 		S3Folder:         "public/avatars",
 		IsPublic:         true,
@@ -28,11 +28,11 @@ var FileRules = map[FilePurpose]FileRule{
 }
 
 // GetFileRule retrieves the FileRule associated with the given purpose string. Returns an error for invalid purposes.
-func GetFileRule(purposeStr string) (FileRule, error) {
+func GetFileRule(purposeStr string) (*FileRule, error) {
 	purpose := FilePurpose(purposeStr)
 	rule, exists := FileRules[purpose]
 	if !exists {
-		return FileRule{}, errors.New("invalid_upload_purpose")
+		return &FileRule{}, errors.New("invalid_upload_purpose")
 	}
 	return rule, nil
 }

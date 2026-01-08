@@ -20,7 +20,7 @@ type FileRule struct {
 
 var FileRules = map[FilePurpose]*FileRule{
 	PurposeUserAvatar: {
-		S3Folder:         "public/avatars",
+		S3Folder:         "avatars",
 		IsPublic:         true,
 		MaxSizeBytes:     2 * 1024 * 1024, // 5MB
 		AllowedMimeTypes: []string{"image/jpeg", "image/png", "image/webp"},

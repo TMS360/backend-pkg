@@ -87,16 +87,61 @@ func ValidateWithMessagesDirective(v *validator.Validate, messageStore Validatio
 
 		err = v.Var(val, constraint)
 		if err != nil {
-			fieldInfo := extractFieldInfo(ctx)
+			// Get the path context to determine the actual field name (e.g., "vin", "number")
+			pathContext := graphql.GetPathContext(ctx)
+			inputFieldName := ""
+			if pathContext != nil && pathContext.Field != nil && *pathContext.Field != "" {
+				inputFieldName = *pathContext.Field
+			}
 
-			validationErrors := processValidationErrors(err, val, constraint, fieldInfo, messageStore)
+			// Get field context for operation name (e.g., "createTruck")
+			fieldContext := graphql.GetFieldContext(ctx)
+			operationName := ""
+			if fieldContext != nil && fieldContext.Field.Field != nil {
+				operationName = fieldContext.Field.Field.Name
+			}
+
+			// Extract input type from field arguments
+			inputType := ""
+			if fieldContext != nil && len(fieldContext.Args) > 0 {
+				for argName, argValue := range fieldContext.Args {
+					if strings.Contains(strings.ToLower(argName), "input") && argValue != nil {
+						typeName := fmt.Sprintf("%T", argValue)
+						parts := strings.Split(typeName, ".")
+						if len(parts) > 0 {
+							inputType = strings.TrimPrefix(parts[len(parts)-1], "*")
+						}
+						break
+					}
+				}
+			}
+
+			validationErrors := processValidationErrors(err, val, constraint, inputFieldName, messageStore, inputType)
+
+			// Check if we should collect errors or return immediately
+			if collector := GetValidationCollector(ctx); collector != nil {
+				collector.AddError(&gqlerror.Error{
+					Message: fmt.Sprintf("Validation failed for field '%s.%s'", operationName, inputFieldName),
+					Extensions: map[string]interface{}{
+						"code":       "VALIDATION_ERROR",
+						"field":      inputFieldName,
+						"operation":  operationName,
+						"inputType":  inputType,
+						"constraint": constraint,
+						"errors":     validationErrors,
+					},
+				})
+				// Return the value to continue validation of other fields
+				return val, nil
+			}
 
 			return nil, &gqlerror.Error{
-				Message: fmt.Sprintf("Validation failed for field '%s'", fieldInfo.FieldName),
+				Message: fmt.Sprintf("Validation failed for field '%s.%s'", operationName, inputFieldName),
 				Extensions: map[string]interface{}{
 					"code":       "VALIDATION_ERROR",
-					"field":      fieldInfo.FieldName,
-					"inputType":  fieldInfo.InputType,
+					"field":      inputFieldName,
+					"operation":  operationName,
+					"inputType":  inputType,
 					"constraint": constraint,
 					"errors":     validationErrors,
 				},
@@ -169,13 +214,13 @@ type ValidationError struct {
 	Constraint string      `json:"constraint"`
 }
 
-func processValidationErrors(err error, value interface{}, constraint string, fieldInfo FieldInfo, messageStore ValidationMessageStore) []ValidationError {
+func processValidationErrors(err error, value interface{}, constraint string, fieldName string, messageStore ValidationMessageStore, inputType string) []ValidationError {
 	validationErrors := make([]ValidationError, 0)
 
 	ve, ok := err.(validator.ValidationErrors)
 	if !ok {
 		return []ValidationError{{
-			Field:      fieldInfo.FieldName,
+			Field:      fieldName,
 			Rule:       "validation",
 			Value:      value,
 			Message:    err.Error(),
@@ -185,14 +230,14 @@ func processValidationErrors(err error, value interface{}, constraint string, fi
 
 	for _, fe := range ve {
 		valErr := ValidationError{
-			Field:      fieldInfo.FieldName,
+			Field:      fieldName,
 			Rule:       fe.Tag(),
 			Value:      value,
 			Constraint: constraint,
 		}
 
 		if messageStore != nil {
-			if customMsg, found := messageStore.GetMessage(fieldInfo.InputType, fieldInfo.FieldName, fe.Tag()); found {
+			if customMsg, found := messageStore.GetMessage(inputType, fieldName, fe.Tag()); found {
 				valErr.Message = strings.ReplaceAll(customMsg, "{value}", fe.Param())
 			} else {
 				valErr.Message = getDefaultValidationMessage(fe.Tag(), fe.Param())

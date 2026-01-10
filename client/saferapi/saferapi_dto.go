@@ -22,5 +22,5 @@ type SaferCompanyDTO struct {
 	OperationClassification []string         `json:"operation_classification"`
 	CarrierOperation        []string         `json:"carrier_operation"`
 	CargoCarried            []string         `json:"cargo_carried"`
-	SaferURL                *string          `json:"safer_url"`
+	Url                     *string          `json:"url"`
 }

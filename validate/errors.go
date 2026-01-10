@@ -23,12 +23,15 @@ type FieldValidationError struct {
 
 type ValidationErrors struct {
 	mu     sync.RWMutex
-	Errors map[string]*FieldValidationError `json:"errors"`
+	Errors []*FieldValidationError `json:"errors"`
+	// Keep a map for quick lookup and deduplication
+	errorMap map[string]*FieldValidationError
 }
 
 func NewValidationErrors() *ValidationErrors {
 	return &ValidationErrors{
-		Errors: make(map[string]*FieldValidationError),
+		Errors:   make([]*FieldValidationError, 0),
+		errorMap: make(map[string]*FieldValidationError),
 	}
 }
 
@@ -36,12 +39,13 @@ func (ve *ValidationErrors) Add(fieldError *FieldValidationError) {
 	ve.mu.Lock()
 	defer ve.mu.Unlock()
 
-	if existing, ok := ve.Errors[fieldError.Field]; ok {
+	if existing, ok := ve.errorMap[fieldError.Field]; ok {
 		existing.Rules = append(existing.Rules, fieldError.Rules...)
 		existing.Messages = append(existing.Messages, fieldError.Messages...)
 		existing.Value = fieldError.Value
 	} else {
-		ve.Errors[fieldError.Field] = fieldError
+		ve.errorMap[fieldError.Field] = fieldError
+		ve.Errors = append(ve.Errors, fieldError)
 	}
 }
 
@@ -59,25 +63,18 @@ func (ve *ValidationErrors) Error() string {
 		return ""
 	}
 
-	fields := make([]string, 0, len(ve.Errors))
-	for field := range ve.Errors {
-		fields = append(fields, field)
+	if len(ve.Errors) == 1 {
+		return fmt.Sprintf("validation failed for field: %s", ve.Errors[0].Field)
 	}
-
-	if len(fields) == 1 {
-		return fmt.Sprintf("validation failed for field: %s", fields[0])
-	}
-	return fmt.Sprintf("validation failed for %d fields", len(fields))
+	return fmt.Sprintf("validation failed for %d fields", len(ve.Errors))
 }
 
-func (ve *ValidationErrors) ToMap() map[string]*FieldValidationError {
+func (ve *ValidationErrors) ToArray() []*FieldValidationError {
 	ve.mu.RLock()
 	defer ve.mu.RUnlock()
 
-	result := make(map[string]*FieldValidationError)
-	for k, v := range ve.Errors {
-		result[k] = v
-	}
+	result := make([]*FieldValidationError, len(ve.Errors))
+	copy(result, ve.Errors)
 	return result
 }
 
@@ -109,7 +106,7 @@ func ErrorPresenter() graphql.ErrorPresenterFunc {
 				Message: "Validation failed",
 				Extensions: map[string]interface{}{
 					"code":             "VALIDATION_ERROR",
-					"validationErrors": validationErrors.ToMap(),
+					"validationErrors": validationErrors.ToArray(),
 				},
 			}
 		}

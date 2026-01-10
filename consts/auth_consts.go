@@ -1,6 +1,7 @@
 package consts
 
 import (
+	"github.com/TMS360/backend-pkg/enums"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 )
@@ -23,11 +24,21 @@ type Actor struct {
 	IsSystem bool
 }
 
+func (actor *Actor) IsSuperAdmin() bool {
+	for _, role := range actor.Claims.Roles {
+		if role == enums.UserRoleSuperAdmin.String() {
+			return true
+		}
+	}
+	return false
+}
+
 type UserClaims struct {
-	UserID      uuid.UUID `json:"sub"`
-	ActorType   ActorType `json:"actor_type"`
-	Roles       []string  `json:"roles"`
-	Permissions []string  `json:"perms"`
+	UserID      uuid.UUID  `json:"sub"`
+	CompanyID   *uuid.UUID `json:"company_id"`
+	ActorType   ActorType  `json:"actor_type"`
+	Roles       []string   `json:"roles"`
+	Permissions []string   `json:"perms"`
 
 	// Embed Standard/Registered claims for standard fields like exp, iat, iss
 	jwt.RegisteredClaims

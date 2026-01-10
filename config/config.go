@@ -20,6 +20,7 @@ type Config struct {
 	RedisConfig       `mapstructure:"REDIS"`
 	JWTConfig         `mapstructure:"JWT"`
 	SamsaraConfig     `mapstructure:"SAMSARA"`
+	HereConfig        `mapstructure:"HERE"`
 	ClickHouseConfig  `mapstructure:"CLICKHOUSE"`
 	AwsConfig         `mapstructure:"AWS"`
 }
@@ -65,6 +66,11 @@ type SamsaraConfig struct {
 	Host string `mapstructure:"HOST"`
 }
 
+type HereConfig struct {
+	RouterHost  string `mapstructure:"ROUTER_HOST"`
+	GeocodeHost string `mapstructure:"GEOCODE_HOST"`
+}
+
 type ClickHouseConfig struct {
 	Host     string `mapstructure:"HOST"`
 	Port     string `mapstructure:"PORT"`
@@ -80,7 +86,7 @@ type AwsConfig struct {
 	BucketName      string `mapstructure:"BUCKET_NAME"`
 }
 
-var Prefixes = []string{"http", "db", "kafka", "redis", "jwt", "redis", "samsara", "clickhouse", "aws"}
+var Prefixes = []string{"http", "db", "kafka", "redis", "jwt", "redis", "samsara", "here", "clickhouse", "aws"}
 
 func MapConfig() {
 	for _, key := range viper.AllKeys() {

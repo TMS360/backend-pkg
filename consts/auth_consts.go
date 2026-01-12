@@ -33,6 +33,19 @@ func (actor *Actor) IsSuperAdmin() bool {
 	return false
 }
 
+func (actor *Actor) IsAdmin() bool {
+	for _, role := range actor.Claims.Roles {
+		if role == enums.UserRoleAdmin.String() {
+			return true
+		}
+	}
+	return false
+}
+
+func (actor *Actor) GetCompanyID() *uuid.UUID {
+	return actor.Claims.CompanyID
+}
+
 type UserClaims struct {
 	UserID      uuid.UUID  `json:"sub"`
 	CompanyID   *uuid.UUID `json:"company_id"`

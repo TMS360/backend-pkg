@@ -13,8 +13,8 @@ type SaferCompanyDTO struct {
 	MailingAddress          *string          `json:"mailing_address"`
 	Usdot                   *string          `json:"usdot"`
 	McMxFfNumbers           *string          `json:"mc_mx_ff_numbers"`
-	PowerUnits              *int             `json:"power_units"`
-	Drivers                 *int             `json:"drivers"`
+	PowerUnits              *int32           `json:"power_units"`
+	Drivers                 *int32           `json:"drivers"`
 	Mcs150FormDate          *string          `json:"mcs_150_form_date"`
 	OutOfServiceDate        *string          `json:"out_of_service_date"`
 	LatestUpdate            *string          `json:"latest_update"`

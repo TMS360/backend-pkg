@@ -1,4 +1,4 @@
-package tmsdb
+package model
 
 import (
 	"time"

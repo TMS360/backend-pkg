@@ -4,8 +4,10 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"time"
 
 	"github.com/TMS360/backend-pkg/config"
+	"github.com/TMS360/backend-pkg/tmsdb"
 	"github.com/jackc/pgx/v5/pgconn"
 
 	"gorm.io/driver/postgres"
@@ -45,6 +47,16 @@ func NewClient(cfg config.PostgresSQLConfig) (*gorm.DB, error) {
 	db, err = gorm.Open(postgres.Open(dsn), &gorm.Config{})
 	if err != nil {
 		log.Fatalf("failed to connect database: %v", err)
+	}
+
+	if err := db.Use(&tmsdb.TenantScopePlugin{}); err != nil {
+		return nil, fmt.Errorf("failed to register tenant scope plugin: %w", err)
+	}
+
+	if sqlDB, err := db.DB(); err == nil {
+		sqlDB.SetMaxIdleConns(10)
+		sqlDB.SetMaxOpenConns(100)
+		sqlDB.SetConnMaxLifetime(time.Hour)
 	}
 
 	return db, nil

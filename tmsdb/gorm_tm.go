@@ -7,6 +7,7 @@ import (
 
 	"github.com/TMS360/backend-pkg/eventlog/events"
 	"github.com/TMS360/backend-pkg/middleware"
+	"github.com/TMS360/backend-pkg/tmsdb/model"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
@@ -67,7 +68,7 @@ func (m *GormTransactionManager) Publish(ctx context.Context, aggType, evtType s
 		return err
 	}
 
-	event := &OutboxEvent{
+	event := &model.OutboxEvent{
 		ID:            uuid.New(),
 		AggregateID:   aggID,
 		AggregateType: aggType,

@@ -6,12 +6,13 @@ import (
 
 	"github.com/TMS360/backend-pkg/eventlog/events"
 	"github.com/TMS360/backend-pkg/tmsdb"
+	"github.com/TMS360/backend-pkg/tmsdb/model"
 	"gorm.io/gorm/clause"
 )
 
 type Repository interface {
 	// FetchPendingBatch locks and returns the next batch of events.
-	FetchPendingBatch(ctx context.Context, limit int) ([]*tmsdb.OutboxEvent, error)
+	FetchPendingBatch(ctx context.Context, limit int) ([]*model.OutboxEvent, error)
 	// DeleteBatch removes processed events by ID.
 	DeleteBatch(ctx context.Context, ids []string) error
 }
@@ -25,8 +26,8 @@ func NewOutboxEventRepository(tm tmsdb.TransactionManager) Repository {
 }
 
 // FetchPendingBatch locks and returns the next batch of events.
-func (r *repo) FetchPendingBatch(ctx context.Context, limit int) ([]*tmsdb.OutboxEvent, error) {
-	var eventsList []*tmsdb.OutboxEvent
+func (r *repo) FetchPendingBatch(ctx context.Context, limit int) ([]*model.OutboxEvent, error) {
+	var eventsList []*model.OutboxEvent
 
 	err := r.tm.GetDB(ctx).
 		Clauses(clause.Locking{Strength: "UPDATE", Options: "SKIP LOCKED"}).
@@ -42,7 +43,7 @@ func (r *repo) FetchPendingBatch(ctx context.Context, limit int) ([]*tmsdb.Outbo
 func (r *repo) DeleteBatch(ctx context.Context, ids []string) error {
 	return r.tm.GetDB(ctx).
 		Where("id IN ?", ids).
-		Delete(&tmsdb.OutboxEvent{}).Error
+		Delete(&model.OutboxEvent{}).Error
 }
 
 // CalculateChanges compares two structs and returns a list of changes.

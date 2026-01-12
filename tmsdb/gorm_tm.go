@@ -35,9 +35,9 @@ func (m *GormTransactionManager) WithTransaction(ctx context.Context, fn func(ct
 // GetDB извлекает транзакцию или возвращает fallback DB.
 func (m *GormTransactionManager) GetDB(ctx context.Context) *gorm.DB {
 	if tx, ok := ctx.Value(ctxTransactionKey{}).(*gorm.DB); ok {
-		return tx
+		return tx.WithContext(ctx)
 	}
-	return m.db
+	return m.db.WithContext(ctx)
 }
 
 // Publish implements the logic DIRECTLY here. No Repo.

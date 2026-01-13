@@ -82,18 +82,14 @@ func GetActor(ctx context.Context) (*consts.Actor, error) {
 	if !ok {
 		return nil, errors.New("actor not found in context")
 	}
-	if actor.ID == uuid.Nil {
-		return nil, errors.New("invalid actor ID")
-	}
-
 	return &actor, nil
 }
 
 // MustGetActor for when you are sure (or want to panic/default)
-func MustGetActor(ctx context.Context) consts.Actor {
+func MustGetActor(ctx context.Context) *consts.Actor {
 	actor, ok := ctx.Value(consts.ActorCtx).(consts.Actor)
 	if !ok {
-		return consts.Actor{ID: uuid.Nil, Claims: nil, IsSystem: true}
+		return &consts.Actor{ID: uuid.Nil, Claims: nil, IsSystem: true}
 	}
-	return actor
+	return &actor
 }

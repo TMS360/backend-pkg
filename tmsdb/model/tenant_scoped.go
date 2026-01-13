@@ -37,7 +37,7 @@ func (cb *CompanyBase) BeforeCreate(tx *gorm.DB) error {
 		return nil
 	}
 
-	if actor.IsSuperAdmin() {
+	if actor.IsSuperAdmin() || actor.IsSystem {
 		return nil
 	}
 

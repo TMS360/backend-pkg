@@ -24,110 +24,6 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-type GerCurrentDriversBuTruckIDRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	TruckIds      []string               `protobuf:"bytes,1,rep,name=truck_ids,json=truckIds,proto3" json:"truck_ids,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *GerCurrentDriversBuTruckIDRequest) Reset() {
-	*x = GerCurrentDriversBuTruckIDRequest{}
-	mi := &file_teams_teams_proto_msgTypes[0]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *GerCurrentDriversBuTruckIDRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*GerCurrentDriversBuTruckIDRequest) ProtoMessage() {}
-
-func (x *GerCurrentDriversBuTruckIDRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_teams_teams_proto_msgTypes[0]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use GerCurrentDriversBuTruckIDRequest.ProtoReflect.Descriptor instead.
-func (*GerCurrentDriversBuTruckIDRequest) Descriptor() ([]byte, []int) {
-	return file_teams_teams_proto_rawDescGZIP(), []int{0}
-}
-
-func (x *GerCurrentDriversBuTruckIDRequest) GetTruckIds() []string {
-	if x != nil {
-		return x.TruckIds
-	}
-	return nil
-}
-
-type GerCurrentDriversBuTruckIDResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	TruckId       []string               `protobuf:"bytes,1,rep,name=truck_id,json=truckId,proto3" json:"truck_id,omitempty"`
-	FirstDriver   []string               `protobuf:"bytes,2,rep,name=first_driver,json=firstDriver,proto3" json:"first_driver,omitempty"`
-	SecondDriver  []string               `protobuf:"bytes,3,rep,name=second_driver,json=secondDriver,proto3" json:"second_driver,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *GerCurrentDriversBuTruckIDResponse) Reset() {
-	*x = GerCurrentDriversBuTruckIDResponse{}
-	mi := &file_teams_teams_proto_msgTypes[1]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *GerCurrentDriversBuTruckIDResponse) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*GerCurrentDriversBuTruckIDResponse) ProtoMessage() {}
-
-func (x *GerCurrentDriversBuTruckIDResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_teams_teams_proto_msgTypes[1]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use GerCurrentDriversBuTruckIDResponse.ProtoReflect.Descriptor instead.
-func (*GerCurrentDriversBuTruckIDResponse) Descriptor() ([]byte, []int) {
-	return file_teams_teams_proto_rawDescGZIP(), []int{1}
-}
-
-func (x *GerCurrentDriversBuTruckIDResponse) GetTruckId() []string {
-	if x != nil {
-		return x.TruckId
-	}
-	return nil
-}
-
-func (x *GerCurrentDriversBuTruckIDResponse) GetFirstDriver() []string {
-	if x != nil {
-		return x.FirstDriver
-	}
-	return nil
-}
-
-func (x *GerCurrentDriversBuTruckIDResponse) GetSecondDriver() []string {
-	if x != nil {
-		return x.SecondDriver
-	}
-	return nil
-}
-
 type GetBusyVehiclesRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	From          *timestamppb.Timestamp `protobuf:"bytes,1,opt,name=from,proto3" json:"from,omitempty"`
@@ -138,7 +34,7 @@ type GetBusyVehiclesRequest struct {
 
 func (x *GetBusyVehiclesRequest) Reset() {
 	*x = GetBusyVehiclesRequest{}
-	mi := &file_teams_teams_proto_msgTypes[2]
+	mi := &file_teams_teams_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -150,7 +46,7 @@ func (x *GetBusyVehiclesRequest) String() string {
 func (*GetBusyVehiclesRequest) ProtoMessage() {}
 
 func (x *GetBusyVehiclesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_teams_teams_proto_msgTypes[2]
+	mi := &file_teams_teams_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -163,7 +59,7 @@ func (x *GetBusyVehiclesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetBusyVehiclesRequest.ProtoReflect.Descriptor instead.
 func (*GetBusyVehiclesRequest) Descriptor() ([]byte, []int) {
-	return file_teams_teams_proto_rawDescGZIP(), []int{2}
+	return file_teams_teams_proto_rawDescGZIP(), []int{0}
 }
 
 func (x *GetBusyVehiclesRequest) GetFrom() *timestamppb.Timestamp {
@@ -190,7 +86,7 @@ type GetBusyVehiclesResponse struct {
 
 func (x *GetBusyVehiclesResponse) Reset() {
 	*x = GetBusyVehiclesResponse{}
-	mi := &file_teams_teams_proto_msgTypes[3]
+	mi := &file_teams_teams_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -202,7 +98,7 @@ func (x *GetBusyVehiclesResponse) String() string {
 func (*GetBusyVehiclesResponse) ProtoMessage() {}
 
 func (x *GetBusyVehiclesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_teams_teams_proto_msgTypes[3]
+	mi := &file_teams_teams_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -215,7 +111,7 @@ func (x *GetBusyVehiclesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetBusyVehiclesResponse.ProtoReflect.Descriptor instead.
 func (*GetBusyVehiclesResponse) Descriptor() ([]byte, []int) {
-	return file_teams_teams_proto_rawDescGZIP(), []int{3}
+	return file_teams_teams_proto_rawDescGZIP(), []int{1}
 }
 
 func (x *GetBusyVehiclesResponse) GetTruckIds() []string {
@@ -232,27 +128,188 @@ func (x *GetBusyVehiclesResponse) GetTrailerIds() []string {
 	return nil
 }
 
+type GetCurrentDriversByTruckIdsRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	TruckIds      []string               `protobuf:"bytes,1,rep,name=truck_ids,json=truckIds,proto3" json:"truck_ids,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetCurrentDriversByTruckIdsRequest) Reset() {
+	*x = GetCurrentDriversByTruckIdsRequest{}
+	mi := &file_teams_teams_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetCurrentDriversByTruckIdsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetCurrentDriversByTruckIdsRequest) ProtoMessage() {}
+
+func (x *GetCurrentDriversByTruckIdsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_teams_teams_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetCurrentDriversByTruckIdsRequest.ProtoReflect.Descriptor instead.
+func (*GetCurrentDriversByTruckIdsRequest) Descriptor() ([]byte, []int) {
+	return file_teams_teams_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *GetCurrentDriversByTruckIdsRequest) GetTruckIds() []string {
+	if x != nil {
+		return x.TruckIds
+	}
+	return nil
+}
+
+type GetCurrentDriversByTruckIdsResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Data          []*DriverInfo          `protobuf:"bytes,1,rep,name=data,proto3" json:"data,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetCurrentDriversByTruckIdsResponse) Reset() {
+	*x = GetCurrentDriversByTruckIdsResponse{}
+	mi := &file_teams_teams_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetCurrentDriversByTruckIdsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetCurrentDriversByTruckIdsResponse) ProtoMessage() {}
+
+func (x *GetCurrentDriversByTruckIdsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_teams_teams_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetCurrentDriversByTruckIdsResponse.ProtoReflect.Descriptor instead.
+func (*GetCurrentDriversByTruckIdsResponse) Descriptor() ([]byte, []int) {
+	return file_teams_teams_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *GetCurrentDriversByTruckIdsResponse) GetData() []*DriverInfo {
+	if x != nil {
+		return x.Data
+	}
+	return nil
+}
+
+type DriverInfo struct {
+	state             protoimpl.MessageState `protogen:"open.v1"`
+	PrimaryDriverId   string                 `protobuf:"bytes,1,opt,name=primary_driver_id,json=primaryDriverId,proto3" json:"primary_driver_id,omitempty"`
+	SecondaryDriverId string                 `protobuf:"bytes,2,opt,name=secondary_driver_id,json=secondaryDriverId,proto3" json:"secondary_driver_id,omitempty"`
+	TruckId           string                 `protobuf:"bytes,3,opt,name=truck_id,json=truckId,proto3" json:"truck_id,omitempty"`
+	TrailerId         string                 `protobuf:"bytes,4,opt,name=trailer_id,json=trailerId,proto3" json:"trailer_id,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
+}
+
+func (x *DriverInfo) Reset() {
+	*x = DriverInfo{}
+	mi := &file_teams_teams_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DriverInfo) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DriverInfo) ProtoMessage() {}
+
+func (x *DriverInfo) ProtoReflect() protoreflect.Message {
+	mi := &file_teams_teams_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DriverInfo.ProtoReflect.Descriptor instead.
+func (*DriverInfo) Descriptor() ([]byte, []int) {
+	return file_teams_teams_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *DriverInfo) GetPrimaryDriverId() string {
+	if x != nil {
+		return x.PrimaryDriverId
+	}
+	return ""
+}
+
+func (x *DriverInfo) GetSecondaryDriverId() string {
+	if x != nil {
+		return x.SecondaryDriverId
+	}
+	return ""
+}
+
+func (x *DriverInfo) GetTruckId() string {
+	if x != nil {
+		return x.TruckId
+	}
+	return ""
+}
+
+func (x *DriverInfo) GetTrailerId() string {
+	if x != nil {
+		return x.TrailerId
+	}
+	return ""
+}
+
 var File_teams_teams_proto protoreflect.FileDescriptor
 
 const file_teams_teams_proto_rawDesc = "" +
 	"\n" +
-	"\x11teams/teams.proto\x12\x05teams\x1a\x1fgoogle/protobuf/timestamp.proto\"@\n" +
-	"!GerCurrentDriversBuTruckIDRequest\x12\x1b\n" +
-	"\ttruck_ids\x18\x01 \x03(\tR\btruckIds\"\x87\x01\n" +
-	"\"GerCurrentDriversBuTruckIDResponse\x12\x19\n" +
-	"\btruck_id\x18\x01 \x03(\tR\atruckId\x12!\n" +
-	"\ffirst_driver\x18\x02 \x03(\tR\vfirstDriver\x12#\n" +
-	"\rsecond_driver\x18\x03 \x03(\tR\fsecondDriver\"t\n" +
+	"\x11teams/teams.proto\x12\x05teams\x1a\x1fgoogle/protobuf/timestamp.proto\"t\n" +
 	"\x16GetBusyVehiclesRequest\x12.\n" +
 	"\x04from\x18\x01 \x01(\v2\x1a.google.protobuf.TimestampR\x04from\x12*\n" +
 	"\x02to\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\x02to\"W\n" +
 	"\x17GetBusyVehiclesResponse\x12\x1b\n" +
 	"\ttruck_ids\x18\x01 \x03(\tR\btruckIds\x12\x1f\n" +
 	"\vtrailer_ids\x18\x02 \x03(\tR\n" +
-	"trailerIds2\xca\x01\n" +
+	"trailerIds\"A\n" +
+	"\"GetCurrentDriversByTruckIdsRequest\x12\x1b\n" +
+	"\ttruck_ids\x18\x01 \x03(\tR\btruckIds\"L\n" +
+	"#GetCurrentDriversByTruckIdsResponse\x12%\n" +
+	"\x04data\x18\x01 \x03(\v2\x11.teams.DriverInfoR\x04data\"\xa2\x01\n" +
+	"\n" +
+	"DriverInfo\x12*\n" +
+	"\x11primary_driver_id\x18\x01 \x01(\tR\x0fprimaryDriverId\x12.\n" +
+	"\x13secondary_driver_id\x18\x02 \x01(\tR\x11secondaryDriverId\x12\x19\n" +
+	"\btruck_id\x18\x03 \x01(\tR\atruckId\x12\x1d\n" +
+	"\n" +
+	"trailer_id\x18\x04 \x01(\tR\ttrailerId2\xd6\x01\n" +
 	"\fTeamsService\x12P\n" +
-	"\x0fGetBusyVehicles\x12\x1d.teams.GetBusyVehiclesRequest\x1a\x1e.teams.GetBusyVehiclesResponse\x12h\n" +
-	"\x11GerCurrentDrivers\x12(.teams.GerCurrentDriversBuTruckIDRequest\x1a).teams.GerCurrentDriversBuTruckIDResponseB+Z)github.com/TMS360/backend-pkg/proto/teamsb\x06proto3"
+	"\x0fGetBusyVehicles\x12\x1d.teams.GetBusyVehiclesRequest\x1a\x1e.teams.GetBusyVehiclesResponse\x12t\n" +
+	"\x1bGetCurrentDriversByTruckIds\x12).teams.GetCurrentDriversByTruckIdsRequest\x1a*.teams.GetCurrentDriversByTruckIdsResponseB+Z)github.com/TMS360/backend-pkg/proto/teamsb\x06proto3"
 
 var (
 	file_teams_teams_proto_rawDescOnce sync.Once
@@ -266,26 +323,28 @@ func file_teams_teams_proto_rawDescGZIP() []byte {
 	return file_teams_teams_proto_rawDescData
 }
 
-var file_teams_teams_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
+var file_teams_teams_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
 var file_teams_teams_proto_goTypes = []any{
-	(*GerCurrentDriversBuTruckIDRequest)(nil),  // 0: teams.GerCurrentDriversBuTruckIDRequest
-	(*GerCurrentDriversBuTruckIDResponse)(nil), // 1: teams.GerCurrentDriversBuTruckIDResponse
-	(*GetBusyVehiclesRequest)(nil),             // 2: teams.GetBusyVehiclesRequest
-	(*GetBusyVehiclesResponse)(nil),            // 3: teams.GetBusyVehiclesResponse
-	(*timestamppb.Timestamp)(nil),              // 4: google.protobuf.Timestamp
+	(*GetBusyVehiclesRequest)(nil),              // 0: teams.GetBusyVehiclesRequest
+	(*GetBusyVehiclesResponse)(nil),             // 1: teams.GetBusyVehiclesResponse
+	(*GetCurrentDriversByTruckIdsRequest)(nil),  // 2: teams.GetCurrentDriversByTruckIdsRequest
+	(*GetCurrentDriversByTruckIdsResponse)(nil), // 3: teams.GetCurrentDriversByTruckIdsResponse
+	(*DriverInfo)(nil),                          // 4: teams.DriverInfo
+	(*timestamppb.Timestamp)(nil),               // 5: google.protobuf.Timestamp
 }
 var file_teams_teams_proto_depIdxs = []int32{
-	4, // 0: teams.GetBusyVehiclesRequest.from:type_name -> google.protobuf.Timestamp
-	4, // 1: teams.GetBusyVehiclesRequest.to:type_name -> google.protobuf.Timestamp
-	2, // 2: teams.TeamsService.GetBusyVehicles:input_type -> teams.GetBusyVehiclesRequest
-	0, // 3: teams.TeamsService.GerCurrentDrivers:input_type -> teams.GerCurrentDriversBuTruckIDRequest
-	3, // 4: teams.TeamsService.GetBusyVehicles:output_type -> teams.GetBusyVehiclesResponse
-	1, // 5: teams.TeamsService.GerCurrentDrivers:output_type -> teams.GerCurrentDriversBuTruckIDResponse
-	4, // [4:6] is the sub-list for method output_type
-	2, // [2:4] is the sub-list for method input_type
-	2, // [2:2] is the sub-list for extension type_name
-	2, // [2:2] is the sub-list for extension extendee
-	0, // [0:2] is the sub-list for field type_name
+	5, // 0: teams.GetBusyVehiclesRequest.from:type_name -> google.protobuf.Timestamp
+	5, // 1: teams.GetBusyVehiclesRequest.to:type_name -> google.protobuf.Timestamp
+	4, // 2: teams.GetCurrentDriversByTruckIdsResponse.data:type_name -> teams.DriverInfo
+	0, // 3: teams.TeamsService.GetBusyVehicles:input_type -> teams.GetBusyVehiclesRequest
+	2, // 4: teams.TeamsService.GetCurrentDriversByTruckIds:input_type -> teams.GetCurrentDriversByTruckIdsRequest
+	1, // 5: teams.TeamsService.GetBusyVehicles:output_type -> teams.GetBusyVehiclesResponse
+	3, // 6: teams.TeamsService.GetCurrentDriversByTruckIds:output_type -> teams.GetCurrentDriversByTruckIdsResponse
+	5, // [5:7] is the sub-list for method output_type
+	3, // [3:5] is the sub-list for method input_type
+	3, // [3:3] is the sub-list for extension type_name
+	3, // [3:3] is the sub-list for extension extendee
+	0, // [0:3] is the sub-list for field type_name
 }
 
 func init() { file_teams_teams_proto_init() }
@@ -299,7 +358,7 @@ func file_teams_teams_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_teams_teams_proto_rawDesc), len(file_teams_teams_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   4,
+			NumMessages:   5,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

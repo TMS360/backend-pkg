@@ -21,8 +21,8 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	TeamsService_GetBusyVehicles_FullMethodName   = "/teams.TeamsService/GetBusyVehicles"
-	TeamsService_GerCurrentDrivers_FullMethodName = "/teams.TeamsService/GerCurrentDrivers"
+	TeamsService_GetBusyVehicles_FullMethodName             = "/teams.TeamsService/GetBusyVehicles"
+	TeamsService_GetCurrentDriversByTruckIds_FullMethodName = "/teams.TeamsService/GetCurrentDriversByTruckIds"
 )
 
 // TeamsServiceClient is the client API for TeamsService service.
@@ -31,7 +31,8 @@ const (
 type TeamsServiceClient interface {
 	// Returns IDs of vehicles assigned during the requested window
 	GetBusyVehicles(ctx context.Context, in *GetBusyVehiclesRequest, opts ...grpc.CallOption) (*GetBusyVehiclesResponse, error)
-	GerCurrentDrivers(ctx context.Context, in *GerCurrentDriversBuTruckIDRequest, opts ...grpc.CallOption) (*GerCurrentDriversBuTruckIDResponse, error)
+	// Get current drivers for a list of trucks
+	GetCurrentDriversByTruckIds(ctx context.Context, in *GetCurrentDriversByTruckIdsRequest, opts ...grpc.CallOption) (*GetCurrentDriversByTruckIdsResponse, error)
 }
 
 type teamsServiceClient struct {
@@ -52,10 +53,10 @@ func (c *teamsServiceClient) GetBusyVehicles(ctx context.Context, in *GetBusyVeh
 	return out, nil
 }
 
-func (c *teamsServiceClient) GerCurrentDrivers(ctx context.Context, in *GerCurrentDriversBuTruckIDRequest, opts ...grpc.CallOption) (*GerCurrentDriversBuTruckIDResponse, error) {
+func (c *teamsServiceClient) GetCurrentDriversByTruckIds(ctx context.Context, in *GetCurrentDriversByTruckIdsRequest, opts ...grpc.CallOption) (*GetCurrentDriversByTruckIdsResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(GerCurrentDriversBuTruckIDResponse)
-	err := c.cc.Invoke(ctx, TeamsService_GerCurrentDrivers_FullMethodName, in, out, cOpts...)
+	out := new(GetCurrentDriversByTruckIdsResponse)
+	err := c.cc.Invoke(ctx, TeamsService_GetCurrentDriversByTruckIds_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -68,7 +69,8 @@ func (c *teamsServiceClient) GerCurrentDrivers(ctx context.Context, in *GerCurre
 type TeamsServiceServer interface {
 	// Returns IDs of vehicles assigned during the requested window
 	GetBusyVehicles(context.Context, *GetBusyVehiclesRequest) (*GetBusyVehiclesResponse, error)
-	GerCurrentDrivers(context.Context, *GerCurrentDriversBuTruckIDRequest) (*GerCurrentDriversBuTruckIDResponse, error)
+	// Get current drivers for a list of trucks
+	GetCurrentDriversByTruckIds(context.Context, *GetCurrentDriversByTruckIdsRequest) (*GetCurrentDriversByTruckIdsResponse, error)
 	mustEmbedUnimplementedTeamsServiceServer()
 }
 
@@ -82,8 +84,8 @@ type UnimplementedTeamsServiceServer struct{}
 func (UnimplementedTeamsServiceServer) GetBusyVehicles(context.Context, *GetBusyVehiclesRequest) (*GetBusyVehiclesResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetBusyVehicles not implemented")
 }
-func (UnimplementedTeamsServiceServer) GerCurrentDrivers(context.Context, *GerCurrentDriversBuTruckIDRequest) (*GerCurrentDriversBuTruckIDResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "method GerCurrentDrivers not implemented")
+func (UnimplementedTeamsServiceServer) GetCurrentDriversByTruckIds(context.Context, *GetCurrentDriversByTruckIdsRequest) (*GetCurrentDriversByTruckIdsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetCurrentDriversByTruckIds not implemented")
 }
 func (UnimplementedTeamsServiceServer) mustEmbedUnimplementedTeamsServiceServer() {}
 func (UnimplementedTeamsServiceServer) testEmbeddedByValue()                      {}
@@ -124,20 +126,20 @@ func _TeamsService_GetBusyVehicles_Handler(srv interface{}, ctx context.Context,
 	return interceptor(ctx, in, info, handler)
 }
 
-func _TeamsService_GerCurrentDrivers_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(GerCurrentDriversBuTruckIDRequest)
+func _TeamsService_GetCurrentDriversByTruckIds_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetCurrentDriversByTruckIdsRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(TeamsServiceServer).GerCurrentDrivers(ctx, in)
+		return srv.(TeamsServiceServer).GetCurrentDriversByTruckIds(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: TeamsService_GerCurrentDrivers_FullMethodName,
+		FullMethod: TeamsService_GetCurrentDriversByTruckIds_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(TeamsServiceServer).GerCurrentDrivers(ctx, req.(*GerCurrentDriversBuTruckIDRequest))
+		return srv.(TeamsServiceServer).GetCurrentDriversByTruckIds(ctx, req.(*GetCurrentDriversByTruckIdsRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -154,8 +156,8 @@ var TeamsService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _TeamsService_GetBusyVehicles_Handler,
 		},
 		{
-			MethodName: "GerCurrentDrivers",
-			Handler:    _TeamsService_GerCurrentDrivers_Handler,
+			MethodName: "GetCurrentDriversByTruckIds",
+			Handler:    _TeamsService_GetCurrentDriversByTruckIds_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

@@ -72,6 +72,10 @@ func WithActor(ctx context.Context, userID uuid.UUID, userClaims *consts.UserCla
 	return context.WithValue(ctx, consts.ActorCtx, consts.Actor{ID: userID, Claims: userClaims})
 }
 
+func WithSystemActor(ctx context.Context) context.Context {
+	return context.WithValue(ctx, consts.ActorCtx, consts.Actor{ID: uuid.Nil, IsSystem: true})
+}
+
 // GetActor safely extracts the actor.
 func GetActor(ctx context.Context) (*consts.Actor, error) {
 	actor, ok := ctx.Value(consts.ActorCtx).(consts.Actor)

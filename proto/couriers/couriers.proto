@@ -1,0 +1,16 @@
+// pkg/proto/couriers/couriers.proto
+syntax = "proto3";
+
+package couriers;
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/empty.proto";
+
+option go_package = "github.com/TMS360/backend-pkg/proto/couriers";
+
+service CouriersService {
+  rpc UpdateCache(google.protobuf.Empty) returns (UpdateCacheResponse);
+}
+message UpdateCacheResponse {
+  bool success = 1;
+}

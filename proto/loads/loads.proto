@@ -1,0 +1,265 @@
+// pkg/proto/loads/loads.proto
+syntax = "proto3";
+
+package loads;
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/empty.proto";
+
+option go_package = "github.com/TMS360/backend-pkg/proto/loads";
+
+// LoadsService provides load management functionality
+service LoadsService {
+  // Get shipment by ID
+  rpc GetShipment(GetShipmentRequest) returns (ShipmentResponse);
+
+  // List shipments with filters
+  rpc ListShipments(ListShipmentsRequest) returns (ListShipmentsResponse);
+
+  // Get trip by ID
+  rpc GetTrip(GetTripRequest) returns (TripResponse);
+
+  // List trips with filters
+  rpc ListTrips(ListTripsRequest) returns (ListTripsResponse);
+
+  // Get vehicle assignments for a time range
+  rpc GetVehicleAssignments(GetVehicleAssignmentsRequest) returns (GetVehicleAssignmentsResponse);
+
+  // Update vehicle location
+  rpc UpdateVehicleLocation(UpdateVehicleLocationRequest) returns (google.protobuf.Empty);
+
+  // Stream vehicle locations
+  rpc StreamVehicleLocations(StreamVehicleLocationsRequest) returns (stream VehicleLocation);
+}
+
+// Request to get a shipment by ID
+message GetShipmentRequest {
+  string shipment_id = 1;
+}
+
+// Shipment response
+message ShipmentResponse {
+  Shipment shipment = 1;
+}
+
+// Request to list shipments
+message ListShipmentsRequest {
+  int32 limit = 1;
+  int32 offset = 2;
+  ShipmentStatus status = 3;
+  google.protobuf.Timestamp from_date = 4;
+  google.protobuf.Timestamp to_date = 5;
+}
+
+// List shipments response
+message ListShipmentsResponse {
+  repeated Shipment shipments = 1;
+  int32 total = 2;
+}
+
+// Request to get a trip by ID
+message GetTripRequest {
+  string trip_id = 1;
+}
+
+// Trip response
+message TripResponse {
+  Trip trip = 1;
+}
+
+// Request to list trips
+message ListTripsRequest {
+  int32 limit = 1;
+  int32 offset = 2;
+  TripStatus status = 3;
+  string truck_id = 4;
+  string trailer_id = 5;
+  string driver_id = 6;
+  google.protobuf.Timestamp from_date = 7;
+  google.protobuf.Timestamp to_date = 8;
+}
+
+// List trips response
+message ListTripsResponse {
+  repeated Trip trips = 1;
+  int32 total = 2;
+}
+
+// Request to get vehicle assignments
+message GetVehicleAssignmentsRequest {
+  google.protobuf.Timestamp from = 1;
+  google.protobuf.Timestamp to = 2;
+  repeated string truck_ids = 3;
+  repeated string trailer_ids = 4;
+}
+
+// Vehicle assignments response
+message GetVehicleAssignmentsResponse {
+  repeated VehicleAssignment assignments = 1;
+}
+
+// Request to update vehicle location
+message UpdateVehicleLocationRequest {
+  string vehicle_id = 1;
+  VehicleType vehicle_type = 2;
+  double latitude = 3;
+  double longitude = 4;
+  double heading = 5;
+  double speed = 6;
+  google.protobuf.Timestamp gps_time = 7;
+}
+
+// Request to stream vehicle locations
+message StreamVehicleLocationsRequest {
+  repeated string vehicle_ids = 1;
+  bool active_only = 2;
+}
+
+// Shipment model
+message Shipment {
+  string id = 1;
+  string load_number = 2;
+  string broker_id = 3;
+  string broker_load_number = 4;
+  ShipmentStatus status = 5;
+  ShipmentType type = 6;
+  double total_weight = 7;
+  double total_distance = 8;
+  double total_rate = 9;
+  repeated ShipmentLeg legs = 10;
+  google.protobuf.Timestamp created_at = 11;
+  google.protobuf.Timestamp updated_at = 12;
+}
+
+// Shipment leg (pickup/delivery)
+message ShipmentLeg {
+  string id = 1;
+  string shipment_id = 2;
+  StopType stop_type = 3;
+  string location = 4;
+  double latitude = 5;
+  double longitude = 6;
+  string appointment_type = 7;
+  google.protobuf.Timestamp appointment_from = 8;
+  google.protobuf.Timestamp appointment_to = 9;
+  google.protobuf.Timestamp actual_arrival = 10;
+  google.protobuf.Timestamp actual_departure = 11;
+}
+
+// Trip model
+message Trip {
+  string id = 1;
+  string shipment_id = 2;
+  string truck_id = 3;
+  string trailer_id = 4;
+  string driver_id = 5;
+  TripStatus status = 6;
+  double initial_latitude = 7;
+  double initial_longitude = 8;
+  double current_latitude = 9;
+  double current_longitude = 10;
+  double total_miles = 11;
+  double empty_miles = 12;
+  repeated TripStop stops = 13;
+  google.protobuf.Timestamp start_time = 14;
+  google.protobuf.Timestamp end_time = 15;
+  google.protobuf.Timestamp created_at = 16;
+  google.protobuf.Timestamp updated_at = 17;
+}
+
+// Trip stop
+message TripStop {
+  string id = 1;
+  string trip_id = 2;
+  string leg_id = 3;
+  string location = 4;
+  StopType stop_type = 5;
+  int32 stop_sequence = 6;
+  double latitude = 7;
+  double longitude = 8;
+  google.protobuf.Timestamp planned_arrival = 9;
+  google.protobuf.Timestamp actual_arrival = 10;
+  google.protobuf.Timestamp planned_departure = 11;
+  google.protobuf.Timestamp actual_departure = 12;
+  StopStatus status = 13;
+}
+
+// Vehicle assignment
+message VehicleAssignment {
+  string assignment_id = 1;
+  string vehicle_id = 2;
+  VehicleType vehicle_type = 3;
+  string trip_id = 4;
+  string driver_id = 5;
+  google.protobuf.Timestamp assigned_from = 6;
+  google.protobuf.Timestamp assigned_to = 7;
+}
+
+// Vehicle location
+message VehicleLocation {
+  string vehicle_id = 1;
+  VehicleType vehicle_type = 2;
+  double latitude = 3;
+  double longitude = 4;
+  double heading = 5;
+  double speed = 6;
+  google.protobuf.Timestamp gps_time = 7;
+  string trip_id = 8;
+  string driver_id = 9;
+}
+
+// Shipment status enum
+enum ShipmentStatus {
+  SHIPMENT_STATUS_UNSPECIFIED = 0;
+  SHIPMENT_STATUS_PENDING = 1;
+  SHIPMENT_STATUS_CONFIRMED = 2;
+  SHIPMENT_STATUS_DISPATCHED = 3;
+  SHIPMENT_STATUS_IN_TRANSIT = 4;
+  SHIPMENT_STATUS_DELIVERED = 5;
+  SHIPMENT_STATUS_CANCELLED = 6;
+  SHIPMENT_STATUS_COMPLETED = 7;
+}
+
+// Shipment type enum
+enum ShipmentType {
+  SHIPMENT_TYPE_UNSPECIFIED = 0;
+  SHIPMENT_TYPE_FTL = 1;  // Full Truck Load
+  SHIPMENT_TYPE_LTL = 2;  // Less Than Load
+  SHIPMENT_TYPE_PARTIAL = 3;
+}
+
+// Trip status enum
+enum TripStatus {
+  TRIP_STATUS_UNSPECIFIED = 0;
+  TRIP_STATUS_PLANNED = 1;
+  TRIP_STATUS_ASSIGNED = 2;
+  TRIP_STATUS_IN_PROGRESS = 3;
+  TRIP_STATUS_COMPLETED = 4;
+  TRIP_STATUS_CANCELLED = 5;
+}
+
+// Stop type enum
+enum StopType {
+  STOP_TYPE_UNSPECIFIED = 0;
+  STOP_TYPE_PICKUP = 1;
+  STOP_TYPE_DELIVERY = 2;
+  STOP_TYPE_REST = 3;
+  STOP_TYPE_FUEL = 4;
+}
+
+// Stop status enum
+enum StopStatus {
+  STOP_STATUS_UNSPECIFIED = 0;
+  STOP_STATUS_PENDING = 1;
+  STOP_STATUS_ARRIVED = 2;
+  STOP_STATUS_IN_PROGRESS = 3;
+  STOP_STATUS_COMPLETED = 4;
+  STOP_STATUS_SKIPPED = 5;
+}
+
+// Vehicle type enum (shared with trackers.proto)
+enum VehicleType {
+  VEHICLE_TYPE_UNSPECIFIED = 0;
+  VEHICLE_TYPE_TRUCK = 1;
+  VEHICLE_TYPE_TRAILER = 2;
+}

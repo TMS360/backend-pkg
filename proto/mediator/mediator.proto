@@ -1,0 +1,8 @@
+// pkg/proto/mediator/mediator.proto
+syntax = "proto3";
+
+package mediator;
+
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/TMS360/backend-pkg/proto/mediator";

@@ -1,0 +1,60 @@
+// pkg/proto/trackers/trackers.proto
+syntax = "proto3";
+
+package trackers;
+
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/TMS360/backend-pkg/proto/trackers";
+
+// TrackersService provides vehicle tracking functionality
+service TrackersService {
+  // StreamVehicleVINs sends a stream of VINs from backend-load to samsara-tracker
+  rpc StreamVehicleVINs(StreamVehicleVINsRequest) returns (stream VehicleVIN);
+}
+
+// Request to stream vehicle VINs
+message StreamVehicleVINsRequest {
+  // Optional: include only active vehicles
+  bool active_only = 1;
+  // Optional: last sync timestamp to get only updates
+  google.protobuf.Timestamp last_sync = 2;
+}
+
+// Vehicle VIN information
+message VehicleVIN {
+  string id = 1;           // UUID of truck or trailer
+  string vin = 2;          // Vehicle Identification Number
+  VehicleType type = 3;    // Type of vehicle
+  string number = 4;       // Vehicle number
+  google.protobuf.Timestamp updated_at = 5;
+}
+
+// Type of vehicle
+enum VehicleType {
+  VEHICLE_TYPE_UNSPECIFIED = 0;
+  VEHICLE_TYPE_TRUCK = 1;
+  VEHICLE_TYPE_TRAILER = 2;
+}
+
+// Location update message for Kafka
+message VehicleLocationUpdate {
+  string id = 1;                          // UUID of truck or trailer
+  string vin = 2;                         // Vehicle Identification Number
+  VehicleType type = 3;                   // Type of vehicle
+  double latitude = 4;                    // Latitude coordinate
+  double longitude = 5;                   // Longitude coordinate
+  double heading = 6;                     // Heading in degrees
+  double speed = 7;                       // Speed in mph
+  string address = 8;                     // Address name
+  string formatted_location = 9;          // Formatted location string
+  google.protobuf.Timestamp gps_time = 10; // GPS timestamp
+  string samsara_vehicle_id = 11;         // Samsara's vehicle ID
+  string vehicle_name = 12;               // Vehicle name from Samsara
+}
+
+// Batch of location updates for Kafka
+message VehicleLocationUpdateBatch {
+  repeated VehicleLocationUpdate updates = 1;
+  google.protobuf.Timestamp batch_time = 2;
+}

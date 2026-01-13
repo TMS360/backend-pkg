@@ -10,8 +10,17 @@ option go_package = "github.com/TMS360/backend-pkg/proto/teams";
 service TeamsService {
   // Returns IDs of vehicles assigned during the requested window
   rpc GetBusyVehicles(GetBusyVehiclesRequest) returns (GetBusyVehiclesResponse);
+  rpc GerCurrentDrivers(GerCurrentDriversBuTruckIDRequest) returns (GerCurrentDriversBuTruckIDResponse);
 }
 
+message GerCurrentDriversBuTruckIDRequest {
+  repeated string truck_ids = 1;
+}
+message GerCurrentDriversBuTruckIDResponse {
+  repeated string truck_id   = 1;
+  repeated string first_driver   = 2;
+  repeated string second_driver   = 3;
+}
 message GetBusyVehiclesRequest {
   google.protobuf.Timestamp from = 1;
   google.protobuf.Timestamp to   = 2;

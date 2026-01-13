@@ -3,6 +3,5 @@ syntax = "proto3";
 
 package brokers;
 
-import "google/protobuf/timestamp.proto";
 
 option go_package = "github.com/TMS360/backend-pkg/proto/brokers";

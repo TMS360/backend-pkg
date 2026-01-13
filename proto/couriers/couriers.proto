@@ -3,7 +3,6 @@ syntax = "proto3";
 
 package couriers;
 
-import "google/protobuf/timestamp.proto";
 import "google/protobuf/empty.proto";
 
 option go_package = "github.com/TMS360/backend-pkg/proto/couriers";

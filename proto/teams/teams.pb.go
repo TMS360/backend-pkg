@@ -262,7 +262,7 @@ func (x *GetCurrentDriversByTrailersIdsRequest) GetTrailerIds() []string {
 
 type GetCurrentDriversByTrailersIdsResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Data          []*DriverInfo          `protobuf:"bytes,1,rep,name=data,proto3" json:"data,omitempty"`
+	Data          []*TrailerInfo         `protobuf:"bytes,1,rep,name=data,proto3" json:"data,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -297,7 +297,7 @@ func (*GetCurrentDriversByTrailersIdsResponse) Descriptor() ([]byte, []int) {
 	return file_teams_teams_proto_rawDescGZIP(), []int{5}
 }
 
-func (x *GetCurrentDriversByTrailersIdsResponse) GetData() []*DriverInfo {
+func (x *GetCurrentDriversByTrailersIdsResponse) GetData() []*TrailerInfo {
 	if x != nil {
 		return x.Data
 	}
@@ -372,6 +372,50 @@ func (x *DriverInfo) GetTrailerId() string {
 	return ""
 }
 
+type TrailerInfo struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	TruckId       string                 `protobuf:"bytes,1,opt,name=truck_id,json=truckId,proto3" json:"truck_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *TrailerInfo) Reset() {
+	*x = TrailerInfo{}
+	mi := &file_teams_teams_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TrailerInfo) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TrailerInfo) ProtoMessage() {}
+
+func (x *TrailerInfo) ProtoReflect() protoreflect.Message {
+	mi := &file_teams_teams_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TrailerInfo.ProtoReflect.Descriptor instead.
+func (*TrailerInfo) Descriptor() ([]byte, []int) {
+	return file_teams_teams_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *TrailerInfo) GetTruckId() string {
+	if x != nil {
+		return x.TruckId
+	}
+	return ""
+}
+
 var File_teams_teams_proto protoreflect.FileDescriptor
 
 const file_teams_teams_proto_rawDesc = "" +
@@ -390,16 +434,18 @@ const file_teams_teams_proto_rawDesc = "" +
 	"\x04data\x18\x01 \x03(\v2\x11.teams.DriverInfoR\x04data\"H\n" +
 	"%GetCurrentDriversByTrailersIdsRequest\x12\x1f\n" +
 	"\vtrailer_ids\x18\x01 \x03(\tR\n" +
-	"trailerIds\"O\n" +
-	"&GetCurrentDriversByTrailersIdsResponse\x12%\n" +
-	"\x04data\x18\x01 \x03(\v2\x11.teams.DriverInfoR\x04data\"\xa2\x01\n" +
+	"trailerIds\"P\n" +
+	"&GetCurrentDriversByTrailersIdsResponse\x12&\n" +
+	"\x04data\x18\x01 \x03(\v2\x12.teams.TrailerInfoR\x04data\"\xa2\x01\n" +
 	"\n" +
 	"DriverInfo\x12*\n" +
 	"\x11primary_driver_id\x18\x01 \x01(\tR\x0fprimaryDriverId\x12.\n" +
 	"\x13secondary_driver_id\x18\x02 \x01(\tR\x11secondaryDriverId\x12\x19\n" +
 	"\btruck_id\x18\x03 \x01(\tR\atruckId\x12\x1d\n" +
 	"\n" +
-	"trailer_id\x18\x04 \x01(\tR\ttrailerId2\xd5\x02\n" +
+	"trailer_id\x18\x04 \x01(\tR\ttrailerId\"(\n" +
+	"\vTrailerInfo\x12\x19\n" +
+	"\btruck_id\x18\x01 \x01(\tR\atruckId2\xd5\x02\n" +
 	"\fTeamsService\x12P\n" +
 	"\x0fGetBusyVehicles\x12\x1d.teams.GetBusyVehiclesRequest\x1a\x1e.teams.GetBusyVehiclesResponse\x12t\n" +
 	"\x1bGetCurrentDriversByTruckIds\x12).teams.GetCurrentDriversByTruckIdsRequest\x1a*.teams.GetCurrentDriversByTruckIdsResponse\x12}\n" +
@@ -417,7 +463,7 @@ func file_teams_teams_proto_rawDescGZIP() []byte {
 	return file_teams_teams_proto_rawDescData
 }
 
-var file_teams_teams_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
+var file_teams_teams_proto_msgTypes = make([]protoimpl.MessageInfo, 8)
 var file_teams_teams_proto_goTypes = []any{
 	(*GetBusyVehiclesRequest)(nil),                 // 0: teams.GetBusyVehiclesRequest
 	(*GetBusyVehiclesResponse)(nil),                // 1: teams.GetBusyVehiclesResponse
@@ -426,13 +472,14 @@ var file_teams_teams_proto_goTypes = []any{
 	(*GetCurrentDriversByTrailersIdsRequest)(nil),  // 4: teams.GetCurrentDriversByTrailersIdsRequest
 	(*GetCurrentDriversByTrailersIdsResponse)(nil), // 5: teams.GetCurrentDriversByTrailersIdsResponse
 	(*DriverInfo)(nil),                             // 6: teams.DriverInfo
-	(*timestamppb.Timestamp)(nil),                  // 7: google.protobuf.Timestamp
+	(*TrailerInfo)(nil),                            // 7: teams.TrailerInfo
+	(*timestamppb.Timestamp)(nil),                  // 8: google.protobuf.Timestamp
 }
 var file_teams_teams_proto_depIdxs = []int32{
-	7, // 0: teams.GetBusyVehiclesRequest.from:type_name -> google.protobuf.Timestamp
-	7, // 1: teams.GetBusyVehiclesRequest.to:type_name -> google.protobuf.Timestamp
+	8, // 0: teams.GetBusyVehiclesRequest.from:type_name -> google.protobuf.Timestamp
+	8, // 1: teams.GetBusyVehiclesRequest.to:type_name -> google.protobuf.Timestamp
 	6, // 2: teams.GetCurrentDriversByTruckIdsResponse.data:type_name -> teams.DriverInfo
-	6, // 3: teams.GetCurrentDriversByTrailersIdsResponse.data:type_name -> teams.DriverInfo
+	7, // 3: teams.GetCurrentDriversByTrailersIdsResponse.data:type_name -> teams.TrailerInfo
 	0, // 4: teams.TeamsService.GetBusyVehicles:input_type -> teams.GetBusyVehiclesRequest
 	2, // 5: teams.TeamsService.GetCurrentDriversByTruckIds:input_type -> teams.GetCurrentDriversByTruckIdsRequest
 	4, // 6: teams.TeamsService.GetCurrentDriversByTrailersIds:input_type -> teams.GetCurrentDriversByTrailersIdsRequest
@@ -457,7 +504,7 @@ func file_teams_teams_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_teams_teams_proto_rawDesc), len(file_teams_teams_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   7,
+			NumMessages:   8,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

@@ -39,7 +39,7 @@ message GetCurrentDriversByTrailersIdsRequest {
 }
 
 message GetCurrentDriversByTrailersIdsResponse {
-  repeated DriverInfo data = 1;
+  repeated TrailerInfo data = 1;
 }
 
 message DriverInfo {
@@ -47,4 +47,8 @@ message DriverInfo {
   string secondary_driver_id = 2;
   string truck_id = 3;
   string trailer_id = 4;
+}
+
+message TrailerInfo {
+  string truck_id = 1;
 }

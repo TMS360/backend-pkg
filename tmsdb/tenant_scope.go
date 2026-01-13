@@ -2,7 +2,6 @@ package tmsdb
 
 import (
 	"errors"
-	"fmt"
 
 	"github.com/TMS360/backend-pkg/middleware"
 	"github.com/TMS360/backend-pkg/tmsdb/model"
@@ -33,10 +32,8 @@ func (t *TenantScopePlugin) addTenantCondition(db *gorm.DB) {
 
 	// 2. Get Actor
 	ctx := db.Statement.Context
-	actor, err := middleware.GetActor(ctx)
-	if err != nil {
-		// If we can't identify the actor, this is an internal server error
-		db.AddError(fmt.Errorf("tenant_plugin: failed to retrieve actor from context: %w", err))
+	actor, _ := middleware.GetActor(ctx)
+	if actor == nil {
 		return
 	}
 

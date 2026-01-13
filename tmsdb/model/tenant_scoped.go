@@ -28,9 +28,13 @@ func (cb *CompanyBase) IsTenantScoped() bool {
 func (cb *CompanyBase) BeforeCreate(tx *gorm.DB) error {
 	ctx := tx.Statement.Context
 
-	actor, err := middleware.GetActor(ctx)
-	if err != nil {
-		return fmt.Errorf("no actor found: %w", err)
+	actor, _ := middleware.GetActor(ctx)
+	if actor == nil {
+		// Internal process (e.g., kafka consumer, cron job)
+		if cb.CompanyID == uuid.Nil {
+			return fmt.Errorf("system error: internal process tried to save entity without company_id")
+		}
+		return nil
 	}
 
 	if actor.IsSuperAdmin() {

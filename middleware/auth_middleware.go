@@ -73,16 +73,16 @@ func WithActor(ctx context.Context, userID uuid.UUID, userClaims *consts.UserCla
 }
 
 // GetActor safely extracts the actor.
-func GetActor(ctx context.Context) (consts.Actor, error) {
+func GetActor(ctx context.Context) (*consts.Actor, error) {
 	actor, ok := ctx.Value(consts.ActorCtx).(consts.Actor)
 	if !ok {
-		return consts.Actor{}, errors.New("actor not found in context")
+		return nil, errors.New("actor not found in context")
 	}
 	if actor.ID == uuid.Nil {
-		return consts.Actor{}, errors.New("invalid actor ID")
+		return nil, errors.New("invalid actor ID")
 	}
 
-	return actor, nil
+	return &actor, nil
 }
 
 // MustGetActor for when you are sure (or want to panic/default)

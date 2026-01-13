@@ -13,6 +13,7 @@ service TeamsService {
 
   // Get current drivers for a list of trucks
   rpc GetCurrentDriversByTruckIds (GetCurrentDriversByTruckIdsRequest) returns (GetCurrentDriversByTruckIdsResponse);
+  rpc GetCurrentDriversByTrailersIds (GetCurrentDriversByTrailersIdsRequest) returns (GetCurrentDriversByTrailersIdsResponse);
 }
 
 message GetBusyVehiclesRequest {
@@ -30,6 +31,14 @@ message GetCurrentDriversByTruckIdsRequest {
 }
 
 message GetCurrentDriversByTruckIdsResponse {
+  repeated DriverInfo data = 1;
+}
+
+message GetCurrentDriversByTrailersIdsRequest {
+  repeated string trailer_ids = 1;
+}
+
+message GetCurrentDriversByTrailersIdsResponse {
   repeated DriverInfo data = 1;
 }
 

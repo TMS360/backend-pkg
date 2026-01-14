@@ -22,7 +22,8 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	CouriersService_UpdateCache_FullMethodName = "/couriers.CouriersService/UpdateCache"
+	CouriersService_UpdateCache_FullMethodName   = "/couriers.CouriersService/UpdateCache"
+	CouriersService_GetUsersByIds_FullMethodName = "/couriers.CouriersService/GetUsersByIds"
 )
 
 // CouriersServiceClient is the client API for CouriersService service.
@@ -30,6 +31,7 @@ const (
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type CouriersServiceClient interface {
 	UpdateCache(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*UpdateCacheResponse, error)
+	GetUsersByIds(ctx context.Context, in *GetUsersByIdsRequest, opts ...grpc.CallOption) (*GetUsersByIdsResponse, error)
 }
 
 type couriersServiceClient struct {
@@ -50,11 +52,22 @@ func (c *couriersServiceClient) UpdateCache(ctx context.Context, in *emptypb.Emp
 	return out, nil
 }
 
+func (c *couriersServiceClient) GetUsersByIds(ctx context.Context, in *GetUsersByIdsRequest, opts ...grpc.CallOption) (*GetUsersByIdsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetUsersByIdsResponse)
+	err := c.cc.Invoke(ctx, CouriersService_GetUsersByIds_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // CouriersServiceServer is the server API for CouriersService service.
 // All implementations must embed UnimplementedCouriersServiceServer
 // for forward compatibility.
 type CouriersServiceServer interface {
 	UpdateCache(context.Context, *emptypb.Empty) (*UpdateCacheResponse, error)
+	GetUsersByIds(context.Context, *GetUsersByIdsRequest) (*GetUsersByIdsResponse, error)
 	mustEmbedUnimplementedCouriersServiceServer()
 }
 
@@ -67,6 +80,9 @@ type UnimplementedCouriersServiceServer struct{}
 
 func (UnimplementedCouriersServiceServer) UpdateCache(context.Context, *emptypb.Empty) (*UpdateCacheResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method UpdateCache not implemented")
+}
+func (UnimplementedCouriersServiceServer) GetUsersByIds(context.Context, *GetUsersByIdsRequest) (*GetUsersByIdsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetUsersByIds not implemented")
 }
 func (UnimplementedCouriersServiceServer) mustEmbedUnimplementedCouriersServiceServer() {}
 func (UnimplementedCouriersServiceServer) testEmbeddedByValue()                         {}
@@ -107,6 +123,24 @@ func _CouriersService_UpdateCache_Handler(srv interface{}, ctx context.Context, 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _CouriersService_GetUsersByIds_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetUsersByIdsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CouriersServiceServer).GetUsersByIds(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: CouriersService_GetUsersByIds_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CouriersServiceServer).GetUsersByIds(ctx, req.(*GetUsersByIdsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // CouriersService_ServiceDesc is the grpc.ServiceDesc for CouriersService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -117,6 +151,10 @@ var CouriersService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "UpdateCache",
 			Handler:    _CouriersService_UpdateCache_Handler,
+		},
+		{
+			MethodName: "GetUsersByIds",
+			Handler:    _CouriersService_GetUsersByIds_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

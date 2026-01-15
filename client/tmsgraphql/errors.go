@@ -7,13 +7,23 @@ import (
 
 	"github.com/99designs/gqlgen/graphql"
 	"github.com/TMS360/backend-pkg/response"
+	"github.com/TMS360/backend-pkg/validate"
 	"github.com/vektah/gqlparser/v2/gqlerror"
 )
 
 // NewErrorPresenter creates a consistent error formatter for all services
 func NewErrorPresenter(isDebug bool) graphql.ErrorPresenterFunc {
 	return func(ctx context.Context, err error) *gqlerror.Error {
-		// 1. Get standard gqlgen error
+		if validationErrors := validate.GetValidationErrors(ctx); validationErrors != nil && validationErrors.HasErrors() {
+			return &gqlerror.Error{
+				Message: "Validation failed",
+				Extensions: map[string]interface{}{
+					"code":             "VALIDATION_ERROR",
+					"validationErrors": validationErrors.ToArray(),
+				},
+			}
+		}
+
 		gqlErr := graphql.DefaultErrorPresenter(ctx, err)
 
 		// 2. Check for your custom "PublicError"

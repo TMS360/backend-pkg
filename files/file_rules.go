@@ -8,7 +8,8 @@ import (
 type FilePurpose string
 
 const (
-	PurposeUserAvatar FilePurpose = "USER_AVATAR"
+	PurposeUserAvatar      FilePurpose = "USER_AVATAR"
+	PurposeShipmentRateCon FilePurpose = "SHIPMENT_RATE_CON"
 )
 
 type FileRule struct {
@@ -24,6 +25,12 @@ var FileRules = map[FilePurpose]*FileRule{
 		IsPublic:         true,
 		MaxSizeBytes:     2 * 1024 * 1024, // 5MB
 		AllowedMimeTypes: []string{"image/jpeg", "image/png", "image/webp"},
+	},
+	PurposeShipmentRateCon: {
+		S3Folder:         "rate_cons",
+		IsPublic:         false,
+		MaxSizeBytes:     10 * 1024 * 1024, // 10MB
+		AllowedMimeTypes: []string{"application/pdf"},
 	},
 }
 

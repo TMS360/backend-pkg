@@ -75,3 +75,17 @@ func GetTimeOrMax(t *time.Time) time.Time {
 	}
 	return *t
 }
+
+func CombineDateAndTime(dateStr, timeStr string) (*time.Time, error) {
+	if dateStr == "" {
+		return nil, nil
+	}
+
+	layout := "2006-01-02 15:04"
+	combined := fmt.Sprintf("%s %s", dateStr, timeStr)
+	t, err := time.Parse(layout, combined)
+	if err != nil {
+		return nil, err
+	}
+	return &t, nil
+}

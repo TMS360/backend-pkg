@@ -273,6 +273,112 @@ func (x *GetFilesResponse) GetFiles() map[string]*File {
 	return nil
 }
 
+type DownloadRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	FileId        string                 `protobuf:"bytes,1,opt,name=file_id,json=fileId,proto3" json:"file_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DownloadRequest) Reset() {
+	*x = DownloadRequest{}
+	mi := &file_files_files_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DownloadRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DownloadRequest) ProtoMessage() {}
+
+func (x *DownloadRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_files_files_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DownloadRequest.ProtoReflect.Descriptor instead.
+func (*DownloadRequest) Descriptor() ([]byte, []int) {
+	return file_files_files_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *DownloadRequest) GetFileId() string {
+	if x != nil {
+		return x.FileId
+	}
+	return ""
+}
+
+type DownloadResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Oneof allows us to send metadata in the first chunk and data in others
+	// Or we can just include metadata in every message (slightly more overhead)
+	Chunk         []byte `protobuf:"bytes,1,opt,name=chunk,proto3" json:"chunk,omitempty"`
+	FileName      string `protobuf:"bytes,2,opt,name=file_name,json=fileName,proto3" json:"file_name,omitempty"`
+	ContentType   string `protobuf:"bytes,3,opt,name=content_type,json=contentType,proto3" json:"content_type,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DownloadResponse) Reset() {
+	*x = DownloadResponse{}
+	mi := &file_files_files_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DownloadResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DownloadResponse) ProtoMessage() {}
+
+func (x *DownloadResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_files_files_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DownloadResponse.ProtoReflect.Descriptor instead.
+func (*DownloadResponse) Descriptor() ([]byte, []int) {
+	return file_files_files_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *DownloadResponse) GetChunk() []byte {
+	if x != nil {
+		return x.Chunk
+	}
+	return nil
+}
+
+func (x *DownloadResponse) GetFileName() string {
+	if x != nil {
+		return x.FileName
+	}
+	return ""
+}
+
+func (x *DownloadResponse) GetContentType() string {
+	if x != nil {
+		return x.ContentType
+	}
+	return ""
+}
+
 var File_files_files_proto protoreflect.FileDescriptor
 
 const file_files_files_proto_rawDesc = "" +
@@ -296,10 +402,17 @@ const file_files_files_proto_rawDesc = "" +
 	"\n" +
 	"FilesEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12!\n" +
-	"\x05value\x18\x02 \x01(\v2\v.files.FileR\x05value:\x028\x012\x85\x01\n" +
+	"\x05value\x18\x02 \x01(\v2\v.files.FileR\x05value:\x028\x01\"*\n" +
+	"\x0fDownloadRequest\x12\x17\n" +
+	"\afile_id\x18\x01 \x01(\tR\x06fileId\"h\n" +
+	"\x10DownloadResponse\x12\x14\n" +
+	"\x05chunk\x18\x01 \x01(\fR\x05chunk\x12\x1b\n" +
+	"\tfile_name\x18\x02 \x01(\tR\bfileName\x12!\n" +
+	"\fcontent_type\x18\x03 \x01(\tR\vcontentType2\xc4\x01\n" +
 	"\fFilesService\x128\n" +
 	"\aGetFile\x12\x15.files.GetFileRequest\x1a\x16.files.GetFileResponse\x12;\n" +
-	"\bGetFiles\x12\x16.files.GetFilesRequest\x1a\x17.files.GetFilesResponseB+Z)github.com/TMS360/backend-pkg/proto/filesb\x06proto3"
+	"\bGetFiles\x12\x16.files.GetFilesRequest\x1a\x17.files.GetFilesResponse\x12=\n" +
+	"\bDownload\x12\x16.files.DownloadRequest\x1a\x17.files.DownloadResponse0\x01B+Z)github.com/TMS360/backend-pkg/proto/filesb\x06proto3"
 
 var (
 	file_files_files_proto_rawDescOnce sync.Once
@@ -313,25 +426,29 @@ func file_files_files_proto_rawDescGZIP() []byte {
 	return file_files_files_proto_rawDescData
 }
 
-var file_files_files_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
+var file_files_files_proto_msgTypes = make([]protoimpl.MessageInfo, 8)
 var file_files_files_proto_goTypes = []any{
 	(*GetFileRequest)(nil),   // 0: files.GetFileRequest
 	(*GetFilesRequest)(nil),  // 1: files.GetFilesRequest
 	(*File)(nil),             // 2: files.File
 	(*GetFileResponse)(nil),  // 3: files.GetFileResponse
 	(*GetFilesResponse)(nil), // 4: files.GetFilesResponse
-	nil,                      // 5: files.GetFilesResponse.FilesEntry
+	(*DownloadRequest)(nil),  // 5: files.DownloadRequest
+	(*DownloadResponse)(nil), // 6: files.DownloadResponse
+	nil,                      // 7: files.GetFilesResponse.FilesEntry
 }
 var file_files_files_proto_depIdxs = []int32{
 	2, // 0: files.GetFileResponse.file:type_name -> files.File
-	5, // 1: files.GetFilesResponse.files:type_name -> files.GetFilesResponse.FilesEntry
+	7, // 1: files.GetFilesResponse.files:type_name -> files.GetFilesResponse.FilesEntry
 	2, // 2: files.GetFilesResponse.FilesEntry.value:type_name -> files.File
 	0, // 3: files.FilesService.GetFile:input_type -> files.GetFileRequest
 	1, // 4: files.FilesService.GetFiles:input_type -> files.GetFilesRequest
-	3, // 5: files.FilesService.GetFile:output_type -> files.GetFileResponse
-	4, // 6: files.FilesService.GetFiles:output_type -> files.GetFilesResponse
-	5, // [5:7] is the sub-list for method output_type
-	3, // [3:5] is the sub-list for method input_type
+	5, // 5: files.FilesService.Download:input_type -> files.DownloadRequest
+	3, // 6: files.FilesService.GetFile:output_type -> files.GetFileResponse
+	4, // 7: files.FilesService.GetFiles:output_type -> files.GetFilesResponse
+	6, // 8: files.FilesService.Download:output_type -> files.DownloadResponse
+	6, // [6:9] is the sub-list for method output_type
+	3, // [3:6] is the sub-list for method input_type
 	3, // [3:3] is the sub-list for extension type_name
 	3, // [3:3] is the sub-list for extension extendee
 	0, // [0:3] is the sub-list for field type_name
@@ -348,7 +465,7 @@ func file_files_files_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_files_files_proto_rawDesc), len(file_files_files_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   6,
+			NumMessages:   8,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

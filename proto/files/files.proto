@@ -7,6 +7,7 @@ option go_package = "github.com/TMS360/backend-pkg/proto/files";
 service FilesService {
   rpc GetFile (GetFileRequest) returns (GetFileResponse);
   rpc GetFiles (GetFilesRequest) returns (GetFilesResponse);
+  rpc Download (DownloadRequest) returns (stream DownloadResponse);
 }
 
 message GetFileRequest {
@@ -31,4 +32,16 @@ message GetFileResponse {
 
 message GetFilesResponse {
   map<string, File> files = 1;
+}
+
+message DownloadRequest {
+  string file_id = 1;
+}
+
+message DownloadResponse {
+  // Oneof allows us to send metadata in the first chunk and data in others
+  // Or we can just include metadata in every message (slightly more overhead)
+  bytes chunk = 1;
+  string file_name = 2;
+  string content_type = 3;
 }

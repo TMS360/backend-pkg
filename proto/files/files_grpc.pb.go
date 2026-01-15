@@ -21,6 +21,7 @@ const _ = grpc.SupportPackageIsVersion9
 const (
 	FilesService_GetFile_FullMethodName  = "/files.FilesService/GetFile"
 	FilesService_GetFiles_FullMethodName = "/files.FilesService/GetFiles"
+	FilesService_Download_FullMethodName = "/files.FilesService/Download"
 )
 
 // FilesServiceClient is the client API for FilesService service.
@@ -29,6 +30,7 @@ const (
 type FilesServiceClient interface {
 	GetFile(ctx context.Context, in *GetFileRequest, opts ...grpc.CallOption) (*GetFileResponse, error)
 	GetFiles(ctx context.Context, in *GetFilesRequest, opts ...grpc.CallOption) (*GetFilesResponse, error)
+	Download(ctx context.Context, in *DownloadRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[DownloadResponse], error)
 }
 
 type filesServiceClient struct {
@@ -59,12 +61,32 @@ func (c *filesServiceClient) GetFiles(ctx context.Context, in *GetFilesRequest, 
 	return out, nil
 }
 
+func (c *filesServiceClient) Download(ctx context.Context, in *DownloadRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[DownloadResponse], error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	stream, err := c.cc.NewStream(ctx, &FilesService_ServiceDesc.Streams[0], FilesService_Download_FullMethodName, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &grpc.GenericClientStream[DownloadRequest, DownloadResponse]{ClientStream: stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type FilesService_DownloadClient = grpc.ServerStreamingClient[DownloadResponse]
+
 // FilesServiceServer is the server API for FilesService service.
 // All implementations must embed UnimplementedFilesServiceServer
 // for forward compatibility.
 type FilesServiceServer interface {
 	GetFile(context.Context, *GetFileRequest) (*GetFileResponse, error)
 	GetFiles(context.Context, *GetFilesRequest) (*GetFilesResponse, error)
+	Download(*DownloadRequest, grpc.ServerStreamingServer[DownloadResponse]) error
 	mustEmbedUnimplementedFilesServiceServer()
 }
 
@@ -80,6 +102,9 @@ func (UnimplementedFilesServiceServer) GetFile(context.Context, *GetFileRequest)
 }
 func (UnimplementedFilesServiceServer) GetFiles(context.Context, *GetFilesRequest) (*GetFilesResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetFiles not implemented")
+}
+func (UnimplementedFilesServiceServer) Download(*DownloadRequest, grpc.ServerStreamingServer[DownloadResponse]) error {
+	return status.Error(codes.Unimplemented, "method Download not implemented")
 }
 func (UnimplementedFilesServiceServer) mustEmbedUnimplementedFilesServiceServer() {}
 func (UnimplementedFilesServiceServer) testEmbeddedByValue()                      {}
@@ -138,6 +163,17 @@ func _FilesService_GetFiles_Handler(srv interface{}, ctx context.Context, dec fu
 	return interceptor(ctx, in, info, handler)
 }
 
+func _FilesService_Download_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(DownloadRequest)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(FilesServiceServer).Download(m, &grpc.GenericServerStream[DownloadRequest, DownloadResponse]{ServerStream: stream})
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type FilesService_DownloadServer = grpc.ServerStreamingServer[DownloadResponse]
+
 // FilesService_ServiceDesc is the grpc.ServiceDesc for FilesService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -154,6 +190,12 @@ var FilesService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _FilesService_GetFiles_Handler,
 		},
 	},
-	Streams:  []grpc.StreamDesc{},
+	Streams: []grpc.StreamDesc{
+		{
+			StreamName:    "Download",
+			Handler:       _FilesService_Download_Handler,
+			ServerStreams: true,
+		},
+	},
 	Metadata: "files/files.proto",
 }

@@ -8,13 +8,17 @@ import (
 	"time"
 )
 
-type SaferAPIService struct {
+type SaferApi interface {
+	FetchByMCNumber(ctx context.Context, mcNumber string) (*SaferCompanyDTO, error)
+}
+
+type saferAPIService struct {
 	apiKey string
 	client *http.Client
 }
 
-func NewSaferAPIService(apiKey string) *SaferAPIService {
-	return &SaferAPIService{
+func NewSaferAPIService(apiKey string) SaferApi {
+	return &saferAPIService{
 		apiKey: apiKey,
 		client: &http.Client{
 			Timeout: 10 * time.Second,
@@ -22,7 +26,7 @@ func NewSaferAPIService(apiKey string) *SaferAPIService {
 	}
 }
 
-func (s *SaferAPIService) FetchByMCNumber(ctx context.Context, mcNumber string) (*SaferCompanyDTO, error) {
+func (s *saferAPIService) FetchByMCNumber(ctx context.Context, mcNumber string) (*SaferCompanyDTO, error) {
 	requestURL := fmt.Sprintf("https://saferwebapi.com/v2/mcmx/snapshot/%s", mcNumber)
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, requestURL, nil)

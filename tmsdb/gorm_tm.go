@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"time"
 
+	"github.com/TMS360/backend-pkg/consts"
 	"github.com/TMS360/backend-pkg/eventlog/events"
 	"github.com/TMS360/backend-pkg/middleware"
 	"github.com/TMS360/backend-pkg/tmsdb/model"
@@ -43,8 +44,8 @@ func (m *GormTransactionManager) GetDB(ctx context.Context) *gorm.DB {
 // Publish implements the logic DIRECTLY here. No Repo.
 func (m *GormTransactionManager) Publish(ctx context.Context, aggType, evtType string, aggID uuid.UUID, data interface{}) error {
 	actor, err := middleware.GetActor(ctx)
-	if err != nil {
-		return err
+	if actor == nil {
+		actor = &consts.Actor{ID: uuid.Nil, IsSystem: true}
 	}
 
 	dataBytes, err := json.Marshal(data)

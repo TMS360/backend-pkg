@@ -3,5 +3,28 @@ syntax = "proto3";
 
 package brokers;
 
-
 option go_package = "github.com/TMS360/backend-pkg/proto/brokers";
+
+service BrokerService {
+  // Internal endpoint: Finds a broker by MC or creates a "Stub" profile
+  rpc GetOrCreateByMC(GetOrCreateByMCRequest) returns (GetOrCreateByMCResponse);
+}
+
+message GetOrCreateByMCRequest {
+  string mc_number = 1;
+  // Useful for audit logs: "Created via Courier App by Courier <UUID>"
+  string created_by_source = 2;
+}
+
+message Broker {
+  string id = 1;           // UUID
+  string company_name = 2;
+  string mc_number = 3;
+  string dot_number = 4;
+}
+
+message GetOrCreateByMCResponse {
+  string broker_id = 1;      // UUID
+  bool was_created = 2;
+  Broker broker = 3;
+}

@@ -6,14 +6,10 @@ package brokers;
 option go_package = "github.com/TMS360/backend-pkg/proto/brokers";
 
 service BrokerService {
+  rpc GetBrokers(GetBrokersRequest) returns (GetBrokersResponse);
+
   // Internal endpoint: Finds a broker by MC or creates a "Stub" profile
   rpc GetOrCreateByMC(GetOrCreateByMCRequest) returns (GetOrCreateByMCResponse);
-}
-
-message GetOrCreateByMCRequest {
-  string mc_number = 1;
-  // Useful for audit logs: "Created via Courier App by Courier <UUID>"
-  string created_by_source = 2;
 }
 
 message Broker {
@@ -21,6 +17,20 @@ message Broker {
   string company_name = 2;
   string mc_number = 3;
   string dot_number = 4;
+}
+
+message GetBrokersRequest {
+  string courier_id = 1; // UUID
+}
+
+message GetBrokersResponse {
+  repeated Broker brokers = 1;
+}
+
+message GetOrCreateByMCRequest {
+  string mc_number = 1;
+  // Useful for audit logs: "Created via Courier App by Courier <UUID>"
+  string created_by_source = 2;
 }
 
 message GetOrCreateByMCResponse {

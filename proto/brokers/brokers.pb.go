@@ -93,7 +93,7 @@ func (x *Broker) GetDotNumber() string {
 
 type GetBrokersRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	CourierId     string                 `protobuf:"bytes,1,opt,name=courier_id,json=courierId,proto3" json:"courier_id,omitempty"` // UUID
+	BrokerIds     []string               `protobuf:"bytes,1,rep,name=broker_ids,json=brokerIds,proto3" json:"broker_ids,omitempty"` // UUIDs
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -128,11 +128,11 @@ func (*GetBrokersRequest) Descriptor() ([]byte, []int) {
 	return file_brokers_brokers_proto_rawDescGZIP(), []int{1}
 }
 
-func (x *GetBrokersRequest) GetCourierId() string {
+func (x *GetBrokersRequest) GetBrokerIds() []string {
 	if x != nil {
-		return x.CourierId
+		return x.BrokerIds
 	}
-	return ""
+	return nil
 }
 
 type GetBrokersResponse struct {
@@ -305,7 +305,7 @@ const file_brokers_brokers_proto_rawDesc = "" +
 	"dot_number\x18\x04 \x01(\tR\tdotNumber\"2\n" +
 	"\x11GetBrokersRequest\x12\x1d\n" +
 	"\n" +
-	"courier_id\x18\x01 \x01(\tR\tcourierId\"?\n" +
+	"broker_ids\x18\x01 \x03(\tR\tbrokerIds\"?\n" +
 	"\x12GetBrokersResponse\x12)\n" +
 	"\abrokers\x18\x01 \x03(\v2\x0f.brokers.BrokerR\abrokers\"a\n" +
 	"\x16GetOrCreateByMCRequest\x12\x1b\n" +

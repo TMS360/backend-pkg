@@ -20,7 +20,7 @@ message Broker {
 }
 
 message GetBrokersRequest {
-  string courier_id = 1; // UUID
+  repeated string broker_ids = 1;   // UUIDs
 }
 
 message GetBrokersResponse {

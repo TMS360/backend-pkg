@@ -201,7 +201,12 @@ func (c *Client) GetAllVehiclesLocations(ctx context.Context) ([]VehicleLocation
 	if err != nil {
 		return nil, fmt.Errorf("failed to get all vehicles locations: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func(Body io.ReadCloser) {
+		err := Body.Close()
+		if err != nil {
+
+		}
+	}(resp.Body)
 
 	var response VehicleLocationResponse
 	if err := json.NewDecoder(resp.Body).Decode(&response); err != nil {
@@ -221,7 +226,13 @@ func (c *Client) GetAllVehiclesLocationsWithTime(ctx context.Context, startTime,
 	if err != nil {
 		return nil, fmt.Errorf("failed to get vehicles locations with time filter: %w", err)
 	}
-	defer resp.Body.Close()
+
+	defer func(Body io.ReadCloser) {
+		err := Body.Close()
+		if err != nil {
+
+		}
+	}(resp.Body)
 
 	var response VehicleLocationResponse
 	if err := json.NewDecoder(resp.Body).Decode(&response); err != nil {

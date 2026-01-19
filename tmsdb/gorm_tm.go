@@ -43,7 +43,7 @@ func (m *GormTransactionManager) GetDB(ctx context.Context) *gorm.DB {
 
 // Publish implements the logic DIRECTLY here. No Repo.
 func (m *GormTransactionManager) Publish(ctx context.Context, aggType, evtType string, aggID uuid.UUID, data interface{}) error {
-	actor, err := middleware.GetActor(ctx)
+	actor, _ := middleware.GetActor(ctx)
 	if actor == nil {
 		actor = &consts.Actor{ID: uuid.Nil, IsSystem: true}
 	}

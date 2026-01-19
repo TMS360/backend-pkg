@@ -1,0 +1,179 @@
+package rcproc
+
+import (
+	"bytes"
+	"context"
+	"encoding/json"
+	"fmt"
+	"io"
+	"mime/multipart"
+	"net/http"
+	"net/textproto"
+)
+
+type client struct {
+	baseURL  string
+	provider string
+	client   *http.Client
+}
+
+func NewClient(baseURL, provider string) Client {
+	return &client{
+		baseURL:  baseURL,
+		provider: provider,
+		client:   &http.Client{},
+	}
+}
+
+func (c *client) Process(ctx context.Context, file io.Reader, filename, contentType string) (*RateConResponse, error) {
+	// 1. Prepare Multipart Request
+	body := &bytes.Buffer{}
+	writer := multipart.NewWriter(body)
+
+	err := writer.WriteField("provider", c.provider)
+	if err != nil {
+		return nil, err
+	}
+
+	h := make(textproto.MIMEHeader)
+	h.Set("Content-Disposition", fmt.Sprintf(`form-data; name="%s"; filename="%s"`, "file", filename))
+	h.Set("Content-Type", contentType)
+
+	part, err := writer.CreatePart(h)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create form file: %w", err)
+	}
+
+	if _, err = io.Copy(part, file); err != nil {
+		return nil, fmt.Errorf("failed to copy file content: %w", err)
+	}
+	writer.Close() // Close to write boundary
+
+	// 2. Send Request
+	req, err := http.NewRequestWithContext(ctx, "POST", c.baseURL+"/api/v1/process", body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("rc processor request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	bodyBytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read response body: %w", err)
+	}
+
+	// --- LOGGING ---
+	fmt.Printf("RC Processor Status: %s\n", resp.Status)
+	fmt.Printf("RC Processor Body: %s\n", string(bodyBytes))
+	// ----------------
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("rc processor returned status: %d", resp.StatusCode)
+	}
+
+	// 4. Decode JSON from the Bytes
+	var rcResp RateConResponse
+	// We use json.Unmarshal here because we already have the bytes
+	if err := json.Unmarshal(bodyBytes, &rcResp); err != nil {
+		return nil, fmt.Errorf("failed to decode rc response: %w", err)
+	}
+
+	return &rcResp, nil
+}
+
+// TODO: test with io.Pipe instead of buffering entire file in memory
+//func (c *client) Process(ctx context.Context, file io.Reader, filename, contentType string) (*RateConResponse, error) {
+//	// 1. Setup the Pipe
+//	// 'pr' (Reader) will be passed to the HTTP Request (Main Thread)
+//	// 'pw' (Writer) will be written to by the Multipart Writer (Goroutine)
+//	pr, pw := io.Pipe()
+//
+//	// Create the multipart writer immediately so we can get the Boundary string
+//	writer := multipart.NewWriter(pw)
+//
+//	// 2. Start Streaming in a Background Goroutine
+//	go func() {
+//		var err error
+//		// Ensure the pipe is always closed.
+//		// CloseWithError(err) tells the HTTP Client that the upload failed mid-stream.
+//		defer func() {
+//			if err != nil {
+//				pw.CloseWithError(err)
+//			} else {
+//				pw.Close()
+//			}
+//		}()
+//
+//		// A. Write Simple Fields
+//		if err = writer.WriteField("provider", c.provider); err != nil {
+//			return
+//		}
+//
+//		// B. Create File Part with Explicit Content-Type
+//		// We use CreatePart (not CreateFormFile) to manually set headers
+//		h := make(textproto.MIMEHeader)
+//		h.Set("Content-Disposition", fmt.Sprintf(`form-data; name="%s"; filename="%s"`, "file", filename))
+//		h.Set("Content-Type", contentType) // e.g., "application/pdf"
+//
+//		part, err := writer.CreatePart(h)
+//		if err != nil {
+//			return
+//		}
+//
+//		// C. Stream: Copy directly from Source (gRPC) -> Destination (HTTP Pipe)
+//		// This line blocks until the HTTP client starts reading 'pr'
+//		if _, err = io.Copy(part, file); err != nil {
+//			return
+//		}
+//
+//		// D. Close Multipart Writer explicitly to write the trailing boundary
+//		// (e.g., "--boundary--") before closing the pipe.
+//		err = writer.Close()
+//	}()
+//
+//	// 3. Create and Send Request
+//	// We use 'pr' as the Body. Go automatically uses "Transfer-Encoding: chunked"
+//	req, err := http.NewRequestWithContext(ctx, "POST", c.baseURL+"/api/v1/process", pr)
+//	if err != nil {
+//		_ = pr.Close() // Clean up if request creation fails
+//		return nil, err
+//	}
+//
+//	// Set the Content-Type with the correct boundary from the writer
+//	req.Header.Set("Content-Type", writer.FormDataContentType())
+//
+//	resp, err := c.client.Do(req)
+//	if err != nil {
+//		return nil, fmt.Errorf("rc processor request failed: %w", err)
+//	}
+//	defer resp.Body.Close()
+//
+//	bodyBytes, err := io.ReadAll(resp.Body)
+//	if err != nil {
+//		return nil, fmt.Errorf("failed to read response body: %w", err)
+//	}
+//
+//	// --- LOGGING ---
+//	fmt.Printf("RC Processor Status: %s\n", resp.Status)
+//	fmt.Printf("RC Processor Body: %s\n", string(bodyBytes))
+//	// ----------------
+//
+//	if resp.StatusCode != http.StatusOK {
+//		return nil, fmt.Errorf("rc processor returned status: %d", resp.StatusCode)
+//	}
+//
+//	// 4. Decode JSON from the Bytes
+//	var rcResp RateConResponse
+//	// We use json.Unmarshal here because we already have the bytes
+//	if err := json.Unmarshal(bodyBytes, &rcResp); err != nil {
+//		return nil, fmt.Errorf("failed to decode rc response: %w", err)
+//	}
+//
+//	return &rcResp, nil
+//}

@@ -2,6 +2,7 @@ package tmsdb
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/TMS360/backend-pkg/middleware"
 	"github.com/TMS360/backend-pkg/tmsdb/model"
@@ -50,6 +51,11 @@ func (t *TenantScopePlugin) addTenantCondition(db *gorm.DB) {
 		return
 	}
 
+	tableName := db.Statement.Table
+	if tableName == "" {
+		tableName = db.Statement.Schema.Table
+	}
+
 	// 5. Apply the Clause
-	db.Where("company_id = ?", *actor.Claims.CompanyID)
+	db.Where(fmt.Sprintf("%s.company_id = ?", db.Statement.Quote(tableName)), *actor.Claims.CompanyID)
 }

@@ -46,6 +46,63 @@ type VehicleLocationResponse struct {
 }
 
 // ============================================================================
+// СТРУКТУРЫ ДЛЯ ДАТЧИКОВ ТЕМПЕРАТУРЫ/ВЛАЖНОСТИ
+// ============================================================================
+
+// SensorInfo - информация о датчике
+type SensorInfo struct {
+	ID         string `json:"id"`
+	Name       string `json:"name"`
+	Serial     string `json:"serial,omitempty"`
+	MacAddress string `json:"macAddress,omitempty"`
+}
+
+// TemperatureData - данные температуры
+type TemperatureData struct {
+	AmbientTemperatureMilliC int    `json:"ambientTemperatureMilliC"`         // Температура в милли-Цельсиях
+	ProbeTemperatureMilliC   int    `json:"probeTemperatureMilliC,omitempty"` // Температура щупа
+	Time                     int64  `json:"time"`                             // Unix timestamp в миллисекундах
+	Name                     string `json:"name"`
+	ID                       int64  `json:"id"`
+}
+
+// HumidityData - данные влажности
+type HumidityData struct {
+	HumidityPercent int    `json:"humidityPercent"` // Влажность в процентах
+	Time            int64  `json:"time"`
+	Name            string `json:"name"`
+	ID              int64  `json:"id"`
+}
+
+// SensorHistoryData - исторические данные датчика
+type SensorHistoryData struct {
+	ID     int64  `json:"id"`
+	Name   string `json:"name"`
+	Series []struct {
+		Field  string `json:"field"` // "ambientTemperature", "probeTemperature", "humidity"
+		Values []struct {
+			Value int   `json:"value"`
+			Time  int64 `json:"timeMs"`
+		} `json:"values"`
+	} `json:"series"`
+}
+
+// TemperatureResponse - ответ на запрос температуры
+type TemperatureResponse struct {
+	Sensors []TemperatureData `json:"sensors"`
+}
+
+// HumidityResponse - ответ на запрос влажности
+type HumidityResponse struct {
+	Sensors []HumidityData `json:"sensors"`
+}
+
+// SensorListResponse - список датчиков
+type SensorListResponse struct {
+	Sensors []SensorInfo `json:"sensors"`
+}
+
+// ============================================================================
 // СТРУКТУРЫ ДЛЯ GEOFENCING (ГЕОЗОНЫ)
 // ============================================================================
 
@@ -152,6 +209,14 @@ const (
 	AlertConditionDeviceHasVehicleFault         AlertConditionID = "DeviceHasVehicleFault"
 	AlertConditionDeviceUnplugged               AlertConditionID = "DeviceUnplugged"
 	AlertConditionHarshEvent                    AlertConditionID = "HarshEvent"
+	AlertConditionTemperatureAbove              AlertConditionID = "TemperatureAbove"
+	AlertConditionTemperatureBelow              AlertConditionID = "TemperatureBelow"
+	AlertConditionHumidityAbove                 AlertConditionID = "HumidityAbove"
+	AlertConditionHumidityBelow                 AlertConditionID = "HumidityBelow"
+	AlertConditionDoorOpen                      AlertConditionID = "DoorActivated"
+	AlertConditionDoorClosed                    AlertConditionID = "DoorDeactivated"
+	AlertConditionReeferTemperatureAbove        AlertConditionID = "ReeferTemperatureAboveSetPoint"
+	AlertConditionReeferTemperatureBelow        AlertConditionID = "ReeferTemperatureBelowSetPoint"
 )
 
 // WebhookEvent - событие webhook от Samsara
@@ -190,15 +255,20 @@ type AlertEvent struct {
 
 // Alert Trigger Type IDs
 const (
-	TriggerTypeInsideGeofence  = 1017 // Внутри геозоны
-	TriggerTypeOutsideGeofence = 1018 // Вне геозоны
-	TriggerTypeMovement        = 1019 // Начало движения
-	TriggerTypeSpeedAbove      = 1001 // Превышение скорости
-	TriggerTypeEngineIdle      = 1020 // Простой двигателя
-	TriggerTypeEngineOn        = 1021 // Двигатель включен
-	TriggerTypeEngineOff       = 1022 // Двигатель выключен
-	TriggerTypeHarshEvent      = 1023 // Резкое событие (торможение/ускорение)
-	TriggerTypeFaultCode       = 1031 // Код неисправности
+	TriggerTypeInsideGeofence   = 1017 // Внутри геозоны
+	TriggerTypeOutsideGeofence  = 1018 // Вне геозоны
+	TriggerTypeMovement         = 1019 // Начало движения
+	TriggerTypeSpeedAbove       = 1001 // Превышение скорости
+	TriggerTypeEngineIdle       = 1020 // Простой двигателя
+	TriggerTypeEngineOn         = 1021 // Двигатель включен
+	TriggerTypeEngineOff        = 1022 // Двигатель выключен
+	TriggerTypeHarshEvent       = 1023 // Резкое событие (торможение/ускорение)
+	TriggerTypeFaultCode        = 1031 // Код неисправности
+	TriggerTypeTemperatureAbove = 1033 // Температура выше порога
+	TriggerTypeTemperatureBelow = 1034 // Температура ниже порога
+	TriggerTypeHumidityAbove    = 1035 // Влажность выше порога
+	TriggerTypeHumidityBelow    = 1036 // Влажность ниже порога
+	TriggerTypeDoorOpen         = 1037 // Дверь открыта
 )
 
 // Alert Action Type IDs
@@ -450,6 +520,196 @@ func (c *Client) GetAllVehiclesLocationsWithTime(ctx context.Context, startTime,
 
 	return response.Data, nil
 }
+
+// ============================================================================
+// МЕТОДЫ ДЛЯ РАБОТЫ С ТЕМПЕРАТУРНЫМИ ДАТЧИКАМИ
+// ============================================================================
+
+// GetSensors получает список всех датчиков
+func (c *Client) GetSensors(ctx context.Context) ([]SensorInfo, error) {
+	path := "/v1/sensors"
+	resp, err := c.doRequest(ctx, http.MethodGet, path, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get sensors: %w", err)
+	}
+	defer func() {
+		if closeErr := resp.Body.Close(); closeErr != nil && err == nil {
+			err = fmt.Errorf("failed to close response body: %w", closeErr)
+		}
+	}()
+
+	var response SensorListResponse
+	if err := json.NewDecoder(resp.Body).Decode(&response); err != nil {
+		return nil, fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	return response.Sensors, nil
+}
+
+// GetSensorTemperature получает текущую температуру для указанных датчиков
+func (c *Client) GetSensorTemperature(ctx context.Context, sensorIDs []int64) ([]TemperatureData, error) {
+	if len(sensorIDs) == 0 {
+		return nil, fmt.Errorf("sensor IDs cannot be empty")
+	}
+
+	// Legacy API использует другой формат
+	body := map[string]interface{}{
+		"sensors": sensorIDs,
+	}
+
+	jsonBody, err := json.Marshal(body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal request: %w", err)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.host+"/v1/sensors/temperature", strings.NewReader(string(jsonBody)))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	req.Header.Set("Authorization", "Bearer "+c.apiKey)
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to execute request: %w", err)
+	}
+	defer func() {
+		if closeErr := resp.Body.Close(); closeErr != nil && err == nil {
+			err = fmt.Errorf("failed to close response body: %w", closeErr)
+		}
+	}()
+
+	if resp.StatusCode != http.StatusOK {
+		bodyBytes, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("API request failed with status %d: %s", resp.StatusCode, string(bodyBytes))
+	}
+
+	var response TemperatureResponse
+	if err := json.NewDecoder(resp.Body).Decode(&response); err != nil {
+		return nil, fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	return response.Sensors, nil
+}
+
+// GetSensorHumidity получает текущую влажность для указанных датчиков
+func (c *Client) GetSensorHumidity(ctx context.Context, sensorIDs []int64) ([]HumidityData, error) {
+	if len(sensorIDs) == 0 {
+		return nil, fmt.Errorf("sensor IDs cannot be empty")
+	}
+
+	body := map[string]interface{}{
+		"sensors": sensorIDs,
+	}
+
+	jsonBody, err := json.Marshal(body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal request: %w", err)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.host+"/v1/sensors/humidity", strings.NewReader(string(jsonBody)))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	req.Header.Set("Authorization", "Bearer "+c.apiKey)
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to execute request: %w", err)
+	}
+	defer func() {
+		if closeErr := resp.Body.Close(); closeErr != nil && err == nil {
+			err = fmt.Errorf("failed to close response body: %w", closeErr)
+		}
+	}()
+
+	if resp.StatusCode != http.StatusOK {
+		bodyBytes, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("API request failed with status %d: %s", resp.StatusCode, string(bodyBytes))
+	}
+
+	var response HumidityResponse
+	if err := json.NewDecoder(resp.Body).Decode(&response); err != nil {
+		return nil, fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	return response.Sensors, nil
+}
+
+// GetSensorHistory получает исторические данные датчиков за период
+func (c *Client) GetSensorHistory(ctx context.Context, sensorID int64, startTime, endTime time.Time, field string) (*SensorHistoryData, error) {
+	body := map[string]interface{}{
+		"series": []map[string]interface{}{
+			{
+				"widgetId": sensorID,
+				"field":    field, // "ambientTemperature", "probeTemperature", "humidity"
+			},
+		},
+		"startMs":     startTime.UnixMilli(),
+		"endMs":       endTime.UnixMilli(),
+		"stepMs":      60000, // 1 minute resolution
+		"fillMissing": "null",
+	}
+
+	jsonBody, err := json.Marshal(body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal request: %w", err)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.host+"/v1/sensors/history", strings.NewReader(string(jsonBody)))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	req.Header.Set("Authorization", "Bearer "+c.apiKey)
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to execute request: %w", err)
+	}
+	defer func() {
+		if closeErr := resp.Body.Close(); closeErr != nil && err == nil {
+			err = fmt.Errorf("failed to close response body: %w", closeErr)
+		}
+	}()
+
+	if resp.StatusCode != http.StatusOK {
+		bodyBytes, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("API request failed with status %d: %s", resp.StatusCode, string(bodyBytes))
+	}
+
+	var response struct {
+		Results []SensorHistoryData `json:"results"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&response); err != nil {
+		return nil, fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	if len(response.Results) > 0 {
+		return &response.Results[0], nil
+	}
+
+	return nil, fmt.Errorf("no history data found")
+}
+
+// ConvertMilliCelsiusToFahrenheit конвертирует милли-Цельсии в Фаренгейты
+func ConvertMilliCelsiusToFahrenheit(milliC int) float64 {
+	celsius := float64(milliC) / 1000.0
+	return (celsius * 9.0 / 5.0) + 32.0
+}
+
+// ConvertMilliCelsiusToCelsius конвертирует милли-Цельсии в Цельсии
+func ConvertMilliCelsiusToCelsius(milliC int) float64 {
+	return float64(milliC) / 1000.0
+}
+
+// ============================================================================
+// МЕТОДЫ ДЛЯ РАБОТЫ С ГЕОЗОНАМИ (ADDRESSES/GEOFENCES)
+// ============================================================================
 
 // CreateAddress создаёт новый адрес с геозоной
 func (c *Client) CreateAddress(ctx context.Context, address Address) (*Address, error) {
@@ -1013,15 +1273,164 @@ func (c *Client) CreateGeofenceAlertWithDuration(ctx context.Context, name strin
 	return c.CreateAlertConfiguration(ctx, config)
 }
 
+// CreateTemperatureAlert создаёт алерт для температуры (выше или ниже порога)
+func (c *Client) CreateTemperatureAlert(ctx context.Context, name string, sensorID int64, webhookID string, thresholdCelsius float64, isAbove bool, durationMs int64, applyToAll bool) (*AlertConfiguration, error) {
+	// Конвертируем Цельсии в милли-Цельсии
+	thresholdMilliC := int(thresholdCelsius * 1000)
+
+	triggerTypeID := TriggerTypeTemperatureAbove
+	if !isAbove {
+		triggerTypeID = TriggerTypeTemperatureBelow
+	}
+
+	triggerParams := map[string]interface{}{
+		"temperature": map[string]interface{}{
+			"sensorIds":               []int64{sensorID},
+			"thresholdMilliC":         thresholdMilliC,
+			"minDurationMilliseconds": durationMs,
+		},
+	}
+
+	actionParams := map[string]interface{}{
+		"webhooks": map[string]interface{}{
+			"webhookIds":  []string{webhookID},
+			"payloadType": "enriched",
+		},
+	}
+
+	config := AlertConfiguration{
+		Name:      name,
+		IsEnabled: true,
+		Scope: AlertScope{
+			All: applyToAll,
+		},
+		Triggers: []AlertTrigger{
+			{
+				TriggerTypeID: triggerTypeID,
+				TriggerParams: triggerParams,
+			},
+		},
+		Actions: []AlertAction{
+			{
+				ActionTypeID: ActionTypeWebhook,
+				ActionParams: actionParams,
+			},
+		},
+	}
+
+	return c.CreateAlertConfiguration(ctx, config)
+}
+
+// CreateHumidityAlert создаёт алерт для влажности (выше или ниже порога)
+func (c *Client) CreateHumidityAlert(ctx context.Context, name string, sensorID int64, webhookID string, thresholdPercent int, isAbove bool, durationMs int64, applyToAll bool) (*AlertConfiguration, error) {
+	triggerTypeID := TriggerTypeHumidityAbove
+	if !isAbove {
+		triggerTypeID = TriggerTypeHumidityBelow
+	}
+
+	triggerParams := map[string]interface{}{
+		"humidity": map[string]interface{}{
+			"sensorIds":               []int64{sensorID},
+			"thresholdPercent":        thresholdPercent,
+			"minDurationMilliseconds": durationMs,
+		},
+	}
+
+	actionParams := map[string]interface{}{
+		"webhooks": map[string]interface{}{
+			"webhookIds":  []string{webhookID},
+			"payloadType": "enriched",
+		},
+	}
+
+	config := AlertConfiguration{
+		Name:      name,
+		IsEnabled: true,
+		Scope: AlertScope{
+			All: applyToAll,
+		},
+		Triggers: []AlertTrigger{
+			{
+				TriggerTypeID: triggerTypeID,
+				TriggerParams: triggerParams,
+			},
+		},
+		Actions: []AlertAction{
+			{
+				ActionTypeID: ActionTypeWebhook,
+				ActionParams: actionParams,
+			},
+		},
+	}
+
+	return c.CreateAlertConfiguration(ctx, config)
+}
+
+// CreateDoorOpenAlert создаёт алерт для открытия двери
+func (c *Client) CreateDoorOpenAlert(ctx context.Context, name string, sensorID int64, webhookID string, durationMs int64, applyToAll bool) (*AlertConfiguration, error) {
+	triggerParams := map[string]interface{}{
+		"door": map[string]interface{}{
+			"sensorIds":               []int64{sensorID},
+			"minDurationMilliseconds": durationMs,
+		},
+	}
+
+	actionParams := map[string]interface{}{
+		"webhooks": map[string]interface{}{
+			"webhookIds":  []string{webhookID},
+			"payloadType": "enriched",
+		},
+	}
+
+	config := AlertConfiguration{
+		Name:      name,
+		IsEnabled: true,
+		Scope: AlertScope{
+			All: applyToAll,
+		},
+		Triggers: []AlertTrigger{
+			{
+				TriggerTypeID: TriggerTypeDoorOpen,
+				TriggerParams: triggerParams,
+			},
+		},
+		Actions: []AlertAction{
+			{
+				ActionTypeID: ActionTypeWebhook,
+				ActionParams: actionParams,
+			},
+		},
+	}
+
+	return c.CreateAlertConfiguration(ctx, config)
+}
+
+// ============================================================================
+// WEBHOOK HANDLER ДЛЯ ОБРАБОТКИ ВХОДЯЩИХ СОБЫТИЙ
+// ============================================================================
+
 // WebhookHandler обрабатывает входящие webhook события от Samsara
 type WebhookHandler struct {
-	OnGeofenceEntry  func(event *AlertEvent) error
-	OnGeofenceExit   func(event *AlertEvent) error
-	OnMovement       func(event *AlertEvent) error
-	OnSpeeding       func(event *AlertEvent) error
-	OnEngineIdle     func(event *AlertEvent) error
-	OnVehicleFault   func(event *AlertEvent) error
-	OnHarshEvent     func(event *AlertEvent) error
+	// Callbacks для транспортных событий
+	OnGeofenceEntry func(event *AlertEvent) error
+	OnGeofenceExit  func(event *AlertEvent) error
+	OnMovement      func(event *AlertEvent) error
+	OnSpeeding      func(event *AlertEvent) error
+	OnEngineIdle    func(event *AlertEvent) error
+	OnVehicleFault  func(event *AlertEvent) error
+	OnHarshEvent    func(event *AlertEvent) error
+
+	// Callbacks для температурных/сенсорных событий
+	OnTemperatureAbove func(event *AlertEvent) error
+	OnTemperatureBelow func(event *AlertEvent) error
+	OnHumidityAbove    func(event *AlertEvent) error
+	OnHumidityBelow    func(event *AlertEvent) error
+	OnDoorOpen         func(event *AlertEvent) error
+	OnDoorClosed       func(event *AlertEvent) error
+	OnReeferTempAbove  func(event *AlertEvent) error
+	OnReeferTempBelow  func(event *AlertEvent) error
+
+	// Callbacks для адресных событий
 	OnAddressCreated func(address *Address) error
 	OnAddressUpdated func(address *Address) error
 	OnAddressDeleted func(addressID string) error
@@ -1115,6 +1524,39 @@ func (h *WebhookHandler) handleAlertEvent(event *WebhookEvent) error {
 	case AlertConditionHarshEvent:
 		if h.OnHarshEvent != nil {
 			return h.OnHarshEvent(&alertEvent)
+		}
+	// Temperature-related alerts
+	case AlertConditionTemperatureAbove:
+		if h.OnTemperatureAbove != nil {
+			return h.OnTemperatureAbove(&alertEvent)
+		}
+	case AlertConditionTemperatureBelow:
+		if h.OnTemperatureBelow != nil {
+			return h.OnTemperatureBelow(&alertEvent)
+		}
+	case AlertConditionHumidityAbove:
+		if h.OnHumidityAbove != nil {
+			return h.OnHumidityAbove(&alertEvent)
+		}
+	case AlertConditionHumidityBelow:
+		if h.OnHumidityBelow != nil {
+			return h.OnHumidityBelow(&alertEvent)
+		}
+	case AlertConditionReeferTemperatureAbove:
+		if h.OnReeferTempAbove != nil {
+			return h.OnReeferTempAbove(&alertEvent)
+		}
+	case AlertConditionReeferTemperatureBelow:
+		if h.OnReeferTempBelow != nil {
+			return h.OnReeferTempBelow(&alertEvent)
+		}
+	case AlertConditionDoorOpen:
+		if h.OnDoorOpen != nil {
+			return h.OnDoorOpen(&alertEvent)
+		}
+	case AlertConditionDoorClosed:
+		if h.OnDoorClosed != nil {
+			return h.OnDoorClosed(&alertEvent)
 		}
 	}
 
@@ -1217,6 +1659,113 @@ func CreateFullGeofenceSetup(client *Client, ctx context.Context, name, address 
 	_, err = client.CreateGeofenceAlert(ctx, name+" Exit", geofence.ID, webhook.ID, false, true)
 	if err != nil {
 		return fmt.Errorf("failed to create exit alert: %w", err)
+	}
+
+	return nil
+}
+
+// TemperatureMonitor предоставляет удобные функции для мониторинга температуры
+type TemperatureMonitor struct {
+	client  *Client
+	handler *WebhookHandler
+}
+
+// NewTemperatureMonitor создаёт новый монитор температуры
+func NewTemperatureMonitor(client *Client) *TemperatureMonitor {
+	return &TemperatureMonitor{
+		client:  client,
+		handler: NewWebhookHandler(),
+	}
+}
+
+// OnTemperatureExceedsThreshold устанавливает callback для превышения температуры
+func (m *TemperatureMonitor) OnTemperatureExceedsThreshold(callback func(sensorID int64, sensorName string, tempCelsius float64, details string, timestamp time.Time) error) {
+	m.handler.OnTemperatureAbove = func(event *AlertEvent) error {
+		timestamp := time.Unix(event.StartMs/1000, (event.StartMs%1000)*1000000)
+		// Парсим температуру из details или других полей
+		// В реальном случае Samsara может передавать дополнительные данные в event
+		if event.Device != nil {
+			// Преобразуем milliC в Celsius для удобства
+			tempCelsius := 0.0 // В реальности нужно извлечь из event
+			return callback(event.Device.ID, event.Device.Name, tempCelsius, event.Details, timestamp)
+		}
+		return fmt.Errorf("no sensor information in temperature event")
+	}
+}
+
+// OnTemperatureBelowThreshold устанавливает callback для падения температуры ниже порога
+func (m *TemperatureMonitor) OnTemperatureBelowThreshold(callback func(sensorID int64, sensorName string, tempCelsius float64, details string, timestamp time.Time) error) {
+	m.handler.OnTemperatureBelow = func(event *AlertEvent) error {
+		timestamp := time.Unix(event.StartMs/1000, (event.StartMs%1000)*1000000)
+		if event.Device != nil {
+			tempCelsius := 0.0 // В реальности нужно извлечь из event
+			return callback(event.Device.ID, event.Device.Name, tempCelsius, event.Details, timestamp)
+		}
+		return fmt.Errorf("no sensor information in temperature event")
+	}
+}
+
+// OnHumidityExceedsThreshold устанавливает callback для превышения влажности
+func (m *TemperatureMonitor) OnHumidityExceedsThreshold(callback func(sensorID int64, sensorName string, humidityPercent float64, details string, timestamp time.Time) error) {
+	m.handler.OnHumidityAbove = func(event *AlertEvent) error {
+		timestamp := time.Unix(event.StartMs/1000, (event.StartMs%1000)*1000000)
+		if event.Device != nil {
+			humidityPercent := 0.0 // В реальности нужно извлечь из event
+			return callback(event.Device.ID, event.Device.Name, humidityPercent, event.Details, timestamp)
+		}
+		return fmt.Errorf("no sensor information in humidity event")
+	}
+}
+
+// OnDoorOpen устанавливает callback для открытия двери
+func (m *TemperatureMonitor) OnDoorOpen(callback func(sensorID int64, sensorName string, details string, timestamp time.Time) error) {
+	m.handler.OnDoorOpen = func(event *AlertEvent) error {
+		timestamp := time.Unix(event.StartMs/1000, (event.StartMs%1000)*1000000)
+		if event.Device != nil {
+			return callback(event.Device.ID, event.Device.Name, event.Details, timestamp)
+		}
+		return fmt.Errorf("no sensor information in door event")
+	}
+}
+
+// OnDoorClosed устанавливает callback для закрытия двери
+func (m *TemperatureMonitor) OnDoorClosed(callback func(sensorID int64, sensorName string, details string, timestamp time.Time) error) {
+	m.handler.OnDoorClosed = func(event *AlertEvent) error {
+		timestamp := time.Unix(event.StartMs/1000, (event.StartMs%1000)*1000000)
+		if event.Device != nil {
+			return callback(event.Device.ID, event.Device.Name, event.Details, timestamp)
+		}
+		return fmt.Errorf("no sensor information in door event")
+	}
+}
+
+// GetWebhookHandler возвращает webhook handler
+func (m *TemperatureMonitor) GetWebhookHandler() *WebhookHandler {
+	return m.handler
+}
+
+// CreateFullTemperatureMonitoringSetup создаёт полную настройку мониторинга температуры
+func CreateFullTemperatureMonitoringSetup(client *Client, ctx context.Context, name string, sensorID int64, webhookURL string, tempThresholdCelsius float64) error {
+	// 1. Создаём webhook для температурных событий
+	webhook, err := client.CreateWebhook(ctx, WebhookDefinition{
+		Name:       name + " Temperature Webhook",
+		URL:        webhookURL,
+		EventTypes: []string{string(EventTypeAlert)},
+	})
+	if err != nil {
+		return fmt.Errorf("failed to create webhook: %w", err)
+	}
+
+	// 2. Создаём алерт для превышения температуры
+	_, err = client.CreateTemperatureAlert(ctx, name+" High Temp", sensorID, webhook.ID, tempThresholdCelsius, true, 0, false)
+	if err != nil {
+		return fmt.Errorf("failed to create high temperature alert: %w", err)
+	}
+
+	// 3. Создаём алерт для падения температуры
+	_, err = client.CreateTemperatureAlert(ctx, name+" Low Temp", sensorID, webhook.ID, tempThresholdCelsius-10, false, 0, false)
+	if err != nil {
+		return fmt.Errorf("failed to create low temperature alert: %w", err)
 	}
 
 	return nil

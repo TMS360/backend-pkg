@@ -54,6 +54,11 @@ func (c *Client) Close() error {
 	return c.db.Close()
 }
 
+// GetConnection returns the underlying database connection
+func (c *Client) GetConnection() driver.Conn {
+	return c.db
+}
+
 // GetDB returns the underlying database connection
 func (c *Client) GetDB() driver.Conn {
 	return c.db

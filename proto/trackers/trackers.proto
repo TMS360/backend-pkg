@@ -28,6 +28,7 @@ message VehicleVIN {
   VehicleType type = 3;    // Type of vehicle
   string number = 4;       // Vehicle number
   google.protobuf.Timestamp updated_at = 5;
+  string company_id = 6;   // Company ID for grouping vehicles
 }
 
 // Type of vehicle

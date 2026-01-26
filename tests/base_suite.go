@@ -19,8 +19,8 @@ import (
 type BaseSuite struct {
 	suite.Suite
 	Log       *slog.Logger
+	DBConn    *gorm.DB
 	DB        *gorm.DB
-	Tx        *gorm.DB
 	Tm        tmsdb.TransactionManager
 	Ctx       context.Context
 	UserID    uuid.UUID
@@ -42,16 +42,16 @@ func (s *BaseSuite) SetupSuite(dbCfg config.PostgresSQLConfig) {
 		CompanyID: utils.Pointer(s.CompanyID),
 	})
 
-	s.DB = db.WithContext(s.Ctx)
+	s.DBConn = db.WithContext(s.Ctx)
 }
 
 func (s *BaseSuite) SetupTest() {
-	s.Tx = s.DB.Begin()
-	s.Tm = tmsdb.NewGormTransactionManager(s.Tx, "test")
+	s.DB = s.DBConn.Begin()
+	s.Tm = tmsdb.NewGormTransactionManager(s.DB, "test")
 }
 
 func (s *BaseSuite) TearDownTest() {
-	if s.Tx != nil {
-		s.Tx.Rollback()
+	if s.DB != nil {
+		s.DB.Rollback()
 	}
 }

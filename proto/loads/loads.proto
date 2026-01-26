@@ -10,7 +10,7 @@ option go_package = "github.com/TMS360/backend-pkg/proto/loads";
 
 // LoadsService provides load management functionality
 service LoadsService {
-  rpc GetRecentBrokers(GetRecentBrokerIDsRequest) returns (GetRecentBrokerIDsResponse);
+  rpc GetRecentBrokerIDs(GetRecentBrokerIDsRequest) returns (GetRecentBrokerIDsResponse);
 
   // Get shipment by ID
   rpc GetShipment(GetShipmentRequest) returns (ShipmentResponse);

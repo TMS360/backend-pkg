@@ -2159,9 +2159,9 @@ const file_loads_loads_proto_rawDesc = "" +
 	"\vVehicleType\x12\x1c\n" +
 	"\x18VEHICLE_TYPE_UNSPECIFIED\x10\x00\x12\x16\n" +
 	"\x12VEHICLE_TYPE_TRUCK\x10\x01\x12\x18\n" +
-	"\x14VEHICLE_TYPE_TRAILER\x10\x022\x81\x05\n" +
-	"\fLoadsService\x12W\n" +
-	"\x10GetRecentBrokers\x12 .loads.GetRecentBrokerIDsRequest\x1a!.loads.GetRecentBrokerIDsResponse\x12A\n" +
+	"\x14VEHICLE_TYPE_TRAILER\x10\x022\x83\x05\n" +
+	"\fLoadsService\x12Y\n" +
+	"\x12GetRecentBrokerIDs\x12 .loads.GetRecentBrokerIDsRequest\x1a!.loads.GetRecentBrokerIDsResponse\x12A\n" +
 	"\vGetShipment\x12\x19.loads.GetShipmentRequest\x1a\x17.loads.ShipmentResponse\x12J\n" +
 	"\rListShipments\x12\x1b.loads.ListShipmentsRequest\x1a\x1c.loads.ListShipmentsResponse\x125\n" +
 	"\aGetTrip\x12\x15.loads.GetTripRequest\x1a\x13.loads.TripResponse\x12>\n" +
@@ -2257,7 +2257,7 @@ var file_loads_loads_proto_depIdxs = []int32{
 	26, // 39: loads.VehicleAssignment.assigned_to:type_name -> google.protobuf.Timestamp
 	5,  // 40: loads.VehicleLocation.vehicle_type:type_name -> loads.VehicleType
 	26, // 41: loads.VehicleLocation.gps_time:type_name -> google.protobuf.Timestamp
-	6,  // 42: loads.LoadsService.GetRecentBrokers:input_type -> loads.GetRecentBrokerIDsRequest
+	6,  // 42: loads.LoadsService.GetRecentBrokerIDs:input_type -> loads.GetRecentBrokerIDsRequest
 	8,  // 43: loads.LoadsService.GetShipment:input_type -> loads.GetShipmentRequest
 	10, // 44: loads.LoadsService.ListShipments:input_type -> loads.ListShipmentsRequest
 	12, // 45: loads.LoadsService.GetTrip:input_type -> loads.GetTripRequest
@@ -2265,7 +2265,7 @@ var file_loads_loads_proto_depIdxs = []int32{
 	16, // 47: loads.LoadsService.GetVehicleAssignments:input_type -> loads.GetVehicleAssignmentsRequest
 	18, // 48: loads.LoadsService.UpdateVehicleLocation:input_type -> loads.UpdateVehicleLocationRequest
 	19, // 49: loads.LoadsService.StreamVehicleLocations:input_type -> loads.StreamVehicleLocationsRequest
-	7,  // 50: loads.LoadsService.GetRecentBrokers:output_type -> loads.GetRecentBrokerIDsResponse
+	7,  // 50: loads.LoadsService.GetRecentBrokerIDs:output_type -> loads.GetRecentBrokerIDsResponse
 	9,  // 51: loads.LoadsService.GetShipment:output_type -> loads.ShipmentResponse
 	11, // 52: loads.LoadsService.ListShipments:output_type -> loads.ListShipmentsResponse
 	13, // 53: loads.LoadsService.GetTrip:output_type -> loads.TripResponse

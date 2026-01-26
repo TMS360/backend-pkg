@@ -12,6 +12,7 @@ import (
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
+	sync "sync"
 	unsafe "unsafe"
 )
 
@@ -22,19 +23,208 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+type GetLocalBrokersRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	BrokerIds     []string               `protobuf:"bytes,1,rep,name=broker_ids,json=brokerIds,proto3" json:"broker_ids,omitempty"` // UUIDs
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetLocalBrokersRequest) Reset() {
+	*x = GetLocalBrokersRequest{}
+	mi := &file_mediator_mediator_proto_msgTypes[0]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetLocalBrokersRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetLocalBrokersRequest) ProtoMessage() {}
+
+func (x *GetLocalBrokersRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_mediator_mediator_proto_msgTypes[0]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetLocalBrokersRequest.ProtoReflect.Descriptor instead.
+func (*GetLocalBrokersRequest) Descriptor() ([]byte, []int) {
+	return file_mediator_mediator_proto_rawDescGZIP(), []int{0}
+}
+
+func (x *GetLocalBrokersRequest) GetBrokerIds() []string {
+	if x != nil {
+		return x.BrokerIds
+	}
+	return nil
+}
+
+type Broker struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"` // UUID
+	CompanyName   string                 `protobuf:"bytes,2,opt,name=company_name,json=companyName,proto3" json:"company_name,omitempty"`
+	McNumber      string                 `protobuf:"bytes,3,opt,name=mc_number,json=mcNumber,proto3" json:"mc_number,omitempty"`
+	DotNumber     string                 `protobuf:"bytes,4,opt,name=dot_number,json=dotNumber,proto3" json:"dot_number,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *Broker) Reset() {
+	*x = Broker{}
+	mi := &file_mediator_mediator_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Broker) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Broker) ProtoMessage() {}
+
+func (x *Broker) ProtoReflect() protoreflect.Message {
+	mi := &file_mediator_mediator_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Broker.ProtoReflect.Descriptor instead.
+func (*Broker) Descriptor() ([]byte, []int) {
+	return file_mediator_mediator_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *Broker) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *Broker) GetCompanyName() string {
+	if x != nil {
+		return x.CompanyName
+	}
+	return ""
+}
+
+func (x *Broker) GetMcNumber() string {
+	if x != nil {
+		return x.McNumber
+	}
+	return ""
+}
+
+func (x *Broker) GetDotNumber() string {
+	if x != nil {
+		return x.DotNumber
+	}
+	return ""
+}
+
+type GetLocalBrokersResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Brokers       []*Broker              `protobuf:"bytes,1,rep,name=brokers,proto3" json:"brokers,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetLocalBrokersResponse) Reset() {
+	*x = GetLocalBrokersResponse{}
+	mi := &file_mediator_mediator_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetLocalBrokersResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetLocalBrokersResponse) ProtoMessage() {}
+
+func (x *GetLocalBrokersResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_mediator_mediator_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetLocalBrokersResponse.ProtoReflect.Descriptor instead.
+func (*GetLocalBrokersResponse) Descriptor() ([]byte, []int) {
+	return file_mediator_mediator_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *GetLocalBrokersResponse) GetBrokers() []*Broker {
+	if x != nil {
+		return x.Brokers
+	}
+	return nil
+}
+
 var File_mediator_mediator_proto protoreflect.FileDescriptor
 
 const file_mediator_mediator_proto_rawDesc = "" +
 	"\n" +
-	"\x17mediator/mediator.proto\x12\bmediatorB.Z,github.com/TMS360/backend-pkg/proto/mediatorb\x06proto3"
+	"\x17mediator/mediator.proto\x12\bmediator\"7\n" +
+	"\x16GetLocalBrokersRequest\x12\x1d\n" +
+	"\n" +
+	"broker_ids\x18\x01 \x03(\tR\tbrokerIds\"w\n" +
+	"\x06Broker\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12!\n" +
+	"\fcompany_name\x18\x02 \x01(\tR\vcompanyName\x12\x1b\n" +
+	"\tmc_number\x18\x03 \x01(\tR\bmcNumber\x12\x1d\n" +
+	"\n" +
+	"dot_number\x18\x04 \x01(\tR\tdotNumber\"E\n" +
+	"\x17GetLocalBrokersResponse\x12*\n" +
+	"\abrokers\x18\x01 \x03(\v2\x10.mediator.BrokerR\abrokers2i\n" +
+	"\x0fMediatorService\x12V\n" +
+	"\x0fGetLocalBrokers\x12 .mediator.GetLocalBrokersRequest\x1a!.mediator.GetLocalBrokersResponseB.Z,github.com/TMS360/backend-pkg/proto/mediatorb\x06proto3"
 
-var file_mediator_mediator_proto_goTypes = []any{}
+var (
+	file_mediator_mediator_proto_rawDescOnce sync.Once
+	file_mediator_mediator_proto_rawDescData []byte
+)
+
+func file_mediator_mediator_proto_rawDescGZIP() []byte {
+	file_mediator_mediator_proto_rawDescOnce.Do(func() {
+		file_mediator_mediator_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_mediator_mediator_proto_rawDesc), len(file_mediator_mediator_proto_rawDesc)))
+	})
+	return file_mediator_mediator_proto_rawDescData
+}
+
+var file_mediator_mediator_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
+var file_mediator_mediator_proto_goTypes = []any{
+	(*GetLocalBrokersRequest)(nil),  // 0: mediator.GetLocalBrokersRequest
+	(*Broker)(nil),                  // 1: mediator.Broker
+	(*GetLocalBrokersResponse)(nil), // 2: mediator.GetLocalBrokersResponse
+}
 var file_mediator_mediator_proto_depIdxs = []int32{
-	0, // [0:0] is the sub-list for method output_type
-	0, // [0:0] is the sub-list for method input_type
-	0, // [0:0] is the sub-list for extension type_name
-	0, // [0:0] is the sub-list for extension extendee
-	0, // [0:0] is the sub-list for field type_name
+	1, // 0: mediator.GetLocalBrokersResponse.brokers:type_name -> mediator.Broker
+	0, // 1: mediator.MediatorService.GetLocalBrokers:input_type -> mediator.GetLocalBrokersRequest
+	2, // 2: mediator.MediatorService.GetLocalBrokers:output_type -> mediator.GetLocalBrokersResponse
+	2, // [2:3] is the sub-list for method output_type
+	1, // [1:2] is the sub-list for method input_type
+	1, // [1:1] is the sub-list for extension type_name
+	1, // [1:1] is the sub-list for extension extendee
+	0, // [0:1] is the sub-list for field type_name
 }
 
 func init() { file_mediator_mediator_proto_init() }
@@ -48,12 +238,13 @@ func file_mediator_mediator_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_mediator_mediator_proto_rawDesc), len(file_mediator_mediator_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   0,
+			NumMessages:   3,
 			NumExtensions: 0,
-			NumServices:   0,
+			NumServices:   1,
 		},
 		GoTypes:           file_mediator_mediator_proto_goTypes,
 		DependencyIndexes: file_mediator_mediator_proto_depIdxs,
+		MessageInfos:      file_mediator_mediator_proto_msgTypes,
 	}.Build()
 	File_mediator_mediator_proto = out.File
 	file_mediator_mediator_proto_goTypes = nil

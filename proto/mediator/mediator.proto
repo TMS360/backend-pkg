@@ -3,5 +3,23 @@ syntax = "proto3";
 
 package mediator;
 
-
 option go_package = "github.com/TMS360/backend-pkg/proto/mediator";
+
+service MediatorService {
+  rpc GetLocalBrokers(GetLocalBrokersRequest) returns (GetLocalBrokersResponse);
+}
+
+message GetLocalBrokersRequest {
+  repeated string broker_ids = 1;   // UUIDs
+}
+
+message Broker {
+  string id = 1;           // UUID
+  string company_name = 2;
+  string mc_number = 3;
+  string dot_number = 4;
+}
+
+message GetLocalBrokersResponse {
+  repeated Broker brokers = 1;
+}

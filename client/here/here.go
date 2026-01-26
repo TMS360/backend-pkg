@@ -162,6 +162,7 @@ type Client struct {
 	httpClient  *http.Client
 	routerHost  string
 	geocodeHost string
+	lookupHost  string
 	apiKey      string
 }
 
@@ -181,10 +182,16 @@ func NewClient(cfg config.HereConfig, apiKey string) (*Client, error) {
 		geocodeHost = "https://geocode.search.hereapi.com"
 	}
 
+	lookupHost := cfg.LookupHost
+	if lookupHost == "" {
+		lookupHost = "https://lookup.search.hereapi.com"
+	}
+
 	return &Client{
 		httpClient:  &http.Client{Timeout: 30 * time.Second},
 		routerHost:  routerHost,
 		geocodeHost: geocodeHost,
+		lookupHost:  lookupHost,
 		apiKey:      apiKey,
 	}, nil
 }
@@ -199,6 +206,7 @@ func NewClientWithToken(apiKey string) (*Client, error) {
 		httpClient:  &http.Client{Timeout: 30 * time.Second},
 		routerHost:  "https://router.hereapi.com",
 		geocodeHost: "https://geocode.search.hereapi.com",
+		lookupHost:  "https://lookup.search.hereapi.com",
 		apiKey:      apiKey,
 	}, nil
 }
@@ -410,4 +418,45 @@ func (c *Client) CalculateDistance(ctx context.Context, origin, destination Coor
 	}
 
 	return summary.Length, summary.Duration, nil
+}
+
+// LookupRequest contains parameters for the Lookup API
+type LookupRequest struct {
+	ID       string // Required: HERE ID of the place to look up
+	Language string // Optional: language for the response
+}
+
+// Lookup retrieves detailed information about a place by its HERE ID
+func (c *Client) Lookup(ctx context.Context, req LookupRequest) (*GeocodeItem, error) {
+	if req.ID == "" {
+		return nil, fmt.Errorf("ID cannot be empty")
+	}
+
+	params := url.Values{}
+	params.Set("id", req.ID)
+	params.Set("apiKey", c.apiKey)
+
+	if req.Language != "" {
+		params.Set("lang", req.Language)
+	}
+
+	fullURL := fmt.Sprintf("%s/v1/lookup?%s", c.lookupHost, params.Encode())
+
+	resp, err := c.doRequest(ctx, http.MethodGet, fullURL)
+	if err != nil {
+		return nil, fmt.Errorf("failed to lookup: %w", err)
+	}
+	defer resp.Body.Close()
+
+	var item GeocodeItem
+	if err := json.NewDecoder(resp.Body).Decode(&item); err != nil {
+		return nil, fmt.Errorf("failed to decode lookup response: %w", err)
+	}
+
+	return &item, nil
+}
+
+// LookupByID is a simple helper to lookup a place by its HERE ID
+func (c *Client) LookupByID(ctx context.Context, id string) (*GeocodeItem, error) {
+	return c.Lookup(ctx, LookupRequest{ID: id})
 }

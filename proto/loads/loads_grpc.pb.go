@@ -22,6 +22,7 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
+	LoadsService_GetRecentBrokers_FullMethodName       = "/loads.LoadsService/GetRecentBrokers"
 	LoadsService_GetShipment_FullMethodName            = "/loads.LoadsService/GetShipment"
 	LoadsService_ListShipments_FullMethodName          = "/loads.LoadsService/ListShipments"
 	LoadsService_GetTrip_FullMethodName                = "/loads.LoadsService/GetTrip"
@@ -37,6 +38,7 @@ const (
 //
 // LoadsService provides load management functionality
 type LoadsServiceClient interface {
+	GetRecentBrokers(ctx context.Context, in *GetRecentBrokerIDsRequest, opts ...grpc.CallOption) (*GetRecentBrokerIDsResponse, error)
 	// Get shipment by ID
 	GetShipment(ctx context.Context, in *GetShipmentRequest, opts ...grpc.CallOption) (*ShipmentResponse, error)
 	// List shipments with filters
@@ -59,6 +61,16 @@ type loadsServiceClient struct {
 
 func NewLoadsServiceClient(cc grpc.ClientConnInterface) LoadsServiceClient {
 	return &loadsServiceClient{cc}
+}
+
+func (c *loadsServiceClient) GetRecentBrokers(ctx context.Context, in *GetRecentBrokerIDsRequest, opts ...grpc.CallOption) (*GetRecentBrokerIDsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetRecentBrokerIDsResponse)
+	err := c.cc.Invoke(ctx, LoadsService_GetRecentBrokers_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
 }
 
 func (c *loadsServiceClient) GetShipment(ctx context.Context, in *GetShipmentRequest, opts ...grpc.CallOption) (*ShipmentResponse, error) {
@@ -146,6 +158,7 @@ type LoadsService_StreamVehicleLocationsClient = grpc.ServerStreamingClient[Vehi
 //
 // LoadsService provides load management functionality
 type LoadsServiceServer interface {
+	GetRecentBrokers(context.Context, *GetRecentBrokerIDsRequest) (*GetRecentBrokerIDsResponse, error)
 	// Get shipment by ID
 	GetShipment(context.Context, *GetShipmentRequest) (*ShipmentResponse, error)
 	// List shipments with filters
@@ -170,6 +183,9 @@ type LoadsServiceServer interface {
 // pointer dereference when methods are called.
 type UnimplementedLoadsServiceServer struct{}
 
+func (UnimplementedLoadsServiceServer) GetRecentBrokers(context.Context, *GetRecentBrokerIDsRequest) (*GetRecentBrokerIDsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetRecentBrokers not implemented")
+}
 func (UnimplementedLoadsServiceServer) GetShipment(context.Context, *GetShipmentRequest) (*ShipmentResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetShipment not implemented")
 }
@@ -210,6 +226,24 @@ func RegisterLoadsServiceServer(s grpc.ServiceRegistrar, srv LoadsServiceServer)
 		t.testEmbeddedByValue()
 	}
 	s.RegisterService(&LoadsService_ServiceDesc, srv)
+}
+
+func _LoadsService_GetRecentBrokers_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetRecentBrokerIDsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(LoadsServiceServer).GetRecentBrokers(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: LoadsService_GetRecentBrokers_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(LoadsServiceServer).GetRecentBrokers(ctx, req.(*GetRecentBrokerIDsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
 func _LoadsService_GetShipment_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
@@ -338,6 +372,10 @@ var LoadsService_ServiceDesc = grpc.ServiceDesc{
 	ServiceName: "loads.LoadsService",
 	HandlerType: (*LoadsServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "GetRecentBrokers",
+			Handler:    _LoadsService_GetRecentBrokers_Handler,
+		},
 		{
 			MethodName: "GetShipment",
 			Handler:    _LoadsService_GetShipment_Handler,

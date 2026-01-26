@@ -21,8 +21,9 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	BrokerService_GetBrokers_FullMethodName      = "/brokers.BrokerService/GetBrokers"
-	BrokerService_GetOrCreateByMC_FullMethodName = "/brokers.BrokerService/GetOrCreateByMC"
+	BrokerService_GetBrokers_FullMethodName       = "/brokers.BrokerService/GetBrokers"
+	BrokerService_GetOrCreateByMC_FullMethodName  = "/brokers.BrokerService/GetOrCreateByMC"
+	BrokerService_GetOrCreateByDOT_FullMethodName = "/brokers.BrokerService/GetOrCreateByDOT"
 )
 
 // BrokerServiceClient is the client API for BrokerService service.
@@ -31,7 +32,8 @@ const (
 type BrokerServiceClient interface {
 	GetBrokers(ctx context.Context, in *GetBrokersRequest, opts ...grpc.CallOption) (*GetBrokersResponse, error)
 	// Internal endpoint: Finds a broker by MC or creates a "Stub" profile
-	GetOrCreateByMC(ctx context.Context, in *GetOrCreateByMCRequest, opts ...grpc.CallOption) (*GetOrCreateByMCResponse, error)
+	GetOrCreateByMC(ctx context.Context, in *GetOrCreateByMCRequest, opts ...grpc.CallOption) (*GetOrCreateResponse, error)
+	GetOrCreateByDOT(ctx context.Context, in *GetOrCreateByDOTRequest, opts ...grpc.CallOption) (*GetOrCreateResponse, error)
 }
 
 type brokerServiceClient struct {
@@ -52,10 +54,20 @@ func (c *brokerServiceClient) GetBrokers(ctx context.Context, in *GetBrokersRequ
 	return out, nil
 }
 
-func (c *brokerServiceClient) GetOrCreateByMC(ctx context.Context, in *GetOrCreateByMCRequest, opts ...grpc.CallOption) (*GetOrCreateByMCResponse, error) {
+func (c *brokerServiceClient) GetOrCreateByMC(ctx context.Context, in *GetOrCreateByMCRequest, opts ...grpc.CallOption) (*GetOrCreateResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(GetOrCreateByMCResponse)
+	out := new(GetOrCreateResponse)
 	err := c.cc.Invoke(ctx, BrokerService_GetOrCreateByMC_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *brokerServiceClient) GetOrCreateByDOT(ctx context.Context, in *GetOrCreateByDOTRequest, opts ...grpc.CallOption) (*GetOrCreateResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetOrCreateResponse)
+	err := c.cc.Invoke(ctx, BrokerService_GetOrCreateByDOT_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -68,7 +80,8 @@ func (c *brokerServiceClient) GetOrCreateByMC(ctx context.Context, in *GetOrCrea
 type BrokerServiceServer interface {
 	GetBrokers(context.Context, *GetBrokersRequest) (*GetBrokersResponse, error)
 	// Internal endpoint: Finds a broker by MC or creates a "Stub" profile
-	GetOrCreateByMC(context.Context, *GetOrCreateByMCRequest) (*GetOrCreateByMCResponse, error)
+	GetOrCreateByMC(context.Context, *GetOrCreateByMCRequest) (*GetOrCreateResponse, error)
+	GetOrCreateByDOT(context.Context, *GetOrCreateByDOTRequest) (*GetOrCreateResponse, error)
 	mustEmbedUnimplementedBrokerServiceServer()
 }
 
@@ -82,8 +95,11 @@ type UnimplementedBrokerServiceServer struct{}
 func (UnimplementedBrokerServiceServer) GetBrokers(context.Context, *GetBrokersRequest) (*GetBrokersResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetBrokers not implemented")
 }
-func (UnimplementedBrokerServiceServer) GetOrCreateByMC(context.Context, *GetOrCreateByMCRequest) (*GetOrCreateByMCResponse, error) {
+func (UnimplementedBrokerServiceServer) GetOrCreateByMC(context.Context, *GetOrCreateByMCRequest) (*GetOrCreateResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetOrCreateByMC not implemented")
+}
+func (UnimplementedBrokerServiceServer) GetOrCreateByDOT(context.Context, *GetOrCreateByDOTRequest) (*GetOrCreateResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetOrCreateByDOT not implemented")
 }
 func (UnimplementedBrokerServiceServer) mustEmbedUnimplementedBrokerServiceServer() {}
 func (UnimplementedBrokerServiceServer) testEmbeddedByValue()                       {}
@@ -142,6 +158,24 @@ func _BrokerService_GetOrCreateByMC_Handler(srv interface{}, ctx context.Context
 	return interceptor(ctx, in, info, handler)
 }
 
+func _BrokerService_GetOrCreateByDOT_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetOrCreateByDOTRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(BrokerServiceServer).GetOrCreateByDOT(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: BrokerService_GetOrCreateByDOT_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(BrokerServiceServer).GetOrCreateByDOT(ctx, req.(*GetOrCreateByDOTRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // BrokerService_ServiceDesc is the grpc.ServiceDesc for BrokerService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -156,6 +190,10 @@ var BrokerService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetOrCreateByMC",
 			Handler:    _BrokerService_GetOrCreateByMC_Handler,
+		},
+		{
+			MethodName: "GetOrCreateByDOT",
+			Handler:    _BrokerService_GetOrCreateByDOT_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

@@ -70,6 +70,7 @@ type SamsaraConfig struct {
 type HereConfig struct {
 	RouterHost  string `mapstructure:"ROUTER_HOST"`
 	GeocodeHost string `mapstructure:"GEOCODE_HOST"`
+	LookupHost  string `mapstructure:"LOOKUP_HOST"`
 }
 
 type ClickHouseConfig struct {

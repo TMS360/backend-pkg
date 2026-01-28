@@ -9,15 +9,19 @@ import (
 	"time"
 )
 
-type Client struct {
+type FmcsaAPI interface {
+	SearchCompaniesByName(ctx context.Context, name string) ([]Carrier, error)
+}
+
+type client struct {
 	apiKey     string
 	httpClient *http.Client
 	baseURL    string
 }
 
 // NewClient creates a client with a 10-second timeout
-func NewClient(apiKey string) *Client {
-	return &Client{
+func NewClient(apiKey string) FmcsaAPI {
+	return &client{
 		apiKey:  apiKey,
 		baseURL: "https://mobile.fmcsa.dot.gov/qc/services/carriers/",
 		httpClient: &http.Client{
@@ -27,7 +31,7 @@ func NewClient(apiKey string) *Client {
 }
 
 // SearchCompaniesByName calls the FMCSA API
-func (c *Client) SearchCompaniesByName(ctx context.Context, name string) ([]Carrier, error) {
+func (c *client) SearchCompaniesByName(ctx context.Context, name string) ([]Carrier, error) {
 	req, err := c.prepareReq(ctx, "name/"+url.PathEscape(name))
 	if err != nil {
 		return nil, err
@@ -56,7 +60,7 @@ func (c *Client) SearchCompaniesByName(ctx context.Context, name string) ([]Carr
 	return carriers, nil
 }
 
-func (c *Client) prepareReq(ctx context.Context, endpoint string) (*http.Request, error) {
+func (c *client) prepareReq(ctx context.Context, endpoint string) (*http.Request, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.baseURL+endpoint, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)

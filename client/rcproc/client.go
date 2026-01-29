@@ -74,7 +74,7 @@ func (c *client) Process(ctx context.Context, file io.Reader, filename, contentT
 	// ----------------
 
 	if resp.StatusCode != http.StatusOK {
-		var errResp ProcessorErrorResponse
+		var errResp ErrorResponse
 		if err := json.Unmarshal(bodyBytes, &errResp); err == nil && errResp.Detail != "" {
 			return nil, fmt.Errorf("rc processor: %s", errResp.Detail)
 		}
@@ -90,7 +90,7 @@ func (c *client) Process(ctx context.Context, file io.Reader, filename, contentT
 	return &rcResp, nil
 }
 
-type ProcessorErrorResponse struct {
+type ErrorResponse struct {
 	Detail string `json:"detail"`
 }
 

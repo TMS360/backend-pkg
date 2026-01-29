@@ -54,6 +54,11 @@ func (s *saferAPIService) FetchByMCNumber(ctx context.Context, mcNumber string) 
 	// ----------------
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		var errResp ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &errResp); err == nil && errResp.Message != "" {
+			return nil, fmt.Errorf("rc processor: %s", errResp.Message)
+		}
+
 		return nil, fmt.Errorf("external API returned error status: %d", resp.StatusCode)
 	}
 
@@ -79,14 +84,24 @@ func (s *saferAPIService) FetchByDOTNumber(ctx context.Context, dotNumber string
 	}
 	defer resp.Body.Close()
 
+	bodyBytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read response body: %w", err)
+	}
+
+	// --- LOGGING ---
+	fmt.Printf("SaferApi Status: %s\n", resp.Status)
+	fmt.Printf("SaferApi Body: %s\n", string(bodyBytes))
+	// ----------------
+
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		return nil, fmt.Errorf("external API returned error status: %d", resp.StatusCode)
 	}
 
 	// 6. Decode Response
 	var result SaferCompanyDTO
-	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-		return nil, fmt.Errorf("failed to decode response JSON: %w", err)
+	if err := json.Unmarshal(bodyBytes, &result); err != nil {
+		return nil, fmt.Errorf("failed to decode Safer response: %w", err)
 	}
 
 	return &result, nil
@@ -102,4 +117,8 @@ func (s *saferAPIService) prepareRequest(ctx context.Context, requestURL string)
 	req.Header.Set("Accept", "application/json")
 
 	return req, nil
+}
+
+type ErrorResponse struct {
+	Message string `json:"message"`
 }

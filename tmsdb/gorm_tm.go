@@ -82,3 +82,6 @@ func (m *GormTransactionManager) Publish(ctx context.Context, aggType, evtType s
 	// Uses the active transaction from context automatically
 	return m.GetDB(ctx).Create(event).Error
 }
+func (m *GormTransactionManager) Filter(ctx context.Context, model interface{}) *FilterBuilder {
+	return newFilterBuilder(m.GetDB(ctx), model)
+}

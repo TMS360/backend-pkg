@@ -31,84 +31,18 @@ func NewSaferAPIService(apiKey string) SaferApi {
 }
 
 func (s *saferAPIService) FetchByMCNumber(ctx context.Context, mcNumber string) (*SaferCompanyDTO, error) {
-	requestURL := s.baseURL + "/mcmx/snapshot/" + mcNumber
-	req, err := s.prepareRequest(ctx, requestURL)
-	if err != nil {
-		return nil, err
-	}
-
-	resp, err := s.client.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("network error fetching MC data: %w", err)
-	}
-	defer resp.Body.Close()
-
-	bodyBytes, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read response body: %w", err)
-	}
-
-	// --- LOGGING ---
-	fmt.Printf("SaferApi Status: %s\n", resp.Status)
-	fmt.Printf("SaferApi Body: %s\n", string(bodyBytes))
-	// ----------------
-
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		var errResp ErrorResponse
-		if err := json.Unmarshal(bodyBytes, &errResp); err == nil && errResp.Message != "" {
-			return nil, fmt.Errorf("rc processor: %s", errResp.Message)
-		}
-
-		return nil, fmt.Errorf("external API returned error status: %d", resp.StatusCode)
-	}
-
-	// 6. Decode Response
-	var result SaferCompanyDTO
-	if err := json.Unmarshal(bodyBytes, &result); err != nil {
-		return nil, fmt.Errorf("failed to decode Safer response: %w", err)
-	}
-
-	return &result, nil
+	url := fmt.Sprintf("%s/mcmx/snapshot/%s", s.baseURL, mcNumber)
+	return s.executeRequest(ctx, url, "MC")
 }
 
 func (s *saferAPIService) FetchByDOTNumber(ctx context.Context, dotNumber string) (*SaferCompanyDTO, error) {
-	requestURL := s.baseURL + "/usdot/snapshot/" + dotNumber
-	req, err := s.prepareRequest(ctx, requestURL)
-	if err != nil {
-		return nil, err
-	}
-
-	resp, err := s.client.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("network error fetching DOT data: %w", err)
-	}
-	defer resp.Body.Close()
-
-	bodyBytes, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read response body: %w", err)
-	}
-
-	// --- LOGGING ---
-	fmt.Printf("SaferApi Status: %s\n", resp.Status)
-	fmt.Printf("SaferApi Body: %s\n", string(bodyBytes))
-	// ----------------
-
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return nil, fmt.Errorf("external API returned error status: %d", resp.StatusCode)
-	}
-
-	// 6. Decode Response
-	var result SaferCompanyDTO
-	if err := json.Unmarshal(bodyBytes, &result); err != nil {
-		return nil, fmt.Errorf("failed to decode Safer response: %w", err)
-	}
-
-	return &result, nil
+	url := fmt.Sprintf("%s/usdot/snapshot/%s", s.baseURL, dotNumber)
+	return s.executeRequest(ctx, url, "DOT")
 }
 
-func (s *saferAPIService) prepareRequest(ctx context.Context, requestURL string) (*http.Request, error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, requestURL, nil)
+// executeRequest handles the shared logic for performing the HTTP call and decoding the result
+func (s *saferAPIService) executeRequest(ctx context.Context, url, entityType string) (*SaferCompanyDTO, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
@@ -116,7 +50,38 @@ func (s *saferAPIService) prepareRequest(ctx context.Context, requestURL string)
 	req.Header.Set("x-api-key", s.apiKey)
 	req.Header.Set("Accept", "application/json")
 
-	return req, nil
+	resp, err := s.client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("network error fetching %s data: %w", entityType, err)
+	}
+	defer resp.Body.Close()
+
+	bodyBytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read response body: %w", err)
+	}
+
+	// --- LOGGING ---
+	fmt.Printf("SaferApi Status: %s\n", resp.Status)
+	fmt.Printf("SaferApi Body: %s\n", string(bodyBytes))
+	// ----------------
+
+	// Handle Error Status Codes
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		var errResp ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &errResp); err == nil && errResp.Message != "" {
+			return nil, fmt.Errorf("safer api: %s", errResp.Message)
+		}
+		return nil, fmt.Errorf("external API returned error status: %d", resp.StatusCode)
+	}
+
+	// Decode Successful Response
+	var result SaferCompanyDTO
+	if err := json.Unmarshal(bodyBytes, &result); err != nil {
+		return nil, fmt.Errorf("failed to decode Safer response: %w", err)
+	}
+
+	return &result, nil
 }
 
 type ErrorResponse struct {

@@ -74,17 +74,24 @@ func (c *client) Process(ctx context.Context, file io.Reader, filename, contentT
 	// ----------------
 
 	if resp.StatusCode != http.StatusOK {
+		var errResp ProcessorErrorResponse
+		if err := json.Unmarshal(bodyBytes, &errResp); err == nil && errResp.Detail != "" {
+			return nil, fmt.Errorf("rc processor: %s", errResp.Detail)
+		}
+
 		return nil, fmt.Errorf("rc processor returned status: %d", resp.StatusCode)
 	}
 
-	// 4. Decode JSON from the Bytes
 	var rcResp RateConResponse
-	// We use json.Unmarshal here because we already have the bytes
 	if err := json.Unmarshal(bodyBytes, &rcResp); err != nil {
 		return nil, fmt.Errorf("failed to decode rc response: %w", err)
 	}
 
 	return &rcResp, nil
+}
+
+type ProcessorErrorResponse struct {
+	Detail string `json:"detail"`
 }
 
 // TODO: test with io.Pipe instead of buffering entire file in memory

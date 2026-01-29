@@ -367,6 +367,102 @@ func (VehicleType) EnumDescriptor() ([]byte, []int) {
 	return file_loads_loads_proto_rawDescGZIP(), []int{5}
 }
 
+type GetRecentBrokerIDsRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	CourierId     string                 `protobuf:"bytes,1,opt,name=courier_id,json=courierId,proto3" json:"courier_id,omitempty"` // Filter by courier
+	Limit         int32                  `protobuf:"varint,20,opt,name=limit,proto3" json:"limit,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetRecentBrokerIDsRequest) Reset() {
+	*x = GetRecentBrokerIDsRequest{}
+	mi := &file_loads_loads_proto_msgTypes[0]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetRecentBrokerIDsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetRecentBrokerIDsRequest) ProtoMessage() {}
+
+func (x *GetRecentBrokerIDsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_loads_loads_proto_msgTypes[0]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetRecentBrokerIDsRequest.ProtoReflect.Descriptor instead.
+func (*GetRecentBrokerIDsRequest) Descriptor() ([]byte, []int) {
+	return file_loads_loads_proto_rawDescGZIP(), []int{0}
+}
+
+func (x *GetRecentBrokerIDsRequest) GetCourierId() string {
+	if x != nil {
+		return x.CourierId
+	}
+	return ""
+}
+
+func (x *GetRecentBrokerIDsRequest) GetLimit() int32 {
+	if x != nil {
+		return x.Limit
+	}
+	return 0
+}
+
+type GetRecentBrokerIDsResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	BrokerIds     []string               `protobuf:"bytes,1,rep,name=broker_ids,json=brokerIds,proto3" json:"broker_ids,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetRecentBrokerIDsResponse) Reset() {
+	*x = GetRecentBrokerIDsResponse{}
+	mi := &file_loads_loads_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetRecentBrokerIDsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetRecentBrokerIDsResponse) ProtoMessage() {}
+
+func (x *GetRecentBrokerIDsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_loads_loads_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetRecentBrokerIDsResponse.ProtoReflect.Descriptor instead.
+func (*GetRecentBrokerIDsResponse) Descriptor() ([]byte, []int) {
+	return file_loads_loads_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *GetRecentBrokerIDsResponse) GetBrokerIds() []string {
+	if x != nil {
+		return x.BrokerIds
+	}
+	return nil
+}
+
 // Request to get a shipment by ID
 type GetShipmentRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
@@ -377,7 +473,7 @@ type GetShipmentRequest struct {
 
 func (x *GetShipmentRequest) Reset() {
 	*x = GetShipmentRequest{}
-	mi := &file_loads_loads_proto_msgTypes[0]
+	mi := &file_loads_loads_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -389,7 +485,7 @@ func (x *GetShipmentRequest) String() string {
 func (*GetShipmentRequest) ProtoMessage() {}
 
 func (x *GetShipmentRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_loads_loads_proto_msgTypes[0]
+	mi := &file_loads_loads_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -402,7 +498,7 @@ func (x *GetShipmentRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetShipmentRequest.ProtoReflect.Descriptor instead.
 func (*GetShipmentRequest) Descriptor() ([]byte, []int) {
-	return file_loads_loads_proto_rawDescGZIP(), []int{0}
+	return file_loads_loads_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *GetShipmentRequest) GetShipmentId() string {
@@ -422,7 +518,7 @@ type ShipmentResponse struct {
 
 func (x *ShipmentResponse) Reset() {
 	*x = ShipmentResponse{}
-	mi := &file_loads_loads_proto_msgTypes[1]
+	mi := &file_loads_loads_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -434,7 +530,7 @@ func (x *ShipmentResponse) String() string {
 func (*ShipmentResponse) ProtoMessage() {}
 
 func (x *ShipmentResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_loads_loads_proto_msgTypes[1]
+	mi := &file_loads_loads_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -447,7 +543,7 @@ func (x *ShipmentResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ShipmentResponse.ProtoReflect.Descriptor instead.
 func (*ShipmentResponse) Descriptor() ([]byte, []int) {
-	return file_loads_loads_proto_rawDescGZIP(), []int{1}
+	return file_loads_loads_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *ShipmentResponse) GetShipment() *Shipment {
@@ -471,7 +567,7 @@ type ListShipmentsRequest struct {
 
 func (x *ListShipmentsRequest) Reset() {
 	*x = ListShipmentsRequest{}
-	mi := &file_loads_loads_proto_msgTypes[2]
+	mi := &file_loads_loads_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -483,7 +579,7 @@ func (x *ListShipmentsRequest) String() string {
 func (*ListShipmentsRequest) ProtoMessage() {}
 
 func (x *ListShipmentsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_loads_loads_proto_msgTypes[2]
+	mi := &file_loads_loads_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -496,7 +592,7 @@ func (x *ListShipmentsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListShipmentsRequest.ProtoReflect.Descriptor instead.
 func (*ListShipmentsRequest) Descriptor() ([]byte, []int) {
-	return file_loads_loads_proto_rawDescGZIP(), []int{2}
+	return file_loads_loads_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *ListShipmentsRequest) GetLimit() int32 {
@@ -545,7 +641,7 @@ type ListShipmentsResponse struct {
 
 func (x *ListShipmentsResponse) Reset() {
 	*x = ListShipmentsResponse{}
-	mi := &file_loads_loads_proto_msgTypes[3]
+	mi := &file_loads_loads_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -557,7 +653,7 @@ func (x *ListShipmentsResponse) String() string {
 func (*ListShipmentsResponse) ProtoMessage() {}
 
 func (x *ListShipmentsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_loads_loads_proto_msgTypes[3]
+	mi := &file_loads_loads_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -570,7 +666,7 @@ func (x *ListShipmentsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListShipmentsResponse.ProtoReflect.Descriptor instead.
 func (*ListShipmentsResponse) Descriptor() ([]byte, []int) {
-	return file_loads_loads_proto_rawDescGZIP(), []int{3}
+	return file_loads_loads_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *ListShipmentsResponse) GetShipments() []*Shipment {
@@ -597,7 +693,7 @@ type GetTripRequest struct {
 
 func (x *GetTripRequest) Reset() {
 	*x = GetTripRequest{}
-	mi := &file_loads_loads_proto_msgTypes[4]
+	mi := &file_loads_loads_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -609,7 +705,7 @@ func (x *GetTripRequest) String() string {
 func (*GetTripRequest) ProtoMessage() {}
 
 func (x *GetTripRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_loads_loads_proto_msgTypes[4]
+	mi := &file_loads_loads_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -622,7 +718,7 @@ func (x *GetTripRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetTripRequest.ProtoReflect.Descriptor instead.
 func (*GetTripRequest) Descriptor() ([]byte, []int) {
-	return file_loads_loads_proto_rawDescGZIP(), []int{4}
+	return file_loads_loads_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *GetTripRequest) GetTripId() string {
@@ -642,7 +738,7 @@ type TripResponse struct {
 
 func (x *TripResponse) Reset() {
 	*x = TripResponse{}
-	mi := &file_loads_loads_proto_msgTypes[5]
+	mi := &file_loads_loads_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -654,7 +750,7 @@ func (x *TripResponse) String() string {
 func (*TripResponse) ProtoMessage() {}
 
 func (x *TripResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_loads_loads_proto_msgTypes[5]
+	mi := &file_loads_loads_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -667,7 +763,7 @@ func (x *TripResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TripResponse.ProtoReflect.Descriptor instead.
 func (*TripResponse) Descriptor() ([]byte, []int) {
-	return file_loads_loads_proto_rawDescGZIP(), []int{5}
+	return file_loads_loads_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *TripResponse) GetTrip() *Trip {
@@ -694,7 +790,7 @@ type ListTripsRequest struct {
 
 func (x *ListTripsRequest) Reset() {
 	*x = ListTripsRequest{}
-	mi := &file_loads_loads_proto_msgTypes[6]
+	mi := &file_loads_loads_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -706,7 +802,7 @@ func (x *ListTripsRequest) String() string {
 func (*ListTripsRequest) ProtoMessage() {}
 
 func (x *ListTripsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_loads_loads_proto_msgTypes[6]
+	mi := &file_loads_loads_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -719,7 +815,7 @@ func (x *ListTripsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListTripsRequest.ProtoReflect.Descriptor instead.
 func (*ListTripsRequest) Descriptor() ([]byte, []int) {
-	return file_loads_loads_proto_rawDescGZIP(), []int{6}
+	return file_loads_loads_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *ListTripsRequest) GetLimit() int32 {
@@ -789,7 +885,7 @@ type ListTripsResponse struct {
 
 func (x *ListTripsResponse) Reset() {
 	*x = ListTripsResponse{}
-	mi := &file_loads_loads_proto_msgTypes[7]
+	mi := &file_loads_loads_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -801,7 +897,7 @@ func (x *ListTripsResponse) String() string {
 func (*ListTripsResponse) ProtoMessage() {}
 
 func (x *ListTripsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_loads_loads_proto_msgTypes[7]
+	mi := &file_loads_loads_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -814,7 +910,7 @@ func (x *ListTripsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListTripsResponse.ProtoReflect.Descriptor instead.
 func (*ListTripsResponse) Descriptor() ([]byte, []int) {
-	return file_loads_loads_proto_rawDescGZIP(), []int{7}
+	return file_loads_loads_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *ListTripsResponse) GetTrips() []*Trip {
@@ -844,7 +940,7 @@ type GetVehicleAssignmentsRequest struct {
 
 func (x *GetVehicleAssignmentsRequest) Reset() {
 	*x = GetVehicleAssignmentsRequest{}
-	mi := &file_loads_loads_proto_msgTypes[8]
+	mi := &file_loads_loads_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -856,7 +952,7 @@ func (x *GetVehicleAssignmentsRequest) String() string {
 func (*GetVehicleAssignmentsRequest) ProtoMessage() {}
 
 func (x *GetVehicleAssignmentsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_loads_loads_proto_msgTypes[8]
+	mi := &file_loads_loads_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -869,7 +965,7 @@ func (x *GetVehicleAssignmentsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetVehicleAssignmentsRequest.ProtoReflect.Descriptor instead.
 func (*GetVehicleAssignmentsRequest) Descriptor() ([]byte, []int) {
-	return file_loads_loads_proto_rawDescGZIP(), []int{8}
+	return file_loads_loads_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *GetVehicleAssignmentsRequest) GetFrom() *timestamppb.Timestamp {
@@ -910,7 +1006,7 @@ type GetVehicleAssignmentsResponse struct {
 
 func (x *GetVehicleAssignmentsResponse) Reset() {
 	*x = GetVehicleAssignmentsResponse{}
-	mi := &file_loads_loads_proto_msgTypes[9]
+	mi := &file_loads_loads_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -922,7 +1018,7 @@ func (x *GetVehicleAssignmentsResponse) String() string {
 func (*GetVehicleAssignmentsResponse) ProtoMessage() {}
 
 func (x *GetVehicleAssignmentsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_loads_loads_proto_msgTypes[9]
+	mi := &file_loads_loads_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -935,7 +1031,7 @@ func (x *GetVehicleAssignmentsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetVehicleAssignmentsResponse.ProtoReflect.Descriptor instead.
 func (*GetVehicleAssignmentsResponse) Descriptor() ([]byte, []int) {
-	return file_loads_loads_proto_rawDescGZIP(), []int{9}
+	return file_loads_loads_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *GetVehicleAssignmentsResponse) GetAssignments() []*VehicleAssignment {
@@ -961,7 +1057,7 @@ type UpdateVehicleLocationRequest struct {
 
 func (x *UpdateVehicleLocationRequest) Reset() {
 	*x = UpdateVehicleLocationRequest{}
-	mi := &file_loads_loads_proto_msgTypes[10]
+	mi := &file_loads_loads_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -973,7 +1069,7 @@ func (x *UpdateVehicleLocationRequest) String() string {
 func (*UpdateVehicleLocationRequest) ProtoMessage() {}
 
 func (x *UpdateVehicleLocationRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_loads_loads_proto_msgTypes[10]
+	mi := &file_loads_loads_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -986,7 +1082,7 @@ func (x *UpdateVehicleLocationRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateVehicleLocationRequest.ProtoReflect.Descriptor instead.
 func (*UpdateVehicleLocationRequest) Descriptor() ([]byte, []int) {
-	return file_loads_loads_proto_rawDescGZIP(), []int{10}
+	return file_loads_loads_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *UpdateVehicleLocationRequest) GetVehicleId() string {
@@ -1049,7 +1145,7 @@ type StreamVehicleLocationsRequest struct {
 
 func (x *StreamVehicleLocationsRequest) Reset() {
 	*x = StreamVehicleLocationsRequest{}
-	mi := &file_loads_loads_proto_msgTypes[11]
+	mi := &file_loads_loads_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1061,7 +1157,7 @@ func (x *StreamVehicleLocationsRequest) String() string {
 func (*StreamVehicleLocationsRequest) ProtoMessage() {}
 
 func (x *StreamVehicleLocationsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_loads_loads_proto_msgTypes[11]
+	mi := &file_loads_loads_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1074,7 +1170,7 @@ func (x *StreamVehicleLocationsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StreamVehicleLocationsRequest.ProtoReflect.Descriptor instead.
 func (*StreamVehicleLocationsRequest) Descriptor() ([]byte, []int) {
-	return file_loads_loads_proto_rawDescGZIP(), []int{11}
+	return file_loads_loads_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *StreamVehicleLocationsRequest) GetVehicleIds() []string {
@@ -1112,7 +1208,7 @@ type Shipment struct {
 
 func (x *Shipment) Reset() {
 	*x = Shipment{}
-	mi := &file_loads_loads_proto_msgTypes[12]
+	mi := &file_loads_loads_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1124,7 +1220,7 @@ func (x *Shipment) String() string {
 func (*Shipment) ProtoMessage() {}
 
 func (x *Shipment) ProtoReflect() protoreflect.Message {
-	mi := &file_loads_loads_proto_msgTypes[12]
+	mi := &file_loads_loads_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1137,7 +1233,7 @@ func (x *Shipment) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Shipment.ProtoReflect.Descriptor instead.
 func (*Shipment) Descriptor() ([]byte, []int) {
-	return file_loads_loads_proto_rawDescGZIP(), []int{12}
+	return file_loads_loads_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *Shipment) GetId() string {
@@ -1244,7 +1340,7 @@ type ShipmentLeg struct {
 
 func (x *ShipmentLeg) Reset() {
 	*x = ShipmentLeg{}
-	mi := &file_loads_loads_proto_msgTypes[13]
+	mi := &file_loads_loads_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1256,7 +1352,7 @@ func (x *ShipmentLeg) String() string {
 func (*ShipmentLeg) ProtoMessage() {}
 
 func (x *ShipmentLeg) ProtoReflect() protoreflect.Message {
-	mi := &file_loads_loads_proto_msgTypes[13]
+	mi := &file_loads_loads_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1269,7 +1365,7 @@ func (x *ShipmentLeg) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ShipmentLeg.ProtoReflect.Descriptor instead.
 func (*ShipmentLeg) Descriptor() ([]byte, []int) {
-	return file_loads_loads_proto_rawDescGZIP(), []int{13}
+	return file_loads_loads_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *ShipmentLeg) GetId() string {
@@ -1375,7 +1471,7 @@ type Trip struct {
 
 func (x *Trip) Reset() {
 	*x = Trip{}
-	mi := &file_loads_loads_proto_msgTypes[14]
+	mi := &file_loads_loads_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1387,7 +1483,7 @@ func (x *Trip) String() string {
 func (*Trip) ProtoMessage() {}
 
 func (x *Trip) ProtoReflect() protoreflect.Message {
-	mi := &file_loads_loads_proto_msgTypes[14]
+	mi := &file_loads_loads_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1400,7 +1496,7 @@ func (x *Trip) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Trip.ProtoReflect.Descriptor instead.
 func (*Trip) Descriptor() ([]byte, []int) {
-	return file_loads_loads_proto_rawDescGZIP(), []int{14}
+	return file_loads_loads_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *Trip) GetId() string {
@@ -1544,7 +1640,7 @@ type TripStop struct {
 
 func (x *TripStop) Reset() {
 	*x = TripStop{}
-	mi := &file_loads_loads_proto_msgTypes[15]
+	mi := &file_loads_loads_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1556,7 +1652,7 @@ func (x *TripStop) String() string {
 func (*TripStop) ProtoMessage() {}
 
 func (x *TripStop) ProtoReflect() protoreflect.Message {
-	mi := &file_loads_loads_proto_msgTypes[15]
+	mi := &file_loads_loads_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1569,7 +1665,7 @@ func (x *TripStop) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TripStop.ProtoReflect.Descriptor instead.
 func (*TripStop) Descriptor() ([]byte, []int) {
-	return file_loads_loads_proto_rawDescGZIP(), []int{15}
+	return file_loads_loads_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *TripStop) GetId() string {
@@ -1679,7 +1775,7 @@ type VehicleAssignment struct {
 
 func (x *VehicleAssignment) Reset() {
 	*x = VehicleAssignment{}
-	mi := &file_loads_loads_proto_msgTypes[16]
+	mi := &file_loads_loads_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1691,7 +1787,7 @@ func (x *VehicleAssignment) String() string {
 func (*VehicleAssignment) ProtoMessage() {}
 
 func (x *VehicleAssignment) ProtoReflect() protoreflect.Message {
-	mi := &file_loads_loads_proto_msgTypes[16]
+	mi := &file_loads_loads_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1704,7 +1800,7 @@ func (x *VehicleAssignment) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use VehicleAssignment.ProtoReflect.Descriptor instead.
 func (*VehicleAssignment) Descriptor() ([]byte, []int) {
-	return file_loads_loads_proto_rawDescGZIP(), []int{16}
+	return file_loads_loads_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *VehicleAssignment) GetAssignmentId() string {
@@ -1774,7 +1870,7 @@ type VehicleLocation struct {
 
 func (x *VehicleLocation) Reset() {
 	*x = VehicleLocation{}
-	mi := &file_loads_loads_proto_msgTypes[17]
+	mi := &file_loads_loads_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1786,7 +1882,7 @@ func (x *VehicleLocation) String() string {
 func (*VehicleLocation) ProtoMessage() {}
 
 func (x *VehicleLocation) ProtoReflect() protoreflect.Message {
-	mi := &file_loads_loads_proto_msgTypes[17]
+	mi := &file_loads_loads_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1799,7 +1895,7 @@ func (x *VehicleLocation) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use VehicleLocation.ProtoReflect.Descriptor instead.
 func (*VehicleLocation) Descriptor() ([]byte, []int) {
-	return file_loads_loads_proto_rawDescGZIP(), []int{17}
+	return file_loads_loads_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *VehicleLocation) GetVehicleId() string {
@@ -1869,7 +1965,14 @@ var File_loads_loads_proto protoreflect.FileDescriptor
 
 const file_loads_loads_proto_rawDesc = "" +
 	"\n" +
-	"\x11loads/loads.proto\x12\x05loads\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1bgoogle/protobuf/empty.proto\"5\n" +
+	"\x11loads/loads.proto\x12\x05loads\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1bgoogle/protobuf/empty.proto\"P\n" +
+	"\x19GetRecentBrokerIDsRequest\x12\x1d\n" +
+	"\n" +
+	"courier_id\x18\x01 \x01(\tR\tcourierId\x12\x14\n" +
+	"\x05limit\x18\x14 \x01(\x05R\x05limit\";\n" +
+	"\x1aGetRecentBrokerIDsResponse\x12\x1d\n" +
+	"\n" +
+	"broker_ids\x18\x01 \x03(\tR\tbrokerIds\"5\n" +
 	"\x12GetShipmentRequest\x12\x1f\n" +
 	"\vshipment_id\x18\x01 \x01(\tR\n" +
 	"shipmentId\"?\n" +
@@ -2056,8 +2159,9 @@ const file_loads_loads_proto_rawDesc = "" +
 	"\vVehicleType\x12\x1c\n" +
 	"\x18VEHICLE_TYPE_UNSPECIFIED\x10\x00\x12\x16\n" +
 	"\x12VEHICLE_TYPE_TRUCK\x10\x01\x12\x18\n" +
-	"\x14VEHICLE_TYPE_TRAILER\x10\x022\xa8\x04\n" +
-	"\fLoadsService\x12A\n" +
+	"\x14VEHICLE_TYPE_TRAILER\x10\x022\x83\x05\n" +
+	"\fLoadsService\x12Y\n" +
+	"\x12GetRecentBrokerIDs\x12 .loads.GetRecentBrokerIDsRequest\x1a!.loads.GetRecentBrokerIDsResponse\x12A\n" +
 	"\vGetShipment\x12\x19.loads.GetShipmentRequest\x1a\x17.loads.ShipmentResponse\x12J\n" +
 	"\rListShipments\x12\x1b.loads.ListShipmentsRequest\x1a\x1c.loads.ListShipmentsResponse\x125\n" +
 	"\aGetTrip\x12\x15.loads.GetTripRequest\x1a\x13.loads.TripResponse\x12>\n" +
@@ -2079,7 +2183,7 @@ func file_loads_loads_proto_rawDescGZIP() []byte {
 }
 
 var file_loads_loads_proto_enumTypes = make([]protoimpl.EnumInfo, 6)
-var file_loads_loads_proto_msgTypes = make([]protoimpl.MessageInfo, 18)
+var file_loads_loads_proto_msgTypes = make([]protoimpl.MessageInfo, 20)
 var file_loads_loads_proto_goTypes = []any{
 	(ShipmentStatus)(0),                   // 0: loads.ShipmentStatus
 	(ShipmentType)(0),                     // 1: loads.ShipmentType
@@ -2087,86 +2191,90 @@ var file_loads_loads_proto_goTypes = []any{
 	(StopType)(0),                         // 3: loads.StopType
 	(StopStatus)(0),                       // 4: loads.StopStatus
 	(VehicleType)(0),                      // 5: loads.VehicleType
-	(*GetShipmentRequest)(nil),            // 6: loads.GetShipmentRequest
-	(*ShipmentResponse)(nil),              // 7: loads.ShipmentResponse
-	(*ListShipmentsRequest)(nil),          // 8: loads.ListShipmentsRequest
-	(*ListShipmentsResponse)(nil),         // 9: loads.ListShipmentsResponse
-	(*GetTripRequest)(nil),                // 10: loads.GetTripRequest
-	(*TripResponse)(nil),                  // 11: loads.TripResponse
-	(*ListTripsRequest)(nil),              // 12: loads.ListTripsRequest
-	(*ListTripsResponse)(nil),             // 13: loads.ListTripsResponse
-	(*GetVehicleAssignmentsRequest)(nil),  // 14: loads.GetVehicleAssignmentsRequest
-	(*GetVehicleAssignmentsResponse)(nil), // 15: loads.GetVehicleAssignmentsResponse
-	(*UpdateVehicleLocationRequest)(nil),  // 16: loads.UpdateVehicleLocationRequest
-	(*StreamVehicleLocationsRequest)(nil), // 17: loads.StreamVehicleLocationsRequest
-	(*Shipment)(nil),                      // 18: loads.Shipment
-	(*ShipmentLeg)(nil),                   // 19: loads.ShipmentLeg
-	(*Trip)(nil),                          // 20: loads.Trip
-	(*TripStop)(nil),                      // 21: loads.TripStop
-	(*VehicleAssignment)(nil),             // 22: loads.VehicleAssignment
-	(*VehicleLocation)(nil),               // 23: loads.VehicleLocation
-	(*timestamppb.Timestamp)(nil),         // 24: google.protobuf.Timestamp
-	(*emptypb.Empty)(nil),                 // 25: google.protobuf.Empty
+	(*GetRecentBrokerIDsRequest)(nil),     // 6: loads.GetRecentBrokerIDsRequest
+	(*GetRecentBrokerIDsResponse)(nil),    // 7: loads.GetRecentBrokerIDsResponse
+	(*GetShipmentRequest)(nil),            // 8: loads.GetShipmentRequest
+	(*ShipmentResponse)(nil),              // 9: loads.ShipmentResponse
+	(*ListShipmentsRequest)(nil),          // 10: loads.ListShipmentsRequest
+	(*ListShipmentsResponse)(nil),         // 11: loads.ListShipmentsResponse
+	(*GetTripRequest)(nil),                // 12: loads.GetTripRequest
+	(*TripResponse)(nil),                  // 13: loads.TripResponse
+	(*ListTripsRequest)(nil),              // 14: loads.ListTripsRequest
+	(*ListTripsResponse)(nil),             // 15: loads.ListTripsResponse
+	(*GetVehicleAssignmentsRequest)(nil),  // 16: loads.GetVehicleAssignmentsRequest
+	(*GetVehicleAssignmentsResponse)(nil), // 17: loads.GetVehicleAssignmentsResponse
+	(*UpdateVehicleLocationRequest)(nil),  // 18: loads.UpdateVehicleLocationRequest
+	(*StreamVehicleLocationsRequest)(nil), // 19: loads.StreamVehicleLocationsRequest
+	(*Shipment)(nil),                      // 20: loads.Shipment
+	(*ShipmentLeg)(nil),                   // 21: loads.ShipmentLeg
+	(*Trip)(nil),                          // 22: loads.Trip
+	(*TripStop)(nil),                      // 23: loads.TripStop
+	(*VehicleAssignment)(nil),             // 24: loads.VehicleAssignment
+	(*VehicleLocation)(nil),               // 25: loads.VehicleLocation
+	(*timestamppb.Timestamp)(nil),         // 26: google.protobuf.Timestamp
+	(*emptypb.Empty)(nil),                 // 27: google.protobuf.Empty
 }
 var file_loads_loads_proto_depIdxs = []int32{
-	18, // 0: loads.ShipmentResponse.shipment:type_name -> loads.Shipment
+	20, // 0: loads.ShipmentResponse.shipment:type_name -> loads.Shipment
 	0,  // 1: loads.ListShipmentsRequest.status:type_name -> loads.ShipmentStatus
-	24, // 2: loads.ListShipmentsRequest.from_date:type_name -> google.protobuf.Timestamp
-	24, // 3: loads.ListShipmentsRequest.to_date:type_name -> google.protobuf.Timestamp
-	18, // 4: loads.ListShipmentsResponse.shipments:type_name -> loads.Shipment
-	20, // 5: loads.TripResponse.trip:type_name -> loads.Trip
+	26, // 2: loads.ListShipmentsRequest.from_date:type_name -> google.protobuf.Timestamp
+	26, // 3: loads.ListShipmentsRequest.to_date:type_name -> google.protobuf.Timestamp
+	20, // 4: loads.ListShipmentsResponse.shipments:type_name -> loads.Shipment
+	22, // 5: loads.TripResponse.trip:type_name -> loads.Trip
 	2,  // 6: loads.ListTripsRequest.status:type_name -> loads.TripStatus
-	24, // 7: loads.ListTripsRequest.from_date:type_name -> google.protobuf.Timestamp
-	24, // 8: loads.ListTripsRequest.to_date:type_name -> google.protobuf.Timestamp
-	20, // 9: loads.ListTripsResponse.trips:type_name -> loads.Trip
-	24, // 10: loads.GetVehicleAssignmentsRequest.from:type_name -> google.protobuf.Timestamp
-	24, // 11: loads.GetVehicleAssignmentsRequest.to:type_name -> google.protobuf.Timestamp
-	22, // 12: loads.GetVehicleAssignmentsResponse.assignments:type_name -> loads.VehicleAssignment
+	26, // 7: loads.ListTripsRequest.from_date:type_name -> google.protobuf.Timestamp
+	26, // 8: loads.ListTripsRequest.to_date:type_name -> google.protobuf.Timestamp
+	22, // 9: loads.ListTripsResponse.trips:type_name -> loads.Trip
+	26, // 10: loads.GetVehicleAssignmentsRequest.from:type_name -> google.protobuf.Timestamp
+	26, // 11: loads.GetVehicleAssignmentsRequest.to:type_name -> google.protobuf.Timestamp
+	24, // 12: loads.GetVehicleAssignmentsResponse.assignments:type_name -> loads.VehicleAssignment
 	5,  // 13: loads.UpdateVehicleLocationRequest.vehicle_type:type_name -> loads.VehicleType
-	24, // 14: loads.UpdateVehicleLocationRequest.gps_time:type_name -> google.protobuf.Timestamp
+	26, // 14: loads.UpdateVehicleLocationRequest.gps_time:type_name -> google.protobuf.Timestamp
 	0,  // 15: loads.Shipment.status:type_name -> loads.ShipmentStatus
 	1,  // 16: loads.Shipment.type:type_name -> loads.ShipmentType
-	19, // 17: loads.Shipment.legs:type_name -> loads.ShipmentLeg
-	24, // 18: loads.Shipment.created_at:type_name -> google.protobuf.Timestamp
-	24, // 19: loads.Shipment.updated_at:type_name -> google.protobuf.Timestamp
+	21, // 17: loads.Shipment.legs:type_name -> loads.ShipmentLeg
+	26, // 18: loads.Shipment.created_at:type_name -> google.protobuf.Timestamp
+	26, // 19: loads.Shipment.updated_at:type_name -> google.protobuf.Timestamp
 	3,  // 20: loads.ShipmentLeg.stop_type:type_name -> loads.StopType
-	24, // 21: loads.ShipmentLeg.appointment_from:type_name -> google.protobuf.Timestamp
-	24, // 22: loads.ShipmentLeg.appointment_to:type_name -> google.protobuf.Timestamp
-	24, // 23: loads.ShipmentLeg.actual_arrival:type_name -> google.protobuf.Timestamp
-	24, // 24: loads.ShipmentLeg.actual_departure:type_name -> google.protobuf.Timestamp
+	26, // 21: loads.ShipmentLeg.appointment_from:type_name -> google.protobuf.Timestamp
+	26, // 22: loads.ShipmentLeg.appointment_to:type_name -> google.protobuf.Timestamp
+	26, // 23: loads.ShipmentLeg.actual_arrival:type_name -> google.protobuf.Timestamp
+	26, // 24: loads.ShipmentLeg.actual_departure:type_name -> google.protobuf.Timestamp
 	2,  // 25: loads.Trip.status:type_name -> loads.TripStatus
-	21, // 26: loads.Trip.stops:type_name -> loads.TripStop
-	24, // 27: loads.Trip.start_time:type_name -> google.protobuf.Timestamp
-	24, // 28: loads.Trip.end_time:type_name -> google.protobuf.Timestamp
-	24, // 29: loads.Trip.created_at:type_name -> google.protobuf.Timestamp
-	24, // 30: loads.Trip.updated_at:type_name -> google.protobuf.Timestamp
+	23, // 26: loads.Trip.stops:type_name -> loads.TripStop
+	26, // 27: loads.Trip.start_time:type_name -> google.protobuf.Timestamp
+	26, // 28: loads.Trip.end_time:type_name -> google.protobuf.Timestamp
+	26, // 29: loads.Trip.created_at:type_name -> google.protobuf.Timestamp
+	26, // 30: loads.Trip.updated_at:type_name -> google.protobuf.Timestamp
 	3,  // 31: loads.TripStop.stop_type:type_name -> loads.StopType
-	24, // 32: loads.TripStop.planned_arrival:type_name -> google.protobuf.Timestamp
-	24, // 33: loads.TripStop.actual_arrival:type_name -> google.protobuf.Timestamp
-	24, // 34: loads.TripStop.planned_departure:type_name -> google.protobuf.Timestamp
-	24, // 35: loads.TripStop.actual_departure:type_name -> google.protobuf.Timestamp
+	26, // 32: loads.TripStop.planned_arrival:type_name -> google.protobuf.Timestamp
+	26, // 33: loads.TripStop.actual_arrival:type_name -> google.protobuf.Timestamp
+	26, // 34: loads.TripStop.planned_departure:type_name -> google.protobuf.Timestamp
+	26, // 35: loads.TripStop.actual_departure:type_name -> google.protobuf.Timestamp
 	4,  // 36: loads.TripStop.status:type_name -> loads.StopStatus
 	5,  // 37: loads.VehicleAssignment.vehicle_type:type_name -> loads.VehicleType
-	24, // 38: loads.VehicleAssignment.assigned_from:type_name -> google.protobuf.Timestamp
-	24, // 39: loads.VehicleAssignment.assigned_to:type_name -> google.protobuf.Timestamp
+	26, // 38: loads.VehicleAssignment.assigned_from:type_name -> google.protobuf.Timestamp
+	26, // 39: loads.VehicleAssignment.assigned_to:type_name -> google.protobuf.Timestamp
 	5,  // 40: loads.VehicleLocation.vehicle_type:type_name -> loads.VehicleType
-	24, // 41: loads.VehicleLocation.gps_time:type_name -> google.protobuf.Timestamp
-	6,  // 42: loads.LoadsService.GetShipment:input_type -> loads.GetShipmentRequest
-	8,  // 43: loads.LoadsService.ListShipments:input_type -> loads.ListShipmentsRequest
-	10, // 44: loads.LoadsService.GetTrip:input_type -> loads.GetTripRequest
-	12, // 45: loads.LoadsService.ListTrips:input_type -> loads.ListTripsRequest
-	14, // 46: loads.LoadsService.GetVehicleAssignments:input_type -> loads.GetVehicleAssignmentsRequest
-	16, // 47: loads.LoadsService.UpdateVehicleLocation:input_type -> loads.UpdateVehicleLocationRequest
-	17, // 48: loads.LoadsService.StreamVehicleLocations:input_type -> loads.StreamVehicleLocationsRequest
-	7,  // 49: loads.LoadsService.GetShipment:output_type -> loads.ShipmentResponse
-	9,  // 50: loads.LoadsService.ListShipments:output_type -> loads.ListShipmentsResponse
-	11, // 51: loads.LoadsService.GetTrip:output_type -> loads.TripResponse
-	13, // 52: loads.LoadsService.ListTrips:output_type -> loads.ListTripsResponse
-	15, // 53: loads.LoadsService.GetVehicleAssignments:output_type -> loads.GetVehicleAssignmentsResponse
-	25, // 54: loads.LoadsService.UpdateVehicleLocation:output_type -> google.protobuf.Empty
-	23, // 55: loads.LoadsService.StreamVehicleLocations:output_type -> loads.VehicleLocation
-	49, // [49:56] is the sub-list for method output_type
-	42, // [42:49] is the sub-list for method input_type
+	26, // 41: loads.VehicleLocation.gps_time:type_name -> google.protobuf.Timestamp
+	6,  // 42: loads.LoadsService.GetRecentBrokerIDs:input_type -> loads.GetRecentBrokerIDsRequest
+	8,  // 43: loads.LoadsService.GetShipment:input_type -> loads.GetShipmentRequest
+	10, // 44: loads.LoadsService.ListShipments:input_type -> loads.ListShipmentsRequest
+	12, // 45: loads.LoadsService.GetTrip:input_type -> loads.GetTripRequest
+	14, // 46: loads.LoadsService.ListTrips:input_type -> loads.ListTripsRequest
+	16, // 47: loads.LoadsService.GetVehicleAssignments:input_type -> loads.GetVehicleAssignmentsRequest
+	18, // 48: loads.LoadsService.UpdateVehicleLocation:input_type -> loads.UpdateVehicleLocationRequest
+	19, // 49: loads.LoadsService.StreamVehicleLocations:input_type -> loads.StreamVehicleLocationsRequest
+	7,  // 50: loads.LoadsService.GetRecentBrokerIDs:output_type -> loads.GetRecentBrokerIDsResponse
+	9,  // 51: loads.LoadsService.GetShipment:output_type -> loads.ShipmentResponse
+	11, // 52: loads.LoadsService.ListShipments:output_type -> loads.ListShipmentsResponse
+	13, // 53: loads.LoadsService.GetTrip:output_type -> loads.TripResponse
+	15, // 54: loads.LoadsService.ListTrips:output_type -> loads.ListTripsResponse
+	17, // 55: loads.LoadsService.GetVehicleAssignments:output_type -> loads.GetVehicleAssignmentsResponse
+	27, // 56: loads.LoadsService.UpdateVehicleLocation:output_type -> google.protobuf.Empty
+	25, // 57: loads.LoadsService.StreamVehicleLocations:output_type -> loads.VehicleLocation
+	50, // [50:58] is the sub-list for method output_type
+	42, // [42:50] is the sub-list for method input_type
 	42, // [42:42] is the sub-list for extension type_name
 	42, // [42:42] is the sub-list for extension extendee
 	0,  // [0:42] is the sub-list for field type_name
@@ -2183,7 +2291,7 @@ func file_loads_loads_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_loads_loads_proto_rawDesc), len(file_loads_loads_proto_rawDesc)),
 			NumEnums:      6,
-			NumMessages:   18,
+			NumMessages:   20,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

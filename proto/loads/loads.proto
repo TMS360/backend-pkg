@@ -10,6 +10,8 @@ option go_package = "github.com/TMS360/backend-pkg/proto/loads";
 
 // LoadsService provides load management functionality
 service LoadsService {
+  rpc GetRecentBrokerIDs(GetRecentBrokerIDsRequest) returns (GetRecentBrokerIDsResponse);
+
   // Get shipment by ID
   rpc GetShipment(GetShipmentRequest) returns (ShipmentResponse);
 
@@ -30,6 +32,15 @@ service LoadsService {
 
   // Stream vehicle locations
   rpc StreamVehicleLocations(StreamVehicleLocationsRequest) returns (stream VehicleLocation);
+}
+
+message GetRecentBrokerIDsRequest {
+  string courier_id = 1; // Filter by courier
+  int32 limit = 20;
+}
+
+message GetRecentBrokerIDsResponse {
+  repeated string broker_ids = 1;
 }
 
 // Request to get a shipment by ID

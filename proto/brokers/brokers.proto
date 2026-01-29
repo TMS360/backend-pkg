@@ -9,7 +9,8 @@ service BrokerService {
   rpc GetBrokers(GetBrokersRequest) returns (GetBrokersResponse);
 
   // Internal endpoint: Finds a broker by MC or creates a "Stub" profile
-  rpc GetOrCreateByMC(GetOrCreateByMCRequest) returns (GetOrCreateByMCResponse);
+  rpc GetOrCreateByMC(GetOrCreateByMCRequest) returns (GetOrCreateResponse);
+  rpc GetOrCreateByDOT(GetOrCreateByDOTRequest) returns (GetOrCreateResponse);
 }
 
 message Broker {
@@ -33,7 +34,13 @@ message GetOrCreateByMCRequest {
   string created_by_source = 2;
 }
 
-message GetOrCreateByMCResponse {
+message GetOrCreateByDOTRequest {
+  string dot_number = 1;
+  // Useful for audit logs: "Created via Courier App by Courier <UUID>"
+  string created_by_source = 2;
+}
+
+message GetOrCreateResponse {
   string broker_id = 1;      // UUID
   bool was_created = 2;
   Broker broker = 3;

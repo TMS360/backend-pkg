@@ -137,6 +137,7 @@ type VehicleVIN struct {
 	Type          VehicleType            `protobuf:"varint,3,opt,name=type,proto3,enum=trackers.VehicleType" json:"type,omitempty"` // Type of vehicle
 	Number        string                 `protobuf:"bytes,4,opt,name=number,proto3" json:"number,omitempty"`                        // Vehicle number
 	UpdatedAt     *timestamppb.Timestamp `protobuf:"bytes,5,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
+	CompanyId     string                 `protobuf:"bytes,6,opt,name=company_id,json=companyId,proto3" json:"company_id,omitempty"` // Company ID for grouping vehicles
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -204,6 +205,13 @@ func (x *VehicleVIN) GetUpdatedAt() *timestamppb.Timestamp {
 		return x.UpdatedAt
 	}
 	return nil
+}
+
+func (x *VehicleVIN) GetCompanyId() string {
+	if x != nil {
+		return x.CompanyId
+	}
+	return ""
 }
 
 // Location update message for Kafka
@@ -400,7 +408,7 @@ const file_trackers_trackers_proto_rawDesc = "" +
 	"\x18StreamVehicleVINsRequest\x12\x1f\n" +
 	"\vactive_only\x18\x01 \x01(\bR\n" +
 	"activeOnly\x127\n" +
-	"\tlast_sync\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\blastSync\"\xac\x01\n" +
+	"\tlast_sync\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\blastSync\"\xcb\x01\n" +
 	"\n" +
 	"VehicleVIN\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x10\n" +
@@ -408,7 +416,9 @@ const file_trackers_trackers_proto_rawDesc = "" +
 	"\x04type\x18\x03 \x01(\x0e2\x15.trackers.VehicleTypeR\x04type\x12\x16\n" +
 	"\x06number\x18\x04 \x01(\tR\x06number\x129\n" +
 	"\n" +
-	"updated_at\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\"\x9f\x03\n" +
+	"updated_at\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\x12\x1d\n" +
+	"\n" +
+	"company_id\x18\x06 \x01(\tR\tcompanyId\"\x9f\x03\n" +
 	"\x15VehicleLocationUpdate\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x10\n" +
 	"\x03vin\x18\x02 \x01(\tR\x03vin\x12)\n" +

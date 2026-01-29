@@ -18,3 +18,11 @@ func (m *SaferAPIMock) FetchByMCNumber(ctx context.Context, mcNumber string) (*s
 	}
 	return args.Get(0).(*saferapi.SaferCompanyDTO), args.Error(1)
 }
+
+func (m *SaferAPIMock) FetchByDOTNumber(ctx context.Context, usdot string) (*saferapi.SaferCompanyDTO, error) {
+	args := m.Called(ctx, usdot)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*saferapi.SaferCompanyDTO), args.Error(1)
+}

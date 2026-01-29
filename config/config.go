@@ -12,6 +12,7 @@ type Config struct {
 	AppEnv            string `mapstructure:"APP_ENV"`
 	AppDebug          bool   `mapstructure:"APP_DEBUG"`
 	AppPort           string `mapstructure:"APP_PORT"`
+	AppURL            string `mapstructure:"APP_URL"`
 	SigningKey        string `mapstructure:"SIGNING_KEY"`
 	GRPCPort          string `mapstructure:"GRPC_PORT"`
 	HTTPServer        `mapstructure:"HTTP"`

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"time"
 )
@@ -42,14 +43,24 @@ func (s *saferAPIService) FetchByMCNumber(ctx context.Context, mcNumber string) 
 	}
 	defer resp.Body.Close()
 
+	bodyBytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read response body: %w", err)
+	}
+
+	// --- LOGGING ---
+	fmt.Printf("SaferApi Status: %s\n", resp.Status)
+	fmt.Printf("SaferApi Body: %s\n", string(bodyBytes))
+	// ----------------
+
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		return nil, fmt.Errorf("external API returned error status: %d", resp.StatusCode)
 	}
 
 	// 6. Decode Response
 	var result SaferCompanyDTO
-	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-		return nil, fmt.Errorf("failed to decode response JSON: %w", err)
+	if err := json.Unmarshal(bodyBytes, &result); err != nil {
+		return nil, fmt.Errorf("failed to decode Safer response: %w", err)
 	}
 
 	return &result, nil

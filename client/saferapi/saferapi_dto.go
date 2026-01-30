@@ -17,6 +17,7 @@ type SaferCompanyDTO struct {
 	Drivers                 *int32           `json:"drivers"`
 	Mcs150FormDate          *string          `json:"mcs_150_form_date"`
 	OutOfServiceDate        *string          `json:"out_of_service_date"`
+	OperatingStatus         *string          `json:"operating_status"`
 	LatestUpdate            *string          `json:"latest_update"`
 	Mcs150MileageYear       *json.RawMessage `json:"mcs_150_mileage_year"`
 	OperationClassification []string         `json:"operation_classification"`

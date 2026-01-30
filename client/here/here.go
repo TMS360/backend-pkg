@@ -322,6 +322,8 @@ func (c *Client) Geocode(ctx context.Context, req GeocodeRequest) (*GeocodeRespo
 
 	if req.In != nil {
 		params.Set("in", *req.In)
+	} else {
+		params.Set("in", "countryCode:USA")
 	}
 
 	if req.Limit > 0 {

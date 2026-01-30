@@ -6,7 +6,20 @@ import (
 )
 
 type Client interface {
-	Process(ctx context.Context, fileReader io.Reader, filename, contentType string) (*RateConResponse, error)
+	Process(ctx context.Context, fileUrl string) (*RCProcessingResponse, error)
+	ProcessSync(ctx context.Context, fileReader io.Reader, filename, contentType string) (*RateConResponse, error)
+}
+
+type RCProcessingRequest struct {
+	FileURL  string `json:"file_url"`
+	Provider string `json:"provider"`
+}
+
+type RCProcessingResponse struct {
+	RequestID        string `json:"request_id"`
+	Status           string `json:"status"`
+	EstimatedSeconds int    `json:"estimated_seconds"`
+	Message          string `json:"message"`
 }
 
 // RateConResponse is the top-level response from your OCR/AI service
@@ -80,4 +93,20 @@ type BrokerContactDTO struct {
 type PaymentTermsDTO struct {
 	QuickPayAvailable bool   `json:"quick_pay_available"`
 	InvoiceEmail      string `json:"invoice_email"`
+}
+
+// ValidationError represents the structure for 422 Unprocessable Entity
+type ValidationError struct {
+	Location []any  `json:"loc"`
+	Message  string `json:"msg"`
+	Type     string `json:"type"`
+}
+
+type HTTPValidationError struct {
+	Detail []ValidationError `json:"detail"`
+}
+
+// BadRequestError represents the structure for a standard 400 Bad Request
+type BadRequestError struct {
+	Detail string `json:"detail"`
 }

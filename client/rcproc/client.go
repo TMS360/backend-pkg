@@ -25,7 +25,48 @@ func NewClient(baseURL, provider string) Client {
 	}
 }
 
-func (c *client) Process(ctx context.Context, file io.Reader, filename, contentType string) (*RateConResponse, error) {
+func (c *client) Process(ctx context.Context, fileUrl string) (*RCProcessingResponse, error) {
+	reqBody := RCProcessingRequest{
+		FileURL:  fileUrl,
+		Provider: c.provider,
+	}
+
+	// 2. Marshal to JSON
+	jsonData, err := json.Marshal(reqBody)
+	if err != nil {
+		return nil, err
+	}
+
+	// 3. Create the Request
+	req, err := http.NewRequestWithContext(ctx, "POST", "https://api.your-endpoint.com/process", bytes.NewBuffer(jsonData))
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("rc processor request failed (async): %w", err)
+	}
+	defer resp.Body.Close()
+
+	bodyBytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read response body: %w", err)
+	}
+
+	if resp.StatusCode > 300 {
+		return nil, c.handleAPIError(resp.StatusCode, bodyBytes)
+	}
+
+	var rcResp RCProcessingResponse
+	if err := json.Unmarshal(bodyBytes, &rcResp); err != nil {
+		return nil, fmt.Errorf("failed to decode rc response (async): %w", err)
+	}
+
+	return &rcResp, nil
+}
+
+func (c *client) ProcessSync(ctx context.Context, file io.Reader, filename, contentType string) (*RateConResponse, error) {
 	// 1. Prepare Multipart Request
 	body := &bytes.Buffer{}
 	writer := multipart.NewWriter(body)
@@ -68,18 +109,8 @@ func (c *client) Process(ctx context.Context, file io.Reader, filename, contentT
 		return nil, fmt.Errorf("failed to read response body: %w", err)
 	}
 
-	// --- LOGGING ---
-	fmt.Printf("RC Processor Status: %s\n", resp.Status)
-	fmt.Printf("RC Processor Body: %s\n", string(bodyBytes))
-	// ----------------
-
-	if resp.StatusCode != http.StatusOK {
-		var errResp ErrorResponse
-		if err := json.Unmarshal(bodyBytes, &errResp); err == nil && errResp.Detail != "" {
-			return nil, fmt.Errorf("rc processor: %s", errResp.Detail)
-		}
-
-		return nil, fmt.Errorf("rc processor returned status: %d", resp.StatusCode)
+	if resp.StatusCode > 300 {
+		return nil, c.handleAPIError(resp.StatusCode, bodyBytes)
 	}
 
 	var rcResp RateConResponse
@@ -90,8 +121,32 @@ func (c *client) Process(ctx context.Context, file io.Reader, filename, contentT
 	return &rcResp, nil
 }
 
-type ErrorResponse struct {
-	Detail string `json:"detail"`
+func (c *client) handleAPIError(status int, bodyBytes []byte) error {
+	// --- LOGGING ---
+	fmt.Printf("RC Processor (async) Status: %s\n", status)
+	fmt.Printf("RC Processor (async) Body: %s\n", string(bodyBytes))
+
+	switch status {
+	case http.StatusUnprocessableEntity: // 422
+		var errResp HTTPValidationError
+		if err := json.Unmarshal(bodyBytes, &errResp); err == nil && errResp.Detail != nil {
+			return fmt.Errorf("422 status but decode failed (Body: %s)", string(bodyBytes))
+		}
+		if len(errResp.Detail) > 0 {
+			return fmt.Errorf("validation error: %s", errResp.Detail[0].Message)
+		}
+		return fmt.Errorf("validation error: unknown details")
+
+	case http.StatusBadRequest: // 400
+		var badReq BadRequestError
+		if err := json.Unmarshal(bodyBytes, &badReq); err != nil {
+			return fmt.Errorf("400 status but decode failed (Body: %s)", string(bodyBytes))
+		}
+		return fmt.Errorf("bad request: %s", badReq.Detail)
+
+	default:
+		return fmt.Errorf("api returned unexpected status %d (Body: %s)", status, string(bodyBytes))
+	}
 }
 
 // TODO: test with io.Pipe instead of buffering entire file in memory

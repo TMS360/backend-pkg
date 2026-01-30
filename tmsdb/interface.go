@@ -13,4 +13,5 @@ type TransactionManager interface {
 	WithTransaction(ctx context.Context, fn func(ctx context.Context) error) error
 	GetDB(ctx context.Context) *gorm.DB
 	Publish(ctx context.Context, aggType, evtType string, aggID uuid.UUID, data interface{}) error
+	Filter(ctx context.Context, model interface{}) *FilterBuilder
 }

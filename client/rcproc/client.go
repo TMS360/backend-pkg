@@ -66,7 +66,7 @@ func (c *client) Process(ctx context.Context, fileUrl string) (*RCProcessingResp
 	return &rcResp, nil
 }
 
-func (c *client) GetStatus(ctx context.Context, requestID string) (*RCProcessingStatusResponse, error) {
+func (c *client) GetStatus(ctx context.Context, requestID string) (*RateConResponse, error) {
 	// 1. Create the Request
 	req, err := http.NewRequestWithContext(ctx, "GET", c.baseURL+"/api/v1/process/status/"+requestID, nil)
 	if err != nil {
@@ -88,12 +88,12 @@ func (c *client) GetStatus(ctx context.Context, requestID string) (*RCProcessing
 		return nil, c.handleAPIError(resp.StatusCode, bodyBytes)
 	}
 
-	var statusResp RCProcessingStatusResponse
-	if err := json.Unmarshal(bodyBytes, &statusResp); err != nil {
-		return nil, fmt.Errorf("failed to decode rc status response: %w", err)
+	var rcResp RateConResponse
+	if err := json.Unmarshal(bodyBytes, &rcResp); err != nil {
+		return nil, fmt.Errorf("failed to decode rc response: %w", err)
 	}
 
-	return &statusResp, nil
+	return &rcResp, nil
 }
 
 func (c *client) ProcessSync(ctx context.Context, file io.Reader, filename, contentType string) (*RateConResponse, error) {

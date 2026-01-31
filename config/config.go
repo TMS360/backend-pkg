@@ -55,7 +55,9 @@ type RedisConfig struct {
 }
 
 type JWTConfig struct {
+	PrivateKey     string        `mapstructure:"PRIVATE_KEY"`
 	PrivateKeyPath string        `mapstructure:"PRIVATE_KEY_PATH"`
+	PublicKey      string        `mapstructure:"PUBLIC_KEY"`
 	PublicKeyPath  string        `mapstructure:"PUBLIC_KEY_PATH"`
 	AccessTTL      time.Duration `mapstructure:"ACCESS_TTL"`
 	RefreshTTL     time.Duration `mapstructure:"REFRESH_TTL"`

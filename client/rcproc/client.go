@@ -38,7 +38,7 @@ func (c *client) Process(ctx context.Context, fileUrl string) (*RCProcessingResp
 	}
 
 	// 3. Create the Request
-	req, err := http.NewRequestWithContext(ctx, "POST", "https://api.your-endpoint.com/process", bytes.NewBuffer(jsonData))
+	req, err := http.NewRequestWithContext(ctx, "POST", c.baseURL+"/api/v1/process", bytes.NewBuffer(jsonData))
 	if err != nil {
 		return nil, err
 	}
@@ -66,6 +66,36 @@ func (c *client) Process(ctx context.Context, fileUrl string) (*RCProcessingResp
 	return &rcResp, nil
 }
 
+func (c *client) GetStatus(ctx context.Context, requestID string) (*RCProcessingStatusResponse, error) {
+	// 1. Create the Request
+	req, err := http.NewRequestWithContext(ctx, "GET", c.baseURL+"/api/v1/process/status/"+requestID, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("rc processor status request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	bodyBytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read response body: %w", err)
+	}
+
+	if resp.StatusCode > 300 {
+		return nil, c.handleAPIError(resp.StatusCode, bodyBytes)
+	}
+
+	var statusResp RCProcessingStatusResponse
+	if err := json.Unmarshal(bodyBytes, &statusResp); err != nil {
+		return nil, fmt.Errorf("failed to decode rc status response: %w", err)
+	}
+
+	return &statusResp, nil
+}
+
 func (c *client) ProcessSync(ctx context.Context, file io.Reader, filename, contentType string) (*RateConResponse, error) {
 	// 1. Prepare Multipart Request
 	body := &bytes.Buffer{}
@@ -91,7 +121,7 @@ func (c *client) ProcessSync(ctx context.Context, file io.Reader, filename, cont
 	writer.Close() // Close to write boundary
 
 	// 2. Send Request
-	req, err := http.NewRequestWithContext(ctx, "POST", c.baseURL+"/api/v1/process", body)
+	req, err := http.NewRequestWithContext(ctx, "POST", c.baseURL+"/api/v1/process/sync", body)
 	if err != nil {
 		return nil, err
 	}

@@ -3,6 +3,7 @@ package rcproc
 import (
 	"context"
 	"io"
+	"time"
 )
 
 type Client interface {
@@ -20,6 +21,17 @@ type RCProcessingResponse struct {
 	Status           string `json:"status"`
 	EstimatedSeconds int    `json:"estimated_seconds"`
 	Message          string `json:"message"`
+}
+
+type RCProcessingStatusResponse struct {
+	RequestID string    `json:"request_id"`
+	Status    string    `json:"status"`
+	Progress  int       `json:"progress"`
+	Message   string    `json:"message"`
+	FileURL   string    `json:"file_url"`
+	Filename  string    `json:"filename"`
+	Provider  string    `json:"provider"`
+	CreatedAt time.Time `json:"created_at"`
 }
 
 // RateConResponse is the top-level response from your OCR/AI service

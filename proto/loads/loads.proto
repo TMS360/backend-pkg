@@ -11,7 +11,7 @@ option go_package = "github.com/TMS360/backend-pkg/proto/loads";
 // LoadsService provides load management functionality
 service LoadsService {
   // Get driver performance metrics
-  rpc GetDriversPerformance (GetDriversPerformanceRequest) returns (GetDriversPerformanceResponse);
+  rpc GetDriverTripDetails (GetDriverTripDetailsRequest) returns (GetDriverTripDetailsResponse);
 
   rpc GetRecentBrokerIDs(GetRecentBrokerIDsRequest) returns (GetRecentBrokerIDsResponse);
 
@@ -37,26 +37,26 @@ service LoadsService {
   rpc StreamVehicleLocations(StreamVehicleLocationsRequest) returns (stream VehicleLocation);
 }
 
-message GetDriversPerformanceRequest {
-  repeated string driver_ids = 1; // User UUIDs
-  string start_date = 2;          // "YYYY-MM-DD"
-  string end_date = 3;            // "YYYY-MM-DD"
+message GetDriverTripDetailsRequest {
+  repeated string driver_ids = 1;
+  string start_date = 2; // Начало недели
+  string end_date = 3;   // Конец недели
 }
 
-message GetDriversPerformanceResponse {
-  // Map: Key = DriverID (string), Value = DriverStats
-  map<string, DriverStats> stats = 1;
+message GetDriverTripDetailsResponse {
+  repeated TripDetails trip_details = 1;
 }
 
-message DriverStats {
-  // Map: Key = Date ("YYYY-MM-DD"), Value = DailyMetric
-  map<string, DailyMetric> daily = 1;
-}
-
-message DailyMetric {
-  double gross = 1;
-  double miles = 2;
-  repeated string load_numbers = 3; // "DT-1001", "DT-1002"
+message TripDetails {
+  string shipment_id = 1;
+  string trip_id = 2;
+  string load_number = 3;
+  string primary_driver_id = 4;
+  string secondary_driver_id = 5; // Может быть пустым
+  double total_rate = 6;
+  double distance = 7;
+  string started_at = 8;   // ISO Timestamp
+  string finished_at = 9;  // ISO Timestamp (nullable/empty if active)
 }
 
 message GetRecentBrokerIDsRequest {

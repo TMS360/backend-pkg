@@ -22,7 +22,7 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	LoadsService_GetDriversPerformance_FullMethodName  = "/loads.LoadsService/GetDriversPerformance"
+	LoadsService_GetDriverTripDetails_FullMethodName   = "/loads.LoadsService/GetDriverTripDetails"
 	LoadsService_GetRecentBrokerIDs_FullMethodName     = "/loads.LoadsService/GetRecentBrokerIDs"
 	LoadsService_GetShipment_FullMethodName            = "/loads.LoadsService/GetShipment"
 	LoadsService_ListShipments_FullMethodName          = "/loads.LoadsService/ListShipments"
@@ -40,7 +40,7 @@ const (
 // LoadsService provides load management functionality
 type LoadsServiceClient interface {
 	// Get driver performance metrics
-	GetDriversPerformance(ctx context.Context, in *GetDriversPerformanceRequest, opts ...grpc.CallOption) (*GetDriversPerformanceResponse, error)
+	GetDriverTripDetails(ctx context.Context, in *GetDriverTripDetailsRequest, opts ...grpc.CallOption) (*GetDriverTripDetailsResponse, error)
 	GetRecentBrokerIDs(ctx context.Context, in *GetRecentBrokerIDsRequest, opts ...grpc.CallOption) (*GetRecentBrokerIDsResponse, error)
 	// Get shipment by ID
 	GetShipment(ctx context.Context, in *GetShipmentRequest, opts ...grpc.CallOption) (*ShipmentResponse, error)
@@ -66,10 +66,10 @@ func NewLoadsServiceClient(cc grpc.ClientConnInterface) LoadsServiceClient {
 	return &loadsServiceClient{cc}
 }
 
-func (c *loadsServiceClient) GetDriversPerformance(ctx context.Context, in *GetDriversPerformanceRequest, opts ...grpc.CallOption) (*GetDriversPerformanceResponse, error) {
+func (c *loadsServiceClient) GetDriverTripDetails(ctx context.Context, in *GetDriverTripDetailsRequest, opts ...grpc.CallOption) (*GetDriverTripDetailsResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(GetDriversPerformanceResponse)
-	err := c.cc.Invoke(ctx, LoadsService_GetDriversPerformance_FullMethodName, in, out, cOpts...)
+	out := new(GetDriverTripDetailsResponse)
+	err := c.cc.Invoke(ctx, LoadsService_GetDriverTripDetails_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -172,7 +172,7 @@ type LoadsService_StreamVehicleLocationsClient = grpc.ServerStreamingClient[Vehi
 // LoadsService provides load management functionality
 type LoadsServiceServer interface {
 	// Get driver performance metrics
-	GetDriversPerformance(context.Context, *GetDriversPerformanceRequest) (*GetDriversPerformanceResponse, error)
+	GetDriverTripDetails(context.Context, *GetDriverTripDetailsRequest) (*GetDriverTripDetailsResponse, error)
 	GetRecentBrokerIDs(context.Context, *GetRecentBrokerIDsRequest) (*GetRecentBrokerIDsResponse, error)
 	// Get shipment by ID
 	GetShipment(context.Context, *GetShipmentRequest) (*ShipmentResponse, error)
@@ -198,8 +198,8 @@ type LoadsServiceServer interface {
 // pointer dereference when methods are called.
 type UnimplementedLoadsServiceServer struct{}
 
-func (UnimplementedLoadsServiceServer) GetDriversPerformance(context.Context, *GetDriversPerformanceRequest) (*GetDriversPerformanceResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "method GetDriversPerformance not implemented")
+func (UnimplementedLoadsServiceServer) GetDriverTripDetails(context.Context, *GetDriverTripDetailsRequest) (*GetDriverTripDetailsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetDriverTripDetails not implemented")
 }
 func (UnimplementedLoadsServiceServer) GetRecentBrokerIDs(context.Context, *GetRecentBrokerIDsRequest) (*GetRecentBrokerIDsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetRecentBrokerIDs not implemented")
@@ -246,20 +246,20 @@ func RegisterLoadsServiceServer(s grpc.ServiceRegistrar, srv LoadsServiceServer)
 	s.RegisterService(&LoadsService_ServiceDesc, srv)
 }
 
-func _LoadsService_GetDriversPerformance_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(GetDriversPerformanceRequest)
+func _LoadsService_GetDriverTripDetails_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetDriverTripDetailsRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(LoadsServiceServer).GetDriversPerformance(ctx, in)
+		return srv.(LoadsServiceServer).GetDriverTripDetails(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: LoadsService_GetDriversPerformance_FullMethodName,
+		FullMethod: LoadsService_GetDriverTripDetails_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(LoadsServiceServer).GetDriversPerformance(ctx, req.(*GetDriversPerformanceRequest))
+		return srv.(LoadsServiceServer).GetDriverTripDetails(ctx, req.(*GetDriverTripDetailsRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -409,8 +409,8 @@ var LoadsService_ServiceDesc = grpc.ServiceDesc{
 	HandlerType: (*LoadsServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
-			MethodName: "GetDriversPerformance",
-			Handler:    _LoadsService_GetDriversPerformance_Handler,
+			MethodName: "GetDriverTripDetails",
+			Handler:    _LoadsService_GetDriverTripDetails_Handler,
 		},
 		{
 			MethodName: "GetRecentBrokerIDs",

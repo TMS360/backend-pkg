@@ -16,7 +16,7 @@ type TenantScoped interface {
 
 // CompanyBase is the struct you embed in Users, Teams, Drivers, etc.
 type CompanyBase struct {
-	CompanyID uuid.UUID `json:"company_id" gorm:"type:uuid;not null;index"`
+	CompanyID uuid.UUID `json:"company_id" gorm:"type:uuid;not null;index" mapstructure:"company_id"`
 }
 
 // IsTenantScoped satisfies the interface

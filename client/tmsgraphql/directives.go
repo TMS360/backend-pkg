@@ -3,12 +3,10 @@ package tmsgraphql
 import (
 	"context"
 	"fmt"
-	"strings"
 
 	"github.com/99designs/gqlgen/graphql"
 	"github.com/TMS360/backend-pkg/consts"
 	"github.com/TMS360/backend-pkg/middleware"
-	"github.com/go-playground/validator/v10"
 )
 
 func AuthDirective(ctx context.Context, obj interface{}, next graphql.Resolver) (interface{}, error) {
@@ -57,66 +55,4 @@ func HasPermDirective(ctx context.Context, obj interface{}, next graphql.Resolve
 		}
 	}
 	return next(ctx)
-}
-
-func ValidateDirective(v *validator.Validate) func(context.Context, interface{}, graphql.Resolver, string) (interface{}, error) {
-	return func(ctx context.Context, obj interface{}, next graphql.Resolver, constraint string) (interface{}, error) {
-		val, err := next(ctx)
-		if err != nil {
-			return nil, err
-		}
-		err = v.Var(val, constraint)
-		if err != nil {
-			return nil, fmt.Errorf("validation failed: %s", err.Error())
-		}
-		return val, nil
-	}
-}
-
-type FieldInfo struct {
-	FieldName string
-	InputType string
-}
-
-func extractFieldInfo(ctx context.Context) FieldInfo {
-	info := FieldInfo{}
-
-	fieldContext := graphql.GetFieldContext(ctx)
-	if fieldContext == nil {
-		return info
-	}
-
-	if fieldContext.Field.Field != nil {
-		info.FieldName = fieldContext.Field.Field.Name
-	}
-
-	if info.FieldName == "" && fieldContext.Field.Alias != "" {
-		info.FieldName = fieldContext.Field.Alias
-	}
-
-	if len(fieldContext.Args) > 0 {
-		for argName, argValue := range fieldContext.Args {
-			if strings.Contains(argName, "input") || strings.Contains(argName, "Input") {
-				if argValue != nil {
-					typeName := fmt.Sprintf("%T", argValue)
-					parts := strings.Split(typeName, ".")
-					if len(parts) > 0 {
-						lastPart := parts[len(parts)-1]
-						lastPart = strings.TrimPrefix(lastPart, "*")
-						info.InputType = lastPart
-					}
-				}
-				break
-			}
-		}
-	}
-
-	if info.InputType == "" && fieldContext.Field.ObjectDefinition != nil {
-		defName := fieldContext.Field.ObjectDefinition.Name
-		if strings.Contains(defName, "Input") {
-			info.InputType = defName
-		}
-	}
-
-	return info
 }

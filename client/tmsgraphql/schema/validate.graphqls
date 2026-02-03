@@ -18,6 +18,36 @@ directive @validate(
     notContains: String
     startsWith: String
     endsWith: String
+    ip: Boolean
+    ipv4: Boolean
+    ipv6: Boolean
+    mac: Boolean
+    cidr: Boolean
+    hostname: Boolean
+    fqdn: Boolean
+    base64: Boolean
+    jsonValid: Boolean
+    jwt: Boolean
+    lowercase: Boolean
+    uppercase: Boolean
+    creditCard: Boolean
+    latitude: Boolean
+    longitude: Boolean
+    timezone: Boolean
+    eq: Float
+    ne: Float
+    gt: Float
+    lt: Float
+    len: Int
+    eqField: String
+    neField: String
+    gtField: String
+    ltField: String
+    requiredWith: String
+    requiredWithout: String
+    excludedWith: String
+    userExist: Boolean
+    userHasRole: String
     message: String
     patternMessage: String
     minMessage: String
@@ -38,4 +68,34 @@ directive @validate(
     notContainsMessage: String
     startsWithMessage: String
     endsWithMessage: String
+    ipMessage: String
+    ipv4Message: String
+    ipv6Message: String
+    macMessage: String
+    cidrMessage: String
+    hostnameMessage: String
+    fqdnMessage: String
+    base64Message: String
+    jsonValidMessage: String
+    jwtMessage: String
+    lowercaseMessage: String
+    uppercaseMessage: String
+    creditCardMessage: String
+    latitudeMessage: String
+    longitudeMessage: String
+    timezoneMessage: String
+    eqMessage: String
+    neMessage: String
+    gtMessage: String
+    ltMessage: String
+    lenMessage: String
+    eqFieldMessage: String
+    neFieldMessage: String
+    gtFieldMessage: String
+    ltFieldMessage: String
+    requiredWithMessage: String
+    requiredWithoutMessage: String
+    excludedWithMessage: String
+    userExistMessage: String
+    userHasRoleMessage: String
 ) on INPUT_FIELD_DEFINITION | ARGUMENT_DEFINITION

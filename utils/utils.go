@@ -1,5 +1,10 @@
 package utils
 
+import (
+	"reflect"
+	"strings"
+)
+
 // ValOrEmpty возвращает значение строки или пустую строку, если указатель nil.
 // Используется для конвертации GraphQL Input (*string) -> DB Model (string).
 func ValOrEmpty(s *string) string {
@@ -43,4 +48,47 @@ func ValOrZero[T any](v *T) T {
 		return zero
 	}
 	return *v
+}
+
+func StructToMap(input interface{}) map[string]interface{} {
+	out := make(map[string]interface{})
+
+	v := reflect.ValueOf(input)
+	if v.Kind() == reflect.Ptr {
+		v = v.Elem()
+	}
+
+	if v.Kind() != reflect.Struct {
+		return out
+	}
+
+	t := v.Type()
+
+	for i := 0; i < v.NumField(); i++ {
+		fieldVal := v.Field(i)
+		fieldType := t.Field(i)
+
+		tag := fieldType.Tag.Get("mapstructure")
+		if tag == "" {
+			tag = fieldType.Tag.Get("json")
+			if idx := strings.Index(tag, ","); idx != -1 {
+				tag = tag[:idx]
+			}
+		}
+
+		if tag == "" || tag == "-" {
+			continue
+		}
+
+		if fieldVal.Kind() == reflect.Ptr {
+			if fieldVal.IsNil() {
+				continue
+			}
+			out[tag] = fieldVal.Elem().Interface()
+		} else {
+			out[tag] = fieldVal.Interface()
+		}
+	}
+
+	return out
 }

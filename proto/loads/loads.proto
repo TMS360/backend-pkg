@@ -10,6 +10,9 @@ option go_package = "github.com/TMS360/backend-pkg/proto/loads";
 
 // LoadsService provides load management functionality
 service LoadsService {
+  // Get driver performance metrics
+  rpc GetDriverTripDetails (GetDriverTripDetailsRequest) returns (GetDriverTripDetailsResponse);
+
   rpc GetRecentBrokerIDs(GetRecentBrokerIDsRequest) returns (GetRecentBrokerIDsResponse);
 
   // Get shipment by ID
@@ -32,6 +35,28 @@ service LoadsService {
 
   // Stream vehicle locations
   rpc StreamVehicleLocations(StreamVehicleLocationsRequest) returns (stream VehicleLocation);
+}
+
+message GetDriverTripDetailsRequest {
+  repeated string driver_ids = 1;
+  string start_date = 2; // Начало недели
+  string end_date = 3;   // Конец недели
+}
+
+message GetDriverTripDetailsResponse {
+  repeated TripDetails trip_details = 1;
+}
+
+message TripDetails {
+  string shipment_id = 1;
+  string trip_id = 2;
+  string load_number = 3;
+  string primary_driver_id = 4;
+  string secondary_driver_id = 5; // Может быть пустым
+  double total_rate = 6;
+  double distance = 7;
+  string started_at = 8;   // ISO Timestamp
+  string finished_at = 9;  // ISO Timestamp (nullable/empty if active)
 }
 
 message GetRecentBrokerIDsRequest {

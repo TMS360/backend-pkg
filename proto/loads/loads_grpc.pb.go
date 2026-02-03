@@ -22,6 +22,7 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
+	LoadsService_GetDriversPerformance_FullMethodName  = "/loads.LoadsService/GetDriversPerformance"
 	LoadsService_GetRecentBrokerIDs_FullMethodName     = "/loads.LoadsService/GetRecentBrokerIDs"
 	LoadsService_GetShipment_FullMethodName            = "/loads.LoadsService/GetShipment"
 	LoadsService_ListShipments_FullMethodName          = "/loads.LoadsService/ListShipments"
@@ -38,6 +39,8 @@ const (
 //
 // LoadsService provides load management functionality
 type LoadsServiceClient interface {
+	// Get driver performance metrics
+	GetDriversPerformance(ctx context.Context, in *GetDriversPerformanceRequest, opts ...grpc.CallOption) (*GetDriversPerformanceResponse, error)
 	GetRecentBrokerIDs(ctx context.Context, in *GetRecentBrokerIDsRequest, opts ...grpc.CallOption) (*GetRecentBrokerIDsResponse, error)
 	// Get shipment by ID
 	GetShipment(ctx context.Context, in *GetShipmentRequest, opts ...grpc.CallOption) (*ShipmentResponse, error)
@@ -61,6 +64,16 @@ type loadsServiceClient struct {
 
 func NewLoadsServiceClient(cc grpc.ClientConnInterface) LoadsServiceClient {
 	return &loadsServiceClient{cc}
+}
+
+func (c *loadsServiceClient) GetDriversPerformance(ctx context.Context, in *GetDriversPerformanceRequest, opts ...grpc.CallOption) (*GetDriversPerformanceResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetDriversPerformanceResponse)
+	err := c.cc.Invoke(ctx, LoadsService_GetDriversPerformance_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
 }
 
 func (c *loadsServiceClient) GetRecentBrokerIDs(ctx context.Context, in *GetRecentBrokerIDsRequest, opts ...grpc.CallOption) (*GetRecentBrokerIDsResponse, error) {
@@ -158,6 +171,8 @@ type LoadsService_StreamVehicleLocationsClient = grpc.ServerStreamingClient[Vehi
 //
 // LoadsService provides load management functionality
 type LoadsServiceServer interface {
+	// Get driver performance metrics
+	GetDriversPerformance(context.Context, *GetDriversPerformanceRequest) (*GetDriversPerformanceResponse, error)
 	GetRecentBrokerIDs(context.Context, *GetRecentBrokerIDsRequest) (*GetRecentBrokerIDsResponse, error)
 	// Get shipment by ID
 	GetShipment(context.Context, *GetShipmentRequest) (*ShipmentResponse, error)
@@ -183,6 +198,9 @@ type LoadsServiceServer interface {
 // pointer dereference when methods are called.
 type UnimplementedLoadsServiceServer struct{}
 
+func (UnimplementedLoadsServiceServer) GetDriversPerformance(context.Context, *GetDriversPerformanceRequest) (*GetDriversPerformanceResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetDriversPerformance not implemented")
+}
 func (UnimplementedLoadsServiceServer) GetRecentBrokerIDs(context.Context, *GetRecentBrokerIDsRequest) (*GetRecentBrokerIDsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetRecentBrokerIDs not implemented")
 }
@@ -226,6 +244,24 @@ func RegisterLoadsServiceServer(s grpc.ServiceRegistrar, srv LoadsServiceServer)
 		t.testEmbeddedByValue()
 	}
 	s.RegisterService(&LoadsService_ServiceDesc, srv)
+}
+
+func _LoadsService_GetDriversPerformance_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetDriversPerformanceRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(LoadsServiceServer).GetDriversPerformance(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: LoadsService_GetDriversPerformance_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(LoadsServiceServer).GetDriversPerformance(ctx, req.(*GetDriversPerformanceRequest))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
 func _LoadsService_GetRecentBrokerIDs_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
@@ -372,6 +408,10 @@ var LoadsService_ServiceDesc = grpc.ServiceDesc{
 	ServiceName: "loads.LoadsService",
 	HandlerType: (*LoadsServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "GetDriversPerformance",
+			Handler:    _LoadsService_GetDriversPerformance_Handler,
+		},
 		{
 			MethodName: "GetRecentBrokerIDs",
 			Handler:    _LoadsService_GetRecentBrokerIDs_Handler,

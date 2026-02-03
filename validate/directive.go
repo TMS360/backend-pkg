@@ -157,6 +157,51 @@ func isEmptyValue(v interface{}) bool {
 	return false
 }
 
+// derefPointer unwraps pointer types that gqlgen uses for nullable/optional
+// fields (e.g. *string, *int32, *float64) into their underlying values.
+// Returns nil for nil pointers, the dereferenced value otherwise.
+func derefPointer(v interface{}) interface{} {
+	switch ptr := v.(type) {
+	case *string:
+		if ptr == nil {
+			return nil
+		}
+		return *ptr
+	case *int:
+		if ptr == nil {
+			return nil
+		}
+		return *ptr
+	case *int32:
+		if ptr == nil {
+			return nil
+		}
+		return *ptr
+	case *int64:
+		if ptr == nil {
+			return nil
+		}
+		return *ptr
+	case *float32:
+		if ptr == nil {
+			return nil
+		}
+		return *ptr
+	case *float64:
+		if ptr == nil {
+			return nil
+		}
+		return *ptr
+	case *bool:
+		if ptr == nil {
+			return nil
+		}
+		return *ptr
+	default:
+		return v
+	}
+}
+
 // Length helpers used inside the Directive closure where the built-in len
 // is shadowed by the 'len' parameter.
 func stringLen(s string) int       { return len(s) }
@@ -235,6 +280,12 @@ func Directive() func(ctx context.Context, obj interface{}, next graphql.Resolve
 		if err != nil {
 			return nil, err
 		}
+
+		// Unwrap pointer types for validation.
+		// gqlgen uses pointers for nullable/optional fields (*string, *int32, etc.)
+		// but all validation checks expect concrete types (string, int32, etc.).
+		returnValue := value
+		value = derefPointer(value)
 
 		// --- Resolve field name ---
 		fieldContext := graphql.GetFieldContext(ctx)
@@ -330,7 +381,7 @@ func Directive() func(ctx context.Context, obj interface{}, next graphql.Resolve
 			if strSliceLen(validationError.Rules) > 0 {
 				ctx = WithValidationError(ctx, validationError)
 			}
-			return value, nil
+			return returnValue, nil
 		}
 
 		// ============================================================
@@ -1049,6 +1100,6 @@ func Directive() func(ctx context.Context, obj interface{}, next graphql.Resolve
 			ctx = WithValidationError(ctx, validationError)
 		}
 
-		return value, nil
+		return returnValue, nil
 	}
 }

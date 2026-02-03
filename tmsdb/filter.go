@@ -449,6 +449,27 @@ func (fb *FilterBuilder) JSON(col string, f *JSONFilter) *FilterBuilder {
 	return fb
 }
 
+// Search ищет по нескольким колонкам через OR + ILIKE
+func (fb *FilterBuilder) Search(term *string, columns ...string) *FilterBuilder {
+	if term == nil || *term == "" || len(columns) == 0 {
+		return fb
+	}
+
+	pattern := "%" + *term + "%"
+	query := fb.db.Session(&gorm.Session{NewDB: true})
+
+	for i, col := range columns {
+		if i == 0 {
+			query = query.Where(col+" ILIKE ?", pattern)
+		} else {
+			query = query.Or(col+" ILIKE ?", pattern)
+		}
+	}
+
+	fb.db = fb.db.Where(query)
+	return fb
+}
+
 // Enum применяет enum фильтр
 func (fb *FilterBuilder) Enum(col string, equals, not *string, in, notIn []string) *FilterBuilder {
 	if equals != nil {

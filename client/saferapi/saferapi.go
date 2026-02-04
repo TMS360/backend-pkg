@@ -3,6 +3,7 @@ package saferapi
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -12,6 +13,7 @@ import (
 type SaferApi interface {
 	FetchByMCNumber(ctx context.Context, mcNumber string) (*SaferCompanyDTO, error)
 	FetchByDOTNumber(ctx context.Context, dotNumber string) (*SaferCompanyDTO, error)
+	IsValid(saferData *SaferCompanyDTO) (bool, error)
 }
 
 type saferAPIService struct {
@@ -82,6 +84,13 @@ func (s *saferAPIService) executeRequest(ctx context.Context, url, entityType st
 	}
 
 	return &result, nil
+}
+
+func (s *saferAPIService) IsValid(saferData *SaferCompanyDTO) (bool, error) {
+	if saferData.OperatingStatus != nil && *saferData.OperatingStatus == "NOT AUTHORIZED" {
+		return false, errors.New("current Company Operating Authority Status is not valid for registration")
+	}
+	return true, nil
 }
 
 type ErrorResponse struct {

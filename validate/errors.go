@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"sync"
+	"sync/atomic"
 
 	"github.com/99designs/gqlgen/graphql"
 	"github.com/vektah/gqlparser/v2/gqlerror"
@@ -22,9 +23,9 @@ type FieldValidationError struct {
 }
 
 type ValidationErrors struct {
-	mu     sync.RWMutex
-	Errors []*FieldValidationError `json:"errors"`
-	// Keep a map for quick lookup and deduplication
+	mu       sync.RWMutex
+	hasErrs  atomic.Bool             // lock-free flag for fast HasErrors() on the hot path
+	Errors   []*FieldValidationError `json:"errors"`
 	errorMap map[string]*FieldValidationError
 }
 
@@ -47,12 +48,11 @@ func (ve *ValidationErrors) Add(fieldError *FieldValidationError) {
 		ve.errorMap[fieldError.Field] = fieldError
 		ve.Errors = append(ve.Errors, fieldError)
 	}
+	ve.hasErrs.Store(true)
 }
 
 func (ve *ValidationErrors) HasErrors() bool {
-	ve.mu.RLock()
-	defer ve.mu.RUnlock()
-	return len(ve.Errors) > 0
+	return ve.hasErrs.Load()
 }
 
 func (ve *ValidationErrors) Error() string {
@@ -123,8 +123,14 @@ func Middleware() graphql.FieldMiddleware {
 	return func(ctx context.Context, next graphql.Resolver) (interface{}, error) {
 		result, err := next(ctx)
 
-		if validationErrors := GetValidationErrors(ctx); validationErrors != nil && validationErrors.HasErrors() {
-			return nil, validationErrors
+		// Only check on resolver fields (root mutations/queries) where input
+		// validation actually runs.  Skip trivial field accessors (Truck.id,
+		// Truck.name, …) to avoid per-field context lookup + atomic load on
+		// every single response field.
+		if fc := graphql.GetFieldContext(ctx); fc != nil && fc.IsResolver {
+			if ve := GetValidationErrors(ctx); ve != nil && ve.HasErrors() {
+				return nil, ve
+			}
 		}
 
 		return result, err

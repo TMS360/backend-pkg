@@ -1,5 +1,13 @@
 package utils
 
+import (
+	"fmt"
+	"reflect"
+	"strings"
+
+	"github.com/go-viper/mapstructure/v2"
+)
+
 // ValOrEmpty возвращает значение строки или пустую строку, если указатель nil.
 // Используется для конвертации GraphQL Input (*string) -> DB Model (string).
 func ValOrEmpty(s *string) string {
@@ -43,4 +51,80 @@ func ValOrZero[T any](v *T) T {
 		return zero
 	}
 	return *v
+}
+
+// StructToMap Особенности:
+// 1. Пропускает nil-поля (для указателей).
+// 2. Использует тег "mapstructure" или "json" для ключей мапы.
+// 3. Если поле не указатель, оно попадет в мапу "как есть" (будьте осторожны с zero-values).
+func StructToMap(input interface{}) map[string]interface{} {
+	out := make(map[string]interface{})
+
+	v := reflect.ValueOf(input)
+
+	if v.Kind() == reflect.Ptr {
+		if v.IsNil() {
+			return out
+		}
+		v = v.Elem()
+	}
+
+	if v.Kind() != reflect.Struct {
+		return out
+	}
+
+	t := v.Type()
+
+	for i := 0; i < v.NumField(); i++ {
+		fieldVal := v.Field(i)
+		fieldType := t.Field(i)
+
+		tag := fieldType.Tag.Get("mapstructure")
+		if tag == "" {
+			tag = fieldType.Tag.Get("json")
+		}
+
+		if idx := strings.Index(tag, ","); idx != -1 {
+			tag = tag[:idx]
+		}
+
+		if tag == "" || tag == "-" {
+			continue
+		}
+
+		if fieldVal.Kind() == reflect.Ptr {
+			if !fieldVal.IsNil() {
+				out[tag] = fieldVal.Elem().Interface()
+			}
+		} else {
+			out[tag] = fieldVal.Interface()
+		}
+	}
+
+	return out
+}
+
+// MergeUpdates применяет значения из mapChanges к структуре target.
+// target должен быть указателем на структуру.
+// Использует mapstructure/v2 для безопасного приведения типов.
+func MergeUpdates(target interface{}, mapChanges map[string]interface{}) error {
+	config := &mapstructure.DecoderConfig{
+		Metadata:         nil,
+		Result:           target,
+		TagName:          "mapstructure",
+		WeaklyTypedInput: true,
+		ZeroFields:       false,
+		Squash:           true,
+	}
+
+	decoder, err := mapstructure.NewDecoder(config)
+	if err != nil {
+		return fmt.Errorf("failed to create decoder: %w", err)
+	}
+
+	if err := decoder.Decode(mapChanges); err != nil {
+		return fmt.Errorf("failed to decode updates: %w", err)
+	}
+
+	return nil
 }

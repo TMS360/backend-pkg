@@ -6,6 +6,7 @@ import (
 	"github.com/99designs/gqlgen/graphql/handler/extension"
 	"github.com/99designs/gqlgen/graphql/handler/lru"
 	"github.com/99designs/gqlgen/graphql/handler/transport"
+	"github.com/TMS360/backend-pkg/validate"
 	"github.com/vektah/gqlparser/v2/ast"
 )
 
@@ -15,6 +16,8 @@ func NewHandler(es graphql.ExecutableSchema, isDebug bool) *handler.Server {
 
 	// Apply the shared Error Presenter
 	srv.SetErrorPresenter(NewErrorPresenter(isDebug))
+	srv.AroundOperations(validate.OperationMiddleware())
+	srv.AroundFields(validate.Middleware())
 
 	// Standard Transports
 	srv.AddTransport(transport.Options{})

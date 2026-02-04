@@ -109,41 +109,41 @@ type JSONFilter struct {
 // ============================================================================
 
 type PaginationInput struct {
-	Page  int `json:"page"`
-	Limit int `json:"limit"`
+	Page  int32 `json:"page"`
+	Limit int32 `json:"limit"`
 }
 
 func (p *PaginationInput) GetOffset() int {
 	if p == nil || p.Page <= 1 {
 		return 0
 	}
-	return (p.Page - 1) * p.GetLimit()
+	return int(p.Page-1) * p.GetLimit()
 }
 
 func (p *PaginationInput) GetLimit() int {
 	if p == nil || p.Limit <= 0 {
 		return 20
 	}
-	return p.Limit
+	return int(p.Limit)
 }
 
 func (p *PaginationInput) GetPage() int {
 	if p == nil || p.Page <= 0 {
 		return 1
 	}
-	return p.Page
+	return int(p.Page)
 }
 
 type Pagination struct {
-	Page       int `json:"page"`
-	Limit      int `json:"limit"`
-	Total      int `json:"total"`
-	TotalPages int `json:"totalPages"`
+	Page       int32 `json:"page"`
+	Limit      int32 `json:"limit"`
+	Total      int32 `json:"total"`
+	TotalPages int32 `json:"totalPages"`
 }
 
 func NewPagination(input *PaginationInput, total int64) *Pagination {
-	page := 1
-	limit := 20
+	var page int32 = 1
+	var limit int32 = 20
 
 	if input != nil {
 		if input.Page > 0 {
@@ -154,7 +154,7 @@ func NewPagination(input *PaginationInput, total int64) *Pagination {
 		}
 	}
 
-	totalInt := int(total)
+	totalInt := int32(total)
 	totalPages := totalInt / limit
 	if totalInt%limit > 0 {
 		totalPages++
@@ -446,6 +446,27 @@ func (fb *FilterBuilder) JSON(col string, f *JSONFilter) *FilterBuilder {
 			fb.db = fb.db.Where(col + " IS NOT NULL")
 		}
 	}
+	return fb
+}
+
+// Search ищет по нескольким колонкам через OR + ILIKE
+func (fb *FilterBuilder) Search(term *string, columns ...string) *FilterBuilder {
+	if term == nil || *term == "" || len(columns) == 0 {
+		return fb
+	}
+
+	pattern := "%" + *term + "%"
+	query := fb.db.Session(&gorm.Session{NewDB: true})
+
+	for i, col := range columns {
+		if i == 0 {
+			query = query.Where(col+" ILIKE ?", pattern)
+		} else {
+			query = query.Or(col+" ILIKE ?", pattern)
+		}
+	}
+
+	fb.db = fb.db.Where(query)
 	return fb
 }
 

@@ -93,9 +93,9 @@ type TollFare struct {
 
 // TollPrice represents a price value with currency.
 type TollPrice struct {
-	Type     string `json:"type"`
-	Currency string `json:"currency"`
-	Value    string `json:"value"`
+	Type     string  `json:"type"`
+	Currency string  `json:"currency"`
+	Value    float64 `json:"value"`
 }
 
 // TollCollectionLocation represents a physical toll collection point.

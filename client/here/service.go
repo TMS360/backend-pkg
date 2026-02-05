@@ -3,7 +3,6 @@ package here
 import (
 	"context"
 	"fmt"
-	"strconv"
 	"time"
 )
 
@@ -333,9 +332,7 @@ func (s *service) parseRouteResponse(resp *RouteResponse, departureTime *time.Ti
 				if fare.ConvertedPrice != nil {
 					price = *fare.ConvertedPrice
 				}
-				if val, err := strconv.ParseFloat(price.Value, 64); err == nil {
-					totalCost += val
-				}
+				totalCost += price.Value
 				if currency == "" {
 					currency = price.Currency
 				}

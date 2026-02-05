@@ -21,9 +21,11 @@ message GetFilesRequest {
 message File {
   string id = 1;
   string url = 2;
-  string filename = 3;
-  string mime_type = 4;
-  int64 size_bytes = 5;
+  string s3_key = 3;
+  string bucket = 4;
+  string filename = 5;
+  string mime_type = 6;
+  int64 size_bytes = 7;
 }
 
 message GetFileResponse {

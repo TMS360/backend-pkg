@@ -3,6 +3,7 @@ package here
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"time"
 )
 
@@ -321,10 +322,27 @@ func (s *service) parseRouteResponse(resp *RouteResponse, departureTime *time.Ti
 	}
 	info.EstimatedArrival = departure.Add(time.Duration(info.DurationWithTrafficSeconds) * time.Second)
 
-	// Extract toll information
-	if section.Tolls != nil {
-		info.TollCost = &section.Tolls.EstimatedCost
-		info.TollCurrency = &section.Tolls.Currency
+	// Extract toll information from the tolls array
+	if len(section.Tolls) > 0 {
+		var totalCost float64
+		var currency string
+		for _, toll := range section.Tolls {
+			for _, fare := range toll.Fares {
+				// Prefer convertedPrice (requested currency) over local price
+				price := fare.Price
+				if fare.ConvertedPrice != nil {
+					price = *fare.ConvertedPrice
+				}
+				if val, err := strconv.ParseFloat(price.Value, 64); err == nil {
+					totalCost += val
+				}
+				if currency == "" {
+					currency = price.Currency
+				}
+			}
+		}
+		info.TollCost = &totalCost
+		info.TollCurrency = &currency
 	}
 
 	return info

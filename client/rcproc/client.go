@@ -25,7 +25,7 @@ func NewClient(baseURL, provider string) Client {
 	}
 }
 
-func (c *client) Process(ctx context.Context, fileUrl string) (*RCProcessingResponse, error) {
+func (c *client) Process(ctx context.Context, fileUrl, authToken string) (*RCProcessingResponse, error) {
 	reqBody := RCProcessingRequest{
 		FileURL:  fileUrl,
 		Provider: c.provider,
@@ -42,6 +42,11 @@ func (c *client) Process(ctx context.Context, fileUrl string) (*RCProcessingResp
 	if err != nil {
 		return nil, err
 	}
+
+	// Добавляем заголовок авторизации
+	req.Header.Set("Authorization", "Bearer "+authToken)
+	// Также хорошей практикой будет добавить Content-Type, так как вы отправляете JSON
+	req.Header.Set("Content-Type", "application/json")
 
 	resp, err := c.client.Do(req)
 	if err != nil {

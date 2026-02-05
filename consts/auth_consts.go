@@ -21,6 +21,7 @@ const ActorCtx contextKey = "actor"
 type Actor struct {
 	ID       uuid.UUID
 	Claims   *UserClaims
+	Token    *string
 	IsSystem bool
 }
 

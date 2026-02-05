@@ -12,6 +12,7 @@ import (
 type SaferApi interface {
 	FetchByMCNumber(ctx context.Context, mcNumber string) (*SaferCompanyDTO, error)
 	FetchByDOTNumber(ctx context.Context, dotNumber string) (*SaferCompanyDTO, error)
+	IsValid(saferData *SaferCompanyDTO) bool
 }
 
 type saferAPIService struct {
@@ -82,6 +83,13 @@ func (s *saferAPIService) executeRequest(ctx context.Context, url, entityType st
 	}
 
 	return &result, nil
+}
+
+func (s *saferAPIService) IsValid(saferData *SaferCompanyDTO) bool {
+	if saferData.OperatingStatus != nil && *saferData.OperatingStatus == "NOT AUTHORIZED" {
+		return false
+	}
+	return true
 }
 
 type ErrorResponse struct {

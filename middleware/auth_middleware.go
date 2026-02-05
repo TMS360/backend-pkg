@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/TMS360/backend-pkg/consts"
+	"github.com/TMS360/backend-pkg/utils"
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
@@ -47,7 +48,7 @@ func IdentifyUser(publicKey *rsa.PublicKey) gin.HandlerFunc {
 
 		claims, ok := token.Claims.(*consts.UserClaims)
 		if ok {
-			ctxWithActor := WithActor(ctx.Request.Context(), claims.UserID, claims)
+			ctxWithActor := WithActor(ctx.Request.Context(), claims.UserID, claims, tokenString)
 			ctx.Request = ctx.Request.WithContext(ctxWithActor)
 		}
 
@@ -68,8 +69,8 @@ func RequireAuth() gin.HandlerFunc {
 }
 
 // WithActor adds user info to the context (Used by your Middleware)
-func WithActor(ctx context.Context, userID uuid.UUID, userClaims *consts.UserClaims) context.Context {
-	return context.WithValue(ctx, consts.ActorCtx, consts.Actor{ID: userID, Claims: userClaims})
+func WithActor(ctx context.Context, userID uuid.UUID, userClaims *consts.UserClaims, token string) context.Context {
+	return context.WithValue(ctx, consts.ActorCtx, consts.Actor{ID: userID, Claims: userClaims, Token: utils.Pointer(token)})
 }
 
 func WithSystemActor(ctx context.Context) context.Context {

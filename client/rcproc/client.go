@@ -12,20 +12,22 @@ import (
 )
 
 type client struct {
-	baseURL  string
-	provider string
-	client   *http.Client
+	baseURL   string
+	provider  string
+	authToken string
+	client    *http.Client
 }
 
-func NewClient(baseURL, provider string) Client {
+func NewClient(baseURL, provider, authToken string) Client {
 	return &client{
-		baseURL:  baseURL,
-		provider: provider,
-		client:   &http.Client{},
+		baseURL:   baseURL,
+		provider:  provider,
+		authToken: authToken,
+		client:    &http.Client{},
 	}
 }
 
-func (c *client) Process(ctx context.Context, fileUrl, authToken string) (*RCProcessingResponse, error) {
+func (c *client) Process(ctx context.Context, fileUrl string) (*RCProcessingResponse, error) {
 	reqBody := RCProcessingRequest{
 		FileURL:  fileUrl,
 		Provider: c.provider,
@@ -43,9 +45,7 @@ func (c *client) Process(ctx context.Context, fileUrl, authToken string) (*RCPro
 		return nil, err
 	}
 
-	// Добавляем заголовок авторизации
-	req.Header.Set("Authorization", "Bearer "+authToken)
-	// Также хорошей практикой будет добавить Content-Type, так как вы отправляете JSON
+	req.Header.Set("Authorization", "Bearer "+c.authToken)
 	req.Header.Set("Content-Type", "application/json")
 
 	resp, err := c.client.Do(req)
@@ -73,10 +73,13 @@ func (c *client) Process(ctx context.Context, fileUrl, authToken string) (*RCPro
 
 func (c *client) GetStatus(ctx context.Context, requestID string) (*RateConResponse, error) {
 	// 1. Create the Request
-	req, err := http.NewRequestWithContext(ctx, "GET", c.baseURL+"/api/v1/process/status/"+requestID, nil)
+	req, err := http.NewRequestWithContext(ctx, "GET", c.baseURL+"/api/v1/status/"+requestID, nil)
 	if err != nil {
 		return nil, err
 	}
+
+	req.Header.Set("Authorization", "Bearer "+c.authToken)
+	req.Header.Set("Content-Type", "application/json")
 
 	resp, err := c.client.Do(req)
 	if err != nil {
@@ -131,6 +134,7 @@ func (c *client) ProcessSync(ctx context.Context, file io.Reader, filename, cont
 		return nil, err
 	}
 
+	req.Header.Set("Authorization", "Bearer "+c.authToken)
 	req.Header.Set("Content-Type", writer.FormDataContentType())
 
 	resp, err := c.client.Do(req)

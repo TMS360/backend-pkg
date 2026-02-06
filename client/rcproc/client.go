@@ -9,22 +9,36 @@ import (
 	"mime/multipart"
 	"net/http"
 	"net/textproto"
+
+	"github.com/TMS360/backend-pkg/middleware"
 )
 
 type client struct {
-	baseURL   string
-	provider  string
-	authToken string
-	client    *http.Client
+	baseURL  string
+	provider string
+	client   *http.Client
 }
 
-func NewClient(baseURL, provider, authToken string) Client {
+func NewClient(baseURL, provider string) Client {
 	return &client{
-		baseURL:   baseURL,
-		provider:  provider,
-		authToken: authToken,
-		client:    &http.Client{},
+		baseURL:  baseURL,
+		provider: provider,
+		client:   &http.Client{},
 	}
+}
+
+func (c *client) SetAuthToken(ctx context.Context, req *http.Request) error {
+	actor, err := middleware.GetActor(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get actor from context: %w", err)
+	}
+
+	if actor.Token == nil {
+		return fmt.Errorf("no auth token found in context")
+	}
+
+	req.Header.Set("Authorization", "Bearer "+*actor.Token)
+	return nil
 }
 
 func (c *client) Process(ctx context.Context, fileUrl string) (*RCProcessingResponse, error) {
@@ -45,7 +59,9 @@ func (c *client) Process(ctx context.Context, fileUrl string) (*RCProcessingResp
 		return nil, err
 	}
 
-	req.Header.Set("Authorization", "Bearer "+c.authToken)
+	if err := c.SetAuthToken(ctx, req); err != nil {
+		return nil, fmt.Errorf("failed to set auth token: %w", err)
+	}
 	req.Header.Set("Content-Type", "application/json")
 
 	resp, err := c.client.Do(req)
@@ -78,7 +94,9 @@ func (c *client) GetStatus(ctx context.Context, requestID string) (*RateConRespo
 		return nil, err
 	}
 
-	req.Header.Set("Authorization", "Bearer "+c.authToken)
+	if err := c.SetAuthToken(ctx, req); err != nil {
+		return nil, fmt.Errorf("failed to set auth token: %w", err)
+	}
 	req.Header.Set("Content-Type", "application/json")
 
 	resp, err := c.client.Do(req)
@@ -134,7 +152,9 @@ func (c *client) ProcessSync(ctx context.Context, file io.Reader, filename, cont
 		return nil, err
 	}
 
-	req.Header.Set("Authorization", "Bearer "+c.authToken)
+	if err := c.SetAuthToken(ctx, req); err != nil {
+		return nil, fmt.Errorf("failed to set auth token: %w", err)
+	}
 	req.Header.Set("Content-Type", writer.FormDataContentType())
 
 	resp, err := c.client.Do(req)

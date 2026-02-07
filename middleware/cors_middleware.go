@@ -9,8 +9,9 @@ import (
 
 func Cors() gin.HandlerFunc {
 	cfg := cors.Config{
-		AllowAllOrigins: true, //временно
-
+		AllowOriginFunc: func(origin string) bool {
+			return true
+		},
 		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"},
 		AllowHeaders:     []string{"Origin", "Content-Length", "Content-Type", "Authorization", "Accept", "X-Requested-With"},
 		ExposeHeaders:    []string{"Content-Length"},

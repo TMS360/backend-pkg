@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"time"
@@ -32,6 +33,7 @@ func NewClient(apiKey string) FmcsaAPI {
 
 // SearchCompaniesByName calls the FMCSA API
 func (c *client) SearchCompaniesByName(ctx context.Context, name string) ([]Carrier, error) {
+	fmt.Println("Searching FMCSA for company name: ", url.PathEscape(name))
 	req, err := c.prepareReq(ctx, "name/"+url.PathEscape(name))
 	if err != nil {
 		return nil, err
@@ -43,12 +45,21 @@ func (c *client) SearchCompaniesByName(ctx context.Context, name string) ([]Carr
 	}
 	defer resp.Body.Close()
 
+	bodyBytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read response body: %w", err)
+	}
+
+	// --- LOGGING ---
+	fmt.Printf("Fmcsa Status: %s\n", resp.Status)
+	fmt.Printf("Fmcsa Body: %s\n", string(bodyBytes))
+
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("fmcsa returned non-200 status: %d", resp.StatusCode)
 	}
 
 	var searchResp SearchResponse
-	if err := json.NewDecoder(resp.Body).Decode(&searchResp); err != nil {
+	if err := json.Unmarshal(bodyBytes, &searchResp); err != nil {
 		return nil, fmt.Errorf("failed to decode fmcsa response: %w", err)
 	}
 

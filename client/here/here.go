@@ -43,7 +43,7 @@ type RouteSection struct {
 	Departure *LocationInfo  `json:"departure"`
 	Arrival   *LocationInfo  `json:"arrival"`
 	Summary   *RouteSummary  `json:"summary"`
-	Tolls     *TollInfo      `json:"tolls,omitempty"`
+	Tolls     []TollItem     `json:"tolls,omitempty"`
 	Transport *TransportInfo `json:"transport"`
 	Polyline  string         `json:"polyline,omitempty"`
 }
@@ -71,21 +71,37 @@ type RouteSummary struct {
 	TollCost     float64 `json:"tollCost,omitempty"`
 }
 
-type TollInfo struct {
-	EstimatedCost float64      `json:"estimatedCost"`
-	Currency      string       `json:"currency"`
-	Details       []TollDetail `json:"details,omitempty"`
-	Systems       []TollSystem `json:"tollSystems,omitempty"`
+// TollItem represents a single toll entry in the HERE v8 routing response.
+// Each route section may contain multiple toll items.
+type TollItem struct {
+	CountryCode             string                   `json:"countryCode,omitempty"`
+	TollSystemRef           int                      `json:"tollSystemRef,omitempty"`
+	TollSystem              string                   `json:"tollSystem,omitempty"`
+	Fares                   []TollFare               `json:"fares,omitempty"`
+	TollCollectionLocations []TollCollectionLocation `json:"tollCollectionLocations,omitempty"`
 }
 
-type TollDetail struct {
-	Name     string  `json:"name"`
-	Cost     float64 `json:"cost"`
+// TollFare represents a single fare within a toll item.
+type TollFare struct {
+	ID             string     `json:"id,omitempty"`
+	Name           string     `json:"name,omitempty"`
+	Price          TollPrice  `json:"price"`
+	ConvertedPrice *TollPrice `json:"convertedPrice,omitempty"`
+	Reason         string     `json:"reason,omitempty"`
+	PaymentMethods []string   `json:"paymentMethods,omitempty"`
+}
+
+// TollPrice represents a price value with currency.
+type TollPrice struct {
+	Type     string  `json:"type"`
 	Currency string  `json:"currency"`
+	Value    float64 `json:"value"`
 }
 
-type TollSystem struct {
-	Name string `json:"name"`
+// TollCollectionLocation represents a physical toll collection point.
+type TollCollectionLocation struct {
+	Name     string    `json:"name,omitempty"`
+	Location *Location `json:"location,omitempty"`
 }
 
 type TransportInfo struct {

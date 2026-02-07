@@ -9,6 +9,8 @@ import (
 	"mime/multipart"
 	"net/http"
 	"net/textproto"
+
+	"github.com/TMS360/backend-pkg/middleware"
 )
 
 type client struct {
@@ -25,7 +27,21 @@ func NewClient(baseURL, provider string) Client {
 	}
 }
 
-func (c *client) Process(ctx context.Context, fileUrl, authToken string) (*RCProcessingResponse, error) {
+func (c *client) SetAuthToken(ctx context.Context, req *http.Request) error {
+	actor, err := middleware.GetActor(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get actor from context: %w", err)
+	}
+
+	if actor.Token == nil {
+		return fmt.Errorf("no auth token found in context")
+	}
+
+	req.Header.Set("Authorization", "Bearer "+*actor.Token)
+	return nil
+}
+
+func (c *client) Process(ctx context.Context, fileUrl string) (*RCProcessingResponse, error) {
 	reqBody := RCProcessingRequest{
 		FileURL:  fileUrl,
 		Provider: c.provider,
@@ -43,9 +59,9 @@ func (c *client) Process(ctx context.Context, fileUrl, authToken string) (*RCPro
 		return nil, err
 	}
 
-	// Добавляем заголовок авторизации
-	req.Header.Set("Authorization", "Bearer "+authToken)
-	// Также хорошей практикой будет добавить Content-Type, так как вы отправляете JSON
+	if err := c.SetAuthToken(ctx, req); err != nil {
+		return nil, fmt.Errorf("failed to set auth token: %w", err)
+	}
 	req.Header.Set("Content-Type", "application/json")
 
 	resp, err := c.client.Do(req)
@@ -73,10 +89,15 @@ func (c *client) Process(ctx context.Context, fileUrl, authToken string) (*RCPro
 
 func (c *client) GetStatus(ctx context.Context, requestID string) (*RateConResponse, error) {
 	// 1. Create the Request
-	req, err := http.NewRequestWithContext(ctx, "GET", c.baseURL+"/api/v1/process/status/"+requestID, nil)
+	req, err := http.NewRequestWithContext(ctx, "GET", c.baseURL+"/api/v1/status/"+requestID, nil)
 	if err != nil {
 		return nil, err
 	}
+
+	if err := c.SetAuthToken(ctx, req); err != nil {
+		return nil, fmt.Errorf("failed to set auth token: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
 
 	resp, err := c.client.Do(req)
 	if err != nil {
@@ -131,6 +152,9 @@ func (c *client) ProcessSync(ctx context.Context, file io.Reader, filename, cont
 		return nil, err
 	}
 
+	if err := c.SetAuthToken(ctx, req); err != nil {
+		return nil, fmt.Errorf("failed to set auth token: %w", err)
+	}
 	req.Header.Set("Content-Type", writer.FormDataContentType())
 
 	resp, err := c.client.Do(req)

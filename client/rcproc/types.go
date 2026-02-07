@@ -7,7 +7,7 @@ import (
 )
 
 type Client interface {
-	Process(ctx context.Context, fileUrl, authToken string) (*RCProcessingResponse, error)
+	Process(ctx context.Context, fileUrl string) (*RCProcessingResponse, error)
 	GetStatus(ctx context.Context, requestID string) (*RateConResponse, error)
 	ProcessSync(ctx context.Context, fileReader io.Reader, filename, contentType string) (*RateConResponse, error)
 }
@@ -60,15 +60,15 @@ type RateConResponse struct {
 }
 
 type LoadDetailsDTO struct {
-	LoadID           string   `json:"load_id"`
-	ProNumber        *string  `json:"pro_number"`
-	PoNumber         string   `json:"po_number"`
-	ReferenceNumbers []string `json:"reference_numbers"`
-	BolNumber        string   `json:"bol_number"`
-	LoadPay          float64  `json:"load_pay"`
-	Currency         string   `json:"currency"`
-	TotalWeight      float64  `json:"total_weight"`
-	WeightUnit       string   `json:"weight_unit"`
+	LoadID           string  `json:"load_id"`
+	ProNumber        *string `json:"pro_number"`
+	PoNumber         string  `json:"po_number"`
+	ReferenceNumbers string  `json:"reference_numbers"`
+	BolNumber        string  `json:"bol_number"`
+	LoadPay          float64 `json:"load_pay"`
+	Currency         string  `json:"currency"`
+	TotalWeight      float64 `json:"total_weight"`
+	WeightUnit       string  `json:"weight_unit"`
 }
 
 type EquipmentDTO struct {

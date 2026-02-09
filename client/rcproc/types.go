@@ -67,7 +67,7 @@ type LoadDetailsDTO struct {
 	TotalWeight         float64  `json:"total_weight"`
 	WeightUnit          string   `json:"weight_unit"`
 	DetentionRate       *float64 `json:"detention_rate"`
-	DetentionFreeTime   *string  `json:"detention_free_time"`
+	DetentionFreeTime   *int     `json:"detention_free_time"`
 	LayoverRate         *float64 `json:"layover_rate"`
 	TonuRate            *float64 `json:"tonu_rate"`
 	LumperReimbursement *float64 `json:"lumper_reimbursement"`

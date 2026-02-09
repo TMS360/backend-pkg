@@ -1,7 +1,6 @@
 package middleware
 
 import (
-	"slices"
 	"time"
 
 	"github.com/gin-contrib/cors"
@@ -11,10 +10,7 @@ import (
 func Cors(allowedOrigins []string) gin.HandlerFunc {
 	cfg := cors.Config{
 		AllowOriginFunc: func(origin string) bool {
-			if slices.Contains(allowedOrigins, origin) {
-				return true
-			}
-			return false
+			return true
 		},
 		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
 		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"},

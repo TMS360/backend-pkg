@@ -41,26 +41,17 @@ type RCProcessingStatusResponse struct {
 
 // RateConResponse is the top-level response from your OCR/AI service
 type RateConResponse struct {
-	// Status check response fields
-	RequestID string    `json:"request_id"`
-	Status    string    `json:"status"`
-	Progress  int       `json:"progress"`
-	Message   string    `json:"message"`
-	FileURL   string    `json:"file_url"`
-	Filename  string    `json:"filename"`
-	Provider  string    `json:"provider"`
-	CreatedAt time.Time `json:"created_at"`
-
 	// Extracted load data
-	ExtractionStatus    string           `json:"extraction_status"`
-	ConfidenceScore     float64          `json:"confidence_score"`
-	LoadDetails         LoadDetailsDTO   `json:"load_details"`
-	Equipment           EquipmentDTO     `json:"equipment"`
-	Commodities         CommoditiesDTO   `json:"commodities"`
-	Stops               []LoadStopDTO    `json:"stops"`
-	BrokerContact       BrokerContactDTO `json:"broker_contact"`
-	SpecialInstructions string           `json:"special_instructions"`
-	PaymentTerms        PaymentTermsDTO  `json:"payment_terms"`
+	ExtractionStatus    string                 `json:"extraction_status"`
+	ConfidenceScore     float64                `json:"confidence_score"`
+	LoadDetails         LoadDetailsDTO         `json:"load_details"`
+	Equipment           EquipmentDTO           `json:"equipment"`
+	Commodities         CommoditiesDTO         `json:"commodities"`
+	Stops               []LoadStopDTO          `json:"stops"`
+	BrokerContact       BrokerContactDTO       `json:"broker_contact"`
+	SpecialInstructions string                 `json:"special_instructions"`
+	PaymentTerms        PaymentTermsDTO        `json:"payment_terms"`
+	CarrierRequirements CarrierRequirementsDTO `json:"carrier_requirements"`
 }
 
 type LoadDetailsDTO struct {
@@ -121,6 +112,22 @@ type BrokerContactDTO struct {
 type PaymentTermsDTO struct {
 	QuickPayAvailable bool   `json:"quick_pay_available"`
 	InvoiceEmail      string `json:"invoice_email"`
+}
+
+type CarrierRequirementsDTO struct {
+	MinimumInsurance        *float64 `json:"minimum_insurance"`
+	HazmatInsuranceRequired *bool    `json:"hazmat_insurance_required"`
+	AutoLiabilityMinimum    *float64 `json:"auto_liability_minimum"`
+	HazmatEndorsement       bool     `json:"hazmat_endorsement"`
+	TankerEndorsement       bool     `json:"tanker_endorsement"`
+	TwicCard                *bool    `json:"twic_card"`
+	PassportRequired        *bool    `json:"passport_required"`
+	FastCardRequired        *bool    `json:"fast_card_required"`
+	EldRequired             *bool    `json:"eld_required"`
+	GpsTrackingRequired     *bool    `json:"gps_tracking_required"`
+	DashcamRequired         *bool    `json:"dashcam_required"`
+	MinimumSafetyRating     *string  `json:"minimum_safety_rating"`
+	CsaScoreRequirement     *string  `json:"csa_score_requirement"`
 }
 
 // ValidationError represents the structure for 422 Unprocessable Entity

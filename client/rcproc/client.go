@@ -37,11 +37,13 @@ func (c *client) SetAuthToken(ctx context.Context, req *http.Request) error {
 		return fmt.Errorf("no auth token found in context")
 	}
 
+	fmt.Println("authToken", "Bearer "+*actor.Token)
 	req.Header.Set("Authorization", "Bearer "+*actor.Token)
 	return nil
 }
 
 func (c *client) Process(ctx context.Context, fileUrl string) (*RCProcessingResponse, error) {
+	fmt.Println("fileUrl", fileUrl)
 	reqBody := RCProcessingRequest{
 		FileURL:  fileUrl,
 		Provider: c.provider,

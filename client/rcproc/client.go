@@ -37,13 +37,11 @@ func (c *client) SetAuthToken(ctx context.Context, req *http.Request) error {
 		return fmt.Errorf("no auth token found in context")
 	}
 
-	fmt.Println("authToken", "Bearer "+*actor.Token)
 	req.Header.Set("Authorization", "Bearer "+*actor.Token)
 	return nil
 }
 
 func (c *client) Process(ctx context.Context, fileUrl string) (*RCProcessingResponse, error) {
-	fmt.Println("fileUrl", fileUrl)
 	reqBody := RCProcessingRequest{
 		FileURL:  fileUrl,
 		Provider: c.provider,
@@ -76,6 +74,10 @@ func (c *client) Process(ctx context.Context, fileUrl string) (*RCProcessingResp
 	if err != nil {
 		return nil, fmt.Errorf("failed to read response body: %w", err)
 	}
+
+	// --- LOGGING ---
+	fmt.Printf("RC Processor (async) Status: %s\n", resp.Status)
+	fmt.Printf("RC Processor (async) Body: %s\n", string(bodyBytes))
 
 	if resp.StatusCode > 300 {
 		return nil, c.handleAPIError(resp.StatusCode, bodyBytes)
@@ -111,6 +113,10 @@ func (c *client) GetStatus(ctx context.Context, requestID string) (*RateConRespo
 	if err != nil {
 		return nil, fmt.Errorf("failed to read response body: %w", err)
 	}
+
+	// --- LOGGING ---
+	fmt.Printf("RC Processor get-status Status: %s\n", resp.Status)
+	fmt.Printf("RC Processor get-status Body: %s\n", string(bodyBytes))
 
 	if resp.StatusCode > 300 {
 		return nil, c.handleAPIError(resp.StatusCode, bodyBytes)
@@ -170,6 +176,10 @@ func (c *client) ProcessSync(ctx context.Context, file io.Reader, filename, cont
 		return nil, fmt.Errorf("failed to read response body: %w", err)
 	}
 
+	// --- LOGGING ---
+	fmt.Printf("RC Processor (sync) Status: %s\n", resp.Status)
+	fmt.Printf("RC Processor (sync) Body: %s\n", string(bodyBytes))
+
 	if resp.StatusCode > 300 {
 		return nil, c.handleAPIError(resp.StatusCode, bodyBytes)
 	}
@@ -183,10 +193,6 @@ func (c *client) ProcessSync(ctx context.Context, file io.Reader, filename, cont
 }
 
 func (c *client) handleAPIError(status int, bodyBytes []byte) error {
-	// --- LOGGING ---
-	fmt.Printf("RC Processor (async) Status: %s\n", status)
-	fmt.Printf("RC Processor (async) Body: %s\n", string(bodyBytes))
-
 	switch status {
 	case http.StatusUnprocessableEntity: // 422
 		var errResp HTTPValidationError

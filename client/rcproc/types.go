@@ -25,14 +25,18 @@ type RCProcessingResponse struct {
 }
 
 type RCProcessingStatusResponse struct {
-	RequestID string    `json:"request_id"`
-	Status    string    `json:"status"`
-	Progress  int       `json:"progress"`
-	Message   string    `json:"message"`
-	FileURL   string    `json:"file_url"`
-	Filename  string    `json:"filename"`
-	Provider  string    `json:"provider"`
-	CreatedAt time.Time `json:"created_at"`
+	RequestID     string           `json:"request_id"`
+	Status        string           `json:"status"`
+	Progress      int              `json:"progress"`
+	Message       string           `json:"message"`
+	CompanyID     string           `json:"company_id"`
+	UserID        string           `json:"user_id"`
+	Provider      string           `json:"provider"`
+	FileURL       string           `json:"file_url"`
+	Filename      string           `json:"filename"`
+	FileSizeBytes int64            `json:"file_size_bytes"`
+	CreatedAt     time.Time        `json:"created_at"`
+	Data          *RateConResponse `json:"data"`
 }
 
 // RateConResponse is the top-level response from your OCR/AI service

@@ -122,12 +122,18 @@ func (c *client) GetStatus(ctx context.Context, requestID string) (*RateConRespo
 		return nil, c.handleAPIError(resp.StatusCode, bodyBytes)
 	}
 
-	var rcResp RateConResponse
+	var rcResp RCProcessingStatusResponse
 	if err := json.Unmarshal(bodyBytes, &rcResp); err != nil {
 		return nil, fmt.Errorf("failed to decode rc response: %w", err)
 	}
 
-	return &rcResp, nil
+	fmt.Println("rcResp", rcResp)
+
+	if rcResp.Status != "completed" || rcResp.Data == nil {
+		return nil, fmt.Errorf("processing not completed: status=%s, message=%s", rcResp.Status, rcResp.Message)
+	}
+
+	return rcResp.Data, nil
 }
 
 func (c *client) ProcessSync(ctx context.Context, file io.Reader, filename, contentType string) (*RateConResponse, error) {

@@ -8,7 +8,7 @@ import (
 
 type Client interface {
 	Process(ctx context.Context, fileUrl string) (*RCProcessingResponse, error)
-	GetStatus(ctx context.Context, requestID string) (*RateConResponse, error)
+	GetStatus(ctx context.Context, requestID string) (*RCProcessingStatusResponse, error)
 	ProcessSync(ctx context.Context, fileReader io.Reader, filename, contentType string) (*RateConResponse, error)
 }
 

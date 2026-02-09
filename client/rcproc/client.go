@@ -91,7 +91,7 @@ func (c *client) Process(ctx context.Context, fileUrl string) (*RCProcessingResp
 	return &rcResp, nil
 }
 
-func (c *client) GetStatus(ctx context.Context, requestID string) (*RateConResponse, error) {
+func (c *client) GetStatus(ctx context.Context, requestID string) (*RCProcessingStatusResponse, error) {
 	// 1. Create the Request
 	req, err := http.NewRequestWithContext(ctx, "GET", c.baseURL+"/api/v1/status/"+requestID, nil)
 	if err != nil {
@@ -129,11 +129,7 @@ func (c *client) GetStatus(ctx context.Context, requestID string) (*RateConRespo
 
 	fmt.Println("rcResp", rcResp)
 
-	if rcResp.Status != "completed" || rcResp.Data == nil {
-		return nil, fmt.Errorf("processing not completed: status=%s, message=%s", rcResp.Status, rcResp.Message)
-	}
-
-	return rcResp.Data, nil
+	return &rcResp, nil
 }
 
 func (c *client) ProcessSync(ctx context.Context, file io.Reader, filename, contentType string) (*RateConResponse, error) {

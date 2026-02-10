@@ -26,12 +26,12 @@ type VehicleListResponse struct {
 
 // GpsCoordinates - GPS координаты транспорта
 type GpsCoordinates struct {
-	Time              string  `json:"time"`
-	Latitude          float64 `json:"latitude"`
-	Longitude         float64 `json:"longitude"`
-	HeadingDegrees    float64 `json:"headingDegrees"`
-	SpeedMilesPerHour float64 `json:"speedMilesPerHour"`
-	ReverseGeo        struct {
+	Time       string  `json:"time"`
+	Latitude   float64 `json:"latitude"`
+	Longitude  float64 `json:"longitude"`
+	Heading    float64 `json:"headingDegrees"`
+	SpeedSpeed float64 `json:"speedMilesPerHour"`
+	ReverseGeo struct {
 		FormattedLocation string `json:"formattedLocation"`
 	} `json:"reverseGeo"`
 	Address struct {

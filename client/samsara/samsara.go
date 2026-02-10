@@ -26,11 +26,19 @@ type VehicleListResponse struct {
 
 // GpsCoordinates - GPS координаты транспорта
 type GpsCoordinates struct {
-	Latitude  float64 `json:"latitude"`
-	Longitude float64 `json:"longitude"`
-	Time      string  `json:"time"`
-	Heading   float64 `json:"heading,omitempty"`           // Направление движения
-	Speed     float64 `json:"speedMilesPerHour,omitempty"` // Скорость в милях/час
+	Time              string  `json:"time"`
+	Latitude          float64 `json:"latitude"`
+	Longitude         float64 `json:"longitude"`
+	HeadingDegrees    float64 `json:"headingDegrees"`
+	SpeedMilesPerHour float64 `json:"speedMilesPerHour"`
+	ReverseGeo        struct {
+		FormattedLocation string `json:"formattedLocation"`
+	} `json:"reverseGeo"`
+	Address struct {
+		ID   string `json:"id"`
+		Name string `json:"name"`
+	} `json:"address"`
+	IsEcuSpeed bool `json:"isEcuSpeed"`
 }
 
 // VehicleLocation - местоположение транспорта с GPS

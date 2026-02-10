@@ -43,10 +43,11 @@ type GpsCoordinates struct {
 
 // VehicleLocation - местоположение транспорта с GPS
 type VehicleLocation struct {
-	ID   string          `json:"id"`
-	Name string          `json:"name"`
-	Vin  string          `json:"vin,omitempty"`
-	Gps  *GpsCoordinates `json:"gps"`
+	ID          string                 `json:"id"`
+	Name        string                 `json:"name"`
+	Vin         string                 `json:"vin,omitempty"`
+	ExternalIDs map[string]interface{} `json:"externalIds,omitempty"`
+	Gps         *GpsCoordinates        `json:"gps"`
 }
 
 type VehicleLocationResponse struct {
@@ -532,20 +533,15 @@ func (c *Client) GetAllVehiclesLocationsWithTime(ctx context.Context, startTime,
 // GetAllVehiclesStats получает GPS статистику для ВСЕХ транспортных средств сразу.
 // Использует endpoint /fleet/vehicles/stats?types=gps без фильтрации по ID.
 func (c *Client) GetAllVehiclesStats(ctx context.Context) ([]VehicleLocation, error) {
-	// Точь-в-точь как в старом коде: запрашиваем stats только с параметром gps
+	// Точный путь из вашего старого рабочего кода
 	path := "/fleet/vehicles/stats?types=gps"
 
 	resp, err := c.doRequest(ctx, http.MethodGet, path, nil)
 	if err != nil {
 		return nil, err
 	}
-	defer func() {
-		if closeErr := resp.Body.Close(); closeErr != nil && err == nil {
-			err = fmt.Errorf("failed to close response body: %w", closeErr)
-		}
-	}()
+	defer resp.Body.Close()
 
-	// Используем существующую структуру ответа из pkg
 	var locationResponse VehicleLocationResponse
 	if err := json.NewDecoder(resp.Body).Decode(&locationResponse); err != nil {
 		return nil, fmt.Errorf("failed to decode response: %w", err)

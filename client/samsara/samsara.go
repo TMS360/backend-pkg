@@ -30,7 +30,7 @@ type GpsCoordinates struct {
 	Latitude   float64 `json:"latitude"`
 	Longitude  float64 `json:"longitude"`
 	Heading    float64 `json:"headingDegrees"`
-	SpeedSpeed float64 `json:"speedMilesPerHour"`
+	Speed      float64 `json:"speedMilesPerHour"`
 	ReverseGeo struct {
 		FormattedLocation string `json:"formattedLocation"`
 	} `json:"reverseGeo"`

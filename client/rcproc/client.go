@@ -75,6 +75,10 @@ func (c *client) Process(ctx context.Context, fileUrl string) (*RCProcessingResp
 		return nil, fmt.Errorf("failed to read response body: %w", err)
 	}
 
+	// --- LOGGING ---
+	fmt.Printf("RC Processor (async) Status: %s\n", resp.Status)
+	fmt.Printf("RC Processor (async) Body: %s\n", string(bodyBytes))
+
 	if resp.StatusCode > 300 {
 		return nil, c.handleAPIError(resp.StatusCode, bodyBytes)
 	}
@@ -87,7 +91,7 @@ func (c *client) Process(ctx context.Context, fileUrl string) (*RCProcessingResp
 	return &rcResp, nil
 }
 
-func (c *client) GetStatus(ctx context.Context, requestID string) (*RateConResponse, error) {
+func (c *client) GetStatus(ctx context.Context, requestID string) (*RCProcessingStatusResponse, error) {
 	// 1. Create the Request
 	req, err := http.NewRequestWithContext(ctx, "GET", c.baseURL+"/api/v1/status/"+requestID, nil)
 	if err != nil {
@@ -110,14 +114,20 @@ func (c *client) GetStatus(ctx context.Context, requestID string) (*RateConRespo
 		return nil, fmt.Errorf("failed to read response body: %w", err)
 	}
 
+	// --- LOGGING ---
+	fmt.Printf("RC Processor get-status Status: %s\n", resp.Status)
+	fmt.Printf("RC Processor get-status Body: %s\n", string(bodyBytes))
+
 	if resp.StatusCode > 300 {
 		return nil, c.handleAPIError(resp.StatusCode, bodyBytes)
 	}
 
-	var rcResp RateConResponse
+	var rcResp RCProcessingStatusResponse
 	if err := json.Unmarshal(bodyBytes, &rcResp); err != nil {
 		return nil, fmt.Errorf("failed to decode rc response: %w", err)
 	}
+
+	fmt.Println("rcResp", rcResp)
 
 	return &rcResp, nil
 }
@@ -168,6 +178,10 @@ func (c *client) ProcessSync(ctx context.Context, file io.Reader, filename, cont
 		return nil, fmt.Errorf("failed to read response body: %w", err)
 	}
 
+	// --- LOGGING ---
+	fmt.Printf("RC Processor (sync) Status: %s\n", resp.Status)
+	fmt.Printf("RC Processor (sync) Body: %s\n", string(bodyBytes))
+
 	if resp.StatusCode > 300 {
 		return nil, c.handleAPIError(resp.StatusCode, bodyBytes)
 	}
@@ -181,10 +195,6 @@ func (c *client) ProcessSync(ctx context.Context, file io.Reader, filename, cont
 }
 
 func (c *client) handleAPIError(status int, bodyBytes []byte) error {
-	// --- LOGGING ---
-	fmt.Printf("RC Processor (async) Status: %s\n", status)
-	fmt.Printf("RC Processor (async) Body: %s\n", string(bodyBytes))
-
 	switch status {
 	case http.StatusUnprocessableEntity: // 422
 		var errResp HTTPValidationError

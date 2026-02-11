@@ -128,3 +128,7 @@ func MergeUpdates(target interface{}, mapChanges map[string]interface{}) error {
 
 	return nil
 }
+
+func StringPtr(s string) *string {
+	return &s
+}

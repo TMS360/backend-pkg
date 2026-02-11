@@ -7,20 +7,11 @@ import (
 	"html/template"
 	"strconv"
 
+	"github.com/TMS360/backend-pkg/config"
 	"gopkg.in/gomail.v2"
 )
 
-// --- 1. Configuration ---
-
-type Config struct {
-	Host     string
-	Port     string
-	Username string // Leave empty for MailHog
-	Password string // Leave empty for MailHog
-	From     string
-}
-
-// --- 2. Interface (Best Practice for Testing) ---
+// --- Interface (Best Practice for Testing) ---
 
 type Sender interface {
 	SendEmail(to []string, subject string, templateFile string, data interface{}) error
@@ -34,7 +25,7 @@ type SMTPSender struct {
 	templates embed.FS // Embedded filesystem
 }
 
-func NewSMTPSender(cfg Config, templates embed.FS) (*SMTPSender, error) {
+func NewSMTPSender(cfg config.MailConfig, templates embed.FS) (*SMTPSender, error) {
 	// For MailHog, we usually don't need authentication,
 	// but this supports real SMTP servers (Gmail, SES, SendGrid) too.
 	d, err := NewEmailDialer(cfg)
@@ -86,7 +77,7 @@ func (s *SMTPSender) parseTemplate(templateName string, data interface{}) (strin
 	return buf.String(), nil
 }
 
-func NewEmailDialer(cfg Config) (*gomail.Dialer, error) {
+func NewEmailDialer(cfg config.MailConfig) (*gomail.Dialer, error) {
 	// 1. Sensible Default
 	port := 25
 

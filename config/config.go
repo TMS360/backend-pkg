@@ -68,11 +68,11 @@ type JWTConfig struct {
 }
 
 type MailConfig struct {
-	HOST     string `mapstructure:"HOST"`
-	PORT     string `mapstructure:"PORT"`
-	USERNAME string `mapstructure:"USERNAME"`
-	PASSWORD string `mapstructure:"PASSWORD"`
-	FROM     string `mapstructure:"FROM"`
+	Host     string `mapstructure:"HOST"`
+	Port     string `mapstructure:"PORT"`
+	Username string `mapstructure:"USERNAME"`
+	Password string `mapstructure:"PASSWORD"`
+	From     string `mapstructure:"FROM"`
 }
 
 type SamsaraConfig struct {

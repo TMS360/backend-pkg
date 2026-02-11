@@ -199,6 +199,8 @@ type WebhookEventType string
 const (
 	EventTypeAlert          WebhookEventType = "AlertIncident"
 	EventTypeAddressCreated WebhookEventType = "AddressCreated"
+	EventTypeGeofenceEntry  WebhookEventType = "GeofenceEntry"
+	EventTypeGeofenceExit   WebhookEventType = "GeofenceExit"
 	EventTypeAddressUpdated WebhookEventType = "AddressUpdated"
 	EventTypeAddressDeleted WebhookEventType = "AddressDeleted"
 	EventTypeVehicleUpdated WebhookEventType = "VehicleUpdated"
@@ -1106,7 +1108,8 @@ func (c *Client) CreateGeofenceWebhook(ctx context.Context, name, url string, cu
 		URL:     url,
 		Version: "2018-01-01",
 		EventTypes: []string{
-			"AlertIncident", // AlertIncident события включают вход/выход из геозоны
+			"GeofenceEntry",
+			"GeofenceExit",
 		},
 		CustomHeaders: customHeaders,
 		Enabled:       true,
@@ -1527,6 +1530,27 @@ func (h *WebhookHandler) HandleWebhook(event *WebhookEvent) error {
 				return fmt.Errorf("failed to parse address deletion: %w", err)
 			}
 			return h.OnAddressDeleted(data.AddressID)
+		}
+	case EventTypeGeofenceEntry:
+		alertEvent := &AlertEvent{
+			StartMs: event.EventMs,
+			Details: "Vehicle entered geofence",
+		}
+		json.Unmarshal(event.Event, alertEvent)
+
+		if h.OnGeofenceEntry != nil {
+			return h.OnGeofenceEntry(alertEvent)
+		}
+
+	case EventTypeGeofenceExit:
+		alertEvent := &AlertEvent{
+			StartMs: event.EventMs,
+			Details: "Vehicle exited geofence",
+		}
+		json.Unmarshal(event.Event, alertEvent)
+
+		if h.OnGeofenceExit != nil {
+			return h.OnGeofenceExit(alertEvent)
 		}
 	}
 	return nil

@@ -53,7 +53,7 @@ message TripDetails {
   string load_number = 3;
   string primary_driver_id = 4;
   string secondary_driver_id = 5; // Может быть пустым
-  double total_rate = 6;
+  double total_pay = 6;
   double distance = 7;
   string started_at = 8;   // ISO Timestamp
   string finished_at = 9;  // ISO Timestamp (nullable/empty if active)
@@ -161,7 +161,7 @@ message Shipment {
   ShipmentType type = 6;
   double total_weight = 7;
   double total_distance = 8;
-  double total_rate = 9;
+  double total_pay = 9;
   repeated ShipmentLeg legs = 10;
   google.protobuf.Timestamp created_at = 11;
   google.protobuf.Timestamp updated_at = 12;

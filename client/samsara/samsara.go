@@ -26,19 +26,28 @@ type VehicleListResponse struct {
 
 // GpsCoordinates - GPS координаты транспорта
 type GpsCoordinates struct {
-	Latitude  float64 `json:"latitude"`
-	Longitude float64 `json:"longitude"`
-	Time      string  `json:"time"`
-	Heading   float64 `json:"heading,omitempty"`           // Направление движения
-	Speed     float64 `json:"speedMilesPerHour,omitempty"` // Скорость в милях/час
+	Time       string  `json:"time"`
+	Latitude   float64 `json:"latitude"`
+	Longitude  float64 `json:"longitude"`
+	Heading    float64 `json:"headingDegrees"`
+	Speed      float64 `json:"speedMilesPerHour"`
+	ReverseGeo struct {
+		FormattedLocation string `json:"formattedLocation"`
+	} `json:"reverseGeo"`
+	Address struct {
+		ID   string `json:"id"`
+		Name string `json:"name"`
+	} `json:"address"`
+	IsEcuSpeed bool `json:"isEcuSpeed"`
 }
 
 // VehicleLocation - местоположение транспорта с GPS
 type VehicleLocation struct {
-	ID   string          `json:"id"`
-	Name string          `json:"name"`
-	Vin  string          `json:"vin,omitempty"`
-	Gps  *GpsCoordinates `json:"gps"`
+	ID          string                 `json:"id"`
+	Name        string                 `json:"name"`
+	Vin         string                 `json:"vin,omitempty"`
+	ExternalIDs map[string]interface{} `json:"externalIds,omitempty"`
+	Gps         *GpsCoordinates        `json:"gps"`
 }
 
 type VehicleLocationResponse struct {
@@ -519,6 +528,26 @@ func (c *Client) GetAllVehiclesLocationsWithTime(ctx context.Context, startTime,
 	}
 
 	return response.Data, nil
+}
+
+// GetAllVehiclesStats получает GPS статистику для ВСЕХ транспортных средств сразу.
+// Использует endpoint /fleet/vehicles/stats?types=gps без фильтрации по ID.
+func (c *Client) GetAllVehiclesStats(ctx context.Context) ([]VehicleLocation, error) {
+	// Точный путь из вашего старого рабочего кода
+	path := "/fleet/vehicles/stats?types=gps"
+
+	resp, err := c.doRequest(ctx, http.MethodGet, path, nil)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	var locationResponse VehicleLocationResponse
+	if err := json.NewDecoder(resp.Body).Decode(&locationResponse); err != nil {
+		return nil, fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	return locationResponse.Data, nil
 }
 
 // ============================================================================

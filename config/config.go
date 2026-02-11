@@ -20,6 +20,7 @@ type Config struct {
 	KafkaConfig       `mapstructure:"KAFKA"`
 	RedisConfig       `mapstructure:"REDIS"`
 	JWTConfig         `mapstructure:"JWT"`
+	MailConfig        `mapstructure:"MAIL"`
 	SamsaraConfig     `mapstructure:"SAMSARA"`
 	HereConfig        `mapstructure:"HERE"`
 	ClickHouseConfig  `mapstructure:"CLICKHOUSE"`
@@ -66,6 +67,14 @@ type JWTConfig struct {
 	CookieLaxMode  int           `mapstructure:"COOKIE_LAX_MODE"`
 }
 
+type MailConfig struct {
+	HOST     string `mapstructure:"HOST"`
+	PORT     string `mapstructure:"PORT"`
+	USERNAME string `mapstructure:"USERNAME"`
+	PASSWORD string `mapstructure:"PASSWORD"`
+	FROM     string `mapstructure:"FROM"`
+}
+
 type SamsaraConfig struct {
 	Host string `mapstructure:"HOST"`
 }
@@ -91,7 +100,7 @@ type AwsConfig struct {
 	BucketName      string `mapstructure:"BUCKET_NAME"`
 }
 
-var Prefixes = []string{"http", "db", "kafka", "redis", "jwt", "redis", "samsara", "here", "clickhouse", "aws"}
+var Prefixes = []string{"http", "db", "kafka", "redis", "jwt", "redis", "mail", "samsara", "here", "clickhouse", "aws"}
 
 func MapConfig() {
 	for _, key := range viper.AllKeys() {

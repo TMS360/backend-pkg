@@ -976,12 +976,26 @@ func (c *Client) CreateWebhook(ctx context.Context, webhook WebhookDefinition) (
 		return nil, fmt.Errorf("API request failed with status %d: %s", resp.StatusCode, string(bodyBytes))
 	}
 
-	var webhookResponse WebhookResponse
-	if err := json.NewDecoder(resp.Body).Decode(&webhookResponse); err != nil {
-		return nil, fmt.Errorf("failed to decode response: %w", err)
+	// Читаем тело ответа целиком
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read response body: %w", err)
 	}
 
-	return &webhookResponse.Data, nil
+	// Попытка 1: Пробуем декодировать как обертку {"data": ...}
+	var wrapper WebhookResponse
+	if err := json.Unmarshal(respBody, &wrapper); err == nil && wrapper.Data.ID != "" {
+		return &wrapper.Data, nil
+	}
+
+	// Попытка 2: Пробуем декодировать как прямой объект {...}
+	var direct WebhookDefinition
+	if err := json.Unmarshal(respBody, &direct); err == nil && direct.ID != "" {
+		return &direct, nil
+	}
+
+	// Если не получилось найти ID
+	return nil, fmt.Errorf("webhook created but failed to parse ID. Response: %s", string(respBody))
 }
 
 // ListWebhooks получает список всех webhook с пагинацией

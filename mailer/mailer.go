@@ -5,6 +5,7 @@ import (
 	"embed"
 	"fmt"
 	"html/template"
+	"strconv"
 
 	"gopkg.in/gomail.v2"
 )
@@ -13,7 +14,7 @@ import (
 
 type Config struct {
 	Host     string
-	Port     int
+	Port     string
 	Username string // Leave empty for MailHog
 	Password string // Leave empty for MailHog
 	From     string
@@ -33,16 +34,19 @@ type SMTPSender struct {
 	templates embed.FS // Embedded filesystem
 }
 
-func NewSMTPSender(cfg Config, templates embed.FS) *SMTPSender {
+func NewSMTPSender(cfg Config, templates embed.FS) (*SMTPSender, error) {
 	// For MailHog, we usually don't need authentication,
 	// but this supports real SMTP servers (Gmail, SES, SendGrid) too.
-	d := gomail.NewDialer(cfg.Host, cfg.Port, cfg.Username, cfg.Password)
+	d, err := NewEmailDialer(cfg)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create email dialer: %v", err)
+	}
 
 	return &SMTPSender{
 		dialer:    d,
 		from:      cfg.From,
 		templates: templates,
-	}
+	}, nil
 }
 
 func (s *SMTPSender) SendEmail(to []string, subject string, templateFile string, data interface{}) error {
@@ -80,4 +84,26 @@ func (s *SMTPSender) parseTemplate(templateName string, data interface{}) (strin
 	}
 
 	return buf.String(), nil
+}
+
+func NewEmailDialer(cfg Config) (*gomail.Dialer, error) {
+	// 1. Sensible Default
+	port := 25
+
+	// 2. Override if provided
+	if cfg.Port != "" {
+		var err error
+		port, err = strconv.Atoi(cfg.Port)
+		if err != nil {
+			// High-load tip: Wrap errors with context so you know WHERE it failed
+			return nil, fmt.Errorf("invalid SMTP port '%s': %w", cfg.Port, err)
+		}
+	}
+
+	// 3. Optional: Validate port range
+	if port <= 0 || port > 65535 {
+		return nil, fmt.Errorf("SMTP port %d is out of valid range (1-65535)", port)
+	}
+
+	return gomail.NewDialer(cfg.Host, port, cfg.Username, cfg.Password), nil
 }

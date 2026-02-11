@@ -197,7 +197,7 @@ type WebhookListResponse struct {
 type WebhookEventType string
 
 const (
-	EventTypeAlert          WebhookEventType = "Alert"
+	EventTypeAlert          WebhookEventType = "AlertIncident"
 	EventTypeAddressCreated WebhookEventType = "AddressCreated"
 	EventTypeAddressUpdated WebhookEventType = "AddressUpdated"
 	EventTypeAddressDeleted WebhookEventType = "AddressDeleted"
@@ -1092,7 +1092,7 @@ func (c *Client) CreateGeofenceWebhook(ctx context.Context, name, url string, cu
 		URL:     url,
 		Version: "2018-01-01",
 		EventTypes: []string{
-			"Alert", // Alert события включают вход/выход из геозоны
+			"AlertIncident", // AlertIncident события включают вход/выход из геозоны
 		},
 		CustomHeaders: customHeaders,
 		Enabled:       true,

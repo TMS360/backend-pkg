@@ -262,7 +262,7 @@ func (x *GetCurrentDriversByTrailerIdsRequest) GetTrailerIds() []string {
 
 type GetCurrentDriversByTrailerIdsResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Data          []*TrailerInfo         `protobuf:"bytes,1,rep,name=data,proto3" json:"data,omitempty"`
+	Data          []*DriverInfo          `protobuf:"bytes,1,rep,name=data,proto3" json:"data,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -297,7 +297,7 @@ func (*GetCurrentDriversByTrailerIdsResponse) Descriptor() ([]byte, []int) {
 	return file_teams_teams_proto_rawDescGZIP(), []int{5}
 }
 
-func (x *GetCurrentDriversByTrailerIdsResponse) GetData() []*TrailerInfo {
+func (x *GetCurrentDriversByTrailerIdsResponse) GetData() []*DriverInfo {
 	if x != nil {
 		return x.Data
 	}
@@ -434,9 +434,9 @@ const file_teams_teams_proto_rawDesc = "" +
 	"\x04data\x18\x01 \x03(\v2\x11.teams.DriverInfoR\x04data\"G\n" +
 	"$GetCurrentDriversByTrailerIdsRequest\x12\x1f\n" +
 	"\vtrailer_ids\x18\x01 \x03(\tR\n" +
-	"trailerIds\"O\n" +
-	"%GetCurrentDriversByTrailerIdsResponse\x12&\n" +
-	"\x04data\x18\x01 \x03(\v2\x12.teams.TrailerInfoR\x04data\"\xa2\x01\n" +
+	"trailerIds\"N\n" +
+	"%GetCurrentDriversByTrailerIdsResponse\x12%\n" +
+	"\x04data\x18\x01 \x03(\v2\x11.teams.DriverInfoR\x04data\"\xa2\x01\n" +
 	"\n" +
 	"DriverInfo\x12*\n" +
 	"\x11primary_driver_id\x18\x01 \x01(\tR\x0fprimaryDriverId\x12.\n" +
@@ -479,7 +479,7 @@ var file_teams_teams_proto_depIdxs = []int32{
 	8, // 0: teams.GetBusyVehiclesRequest.from:type_name -> google.protobuf.Timestamp
 	8, // 1: teams.GetBusyVehiclesRequest.to:type_name -> google.protobuf.Timestamp
 	6, // 2: teams.GetCurrentDriversByTruckIdsResponse.data:type_name -> teams.DriverInfo
-	7, // 3: teams.GetCurrentDriversByTrailerIdsResponse.data:type_name -> teams.TrailerInfo
+	6, // 3: teams.GetCurrentDriversByTrailerIdsResponse.data:type_name -> teams.DriverInfo
 	0, // 4: teams.TeamsService.GetBusyVehicles:input_type -> teams.GetBusyVehiclesRequest
 	2, // 5: teams.TeamsService.GetCurrentDriversByTruckIds:input_type -> teams.GetCurrentDriversByTruckIdsRequest
 	4, // 6: teams.TeamsService.GetCurrentDriversByTrailerIds:input_type -> teams.GetCurrentDriversByTrailerIdsRequest

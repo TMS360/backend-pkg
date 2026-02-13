@@ -39,7 +39,7 @@ message GetCurrentDriversByTrailerIdsRequest {
 }
 
 message GetCurrentDriversByTrailerIdsResponse {
-  repeated TrailerInfo data = 1;
+  repeated DriverInfo data = 1;
 }
 
 message DriverInfo {

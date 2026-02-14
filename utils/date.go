@@ -63,6 +63,31 @@ func GetWeekRange(refDate time.Time) (time.Time, time.Time) {
 	return start, end
 }
 
+// ToWeekStart возвращает начало недели (Понедельник 00:00:00) для любой даты
+func ToWeekStart(t time.Time) time.Time {
+	isoYear, isoWeek := t.ISOWeek()
+	// Вычисляем дату понедельника этой ISO недели
+	// (Упрощенная логика для примера, в проде используйте надежную библиотеку или date-math)
+	start := time.Date(isoYear, 1, 1, 0, 0, 0, 0, t.Location())
+	for start.Weekday() != time.Monday {
+		start = start.AddDate(0, 0, 1)
+	}
+	for {
+		y, w := start.ISOWeek()
+		if y == isoYear && w == isoWeek {
+			break
+		}
+		start = start.AddDate(0, 0, 7)
+	}
+	return start
+}
+
+// ToWeekEnd возвращает конец недели (Воскресенье 23:59:59.999999)
+func ToWeekEnd(t time.Time) time.Time {
+	start := ToWeekStart(t)
+	return start.AddDate(0, 0, 7).Add(-time.Nanosecond)
+}
+
 // TruncateToDay сбрасывает время в 00:00:00
 func TruncateToDay(t time.Time) time.Time {
 	return time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, t.Location())

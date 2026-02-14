@@ -46,46 +46,29 @@ func AsDateInUTC(t time.Time) time.Time {
 
 // GetWeekRange возвращает начало и конец недели (Понедельник 00:00:00 и Воскресенье 23:59:59)
 func GetWeekRange(refDate time.Time) (time.Time, time.Time) {
+	return GetWeekStart(refDate), GetWeekEnd(refDate)
+}
+
+func GetWeekStart(refDate time.Time) time.Time {
 	weekday := refDate.Weekday()
-	if weekday == 0 {
+	// Go's time.Weekday is an enum where Sunday is 0.
+	// We adjust it so Monday is 1 and Sunday is 7.
+	if weekday == time.Sunday {
 		weekday = 7
 	}
 	offset := int(weekday) - 1
 
-	// Начало недели (Понедельник 00:00:00)
 	start := refDate.AddDate(0, 0, -offset)
-	start = time.Date(start.Year(), start.Month(), start.Day(), 0, 0, 0, 0, time.UTC)
+	return time.Date(start.Year(), start.Month(), start.Day(), 0, 0, 0, 0, time.UTC)
+}
 
-	// Конец недели (Воскресенье 23:59:59)
+func GetWeekEnd(refDate time.Time) time.Time {
+	// Reuse the Start logic to find Monday
+	start := GetWeekStart(refDate)
+
+	// Move forward to Sunday
 	end := start.AddDate(0, 0, 6)
-	end = time.Date(end.Year(), end.Month(), end.Day(), 23, 59, 59, 999999999, time.UTC)
-
-	return start, end
-}
-
-// ToWeekStart возвращает начало недели (Понедельник 00:00:00) для любой даты
-func ToWeekStart(t time.Time) time.Time {
-	isoYear, isoWeek := t.ISOWeek()
-	// Вычисляем дату понедельника этой ISO недели
-	// (Упрощенная логика для примера, в проде используйте надежную библиотеку или date-math)
-	start := time.Date(isoYear, 1, 1, 0, 0, 0, 0, t.Location())
-	for start.Weekday() != time.Monday {
-		start = start.AddDate(0, 0, 1)
-	}
-	for {
-		y, w := start.ISOWeek()
-		if y == isoYear && w == isoWeek {
-			break
-		}
-		start = start.AddDate(0, 0, 7)
-	}
-	return start
-}
-
-// ToWeekEnd возвращает конец недели (Воскресенье 23:59:59.999999)
-func ToWeekEnd(t time.Time) time.Time {
-	start := ToWeekStart(t)
-	return start.AddDate(0, 0, 7).Add(-time.Nanosecond)
+	return time.Date(end.Year(), end.Month(), end.Day(), 23, 59, 59, 999999999, time.UTC)
 }
 
 // TruncateToDay сбрасывает время в 00:00:00

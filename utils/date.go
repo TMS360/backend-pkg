@@ -89,3 +89,10 @@ func CombineDateAndTime(dateStr, timeStr string) (*time.Time, error) {
 	}
 	return &t, nil
 }
+
+func IsSameWeek(t1, t2 time.Time) bool {
+	year1, week1 := t1.ISOWeek()
+	year2, week2 := t2.ISOWeek()
+
+	return year1 == year2 && week1 == week2
+}

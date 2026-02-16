@@ -70,7 +70,7 @@ type LoadDetailsDTO struct {
 	DetentionFreeTime   *int     `json:"detention_free_time"`
 	LayoverRate         *float64 `json:"layover_rate"`
 	TonuRate            *float64 `json:"tonu_rate"`
-	LumperReimbursement *float64 `json:"lumper_reimbursement"`
+	LumperReimbursement *bool    `json:"lumper_reimbursement"`
 	FuelSurcharge       *float64 `json:"fuel_surcharge"`
 	FuelSurchargeType   *string  `json:"fuel_surcharge_type"`
 }

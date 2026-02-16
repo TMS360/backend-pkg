@@ -46,21 +46,29 @@ func AsDateInUTC(t time.Time) time.Time {
 
 // GetWeekRange возвращает начало и конец недели (Понедельник 00:00:00 и Воскресенье 23:59:59)
 func GetWeekRange(refDate time.Time) (time.Time, time.Time) {
+	return GetWeekStart(refDate), GetWeekEnd(refDate)
+}
+
+func GetWeekStart(refDate time.Time) time.Time {
 	weekday := refDate.Weekday()
-	if weekday == 0 {
+	// Go's time.Weekday is an enum where Sunday is 0.
+	// We adjust it so Monday is 1 and Sunday is 7.
+	if weekday == time.Sunday {
 		weekday = 7
 	}
 	offset := int(weekday) - 1
 
-	// Начало недели (Понедельник 00:00:00)
 	start := refDate.AddDate(0, 0, -offset)
-	start = time.Date(start.Year(), start.Month(), start.Day(), 0, 0, 0, 0, time.UTC)
+	return time.Date(start.Year(), start.Month(), start.Day(), 0, 0, 0, 0, time.UTC)
+}
 
-	// Конец недели (Воскресенье 23:59:59)
+func GetWeekEnd(refDate time.Time) time.Time {
+	// Reuse the Start logic to find Monday
+	start := GetWeekStart(refDate)
+
+	// Move forward to Sunday
 	end := start.AddDate(0, 0, 6)
-	end = time.Date(end.Year(), end.Month(), end.Day(), 23, 59, 59, 999999999, time.UTC)
-
-	return start, end
+	return time.Date(end.Year(), end.Month(), end.Day(), 23, 59, 59, 999999999, time.UTC)
 }
 
 // TruncateToDay сбрасывает время в 00:00:00
@@ -88,4 +96,11 @@ func CombineDateAndTime(dateStr, timeStr string) (*time.Time, error) {
 		return nil, err
 	}
 	return &t, nil
+}
+
+func IsSameWeek(t1, t2 time.Time) bool {
+	year1, week1 := t1.ISOWeek()
+	year2, week2 := t2.ISOWeek()
+
+	return year1 == year2 && week1 == week2
 }

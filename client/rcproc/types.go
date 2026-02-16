@@ -94,21 +94,34 @@ type EquipmentDTO struct {
 	// Nested Temperature Requirements
 	TemperatureRequirements TemperatureRequirementsDTO `json:"temperature_requirements"`
 
-	FlatbedRequirements   *string  `json:"flatbed_requirements"`
-	OversizeRequirements  *string  `json:"oversize_requirements"`
-	TemperatureControlled bool     `json:"temperature_controlled"`
-	TemperatureMin        *float64 `json:"temperature_min"`
-	TemperatureMax        *float64 `json:"temperature_max"`
-	TemperatureUnit       string   `json:"temperature_unit"`
-	LiftGateRequired      *bool    `json:"lift_gate_required"`
-	PalletJackRequired    *bool    `json:"pallet_jack_required"`
-	LoadBarsRequired      *bool    `json:"load_bars_required"`
-	ETrackRequired        *bool    `json:"e_track_required"`
-	AirRideRequired       *bool    `json:"air_ride_required"`
-	VentedTrailer         *bool    `json:"vented_trailer"`
-	FoodGradeTrailer      bool     `json:"food_grade_trailer"`
+	FlatbedRequirements   *FlatbedRequirementsDTO `json:"flatbed_requirements"`
+	OversizeRequirements  *string                 `json:"oversize_requirements"`
+	TemperatureControlled bool                    `json:"temperature_controlled"`
+	TemperatureMin        *float64                `json:"temperature_min"`
+	TemperatureMax        *float64                `json:"temperature_max"`
+	TemperatureUnit       string                  `json:"temperature_unit"`
+	LiftGateRequired      *bool                   `json:"lift_gate_required"`
+	PalletJackRequired    *bool                   `json:"pallet_jack_required"`
+	LoadBarsRequired      *bool                   `json:"load_bars_required"`
+	ETrackRequired        *bool                   `json:"e_track_required"`
+	AirRideRequired       *bool                   `json:"air_ride_required"`
+	VentedTrailer         *bool                   `json:"vented_trailer"`
+	FoodGradeTrailer      bool                    `json:"food_grade_trailer"`
 }
-
+type FlatbedRequirementsDTO struct {
+	TarpRequired             *bool   `json:"tarp_required"`
+	TarpType                 *string `json:"tarp_type"`
+	TarpCount                *int    `json:"tarp_count"`
+	ChainsRequired           *int    `json:"chains_required"`
+	StrapsRequired           *int    `json:"straps_required"`
+	BindersRequired          *int    `json:"binders_required"`
+	EdgeProtectorsRequired   *int    `json:"edge_protectors_required"`
+	CornerProtectorsRequired *int    `json:"corner_protectors_required"`
+	CoilRacksRequired        *int    `json:"coil_racks_required"`
+	DunnageRequired          *bool   `json:"dunnage_required"`
+	Stackable                *bool   `json:"stackable"`
+	TopLoadOk                *bool   `json:"top_load_ok"`
+}
 type HazmatDetailsDTO struct {
 	HazmatClass           *string  `json:"hazmat_class"`
 	UnNumber              *string  `json:"un_number"`

@@ -161,7 +161,7 @@ type CommoditiesDTO struct {
 
 type LoadStopDTO struct {
 	Type                string  `json:"type"` // pickup or dropoff
-	StopNumber          int     `json:"stop_number"`
+	StopNumber          int32   `json:"stop_number"`
 	FacilityName        string  `json:"facility_name"`
 	Address             string  `json:"address"`
 	City                string  `json:"city"`

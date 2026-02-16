@@ -175,6 +175,8 @@ type LoadStopDTO struct {
 	AppointmentRequired bool    `json:"appointment_required"`
 	PickupNumber        *string `json:"pickup_number,omitempty"`
 	DeliveryNumber      *string `json:"delivery_number,omitempty"`
+	ContactName         *string `json:"contact_name,omitempty"`
+	ContactPhone        *string `json:"contact_phone,omitempty"`
 	Notes               string  `json:"notes"`
 }
 

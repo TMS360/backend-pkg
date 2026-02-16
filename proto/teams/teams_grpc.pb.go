@@ -21,9 +21,9 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	TeamsService_GetBusyVehicles_FullMethodName                = "/teams.TeamsService/GetBusyVehicles"
-	TeamsService_GetCurrentDriversByTruckIds_FullMethodName    = "/teams.TeamsService/GetCurrentDriversByTruckIds"
-	TeamsService_GetCurrentDriversByTrailersIds_FullMethodName = "/teams.TeamsService/GetCurrentDriversByTrailersIds"
+	TeamsService_GetBusyVehicles_FullMethodName               = "/teams.TeamsService/GetBusyVehicles"
+	TeamsService_GetCurrentDriversByTruckIds_FullMethodName   = "/teams.TeamsService/GetCurrentDriversByTruckIds"
+	TeamsService_GetCurrentDriversByTrailerIds_FullMethodName = "/teams.TeamsService/GetCurrentDriversByTrailerIds"
 )
 
 // TeamsServiceClient is the client API for TeamsService service.
@@ -34,7 +34,7 @@ type TeamsServiceClient interface {
 	GetBusyVehicles(ctx context.Context, in *GetBusyVehiclesRequest, opts ...grpc.CallOption) (*GetBusyVehiclesResponse, error)
 	// Get current drivers for a list of trucks
 	GetCurrentDriversByTruckIds(ctx context.Context, in *GetCurrentDriversByTruckIdsRequest, opts ...grpc.CallOption) (*GetCurrentDriversByTruckIdsResponse, error)
-	GetCurrentDriversByTrailersIds(ctx context.Context, in *GetCurrentDriversByTrailersIdsRequest, opts ...grpc.CallOption) (*GetCurrentDriversByTrailersIdsResponse, error)
+	GetCurrentDriversByTrailerIds(ctx context.Context, in *GetCurrentDriversByTrailerIdsRequest, opts ...grpc.CallOption) (*GetCurrentDriversByTrailerIdsResponse, error)
 }
 
 type teamsServiceClient struct {
@@ -65,10 +65,10 @@ func (c *teamsServiceClient) GetCurrentDriversByTruckIds(ctx context.Context, in
 	return out, nil
 }
 
-func (c *teamsServiceClient) GetCurrentDriversByTrailersIds(ctx context.Context, in *GetCurrentDriversByTrailersIdsRequest, opts ...grpc.CallOption) (*GetCurrentDriversByTrailersIdsResponse, error) {
+func (c *teamsServiceClient) GetCurrentDriversByTrailerIds(ctx context.Context, in *GetCurrentDriversByTrailerIdsRequest, opts ...grpc.CallOption) (*GetCurrentDriversByTrailerIdsResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(GetCurrentDriversByTrailersIdsResponse)
-	err := c.cc.Invoke(ctx, TeamsService_GetCurrentDriversByTrailersIds_FullMethodName, in, out, cOpts...)
+	out := new(GetCurrentDriversByTrailerIdsResponse)
+	err := c.cc.Invoke(ctx, TeamsService_GetCurrentDriversByTrailerIds_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -83,7 +83,7 @@ type TeamsServiceServer interface {
 	GetBusyVehicles(context.Context, *GetBusyVehiclesRequest) (*GetBusyVehiclesResponse, error)
 	// Get current drivers for a list of trucks
 	GetCurrentDriversByTruckIds(context.Context, *GetCurrentDriversByTruckIdsRequest) (*GetCurrentDriversByTruckIdsResponse, error)
-	GetCurrentDriversByTrailersIds(context.Context, *GetCurrentDriversByTrailersIdsRequest) (*GetCurrentDriversByTrailersIdsResponse, error)
+	GetCurrentDriversByTrailerIds(context.Context, *GetCurrentDriversByTrailerIdsRequest) (*GetCurrentDriversByTrailerIdsResponse, error)
 	mustEmbedUnimplementedTeamsServiceServer()
 }
 
@@ -100,8 +100,8 @@ func (UnimplementedTeamsServiceServer) GetBusyVehicles(context.Context, *GetBusy
 func (UnimplementedTeamsServiceServer) GetCurrentDriversByTruckIds(context.Context, *GetCurrentDriversByTruckIdsRequest) (*GetCurrentDriversByTruckIdsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetCurrentDriversByTruckIds not implemented")
 }
-func (UnimplementedTeamsServiceServer) GetCurrentDriversByTrailersIds(context.Context, *GetCurrentDriversByTrailersIdsRequest) (*GetCurrentDriversByTrailersIdsResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "method GetCurrentDriversByTrailersIds not implemented")
+func (UnimplementedTeamsServiceServer) GetCurrentDriversByTrailerIds(context.Context, *GetCurrentDriversByTrailerIdsRequest) (*GetCurrentDriversByTrailerIdsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetCurrentDriversByTrailerIds not implemented")
 }
 func (UnimplementedTeamsServiceServer) mustEmbedUnimplementedTeamsServiceServer() {}
 func (UnimplementedTeamsServiceServer) testEmbeddedByValue()                      {}
@@ -160,20 +160,20 @@ func _TeamsService_GetCurrentDriversByTruckIds_Handler(srv interface{}, ctx cont
 	return interceptor(ctx, in, info, handler)
 }
 
-func _TeamsService_GetCurrentDriversByTrailersIds_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(GetCurrentDriversByTrailersIdsRequest)
+func _TeamsService_GetCurrentDriversByTrailerIds_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetCurrentDriversByTrailerIdsRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(TeamsServiceServer).GetCurrentDriversByTrailersIds(ctx, in)
+		return srv.(TeamsServiceServer).GetCurrentDriversByTrailerIds(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: TeamsService_GetCurrentDriversByTrailersIds_FullMethodName,
+		FullMethod: TeamsService_GetCurrentDriversByTrailerIds_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(TeamsServiceServer).GetCurrentDriversByTrailersIds(ctx, req.(*GetCurrentDriversByTrailersIdsRequest))
+		return srv.(TeamsServiceServer).GetCurrentDriversByTrailerIds(ctx, req.(*GetCurrentDriversByTrailerIdsRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -194,8 +194,8 @@ var TeamsService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _TeamsService_GetCurrentDriversByTruckIds_Handler,
 		},
 		{
-			MethodName: "GetCurrentDriversByTrailersIds",
-			Handler:    _TeamsService_GetCurrentDriversByTrailersIds_Handler,
+			MethodName: "GetCurrentDriversByTrailerIds",
+			Handler:    _TeamsService_GetCurrentDriversByTrailerIds_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

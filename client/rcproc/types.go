@@ -89,7 +89,7 @@ type EquipmentDTO struct {
 	TwicCardRequired     *bool  `json:"twic_card_required"`
 
 	// Nested Hazmat Details
-	HazmatDetails HazmatDetailsDTO `json:"hazmat_details"`
+	HazmatDetails *HazmatDetailsDTO `json:"hazmat_details"`
 
 	// Nested Temperature Requirements
 	TemperatureRequirements TemperatureRequirementsDTO `json:"temperature_requirements"`
@@ -125,14 +125,14 @@ type FlatbedRequirementsDTO struct {
 type HazmatDetailsDTO struct {
 	HazmatClass           *string  `json:"hazmat_class"`
 	UnNumber              *string  `json:"un_number"`
-	ProperShippingName    string   `json:"proper_shipping_name"`
+	ProperShippingName    *string  `json:"proper_shipping_name"`
 	PackingGroup          *string  `json:"packing_group"`
 	PlacardRequired       *bool    `json:"placard_required"`
 	PlacardType           *string  `json:"placard_type"`
 	EmergencyContactName  *string  `json:"emergency_contact_name"`
 	EmergencyContactPhone *string  `json:"emergency_contact_phone"`
 	ErgGuideNumber        *string  `json:"erg_guide_number"`
-	ReportableQuantity    *bool    `json:"reportable_quantity"`
+	ReportableQuantity    *float64 `json:"reportable_quantity"`
 	MarinePollutant       *bool    `json:"marine_pollutant"`
 	InhalationHazard      *bool    `json:"inhalation_hazard"`
 	SpecialPermits        []string `json:"special_permits"` // Note: JSON shows an array []

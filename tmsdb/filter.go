@@ -570,8 +570,13 @@ func (fb *FilterBuilder) InIDs(col string, ids []string) *FilterBuilder {
 }
 
 // ============================================================================
-// ORDER BY
+// SORTING
 // ============================================================================
+
+type SortInput struct {
+	Field string    `json:"field"`
+	Order SortOrder `json:"order"`
+}
 
 // OrderBy добавляет сортировку
 func (fb *FilterBuilder) OrderBy(col string, order *SortOrder) *FilterBuilder {
@@ -589,6 +594,24 @@ func (fb *FilterBuilder) OrderBy(col string, order *SortOrder) *FilterBuilder {
 // OrderByDefault добавляет дефолтную сортировку
 func (fb *FilterBuilder) OrderByDefault(defaultOrder string) *FilterBuilder {
 	fb.db = fb.db.Order(defaultOrder)
+	return fb
+}
+
+// ApplySort применяет сортировку из []SortInput с валидацией допустимых полей.
+// allowedFields — map допустимых field -> реальное имя колонки в БД.
+// Пример: allowedFields = map[string]string{"createdAt": "created_at", "name": "name"}
+func (fb *FilterBuilder) ApplySort(sorts []SortInput, allowedFields map[string]string) *FilterBuilder {
+	for _, s := range sorts {
+		col, ok := allowedFields[s.Field]
+		if !ok {
+			continue
+		}
+		dir := "ASC"
+		if s.Order == SortOrderDesc {
+			dir = "DESC"
+		}
+		fb.db = fb.db.Order(col + " " + dir)
+	}
 	return fb
 }
 

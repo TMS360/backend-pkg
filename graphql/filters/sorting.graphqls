@@ -1,0 +1,13 @@
+"""
+Элемент сортировки.
+
+Пример:
+- { field: "created_at", order: desc }
+- { field: "name", order: asc }
+"""
+input SortInput {
+    """Имя поля для сортировки"""
+    field: String!
+    """Направление сортировки (по умолчанию asc)"""
+    order: SortOrder! = asc
+}

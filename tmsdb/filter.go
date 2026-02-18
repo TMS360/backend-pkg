@@ -578,7 +578,7 @@ type SortInput struct {
 	Order SortOrder `json:"order"`
 }
 
-// OrderBy добавляет сортировку
+// OrderBy applies sorting by column and direction.
 func (fb *FilterBuilder) OrderBy(col string, order *SortOrder) *FilterBuilder {
 	if order == nil {
 		return fb
@@ -591,17 +591,20 @@ func (fb *FilterBuilder) OrderBy(col string, order *SortOrder) *FilterBuilder {
 	return fb
 }
 
-// OrderByDefault добавляет дефолтную сортировку
+// OrderByDefault applies default sorting order.
 func (fb *FilterBuilder) OrderByDefault(defaultOrder string) *FilterBuilder {
 	fb.db = fb.db.Order(defaultOrder)
 	return fb
 }
 
-// ApplySort применяет сортировку из []SortInput с валидацией допустимых полей.
-// allowedFields — map допустимых field -> реальное имя колонки в БД.
-// Пример: allowedFields = map[string]string{"createdAt": "created_at", "name": "name"}
-func (fb *FilterBuilder) ApplySort(sorts []SortInput, allowedFields map[string]string) *FilterBuilder {
+// ApplySort applies sorting from []*SortInput with allowed fields validation.
+// allowedFields maps GraphQL field names to actual database column names.
+// Example: allowedFields = map[string]string{"createdAt": "created_at", "name": "name"}
+func (fb *FilterBuilder) ApplySort(sorts []*SortInput, allowedFields map[string]string) *FilterBuilder {
 	for _, s := range sorts {
+		if s == nil {
+			continue
+		}
 		col, ok := allowedFields[s.Field]
 		if !ok {
 			continue

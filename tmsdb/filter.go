@@ -598,9 +598,11 @@ func (fb *FilterBuilder) OrderByDefault(defaultOrder string) *FilterBuilder {
 }
 
 // ApplySort applies sorting from []*SortInput with allowed fields validation.
+// If no valid sorts are provided, defaults to "created_at DESC".
 // allowedFields maps GraphQL field names to actual database column names.
 // Example: allowedFields = map[string]string{"createdAt": "created_at", "name": "name"}
 func (fb *FilterBuilder) ApplySort(sorts []*SortInput, allowedFields map[string]string) *FilterBuilder {
+	applied := false
 	for _, s := range sorts {
 		if s == nil {
 			continue
@@ -614,6 +616,10 @@ func (fb *FilterBuilder) ApplySort(sorts []*SortInput, allowedFields map[string]
 			dir = "DESC"
 		}
 		fb.db = fb.db.Order(col + " " + dir)
+		applied = true
+	}
+	if !applied {
+		fb.db = fb.db.Order("created_at DESC")
 	}
 	return fb
 }

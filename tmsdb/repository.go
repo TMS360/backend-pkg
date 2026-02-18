@@ -12,7 +12,7 @@ import (
 // ErrNotFound is returned when a record is not found.
 var ErrNotFound = errors.New("record not found")
 
-// BaseRepository определяет стандартные CRUD операции и query helpers для любой сущности.
+// BaseRepository defines standard CRUD operations and query helpers for any entity.
 type BaseRepository[T any] interface {
 	// CRUD
 	Create(ctx context.Context, entity *T) error
@@ -29,13 +29,13 @@ type BaseRepository[T any] interface {
 	// FilterBuilder
 	Filter(ctx context.Context) *FilterBuilder
 
-	// List с пагинацией — принимает callback для применения фильтров
+	// List with pagination — accepts a callback to apply filters
 	List(ctx context.Context, applyFilters func(*FilterBuilder), pagination *PaginationInput) ([]*T, *Pagination, error)
 
-	// Count — подсчёт записей с фильтрами без загрузки данных
+	// Count returns the number of records matching the filters without loading data
 	Count(ctx context.Context, applyFilters func(*FilterBuilder)) (int64, error)
 
-	// Доступ к TransactionManager для кастомных запросов
+	// TM returns the TransactionManager for custom queries
 	TM() TransactionManager
 }
 
@@ -43,7 +43,7 @@ type gormBaseRepository[T any] struct {
 	tm TransactionManager
 }
 
-// NewBaseRepository создает новый экземпляр базового репозитория.
+// NewBaseRepository creates a new instance of the base repository.
 func NewBaseRepository[T any](tm TransactionManager) BaseRepository[T] {
 	return &gormBaseRepository[T]{tm: tm}
 }
@@ -129,7 +129,7 @@ func (r *gormBaseRepository[T]) GetByIDs(ctx context.Context, ids []uuid.UUID) (
 	return entities, nil
 }
 
-// Filter возвращает FilterBuilder, привязанный к текущей транзакции и модели T.
+// Filter returns a FilterBuilder bound to the current transaction and model T.
 func (r *gormBaseRepository[T]) Filter(ctx context.Context) *FilterBuilder {
 	var model T
 	return r.tm.Filter(ctx, &model)

@@ -1,0 +1,13 @@
+"""
+Sort input element.
+
+Examples:
+- { field: "created_at", order: desc }
+- { field: "name", order: asc }
+"""
+input SortInput {
+    """Field name to sort by"""
+    field: String!
+    """Sort direction (default: asc)"""
+    order: SortOrder! = asc
+}

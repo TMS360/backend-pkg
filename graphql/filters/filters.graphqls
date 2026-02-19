@@ -1,23 +1,23 @@
-"""Режим сравнения строк"""
+"""String comparison mode"""
 enum QueryMode {
-    """Регистрозависимый (LIKE)"""
+    """Case-sensitive (LIKE)"""
     default
-    """Регистронезависимый (ILIKE)"""
+    """Case-insensitive (ILIKE)"""
     insensitive
 }
 
-"""Направление сортировки"""
+"""Sort direction"""
 enum SortOrder {
-    """По возрастанию"""
+    """Ascending"""
     asc
-    """По убыванию"""
+    """Descending"""
     desc
 }
 
 """
-Фильтр для строк.
+String filter.
 
-Примеры:
+Examples:
 - { equals: "John" }
 - { contains: "john", mode: insensitive }
 - { in: ["active", "pending"] }
@@ -39,9 +39,9 @@ input StringFilter {
 }
 
 """
-Фильтр для целых чисел.
+Integer filter.
 
-Примеры:
+Examples:
 - { equals: 25 }
 - { gte: 18, lte: 65 }
 - { gt: 0 }
@@ -59,9 +59,9 @@ input IntFilter {
 }
 
 """
-Фильтр для float.
+Float filter.
 
-Примеры:
+Examples:
 - { gte: 100.0, lte: 500.0 }
 - { gt: 1000.0 }
 """
@@ -77,16 +77,16 @@ input FloatFilter {
     isNull: Boolean
 }
 
-"""Фильтр для bool"""
+"""Boolean filter"""
 input BoolFilter {
     equals: Boolean
     isNull: Boolean
 }
 
 """
-Фильтр для даты/времени (ISO 8601).
+DateTime filter (ISO 8601).
 
-Примеры:
+Examples:
 - { gte: "2024-01-01T00:00:00Z", lt: "2024-02-01T00:00:00Z" }
 """
 input DateTimeFilter {
@@ -101,7 +101,7 @@ input DateTimeFilter {
     isNull: Boolean
 }
 
-"""Фильтр для ID"""
+"""ID filter"""
 input IDFilter {
     equals: ID
     not: ID
@@ -110,7 +110,7 @@ input IDFilter {
     isNull: Boolean
 }
 
-"""Фильтр для UUID"""
+"""UUID filter"""
 input UUIDFilter {
     equals: UUID
     not: UUID
@@ -120,9 +120,9 @@ input UUIDFilter {
 }
 
 """
-Фильтр для JSONB (PostgreSQL).
+JSONB filter (PostgreSQL).
 
-Примеры:
+Examples:
 - { contains: { role: "admin" } }
 - { hasKey: "email" }
 - { hasKeys: ["name", "email"] }

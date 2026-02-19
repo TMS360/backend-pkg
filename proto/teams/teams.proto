@@ -8,12 +8,23 @@ import "google/protobuf/timestamp.proto";
 option go_package = "github.com/TMS360/backend-pkg/proto/teams";
 
 service TeamsService {
+  // Get DriverCrew details by targetDate
+  rpc GetDriverCrew(GetDriverCrewRequest) returns (GetDriverCrewResponse);
+
   // Returns IDs of vehicles assigned during the requested window
   rpc GetBusyVehicles(GetBusyVehiclesRequest) returns (GetBusyVehiclesResponse);
 
   // Get current drivers for a list of trucks
   rpc GetCurrentDriversByTruckIds (GetCurrentDriversByTruckIdsRequest) returns (GetCurrentDriversByTruckIdsResponse);
   rpc GetCurrentDriversByTrailerIds (GetCurrentDriversByTrailerIdsRequest) returns (GetCurrentDriversByTrailerIdsResponse);
+}
+
+message GetDriverCrewRequest {
+  string target_date = 1; // Format: YYYY-MM-DD
+}
+
+message GetDriverCrewResponse {
+  repeated DriverCrewInfo data = 1;
 }
 
 message GetBusyVehiclesRequest {
@@ -31,7 +42,7 @@ message GetCurrentDriversByTruckIdsRequest {
 }
 
 message GetCurrentDriversByTruckIdsResponse {
-  repeated DriverInfo data = 1;
+  repeated DriverCrewInfo data = 1;
 }
 
 message GetCurrentDriversByTrailerIdsRequest {
@@ -39,14 +50,15 @@ message GetCurrentDriversByTrailerIdsRequest {
 }
 
 message GetCurrentDriversByTrailerIdsResponse {
-  repeated DriverInfo data = 1;
+  repeated DriverCrewInfo data = 1;
 }
 
-message DriverInfo {
+message DriverCrewInfo {
   string primary_driver_id = 1;
   string secondary_driver_id = 2;
   string truck_id = 3;
   string trailer_id = 4;
+  string plan_id = 5;
 }
 
 message TrailerInfo {

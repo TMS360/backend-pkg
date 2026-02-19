@@ -78,7 +78,7 @@ func (x *GetDriverCrewRequest) GetTargetDate() string {
 
 type GetDriverCrewResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Data          []*DriverCrewInfo      `protobuf:"bytes,1,rep,name=data,proto3" json:"data,omitempty"`
+	Data          *DriverCrewInfo        `protobuf:"bytes,1,opt,name=data,proto3" json:"data,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -113,7 +113,7 @@ func (*GetDriverCrewResponse) Descriptor() ([]byte, []int) {
 	return file_teams_teams_proto_rawDescGZIP(), []int{1}
 }
 
-func (x *GetDriverCrewResponse) GetData() []*DriverCrewInfo {
+func (x *GetDriverCrewResponse) GetData() *DriverCrewInfo {
 	if x != nil {
 		return x.Data
 	}
@@ -530,7 +530,7 @@ const file_teams_teams_proto_rawDesc = "" +
 	"\vtarget_date\x18\x02 \x01(\tR\n" +
 	"targetDate\"B\n" +
 	"\x15GetDriverCrewResponse\x12)\n" +
-	"\x04data\x18\x01 \x03(\v2\x15.teams.DriverCrewInfoR\x04data\"t\n" +
+	"\x04data\x18\x01 \x01(\v2\x15.teams.DriverCrewInfoR\x04data\"t\n" +
 	"\x16GetBusyVehiclesRequest\x12.\n" +
 	"\x04from\x18\x01 \x01(\v2\x1a.google.protobuf.TimestampR\x04from\x12*\n" +
 	"\x02to\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\x02to\"W\n" +

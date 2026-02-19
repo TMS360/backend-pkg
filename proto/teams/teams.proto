@@ -25,7 +25,7 @@ message GetDriverCrewRequest {
 }
 
 message GetDriverCrewResponse {
-  repeated DriverCrewInfo data = 1;
+  DriverCrewInfo data = 1;
 }
 
 message GetBusyVehiclesRequest {

@@ -10,6 +10,8 @@ type FilePurpose string
 const (
 	PurposeUserAvatar      FilePurpose = "USER_AVATAR"
 	PurposeShipmentRateCon FilePurpose = "SHIPMENT_RATE_CON"
+	PurposeShipmentPOD     FilePurpose = "SHIPMENT_POD"
+	PurposeShipmentBOL     FilePurpose = "SHIPMENT_BOL"
 )
 
 type FileRule struct {
@@ -31,6 +33,18 @@ var FileRules = map[FilePurpose]*FileRule{
 		IsPublic:         false,
 		MaxSizeBytes:     10 * 1024 * 1024, // 10MB
 		AllowedMimeTypes: []string{"application/pdf"},
+	},
+	PurposeShipmentPOD: {
+		S3Folder:         "pod",
+		IsPublic:         false,
+		MaxSizeBytes:     10 * 1024 * 1024, // 10MB
+		AllowedMimeTypes: []string{"application/pdf", "image/jpeg", "image/png"},
+	},
+	PurposeShipmentBOL: {
+		S3Folder:         "bol",
+		IsPublic:         false,
+		MaxSizeBytes:     10 * 1024 * 1024, // 10MB
+		AllowedMimeTypes: []string{"application/pdf", "image/jpeg", "image/png"},
 	},
 }
 

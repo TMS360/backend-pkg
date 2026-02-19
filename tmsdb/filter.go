@@ -2,6 +2,7 @@ package tmsdb
 
 import (
 	"encoding/json"
+	"strings"
 	"time"
 
 	"gorm.io/gorm"
@@ -599,7 +600,8 @@ func (fb *FilterBuilder) OrderByDefault(defaultOrder string) *FilterBuilder {
 
 // ApplySort applies sorting from []*SortInput with allowed fields validation.
 // If no valid sorts are provided, defaults to "created_at DESC".
-// allowedFields maps GraphQL field names to actual database column names.
+// allowedFields maps GraphQL field names (camelCase) to actual database column names.
+// Accepts both camelCase and snake_case input: "createdAt" and "created_at" both match.
 // Example: allowedFields = map[string]string{"createdAt": "created_at", "name": "name"}
 func (fb *FilterBuilder) ApplySort(sorts []*SortInput, allowedFields map[string]string) *FilterBuilder {
 	applied := false
@@ -609,7 +611,11 @@ func (fb *FilterBuilder) ApplySort(sorts []*SortInput, allowedFields map[string]
 		}
 		col, ok := allowedFields[s.Field]
 		if !ok {
-			continue
+			// Try converting snake_case to camelCase: "created_at" → "createdAt"
+			col, ok = allowedFields[snakeToCamel(s.Field)]
+			if !ok {
+				continue
+			}
 		}
 		dir := "ASC"
 		if s.Order == SortOrderDesc {
@@ -622,6 +628,17 @@ func (fb *FilterBuilder) ApplySort(sorts []*SortInput, allowedFields map[string]
 		fb.db = fb.db.Order("created_at DESC")
 	}
 	return fb
+}
+
+// snakeToCamel converts snake_case to camelCase: "created_at" → "createdAt"
+func snakeToCamel(s string) string {
+	parts := strings.Split(s, "_")
+	for i := 1; i < len(parts); i++ {
+		if len(parts[i]) > 0 {
+			parts[i] = strings.ToUpper(parts[i][:1]) + parts[i][1:]
+		}
+	}
+	return strings.Join(parts, "")
 }
 
 // ============================================================================

@@ -26,7 +26,8 @@ const (
 
 type GetDriverCrewRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	TargetDate    string                 `protobuf:"bytes,1,opt,name=target_date,json=targetDate,proto3" json:"target_date,omitempty"` // Format: YYYY-MM-DD
+	DriverCrewId  string                 `protobuf:"bytes,1,opt,name=driver_crew_id,json=driverCrewId,proto3" json:"driver_crew_id,omitempty"`
+	TargetDate    string                 `protobuf:"bytes,2,opt,name=target_date,json=targetDate,proto3" json:"target_date,omitempty"` // Format: YYYY-MM-DD
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -59,6 +60,13 @@ func (x *GetDriverCrewRequest) ProtoReflect() protoreflect.Message {
 // Deprecated: Use GetDriverCrewRequest.ProtoReflect.Descriptor instead.
 func (*GetDriverCrewRequest) Descriptor() ([]byte, []int) {
 	return file_teams_teams_proto_rawDescGZIP(), []int{0}
+}
+
+func (x *GetDriverCrewRequest) GetDriverCrewId() string {
+	if x != nil {
+		return x.DriverCrewId
+	}
+	return ""
 }
 
 func (x *GetDriverCrewRequest) GetTargetDate() string {
@@ -516,9 +524,10 @@ var File_teams_teams_proto protoreflect.FileDescriptor
 
 const file_teams_teams_proto_rawDesc = "" +
 	"\n" +
-	"\x11teams/teams.proto\x12\x05teams\x1a\x1fgoogle/protobuf/timestamp.proto\"7\n" +
-	"\x14GetDriverCrewRequest\x12\x1f\n" +
-	"\vtarget_date\x18\x01 \x01(\tR\n" +
+	"\x11teams/teams.proto\x12\x05teams\x1a\x1fgoogle/protobuf/timestamp.proto\"]\n" +
+	"\x14GetDriverCrewRequest\x12$\n" +
+	"\x0edriver_crew_id\x18\x01 \x01(\tR\fdriverCrewId\x12\x1f\n" +
+	"\vtarget_date\x18\x02 \x01(\tR\n" +
 	"targetDate\"B\n" +
 	"\x15GetDriverCrewResponse\x12)\n" +
 	"\x04data\x18\x01 \x03(\v2\x15.teams.DriverCrewInfoR\x04data\"t\n" +

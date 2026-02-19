@@ -472,18 +472,17 @@ func (x *GetDriverTripDetailsResponse) GetTripDetails() []*TripDetails {
 }
 
 type TripDetails struct {
-	state             protoimpl.MessageState `protogen:"open.v1"`
-	ShipmentId        string                 `protobuf:"bytes,1,opt,name=shipment_id,json=shipmentId,proto3" json:"shipment_id,omitempty"`
-	TripId            string                 `protobuf:"bytes,2,opt,name=trip_id,json=tripId,proto3" json:"trip_id,omitempty"`
-	LoadNumber        string                 `protobuf:"bytes,3,opt,name=load_number,json=loadNumber,proto3" json:"load_number,omitempty"`
-	PrimaryDriverId   string                 `protobuf:"bytes,4,opt,name=primary_driver_id,json=primaryDriverId,proto3" json:"primary_driver_id,omitempty"`
-	SecondaryDriverId string                 `protobuf:"bytes,5,opt,name=secondary_driver_id,json=secondaryDriverId,proto3" json:"secondary_driver_id,omitempty"` // Может быть пустым
-	TotalPay          float64                `protobuf:"fixed64,6,opt,name=total_pay,json=totalPay,proto3" json:"total_pay,omitempty"`
-	Distance          float64                `protobuf:"fixed64,7,opt,name=distance,proto3" json:"distance,omitempty"`
-	StartedAt         string                 `protobuf:"bytes,8,opt,name=started_at,json=startedAt,proto3" json:"started_at,omitempty"`    // ISO Timestamp
-	FinishedAt        string                 `protobuf:"bytes,9,opt,name=finished_at,json=finishedAt,proto3" json:"finished_at,omitempty"` // ISO Timestamp (nullable/empty if active)
-	unknownFields     protoimpl.UnknownFields
-	sizeCache         protoimpl.SizeCache
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	ShipmentId    string                 `protobuf:"bytes,1,opt,name=shipment_id,json=shipmentId,proto3" json:"shipment_id,omitempty"`
+	TripId        string                 `protobuf:"bytes,2,opt,name=trip_id,json=tripId,proto3" json:"trip_id,omitempty"`
+	LoadNumber    string                 `protobuf:"bytes,3,opt,name=load_number,json=loadNumber,proto3" json:"load_number,omitempty"`
+	DriverCrewId  string                 `protobuf:"bytes,4,opt,name=driver_crew_id,json=driverCrewId,proto3" json:"driver_crew_id,omitempty"`
+	TotalPay      float64                `protobuf:"fixed64,5,opt,name=total_pay,json=totalPay,proto3" json:"total_pay,omitempty"`
+	Distance      float64                `protobuf:"fixed64,6,opt,name=distance,proto3" json:"distance,omitempty"`
+	StartedAt     string                 `protobuf:"bytes,7,opt,name=started_at,json=startedAt,proto3" json:"started_at,omitempty"`    // ISO Timestamp
+	FinishedAt    string                 `protobuf:"bytes,8,opt,name=finished_at,json=finishedAt,proto3" json:"finished_at,omitempty"` // ISO Timestamp (nullable/empty if active)
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *TripDetails) Reset() {
@@ -537,16 +536,9 @@ func (x *TripDetails) GetLoadNumber() string {
 	return ""
 }
 
-func (x *TripDetails) GetPrimaryDriverId() string {
+func (x *TripDetails) GetDriverCrewId() string {
 	if x != nil {
-		return x.PrimaryDriverId
-	}
-	return ""
-}
-
-func (x *TripDetails) GetSecondaryDriverId() string {
-	if x != nil {
-		return x.SecondaryDriverId
+		return x.DriverCrewId
 	}
 	return ""
 }
@@ -2185,20 +2177,19 @@ const file_loads_loads_proto_rawDesc = "" +
 	"start_date\x18\x02 \x01(\tR\tstartDate\x12\x19\n" +
 	"\bend_date\x18\x03 \x01(\tR\aendDate\"U\n" +
 	"\x1cGetDriverTripDetailsResponse\x125\n" +
-	"\ftrip_details\x18\x01 \x03(\v2\x12.loads.TripDetailsR\vtripDetails\"\xbd\x02\n" +
+	"\ftrip_details\x18\x01 \x03(\v2\x12.loads.TripDetailsR\vtripDetails\"\x87\x02\n" +
 	"\vTripDetails\x12\x1f\n" +
 	"\vshipment_id\x18\x01 \x01(\tR\n" +
 	"shipmentId\x12\x17\n" +
 	"\atrip_id\x18\x02 \x01(\tR\x06tripId\x12\x1f\n" +
 	"\vload_number\x18\x03 \x01(\tR\n" +
-	"loadNumber\x12*\n" +
-	"\x11primary_driver_id\x18\x04 \x01(\tR\x0fprimaryDriverId\x12.\n" +
-	"\x13secondary_driver_id\x18\x05 \x01(\tR\x11secondaryDriverId\x12\x1b\n" +
-	"\ttotal_pay\x18\x06 \x01(\x01R\btotalPay\x12\x1a\n" +
-	"\bdistance\x18\a \x01(\x01R\bdistance\x12\x1d\n" +
+	"loadNumber\x12$\n" +
+	"\x0edriver_crew_id\x18\x04 \x01(\tR\fdriverCrewId\x12\x1b\n" +
+	"\ttotal_pay\x18\x05 \x01(\x01R\btotalPay\x12\x1a\n" +
+	"\bdistance\x18\x06 \x01(\x01R\bdistance\x12\x1d\n" +
 	"\n" +
-	"started_at\x18\b \x01(\tR\tstartedAt\x12\x1f\n" +
-	"\vfinished_at\x18\t \x01(\tR\n" +
+	"started_at\x18\a \x01(\tR\tstartedAt\x12\x1f\n" +
+	"\vfinished_at\x18\b \x01(\tR\n" +
 	"finishedAt\"P\n" +
 	"\x19GetRecentBrokerIDsRequest\x12\x1d\n" +
 	"\n" +

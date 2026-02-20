@@ -20,11 +20,12 @@ service TeamsService {
 }
 
 message GetDriverCrewRequest {
-  string target_date = 1; // Format: YYYY-MM-DD
+  string driver_crew_id = 1;
+  string target_date = 2; // Format: YYYY-MM-DD
 }
 
 message GetDriverCrewResponse {
-  repeated DriverCrewInfo data = 1;
+  DriverCrewInfo data = 1;
 }
 
 message GetBusyVehiclesRequest {

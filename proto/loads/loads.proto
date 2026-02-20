@@ -38,7 +38,7 @@ service LoadsService {
 }
 
 message GetDriverTripDetailsRequest {
-  repeated string driver_ids = 1;
+  repeated string driver_crew_ids = 1;
   string start_date = 2; // Начало недели
   string end_date = 3;   // Конец недели
 }
@@ -50,8 +50,8 @@ message GetDriverTripDetailsResponse {
 message TripDetails {
   string shipment_id = 1;
   string trip_id = 2;
-  string load_number = 3;
-  string driver_crew_id = 4;
+  string driver_crew_id = 3;
+  string load_number = 4;
   double total_pay = 5;
   double distance = 6;
   string started_at = 7;   // ISO Timestamp

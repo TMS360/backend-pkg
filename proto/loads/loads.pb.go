@@ -369,7 +369,7 @@ func (VehicleType) EnumDescriptor() ([]byte, []int) {
 
 type GetDriverTripDetailsRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	DriverIds     []string               `protobuf:"bytes,1,rep,name=driver_ids,json=driverIds,proto3" json:"driver_ids,omitempty"`
+	DriverCrewIds []string               `protobuf:"bytes,1,rep,name=driver_crew_ids,json=driverCrewIds,proto3" json:"driver_crew_ids,omitempty"`
 	StartDate     string                 `protobuf:"bytes,2,opt,name=start_date,json=startDate,proto3" json:"start_date,omitempty"` // Начало недели
 	EndDate       string                 `protobuf:"bytes,3,opt,name=end_date,json=endDate,proto3" json:"end_date,omitempty"`       // Конец недели
 	unknownFields protoimpl.UnknownFields
@@ -406,9 +406,9 @@ func (*GetDriverTripDetailsRequest) Descriptor() ([]byte, []int) {
 	return file_loads_loads_proto_rawDescGZIP(), []int{0}
 }
 
-func (x *GetDriverTripDetailsRequest) GetDriverIds() []string {
+func (x *GetDriverTripDetailsRequest) GetDriverCrewIds() []string {
 	if x != nil {
-		return x.DriverIds
+		return x.DriverCrewIds
 	}
 	return nil
 }
@@ -475,8 +475,8 @@ type TripDetails struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	ShipmentId    string                 `protobuf:"bytes,1,opt,name=shipment_id,json=shipmentId,proto3" json:"shipment_id,omitempty"`
 	TripId        string                 `protobuf:"bytes,2,opt,name=trip_id,json=tripId,proto3" json:"trip_id,omitempty"`
-	LoadNumber    string                 `protobuf:"bytes,3,opt,name=load_number,json=loadNumber,proto3" json:"load_number,omitempty"`
-	DriverCrewId  string                 `protobuf:"bytes,4,opt,name=driver_crew_id,json=driverCrewId,proto3" json:"driver_crew_id,omitempty"`
+	DriverCrewId  string                 `protobuf:"bytes,3,opt,name=driver_crew_id,json=driverCrewId,proto3" json:"driver_crew_id,omitempty"`
+	LoadNumber    string                 `protobuf:"bytes,4,opt,name=load_number,json=loadNumber,proto3" json:"load_number,omitempty"`
 	TotalPay      float64                `protobuf:"fixed64,5,opt,name=total_pay,json=totalPay,proto3" json:"total_pay,omitempty"`
 	Distance      float64                `protobuf:"fixed64,6,opt,name=distance,proto3" json:"distance,omitempty"`
 	StartedAt     string                 `protobuf:"bytes,7,opt,name=started_at,json=startedAt,proto3" json:"started_at,omitempty"`    // ISO Timestamp
@@ -529,16 +529,16 @@ func (x *TripDetails) GetTripId() string {
 	return ""
 }
 
-func (x *TripDetails) GetLoadNumber() string {
+func (x *TripDetails) GetDriverCrewId() string {
 	if x != nil {
-		return x.LoadNumber
+		return x.DriverCrewId
 	}
 	return ""
 }
 
-func (x *TripDetails) GetDriverCrewId() string {
+func (x *TripDetails) GetLoadNumber() string {
 	if x != nil {
-		return x.DriverCrewId
+		return x.LoadNumber
 	}
 	return ""
 }
@@ -2169,10 +2169,9 @@ var File_loads_loads_proto protoreflect.FileDescriptor
 
 const file_loads_loads_proto_rawDesc = "" +
 	"\n" +
-	"\x11loads/loads.proto\x12\x05loads\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1bgoogle/protobuf/empty.proto\"v\n" +
-	"\x1bGetDriverTripDetailsRequest\x12\x1d\n" +
-	"\n" +
-	"driver_ids\x18\x01 \x03(\tR\tdriverIds\x12\x1d\n" +
+	"\x11loads/loads.proto\x12\x05loads\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1bgoogle/protobuf/empty.proto\"\x7f\n" +
+	"\x1bGetDriverTripDetailsRequest\x12&\n" +
+	"\x0fdriver_crew_ids\x18\x01 \x03(\tR\rdriverCrewIds\x12\x1d\n" +
 	"\n" +
 	"start_date\x18\x02 \x01(\tR\tstartDate\x12\x19\n" +
 	"\bend_date\x18\x03 \x01(\tR\aendDate\"U\n" +
@@ -2181,10 +2180,10 @@ const file_loads_loads_proto_rawDesc = "" +
 	"\vTripDetails\x12\x1f\n" +
 	"\vshipment_id\x18\x01 \x01(\tR\n" +
 	"shipmentId\x12\x17\n" +
-	"\atrip_id\x18\x02 \x01(\tR\x06tripId\x12\x1f\n" +
-	"\vload_number\x18\x03 \x01(\tR\n" +
-	"loadNumber\x12$\n" +
-	"\x0edriver_crew_id\x18\x04 \x01(\tR\fdriverCrewId\x12\x1b\n" +
+	"\atrip_id\x18\x02 \x01(\tR\x06tripId\x12$\n" +
+	"\x0edriver_crew_id\x18\x03 \x01(\tR\fdriverCrewId\x12\x1f\n" +
+	"\vload_number\x18\x04 \x01(\tR\n" +
+	"loadNumber\x12\x1b\n" +
 	"\ttotal_pay\x18\x05 \x01(\x01R\btotalPay\x12\x1a\n" +
 	"\bdistance\x18\x06 \x01(\x01R\bdistance\x12\x1d\n" +
 	"\n" +

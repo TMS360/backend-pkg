@@ -59,3 +59,28 @@ message VehicleLocationUpdateBatch {
   repeated VehicleLocationUpdate updates = 1;
   google.protobuf.Timestamp batch_time = 2;
 }
+
+// VehiclePositionService provides vehicle position history (served by samsara-tracker)
+service VehiclePositionService {
+  // GetVehicleRoute returns GPS route points for a truck within a time range
+  rpc GetVehicleRoute(GetVehicleRouteRequest) returns (GetVehicleRouteResponse);
+}
+
+message GetVehicleRouteRequest {
+  string truck_id = 1;
+  google.protobuf.Timestamp from = 2;
+  google.protobuf.Timestamp to = 3;
+}
+
+message RoutePoint {
+  double latitude = 1;
+  double longitude = 2;
+  double heading = 3;
+  double speed = 4;
+  google.protobuf.Timestamp gps_time = 5;
+  string address = 6;
+}
+
+message GetVehicleRouteResponse {
+  repeated RoutePoint points = 1;
+}

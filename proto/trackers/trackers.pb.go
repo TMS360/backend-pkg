@@ -588,6 +588,306 @@ func (x *GetVehicleRouteResponse) GetPoints() []*RoutePoint {
 	return nil
 }
 
+type EstimatedRouteLeg struct {
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	LegIndex        int32                  `protobuf:"varint,1,opt,name=leg_index,json=legIndex,proto3" json:"leg_index,omitempty"`
+	Polyline        string                 `protobuf:"bytes,2,opt,name=polyline,proto3" json:"polyline,omitempty"` // HERE Flexible Polyline encoded string
+	DistanceMeters  int32                  `protobuf:"varint,3,opt,name=distance_meters,json=distanceMeters,proto3" json:"distance_meters,omitempty"`
+	DurationSeconds int32                  `protobuf:"varint,4,opt,name=duration_seconds,json=durationSeconds,proto3" json:"duration_seconds,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *EstimatedRouteLeg) Reset() {
+	*x = EstimatedRouteLeg{}
+	mi := &file_trackers_trackers_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *EstimatedRouteLeg) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*EstimatedRouteLeg) ProtoMessage() {}
+
+func (x *EstimatedRouteLeg) ProtoReflect() protoreflect.Message {
+	mi := &file_trackers_trackers_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use EstimatedRouteLeg.ProtoReflect.Descriptor instead.
+func (*EstimatedRouteLeg) Descriptor() ([]byte, []int) {
+	return file_trackers_trackers_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *EstimatedRouteLeg) GetLegIndex() int32 {
+	if x != nil {
+		return x.LegIndex
+	}
+	return 0
+}
+
+func (x *EstimatedRouteLeg) GetPolyline() string {
+	if x != nil {
+		return x.Polyline
+	}
+	return ""
+}
+
+func (x *EstimatedRouteLeg) GetDistanceMeters() int32 {
+	if x != nil {
+		return x.DistanceMeters
+	}
+	return 0
+}
+
+func (x *EstimatedRouteLeg) GetDurationSeconds() int32 {
+	if x != nil {
+		return x.DurationSeconds
+	}
+	return 0
+}
+
+type SaveEstimatedRouteRequest struct {
+	state                protoimpl.MessageState `protogen:"open.v1"`
+	TripId               string                 `protobuf:"bytes,1,opt,name=trip_id,json=tripId,proto3" json:"trip_id,omitempty"`
+	CompanyId            string                 `protobuf:"bytes,2,opt,name=company_id,json=companyId,proto3" json:"company_id,omitempty"`
+	Legs                 []*EstimatedRouteLeg   `protobuf:"bytes,3,rep,name=legs,proto3" json:"legs,omitempty"`
+	TotalDistanceMeters  int32                  `protobuf:"varint,4,opt,name=total_distance_meters,json=totalDistanceMeters,proto3" json:"total_distance_meters,omitempty"`
+	TotalDurationSeconds int32                  `protobuf:"varint,5,opt,name=total_duration_seconds,json=totalDurationSeconds,proto3" json:"total_duration_seconds,omitempty"`
+	unknownFields        protoimpl.UnknownFields
+	sizeCache            protoimpl.SizeCache
+}
+
+func (x *SaveEstimatedRouteRequest) Reset() {
+	*x = SaveEstimatedRouteRequest{}
+	mi := &file_trackers_trackers_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SaveEstimatedRouteRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SaveEstimatedRouteRequest) ProtoMessage() {}
+
+func (x *SaveEstimatedRouteRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_trackers_trackers_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SaveEstimatedRouteRequest.ProtoReflect.Descriptor instead.
+func (*SaveEstimatedRouteRequest) Descriptor() ([]byte, []int) {
+	return file_trackers_trackers_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *SaveEstimatedRouteRequest) GetTripId() string {
+	if x != nil {
+		return x.TripId
+	}
+	return ""
+}
+
+func (x *SaveEstimatedRouteRequest) GetCompanyId() string {
+	if x != nil {
+		return x.CompanyId
+	}
+	return ""
+}
+
+func (x *SaveEstimatedRouteRequest) GetLegs() []*EstimatedRouteLeg {
+	if x != nil {
+		return x.Legs
+	}
+	return nil
+}
+
+func (x *SaveEstimatedRouteRequest) GetTotalDistanceMeters() int32 {
+	if x != nil {
+		return x.TotalDistanceMeters
+	}
+	return 0
+}
+
+func (x *SaveEstimatedRouteRequest) GetTotalDurationSeconds() int32 {
+	if x != nil {
+		return x.TotalDurationSeconds
+	}
+	return 0
+}
+
+type SaveEstimatedRouteResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Success       bool                   `protobuf:"varint,1,opt,name=success,proto3" json:"success,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SaveEstimatedRouteResponse) Reset() {
+	*x = SaveEstimatedRouteResponse{}
+	mi := &file_trackers_trackers_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SaveEstimatedRouteResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SaveEstimatedRouteResponse) ProtoMessage() {}
+
+func (x *SaveEstimatedRouteResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_trackers_trackers_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SaveEstimatedRouteResponse.ProtoReflect.Descriptor instead.
+func (*SaveEstimatedRouteResponse) Descriptor() ([]byte, []int) {
+	return file_trackers_trackers_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *SaveEstimatedRouteResponse) GetSuccess() bool {
+	if x != nil {
+		return x.Success
+	}
+	return false
+}
+
+type GetEstimatedRouteRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	TripId        string                 `protobuf:"bytes,1,opt,name=trip_id,json=tripId,proto3" json:"trip_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetEstimatedRouteRequest) Reset() {
+	*x = GetEstimatedRouteRequest{}
+	mi := &file_trackers_trackers_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetEstimatedRouteRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetEstimatedRouteRequest) ProtoMessage() {}
+
+func (x *GetEstimatedRouteRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_trackers_trackers_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetEstimatedRouteRequest.ProtoReflect.Descriptor instead.
+func (*GetEstimatedRouteRequest) Descriptor() ([]byte, []int) {
+	return file_trackers_trackers_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *GetEstimatedRouteRequest) GetTripId() string {
+	if x != nil {
+		return x.TripId
+	}
+	return ""
+}
+
+type GetEstimatedRouteResponse struct {
+	state                protoimpl.MessageState `protogen:"open.v1"`
+	TripId               string                 `protobuf:"bytes,1,opt,name=trip_id,json=tripId,proto3" json:"trip_id,omitempty"`
+	Legs                 []*EstimatedRouteLeg   `protobuf:"bytes,2,rep,name=legs,proto3" json:"legs,omitempty"`
+	TotalDistanceMeters  int32                  `protobuf:"varint,3,opt,name=total_distance_meters,json=totalDistanceMeters,proto3" json:"total_distance_meters,omitempty"`
+	TotalDurationSeconds int32                  `protobuf:"varint,4,opt,name=total_duration_seconds,json=totalDurationSeconds,proto3" json:"total_duration_seconds,omitempty"`
+	unknownFields        protoimpl.UnknownFields
+	sizeCache            protoimpl.SizeCache
+}
+
+func (x *GetEstimatedRouteResponse) Reset() {
+	*x = GetEstimatedRouteResponse{}
+	mi := &file_trackers_trackers_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetEstimatedRouteResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetEstimatedRouteResponse) ProtoMessage() {}
+
+func (x *GetEstimatedRouteResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_trackers_trackers_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetEstimatedRouteResponse.ProtoReflect.Descriptor instead.
+func (*GetEstimatedRouteResponse) Descriptor() ([]byte, []int) {
+	return file_trackers_trackers_proto_rawDescGZIP(), []int{11}
+}
+
+func (x *GetEstimatedRouteResponse) GetTripId() string {
+	if x != nil {
+		return x.TripId
+	}
+	return ""
+}
+
+func (x *GetEstimatedRouteResponse) GetLegs() []*EstimatedRouteLeg {
+	if x != nil {
+		return x.Legs
+	}
+	return nil
+}
+
+func (x *GetEstimatedRouteResponse) GetTotalDistanceMeters() int32 {
+	if x != nil {
+		return x.TotalDistanceMeters
+	}
+	return 0
+}
+
+func (x *GetEstimatedRouteResponse) GetTotalDurationSeconds() int32 {
+	if x != nil {
+		return x.TotalDurationSeconds
+	}
+	return 0
+}
+
 var File_trackers_trackers_proto protoreflect.FileDescriptor
 
 const file_trackers_trackers_proto_rawDesc = "" +
@@ -638,15 +938,38 @@ const file_trackers_trackers_proto_rawDesc = "" +
 	"\bgps_time\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\agpsTime\x12\x18\n" +
 	"\aaddress\x18\x06 \x01(\tR\aaddress\"G\n" +
 	"\x17GetVehicleRouteResponse\x12,\n" +
-	"\x06points\x18\x01 \x03(\v2\x14.trackers.RoutePointR\x06points*]\n" +
+	"\x06points\x18\x01 \x03(\v2\x14.trackers.RoutePointR\x06points\"\xa0\x01\n" +
+	"\x11EstimatedRouteLeg\x12\x1b\n" +
+	"\tleg_index\x18\x01 \x01(\x05R\blegIndex\x12\x1a\n" +
+	"\bpolyline\x18\x02 \x01(\tR\bpolyline\x12'\n" +
+	"\x0fdistance_meters\x18\x03 \x01(\x05R\x0edistanceMeters\x12)\n" +
+	"\x10duration_seconds\x18\x04 \x01(\x05R\x0fdurationSeconds\"\xee\x01\n" +
+	"\x19SaveEstimatedRouteRequest\x12\x17\n" +
+	"\atrip_id\x18\x01 \x01(\tR\x06tripId\x12\x1d\n" +
+	"\n" +
+	"company_id\x18\x02 \x01(\tR\tcompanyId\x12/\n" +
+	"\x04legs\x18\x03 \x03(\v2\x1b.trackers.EstimatedRouteLegR\x04legs\x122\n" +
+	"\x15total_distance_meters\x18\x04 \x01(\x05R\x13totalDistanceMeters\x124\n" +
+	"\x16total_duration_seconds\x18\x05 \x01(\x05R\x14totalDurationSeconds\"6\n" +
+	"\x1aSaveEstimatedRouteResponse\x12\x18\n" +
+	"\asuccess\x18\x01 \x01(\bR\asuccess\"3\n" +
+	"\x18GetEstimatedRouteRequest\x12\x17\n" +
+	"\atrip_id\x18\x01 \x01(\tR\x06tripId\"\xcf\x01\n" +
+	"\x19GetEstimatedRouteResponse\x12\x17\n" +
+	"\atrip_id\x18\x01 \x01(\tR\x06tripId\x12/\n" +
+	"\x04legs\x18\x02 \x03(\v2\x1b.trackers.EstimatedRouteLegR\x04legs\x122\n" +
+	"\x15total_distance_meters\x18\x03 \x01(\x05R\x13totalDistanceMeters\x124\n" +
+	"\x16total_duration_seconds\x18\x04 \x01(\x05R\x14totalDurationSeconds*]\n" +
 	"\vVehicleType\x12\x1c\n" +
 	"\x18VEHICLE_TYPE_UNSPECIFIED\x10\x00\x12\x16\n" +
 	"\x12VEHICLE_TYPE_TRUCK\x10\x01\x12\x18\n" +
 	"\x14VEHICLE_TYPE_TRAILER\x10\x022b\n" +
 	"\x0fTrackersService\x12O\n" +
-	"\x11StreamVehicleVINs\x12\".trackers.StreamVehicleVINsRequest\x1a\x14.trackers.VehicleVIN0\x012p\n" +
+	"\x11StreamVehicleVINs\x12\".trackers.StreamVehicleVINsRequest\x1a\x14.trackers.VehicleVIN0\x012\xaf\x02\n" +
 	"\x16VehiclePositionService\x12V\n" +
-	"\x0fGetVehicleRoute\x12 .trackers.GetVehicleRouteRequest\x1a!.trackers.GetVehicleRouteResponseB.Z,github.com/TMS360/backend-pkg/proto/trackersb\x06proto3"
+	"\x0fGetVehicleRoute\x12 .trackers.GetVehicleRouteRequest\x1a!.trackers.GetVehicleRouteResponse\x12_\n" +
+	"\x12SaveEstimatedRoute\x12#.trackers.SaveEstimatedRouteRequest\x1a$.trackers.SaveEstimatedRouteResponse\x12\\\n" +
+	"\x11GetEstimatedRoute\x12\".trackers.GetEstimatedRouteRequest\x1a#.trackers.GetEstimatedRouteResponseB.Z,github.com/TMS360/backend-pkg/proto/trackersb\x06proto3"
 
 var (
 	file_trackers_trackers_proto_rawDescOnce sync.Once
@@ -661,7 +984,7 @@ func file_trackers_trackers_proto_rawDescGZIP() []byte {
 }
 
 var file_trackers_trackers_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_trackers_trackers_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
+var file_trackers_trackers_proto_msgTypes = make([]protoimpl.MessageInfo, 12)
 var file_trackers_trackers_proto_goTypes = []any{
 	(VehicleType)(0),                   // 0: trackers.VehicleType
 	(*StreamVehicleVINsRequest)(nil),   // 1: trackers.StreamVehicleVINsRequest
@@ -671,29 +994,40 @@ var file_trackers_trackers_proto_goTypes = []any{
 	(*GetVehicleRouteRequest)(nil),     // 5: trackers.GetVehicleRouteRequest
 	(*RoutePoint)(nil),                 // 6: trackers.RoutePoint
 	(*GetVehicleRouteResponse)(nil),    // 7: trackers.GetVehicleRouteResponse
-	(*timestamppb.Timestamp)(nil),      // 8: google.protobuf.Timestamp
+	(*EstimatedRouteLeg)(nil),          // 8: trackers.EstimatedRouteLeg
+	(*SaveEstimatedRouteRequest)(nil),  // 9: trackers.SaveEstimatedRouteRequest
+	(*SaveEstimatedRouteResponse)(nil), // 10: trackers.SaveEstimatedRouteResponse
+	(*GetEstimatedRouteRequest)(nil),   // 11: trackers.GetEstimatedRouteRequest
+	(*GetEstimatedRouteResponse)(nil),  // 12: trackers.GetEstimatedRouteResponse
+	(*timestamppb.Timestamp)(nil),      // 13: google.protobuf.Timestamp
 }
 var file_trackers_trackers_proto_depIdxs = []int32{
-	8,  // 0: trackers.StreamVehicleVINsRequest.last_sync:type_name -> google.protobuf.Timestamp
+	13, // 0: trackers.StreamVehicleVINsRequest.last_sync:type_name -> google.protobuf.Timestamp
 	0,  // 1: trackers.VehicleVIN.type:type_name -> trackers.VehicleType
-	8,  // 2: trackers.VehicleVIN.updated_at:type_name -> google.protobuf.Timestamp
+	13, // 2: trackers.VehicleVIN.updated_at:type_name -> google.protobuf.Timestamp
 	0,  // 3: trackers.VehicleLocationUpdate.type:type_name -> trackers.VehicleType
-	8,  // 4: trackers.VehicleLocationUpdate.gps_time:type_name -> google.protobuf.Timestamp
+	13, // 4: trackers.VehicleLocationUpdate.gps_time:type_name -> google.protobuf.Timestamp
 	3,  // 5: trackers.VehicleLocationUpdateBatch.updates:type_name -> trackers.VehicleLocationUpdate
-	8,  // 6: trackers.VehicleLocationUpdateBatch.batch_time:type_name -> google.protobuf.Timestamp
-	8,  // 7: trackers.GetVehicleRouteRequest.from:type_name -> google.protobuf.Timestamp
-	8,  // 8: trackers.GetVehicleRouteRequest.to:type_name -> google.protobuf.Timestamp
-	8,  // 9: trackers.RoutePoint.gps_time:type_name -> google.protobuf.Timestamp
+	13, // 6: trackers.VehicleLocationUpdateBatch.batch_time:type_name -> google.protobuf.Timestamp
+	13, // 7: trackers.GetVehicleRouteRequest.from:type_name -> google.protobuf.Timestamp
+	13, // 8: trackers.GetVehicleRouteRequest.to:type_name -> google.protobuf.Timestamp
+	13, // 9: trackers.RoutePoint.gps_time:type_name -> google.protobuf.Timestamp
 	6,  // 10: trackers.GetVehicleRouteResponse.points:type_name -> trackers.RoutePoint
-	1,  // 11: trackers.TrackersService.StreamVehicleVINs:input_type -> trackers.StreamVehicleVINsRequest
-	5,  // 12: trackers.VehiclePositionService.GetVehicleRoute:input_type -> trackers.GetVehicleRouteRequest
-	2,  // 13: trackers.TrackersService.StreamVehicleVINs:output_type -> trackers.VehicleVIN
-	7,  // 14: trackers.VehiclePositionService.GetVehicleRoute:output_type -> trackers.GetVehicleRouteResponse
-	13, // [13:15] is the sub-list for method output_type
-	11, // [11:13] is the sub-list for method input_type
-	11, // [11:11] is the sub-list for extension type_name
-	11, // [11:11] is the sub-list for extension extendee
-	0,  // [0:11] is the sub-list for field type_name
+	8,  // 11: trackers.SaveEstimatedRouteRequest.legs:type_name -> trackers.EstimatedRouteLeg
+	8,  // 12: trackers.GetEstimatedRouteResponse.legs:type_name -> trackers.EstimatedRouteLeg
+	1,  // 13: trackers.TrackersService.StreamVehicleVINs:input_type -> trackers.StreamVehicleVINsRequest
+	5,  // 14: trackers.VehiclePositionService.GetVehicleRoute:input_type -> trackers.GetVehicleRouteRequest
+	9,  // 15: trackers.VehiclePositionService.SaveEstimatedRoute:input_type -> trackers.SaveEstimatedRouteRequest
+	11, // 16: trackers.VehiclePositionService.GetEstimatedRoute:input_type -> trackers.GetEstimatedRouteRequest
+	2,  // 17: trackers.TrackersService.StreamVehicleVINs:output_type -> trackers.VehicleVIN
+	7,  // 18: trackers.VehiclePositionService.GetVehicleRoute:output_type -> trackers.GetVehicleRouteResponse
+	10, // 19: trackers.VehiclePositionService.SaveEstimatedRoute:output_type -> trackers.SaveEstimatedRouteResponse
+	12, // 20: trackers.VehiclePositionService.GetEstimatedRoute:output_type -> trackers.GetEstimatedRouteResponse
+	17, // [17:21] is the sub-list for method output_type
+	13, // [13:17] is the sub-list for method input_type
+	13, // [13:13] is the sub-list for extension type_name
+	13, // [13:13] is the sub-list for extension extendee
+	0,  // [0:13] is the sub-list for field type_name
 }
 
 func init() { file_trackers_trackers_proto_init() }
@@ -707,7 +1041,7 @@ func file_trackers_trackers_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_trackers_trackers_proto_rawDesc), len(file_trackers_trackers_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   7,
+			NumMessages:   12,
 			NumExtensions: 0,
 			NumServices:   2,
 		},

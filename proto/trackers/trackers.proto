@@ -64,6 +64,12 @@ message VehicleLocationUpdateBatch {
 service VehiclePositionService {
   // GetVehicleRoute returns GPS route points for a truck within a time range
   rpc GetVehicleRoute(GetVehicleRouteRequest) returns (GetVehicleRouteResponse);
+
+  // SaveEstimatedRoute stores estimated route polylines from HERE Maps
+  rpc SaveEstimatedRoute(SaveEstimatedRouteRequest) returns (SaveEstimatedRouteResponse);
+
+  // GetEstimatedRoute retrieves estimated route polylines for a trip
+  rpc GetEstimatedRoute(GetEstimatedRouteRequest) returns (GetEstimatedRouteResponse);
 }
 
 message GetVehicleRouteRequest {
@@ -83,4 +89,36 @@ message RoutePoint {
 
 message GetVehicleRouteResponse {
   repeated RoutePoint points = 1;
+}
+
+// Estimated route messages
+
+message EstimatedRouteLeg {
+  int32 leg_index = 1;
+  string polyline = 2;           // HERE Flexible Polyline encoded string
+  int32 distance_meters = 3;
+  int32 duration_seconds = 4;
+}
+
+message SaveEstimatedRouteRequest {
+  string trip_id = 1;
+  string company_id = 2;
+  repeated EstimatedRouteLeg legs = 3;
+  int32 total_distance_meters = 4;
+  int32 total_duration_seconds = 5;
+}
+
+message SaveEstimatedRouteResponse {
+  bool success = 1;
+}
+
+message GetEstimatedRouteRequest {
+  string trip_id = 1;
+}
+
+message GetEstimatedRouteResponse {
+  string trip_id = 1;
+  repeated EstimatedRouteLeg legs = 2;
+  int32 total_distance_meters = 3;
+  int32 total_duration_seconds = 4;
 }

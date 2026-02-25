@@ -1,0 +1,20 @@
+type SavedFilter {
+    id: UUID!
+    name: String!
+    entityType: String!
+    filter: JSON!
+    count: Int!
+    createdAt: Time!
+    updatedAt: Time!
+}
+
+input CreateSavedFilterInput {
+    entityType: String!
+    name: String!
+    filter: JSON!
+}
+
+input UpdateSavedFilterInput {
+    name: String
+    filter: JSON
+}

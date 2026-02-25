@@ -2,6 +2,7 @@ package savedfilter
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"sync"
 	"time"
@@ -43,6 +44,15 @@ func (s *Service) getCountFunc(entityType string) CountFunc {
 	return s.countFuncs[entityType]
 }
 
+// Count returns the count of entities matching the given filter for the specified entity type.
+func (s *Service) Count(ctx context.Context, entityType string, filter json.RawMessage) (int64, error) {
+	countFn := s.getCountFunc(entityType)
+	if countFn == nil {
+		return 0, nil
+	}
+	return countFn(ctx, filter)
+}
+
 func (s *Service) Create(ctx context.Context, input CreateInput) (*SavedFilter, error) {
 	actor, err := middleware.GetActor(ctx)
 	if err != nil {
@@ -62,13 +72,6 @@ func (s *Service) Create(ctx context.Context, input CreateInput) (*SavedFilter, 
 		EntityType: input.EntityType,
 		Name:       input.Name,
 		Filter:     input.Filter,
-	}
-
-	if input.IsDefault != nil && *input.IsDefault {
-		if err := s.repo.ClearDefault(ctx, actor.Claims.UserID, input.EntityType); err != nil {
-			return nil, err
-		}
-		filter.IsDefault = true
 	}
 
 	if err := s.repo.Create(ctx, filter); err != nil {
@@ -92,15 +95,6 @@ func (s *Service) Update(ctx context.Context, id uuid.UUID, input UpdateInput) (
 	}
 	if input.Filter != nil {
 		filter.Filter = *input.Filter
-	}
-	if input.IsDefault != nil {
-		if *input.IsDefault && !filter.IsDefault {
-			actor, _ := middleware.GetActor(ctx)
-			if err := s.repo.ClearDefault(ctx, actor.Claims.UserID, filter.EntityType); err != nil {
-				return nil, err
-			}
-		}
-		filter.IsDefault = *input.IsDefault
 	}
 
 	filter.UpdatedAt = time.Now()
@@ -177,40 +171,6 @@ func (s *Service) GetByID(ctx context.Context, id uuid.UUID) (*SavedFilterWithCo
 		SavedFilter: filter,
 		Count:       count,
 	}, nil
-}
-
-func (s *Service) SetDefault(ctx context.Context, id uuid.UUID) (*SavedFilter, error) {
-	filter, err := s.repo.GetByID(ctx, id)
-	if err != nil {
-		return nil, err
-	}
-
-	if err := s.checkOwnership(ctx, filter); err != nil {
-		return nil, err
-	}
-
-	actor, _ := middleware.GetActor(ctx)
-	if err := s.repo.ClearDefault(ctx, actor.Claims.UserID, filter.EntityType); err != nil {
-		return nil, err
-	}
-
-	filter.IsDefault = true
-	filter.UpdatedAt = time.Now()
-
-	if err := s.repo.Update(ctx, filter); err != nil {
-		return nil, err
-	}
-
-	return filter, nil
-}
-
-func (s *Service) GetDefault(ctx context.Context, entityType string) (*SavedFilter, error) {
-	actor, err := middleware.GetActor(ctx)
-	if err != nil {
-		return nil, ErrAccessDenied
-	}
-
-	return s.repo.GetDefault(ctx, actor.Claims.UserID, entityType)
 }
 
 func (s *Service) checkOwnership(ctx context.Context, filter *SavedFilter) error {

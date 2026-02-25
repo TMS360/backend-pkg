@@ -11,8 +11,6 @@ type Repository interface {
 	tmsdb.BaseRepository[SavedFilter]
 	ListByUserAndEntity(ctx context.Context, userID uuid.UUID, entityType string) ([]*SavedFilter, error)
 	CountByUserAndEntity(ctx context.Context, userID uuid.UUID, entityType string) (int64, error)
-	ClearDefault(ctx context.Context, userID uuid.UUID, entityType string) error
-	GetDefault(ctx context.Context, userID uuid.UUID, entityType string) (*SavedFilter, error)
 }
 
 type repository struct {
@@ -44,22 +42,4 @@ func (r *repository) CountByUserAndEntity(ctx context.Context, userID uuid.UUID,
 		Where("user_id = ? AND entity_type = ?", userID, entityType).
 		Count(&count).Error
 	return count, err
-}
-
-func (r *repository) ClearDefault(ctx context.Context, userID uuid.UUID, entityType string) error {
-	return r.TM().GetDB(ctx).
-		Model(&SavedFilter{}).
-		Where("user_id = ? AND entity_type = ? AND is_default = true", userID, entityType).
-		Update("is_default", false).Error
-}
-
-func (r *repository) GetDefault(ctx context.Context, userID uuid.UUID, entityType string) (*SavedFilter, error) {
-	var filter SavedFilter
-	err := r.TM().GetDB(ctx).
-		Where("user_id = ? AND entity_type = ? AND is_default = true", userID, entityType).
-		First(&filter).Error
-	if err != nil {
-		return nil, err
-	}
-	return &filter, nil
 }

@@ -13,13 +13,11 @@ type CreateInput struct {
 	Name       string
 	EntityType string
 	Filter     json.RawMessage
-	IsDefault  *bool
 }
 
 type UpdateInput struct {
-	Name      *string
-	Filter    *json.RawMessage
-	IsDefault *bool
+	Name   *string
+	Filter *json.RawMessage
 }
 
 type SavedFilterWithCount struct {

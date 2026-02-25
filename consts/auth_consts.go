@@ -48,11 +48,13 @@ func (actor *Actor) GetCompanyID() *uuid.UUID {
 }
 
 type UserClaims struct {
-	UserID      uuid.UUID  `json:"sub"`
-	CompanyID   *uuid.UUID `json:"company_id"`
-	ActorType   ActorType  `json:"actor_type"`
-	Roles       []string   `json:"roles"`
-	Permissions []string   `json:"perms"`
+	UserID         uuid.UUID           `json:"sub"`
+	CompanyID      *uuid.UUID          `json:"company_id"`
+	ActorType      ActorType           `json:"actor_type"`
+	Roles          []string            `json:"roles"`
+	RolesMap       map[string]struct{} `json:"roles_map"`
+	Permissions    []string            `json:"perms"`
+	PermissionsMap map[string]struct{} `json:"perms_map"`
 
 	// Embed Standard/Registered claims for standard fields like exp, iat, iss
 	jwt.RegisteredClaims

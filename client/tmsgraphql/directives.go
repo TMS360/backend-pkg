@@ -46,10 +46,11 @@ func HasPermDirective(ctx context.Context, obj interface{}, next graphql.Resolve
 		return nil, consts.ErrUnauthorized
 	}
 
-	for _, r := range actor.Claims.Permissions {
-		if r == perm {
+	for _, perm := range perms {
+		if slices.Contains(actor.Claims.Permissions, perm) {
 			return next(ctx)
 		}
 	}
-	return next(ctx)
+
+	return nil, fmt.Errorf("access denied: missing permission")
 }

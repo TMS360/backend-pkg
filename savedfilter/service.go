@@ -31,6 +31,14 @@ func NewService(repo Repository) *Service {
 	}
 }
 
+// NewCountOnlyService creates a Service that only supports counting entities.
+// Used by services that extend SavedFilter via Federation without owning the data.
+func NewCountOnlyService() *Service {
+	return &Service{
+		countFuncs: make(map[string]CountFunc),
+	}
+}
+
 // RegisterCountFunc registers a callback that counts entities for a given entity type.
 func (s *Service) RegisterCountFunc(entityType string, fn CountFunc) {
 	s.mu.Lock()

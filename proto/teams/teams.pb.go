@@ -120,6 +120,58 @@ func (x *GetDriverCrewResponse) GetData() *DriverCrewInfo {
 	return nil
 }
 
+type GetDriverCrewWithDispatchersResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Data          *DriverCrewInfo        `protobuf:"bytes,1,opt,name=data,proto3" json:"data,omitempty"`
+	DispatcherIds []string               `protobuf:"bytes,2,rep,name=dispatcher_ids,json=dispatcherIds,proto3" json:"dispatcher_ids,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetDriverCrewWithDispatchersResponse) Reset() {
+	*x = GetDriverCrewWithDispatchersResponse{}
+	mi := &file_teams_teams_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetDriverCrewWithDispatchersResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetDriverCrewWithDispatchersResponse) ProtoMessage() {}
+
+func (x *GetDriverCrewWithDispatchersResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_teams_teams_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetDriverCrewWithDispatchersResponse.ProtoReflect.Descriptor instead.
+func (*GetDriverCrewWithDispatchersResponse) Descriptor() ([]byte, []int) {
+	return file_teams_teams_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *GetDriverCrewWithDispatchersResponse) GetData() *DriverCrewInfo {
+	if x != nil {
+		return x.Data
+	}
+	return nil
+}
+
+func (x *GetDriverCrewWithDispatchersResponse) GetDispatcherIds() []string {
+	if x != nil {
+		return x.DispatcherIds
+	}
+	return nil
+}
+
 type GetBusyVehiclesRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	From          *timestamppb.Timestamp `protobuf:"bytes,1,opt,name=from,proto3" json:"from,omitempty"`
@@ -130,7 +182,7 @@ type GetBusyVehiclesRequest struct {
 
 func (x *GetBusyVehiclesRequest) Reset() {
 	*x = GetBusyVehiclesRequest{}
-	mi := &file_teams_teams_proto_msgTypes[2]
+	mi := &file_teams_teams_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -142,7 +194,7 @@ func (x *GetBusyVehiclesRequest) String() string {
 func (*GetBusyVehiclesRequest) ProtoMessage() {}
 
 func (x *GetBusyVehiclesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_teams_teams_proto_msgTypes[2]
+	mi := &file_teams_teams_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -155,7 +207,7 @@ func (x *GetBusyVehiclesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetBusyVehiclesRequest.ProtoReflect.Descriptor instead.
 func (*GetBusyVehiclesRequest) Descriptor() ([]byte, []int) {
-	return file_teams_teams_proto_rawDescGZIP(), []int{2}
+	return file_teams_teams_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *GetBusyVehiclesRequest) GetFrom() *timestamppb.Timestamp {
@@ -182,7 +234,7 @@ type GetBusyVehiclesResponse struct {
 
 func (x *GetBusyVehiclesResponse) Reset() {
 	*x = GetBusyVehiclesResponse{}
-	mi := &file_teams_teams_proto_msgTypes[3]
+	mi := &file_teams_teams_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -194,7 +246,7 @@ func (x *GetBusyVehiclesResponse) String() string {
 func (*GetBusyVehiclesResponse) ProtoMessage() {}
 
 func (x *GetBusyVehiclesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_teams_teams_proto_msgTypes[3]
+	mi := &file_teams_teams_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -207,7 +259,7 @@ func (x *GetBusyVehiclesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetBusyVehiclesResponse.ProtoReflect.Descriptor instead.
 func (*GetBusyVehiclesResponse) Descriptor() ([]byte, []int) {
-	return file_teams_teams_proto_rawDescGZIP(), []int{3}
+	return file_teams_teams_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *GetBusyVehiclesResponse) GetTruckIds() []string {
@@ -233,7 +285,7 @@ type GetCurrentDriversByTruckIdsRequest struct {
 
 func (x *GetCurrentDriversByTruckIdsRequest) Reset() {
 	*x = GetCurrentDriversByTruckIdsRequest{}
-	mi := &file_teams_teams_proto_msgTypes[4]
+	mi := &file_teams_teams_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -245,7 +297,7 @@ func (x *GetCurrentDriversByTruckIdsRequest) String() string {
 func (*GetCurrentDriversByTruckIdsRequest) ProtoMessage() {}
 
 func (x *GetCurrentDriversByTruckIdsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_teams_teams_proto_msgTypes[4]
+	mi := &file_teams_teams_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -258,7 +310,7 @@ func (x *GetCurrentDriversByTruckIdsRequest) ProtoReflect() protoreflect.Message
 
 // Deprecated: Use GetCurrentDriversByTruckIdsRequest.ProtoReflect.Descriptor instead.
 func (*GetCurrentDriversByTruckIdsRequest) Descriptor() ([]byte, []int) {
-	return file_teams_teams_proto_rawDescGZIP(), []int{4}
+	return file_teams_teams_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *GetCurrentDriversByTruckIdsRequest) GetTruckIds() []string {
@@ -277,7 +329,7 @@ type GetCurrentDriversByTruckIdsResponse struct {
 
 func (x *GetCurrentDriversByTruckIdsResponse) Reset() {
 	*x = GetCurrentDriversByTruckIdsResponse{}
-	mi := &file_teams_teams_proto_msgTypes[5]
+	mi := &file_teams_teams_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -289,7 +341,7 @@ func (x *GetCurrentDriversByTruckIdsResponse) String() string {
 func (*GetCurrentDriversByTruckIdsResponse) ProtoMessage() {}
 
 func (x *GetCurrentDriversByTruckIdsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_teams_teams_proto_msgTypes[5]
+	mi := &file_teams_teams_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -302,7 +354,7 @@ func (x *GetCurrentDriversByTruckIdsResponse) ProtoReflect() protoreflect.Messag
 
 // Deprecated: Use GetCurrentDriversByTruckIdsResponse.ProtoReflect.Descriptor instead.
 func (*GetCurrentDriversByTruckIdsResponse) Descriptor() ([]byte, []int) {
-	return file_teams_teams_proto_rawDescGZIP(), []int{5}
+	return file_teams_teams_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *GetCurrentDriversByTruckIdsResponse) GetData() []*DriverCrewInfo {
@@ -321,7 +373,7 @@ type GetCurrentDriversByTrailerIdsRequest struct {
 
 func (x *GetCurrentDriversByTrailerIdsRequest) Reset() {
 	*x = GetCurrentDriversByTrailerIdsRequest{}
-	mi := &file_teams_teams_proto_msgTypes[6]
+	mi := &file_teams_teams_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -333,7 +385,7 @@ func (x *GetCurrentDriversByTrailerIdsRequest) String() string {
 func (*GetCurrentDriversByTrailerIdsRequest) ProtoMessage() {}
 
 func (x *GetCurrentDriversByTrailerIdsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_teams_teams_proto_msgTypes[6]
+	mi := &file_teams_teams_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -346,7 +398,7 @@ func (x *GetCurrentDriversByTrailerIdsRequest) ProtoReflect() protoreflect.Messa
 
 // Deprecated: Use GetCurrentDriversByTrailerIdsRequest.ProtoReflect.Descriptor instead.
 func (*GetCurrentDriversByTrailerIdsRequest) Descriptor() ([]byte, []int) {
-	return file_teams_teams_proto_rawDescGZIP(), []int{6}
+	return file_teams_teams_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *GetCurrentDriversByTrailerIdsRequest) GetTrailerIds() []string {
@@ -365,7 +417,7 @@ type GetCurrentDriversByTrailerIdsResponse struct {
 
 func (x *GetCurrentDriversByTrailerIdsResponse) Reset() {
 	*x = GetCurrentDriversByTrailerIdsResponse{}
-	mi := &file_teams_teams_proto_msgTypes[7]
+	mi := &file_teams_teams_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -377,7 +429,7 @@ func (x *GetCurrentDriversByTrailerIdsResponse) String() string {
 func (*GetCurrentDriversByTrailerIdsResponse) ProtoMessage() {}
 
 func (x *GetCurrentDriversByTrailerIdsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_teams_teams_proto_msgTypes[7]
+	mi := &file_teams_teams_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -390,7 +442,7 @@ func (x *GetCurrentDriversByTrailerIdsResponse) ProtoReflect() protoreflect.Mess
 
 // Deprecated: Use GetCurrentDriversByTrailerIdsResponse.ProtoReflect.Descriptor instead.
 func (*GetCurrentDriversByTrailerIdsResponse) Descriptor() ([]byte, []int) {
-	return file_teams_teams_proto_rawDescGZIP(), []int{7}
+	return file_teams_teams_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *GetCurrentDriversByTrailerIdsResponse) GetData() []*DriverCrewInfo {
@@ -413,7 +465,7 @@ type DriverCrewInfo struct {
 
 func (x *DriverCrewInfo) Reset() {
 	*x = DriverCrewInfo{}
-	mi := &file_teams_teams_proto_msgTypes[8]
+	mi := &file_teams_teams_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -425,7 +477,7 @@ func (x *DriverCrewInfo) String() string {
 func (*DriverCrewInfo) ProtoMessage() {}
 
 func (x *DriverCrewInfo) ProtoReflect() protoreflect.Message {
-	mi := &file_teams_teams_proto_msgTypes[8]
+	mi := &file_teams_teams_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -438,7 +490,7 @@ func (x *DriverCrewInfo) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DriverCrewInfo.ProtoReflect.Descriptor instead.
 func (*DriverCrewInfo) Descriptor() ([]byte, []int) {
-	return file_teams_teams_proto_rawDescGZIP(), []int{8}
+	return file_teams_teams_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *DriverCrewInfo) GetPrimaryDriverId() string {
@@ -485,7 +537,7 @@ type TrailerInfo struct {
 
 func (x *TrailerInfo) Reset() {
 	*x = TrailerInfo{}
-	mi := &file_teams_teams_proto_msgTypes[9]
+	mi := &file_teams_teams_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -497,7 +549,7 @@ func (x *TrailerInfo) String() string {
 func (*TrailerInfo) ProtoMessage() {}
 
 func (x *TrailerInfo) ProtoReflect() protoreflect.Message {
-	mi := &file_teams_teams_proto_msgTypes[9]
+	mi := &file_teams_teams_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -510,7 +562,7 @@ func (x *TrailerInfo) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TrailerInfo.ProtoReflect.Descriptor instead.
 func (*TrailerInfo) Descriptor() ([]byte, []int) {
-	return file_teams_teams_proto_rawDescGZIP(), []int{9}
+	return file_teams_teams_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *TrailerInfo) GetTruckId() string {
@@ -530,7 +582,10 @@ const file_teams_teams_proto_rawDesc = "" +
 	"\vtarget_date\x18\x02 \x01(\tR\n" +
 	"targetDate\"B\n" +
 	"\x15GetDriverCrewResponse\x12)\n" +
-	"\x04data\x18\x01 \x01(\v2\x15.teams.DriverCrewInfoR\x04data\"t\n" +
+	"\x04data\x18\x01 \x01(\v2\x15.teams.DriverCrewInfoR\x04data\"x\n" +
+	"$GetDriverCrewWithDispatchersResponse\x12)\n" +
+	"\x04data\x18\x01 \x01(\v2\x15.teams.DriverCrewInfoR\x04data\x12%\n" +
+	"\x0edispatcher_ids\x18\x02 \x03(\tR\rdispatcherIds\"t\n" +
 	"\x16GetBusyVehiclesRequest\x12.\n" +
 	"\x04from\x18\x01 \x01(\v2\x1a.google.protobuf.TimestampR\x04from\x12*\n" +
 	"\x02to\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\x02to\"W\n" +
@@ -555,9 +610,10 @@ const file_teams_teams_proto_rawDesc = "" +
 	"trailer_id\x18\x04 \x01(\tR\ttrailerId\x12\x17\n" +
 	"\aplan_id\x18\x05 \x01(\tR\x06planId\"(\n" +
 	"\vTrailerInfo\x12\x19\n" +
-	"\btruck_id\x18\x01 \x01(\tR\atruckId2\x9e\x03\n" +
+	"\btruck_id\x18\x01 \x01(\tR\atruckId2\x88\x04\n" +
 	"\fTeamsService\x12J\n" +
-	"\rGetDriverCrew\x12\x1b.teams.GetDriverCrewRequest\x1a\x1c.teams.GetDriverCrewResponse\x12P\n" +
+	"\rGetDriverCrew\x12\x1b.teams.GetDriverCrewRequest\x1a\x1c.teams.GetDriverCrewResponse\x12h\n" +
+	"\x1cGetDriverCrewWithDispatchers\x12\x1b.teams.GetDriverCrewRequest\x1a+.teams.GetDriverCrewWithDispatchersResponse\x12P\n" +
 	"\x0fGetBusyVehicles\x12\x1d.teams.GetBusyVehiclesRequest\x1a\x1e.teams.GetBusyVehiclesResponse\x12t\n" +
 	"\x1bGetCurrentDriversByTruckIds\x12).teams.GetCurrentDriversByTruckIdsRequest\x1a*.teams.GetCurrentDriversByTruckIdsResponse\x12z\n" +
 	"\x1dGetCurrentDriversByTrailerIds\x12+.teams.GetCurrentDriversByTrailerIdsRequest\x1a,.teams.GetCurrentDriversByTrailerIdsResponseB+Z)github.com/TMS360/backend-pkg/proto/teamsb\x06proto3"
@@ -574,39 +630,43 @@ func file_teams_teams_proto_rawDescGZIP() []byte {
 	return file_teams_teams_proto_rawDescData
 }
 
-var file_teams_teams_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
+var file_teams_teams_proto_msgTypes = make([]protoimpl.MessageInfo, 11)
 var file_teams_teams_proto_goTypes = []any{
 	(*GetDriverCrewRequest)(nil),                  // 0: teams.GetDriverCrewRequest
 	(*GetDriverCrewResponse)(nil),                 // 1: teams.GetDriverCrewResponse
-	(*GetBusyVehiclesRequest)(nil),                // 2: teams.GetBusyVehiclesRequest
-	(*GetBusyVehiclesResponse)(nil),               // 3: teams.GetBusyVehiclesResponse
-	(*GetCurrentDriversByTruckIdsRequest)(nil),    // 4: teams.GetCurrentDriversByTruckIdsRequest
-	(*GetCurrentDriversByTruckIdsResponse)(nil),   // 5: teams.GetCurrentDriversByTruckIdsResponse
-	(*GetCurrentDriversByTrailerIdsRequest)(nil),  // 6: teams.GetCurrentDriversByTrailerIdsRequest
-	(*GetCurrentDriversByTrailerIdsResponse)(nil), // 7: teams.GetCurrentDriversByTrailerIdsResponse
-	(*DriverCrewInfo)(nil),                        // 8: teams.DriverCrewInfo
-	(*TrailerInfo)(nil),                           // 9: teams.TrailerInfo
-	(*timestamppb.Timestamp)(nil),                 // 10: google.protobuf.Timestamp
+	(*GetDriverCrewWithDispatchersResponse)(nil),  // 2: teams.GetDriverCrewWithDispatchersResponse
+	(*GetBusyVehiclesRequest)(nil),                // 3: teams.GetBusyVehiclesRequest
+	(*GetBusyVehiclesResponse)(nil),               // 4: teams.GetBusyVehiclesResponse
+	(*GetCurrentDriversByTruckIdsRequest)(nil),    // 5: teams.GetCurrentDriversByTruckIdsRequest
+	(*GetCurrentDriversByTruckIdsResponse)(nil),   // 6: teams.GetCurrentDriversByTruckIdsResponse
+	(*GetCurrentDriversByTrailerIdsRequest)(nil),  // 7: teams.GetCurrentDriversByTrailerIdsRequest
+	(*GetCurrentDriversByTrailerIdsResponse)(nil), // 8: teams.GetCurrentDriversByTrailerIdsResponse
+	(*DriverCrewInfo)(nil),                        // 9: teams.DriverCrewInfo
+	(*TrailerInfo)(nil),                           // 10: teams.TrailerInfo
+	(*timestamppb.Timestamp)(nil),                 // 11: google.protobuf.Timestamp
 }
 var file_teams_teams_proto_depIdxs = []int32{
-	8,  // 0: teams.GetDriverCrewResponse.data:type_name -> teams.DriverCrewInfo
-	10, // 1: teams.GetBusyVehiclesRequest.from:type_name -> google.protobuf.Timestamp
-	10, // 2: teams.GetBusyVehiclesRequest.to:type_name -> google.protobuf.Timestamp
-	8,  // 3: teams.GetCurrentDriversByTruckIdsResponse.data:type_name -> teams.DriverCrewInfo
-	8,  // 4: teams.GetCurrentDriversByTrailerIdsResponse.data:type_name -> teams.DriverCrewInfo
-	0,  // 5: teams.TeamsService.GetDriverCrew:input_type -> teams.GetDriverCrewRequest
-	2,  // 6: teams.TeamsService.GetBusyVehicles:input_type -> teams.GetBusyVehiclesRequest
-	4,  // 7: teams.TeamsService.GetCurrentDriversByTruckIds:input_type -> teams.GetCurrentDriversByTruckIdsRequest
-	6,  // 8: teams.TeamsService.GetCurrentDriversByTrailerIds:input_type -> teams.GetCurrentDriversByTrailerIdsRequest
-	1,  // 9: teams.TeamsService.GetDriverCrew:output_type -> teams.GetDriverCrewResponse
-	3,  // 10: teams.TeamsService.GetBusyVehicles:output_type -> teams.GetBusyVehiclesResponse
-	5,  // 11: teams.TeamsService.GetCurrentDriversByTruckIds:output_type -> teams.GetCurrentDriversByTruckIdsResponse
-	7,  // 12: teams.TeamsService.GetCurrentDriversByTrailerIds:output_type -> teams.GetCurrentDriversByTrailerIdsResponse
-	9,  // [9:13] is the sub-list for method output_type
-	5,  // [5:9] is the sub-list for method input_type
-	5,  // [5:5] is the sub-list for extension type_name
-	5,  // [5:5] is the sub-list for extension extendee
-	0,  // [0:5] is the sub-list for field type_name
+	9,  // 0: teams.GetDriverCrewResponse.data:type_name -> teams.DriverCrewInfo
+	9,  // 1: teams.GetDriverCrewWithDispatchersResponse.data:type_name -> teams.DriverCrewInfo
+	11, // 2: teams.GetBusyVehiclesRequest.from:type_name -> google.protobuf.Timestamp
+	11, // 3: teams.GetBusyVehiclesRequest.to:type_name -> google.protobuf.Timestamp
+	9,  // 4: teams.GetCurrentDriversByTruckIdsResponse.data:type_name -> teams.DriverCrewInfo
+	9,  // 5: teams.GetCurrentDriversByTrailerIdsResponse.data:type_name -> teams.DriverCrewInfo
+	0,  // 6: teams.TeamsService.GetDriverCrew:input_type -> teams.GetDriverCrewRequest
+	0,  // 7: teams.TeamsService.GetDriverCrewWithDispatchers:input_type -> teams.GetDriverCrewRequest
+	3,  // 8: teams.TeamsService.GetBusyVehicles:input_type -> teams.GetBusyVehiclesRequest
+	5,  // 9: teams.TeamsService.GetCurrentDriversByTruckIds:input_type -> teams.GetCurrentDriversByTruckIdsRequest
+	7,  // 10: teams.TeamsService.GetCurrentDriversByTrailerIds:input_type -> teams.GetCurrentDriversByTrailerIdsRequest
+	1,  // 11: teams.TeamsService.GetDriverCrew:output_type -> teams.GetDriverCrewResponse
+	2,  // 12: teams.TeamsService.GetDriverCrewWithDispatchers:output_type -> teams.GetDriverCrewWithDispatchersResponse
+	4,  // 13: teams.TeamsService.GetBusyVehicles:output_type -> teams.GetBusyVehiclesResponse
+	6,  // 14: teams.TeamsService.GetCurrentDriversByTruckIds:output_type -> teams.GetCurrentDriversByTruckIdsResponse
+	8,  // 15: teams.TeamsService.GetCurrentDriversByTrailerIds:output_type -> teams.GetCurrentDriversByTrailerIdsResponse
+	11, // [11:16] is the sub-list for method output_type
+	6,  // [6:11] is the sub-list for method input_type
+	6,  // [6:6] is the sub-list for extension type_name
+	6,  // [6:6] is the sub-list for extension extendee
+	0,  // [0:6] is the sub-list for field type_name
 }
 
 func init() { file_teams_teams_proto_init() }
@@ -620,7 +680,7 @@ func file_teams_teams_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_teams_teams_proto_rawDesc), len(file_teams_teams_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   10,
+			NumMessages:   11,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

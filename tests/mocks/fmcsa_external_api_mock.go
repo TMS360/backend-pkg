@@ -3,7 +3,7 @@ package mocks
 import (
 	"context"
 
-	"github.com/TMS360/backend-pkg/client/fmcsa"
+	fmcsa "github.com/TMS360/backend-pkg/client/fmcsa/fmcsa_external"
 	"github.com/stretchr/testify/mock"
 )
 

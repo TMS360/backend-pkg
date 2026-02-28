@@ -27,7 +27,7 @@ func (r *repository) ListByUserAndEntity(ctx context.Context, userID uuid.UUID, 
 	var filters []*SavedFilter
 	err := r.TM().GetDB(ctx).
 		Where("user_id = ? AND entity_type = ?", userID, entityType).
-		Order("position ASC").
+		Order("created_at DESC").
 		Find(&filters).Error
 	if err != nil {
 		return nil, err

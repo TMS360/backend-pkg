@@ -11,6 +11,8 @@ service TeamsService {
   // Get DriverCrew details by targetDate
   rpc GetDriverCrew(GetDriverCrewRequest) returns (GetDriverCrewResponse);
 
+  rpc GetDriverCrewWithDispatchers(GetDriverCrewRequest) returns (GetDriverCrewWithDispatchersResponse);
+
   // Returns IDs of vehicles assigned during the requested window
   rpc GetBusyVehicles(GetBusyVehiclesRequest) returns (GetBusyVehiclesResponse);
 
@@ -26,6 +28,11 @@ message GetDriverCrewRequest {
 
 message GetDriverCrewResponse {
   DriverCrewInfo data = 1;
+}
+
+message GetDriverCrewWithDispatchersResponse {
+  DriverCrewInfo data = 1;
+  repeated string dispatcher_ids = 2;
 }
 
 message GetBusyVehiclesRequest {

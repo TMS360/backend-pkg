@@ -130,3 +130,192 @@ var TrackersService_ServiceDesc = grpc.ServiceDesc{
 	},
 	Metadata: "trackers/trackers.proto",
 }
+
+const (
+	VehiclePositionService_GetVehicleRoute_FullMethodName    = "/trackers.VehiclePositionService/GetVehicleRoute"
+	VehiclePositionService_SaveEstimatedRoute_FullMethodName = "/trackers.VehiclePositionService/SaveEstimatedRoute"
+	VehiclePositionService_GetEstimatedRoute_FullMethodName  = "/trackers.VehiclePositionService/GetEstimatedRoute"
+)
+
+// VehiclePositionServiceClient is the client API for VehiclePositionService service.
+//
+// For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
+//
+// VehiclePositionService provides vehicle position history (served by samsara-tracker)
+type VehiclePositionServiceClient interface {
+	// GetVehicleRoute returns GPS route points for a truck within a time range
+	GetVehicleRoute(ctx context.Context, in *GetVehicleRouteRequest, opts ...grpc.CallOption) (*GetVehicleRouteResponse, error)
+	// SaveEstimatedRoute stores estimated route polylines from HERE Maps
+	SaveEstimatedRoute(ctx context.Context, in *SaveEstimatedRouteRequest, opts ...grpc.CallOption) (*SaveEstimatedRouteResponse, error)
+	// GetEstimatedRoute retrieves estimated route polylines for a trip
+	GetEstimatedRoute(ctx context.Context, in *GetEstimatedRouteRequest, opts ...grpc.CallOption) (*GetEstimatedRouteResponse, error)
+}
+
+type vehiclePositionServiceClient struct {
+	cc grpc.ClientConnInterface
+}
+
+func NewVehiclePositionServiceClient(cc grpc.ClientConnInterface) VehiclePositionServiceClient {
+	return &vehiclePositionServiceClient{cc}
+}
+
+func (c *vehiclePositionServiceClient) GetVehicleRoute(ctx context.Context, in *GetVehicleRouteRequest, opts ...grpc.CallOption) (*GetVehicleRouteResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetVehicleRouteResponse)
+	err := c.cc.Invoke(ctx, VehiclePositionService_GetVehicleRoute_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *vehiclePositionServiceClient) SaveEstimatedRoute(ctx context.Context, in *SaveEstimatedRouteRequest, opts ...grpc.CallOption) (*SaveEstimatedRouteResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SaveEstimatedRouteResponse)
+	err := c.cc.Invoke(ctx, VehiclePositionService_SaveEstimatedRoute_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *vehiclePositionServiceClient) GetEstimatedRoute(ctx context.Context, in *GetEstimatedRouteRequest, opts ...grpc.CallOption) (*GetEstimatedRouteResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetEstimatedRouteResponse)
+	err := c.cc.Invoke(ctx, VehiclePositionService_GetEstimatedRoute_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// VehiclePositionServiceServer is the server API for VehiclePositionService service.
+// All implementations must embed UnimplementedVehiclePositionServiceServer
+// for forward compatibility.
+//
+// VehiclePositionService provides vehicle position history (served by samsara-tracker)
+type VehiclePositionServiceServer interface {
+	// GetVehicleRoute returns GPS route points for a truck within a time range
+	GetVehicleRoute(context.Context, *GetVehicleRouteRequest) (*GetVehicleRouteResponse, error)
+	// SaveEstimatedRoute stores estimated route polylines from HERE Maps
+	SaveEstimatedRoute(context.Context, *SaveEstimatedRouteRequest) (*SaveEstimatedRouteResponse, error)
+	// GetEstimatedRoute retrieves estimated route polylines for a trip
+	GetEstimatedRoute(context.Context, *GetEstimatedRouteRequest) (*GetEstimatedRouteResponse, error)
+	mustEmbedUnimplementedVehiclePositionServiceServer()
+}
+
+// UnimplementedVehiclePositionServiceServer must be embedded to have
+// forward compatible implementations.
+//
+// NOTE: this should be embedded by value instead of pointer to avoid a nil
+// pointer dereference when methods are called.
+type UnimplementedVehiclePositionServiceServer struct{}
+
+func (UnimplementedVehiclePositionServiceServer) GetVehicleRoute(context.Context, *GetVehicleRouteRequest) (*GetVehicleRouteResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetVehicleRoute not implemented")
+}
+func (UnimplementedVehiclePositionServiceServer) SaveEstimatedRoute(context.Context, *SaveEstimatedRouteRequest) (*SaveEstimatedRouteResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method SaveEstimatedRoute not implemented")
+}
+func (UnimplementedVehiclePositionServiceServer) GetEstimatedRoute(context.Context, *GetEstimatedRouteRequest) (*GetEstimatedRouteResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetEstimatedRoute not implemented")
+}
+func (UnimplementedVehiclePositionServiceServer) mustEmbedUnimplementedVehiclePositionServiceServer() {
+}
+func (UnimplementedVehiclePositionServiceServer) testEmbeddedByValue() {}
+
+// UnsafeVehiclePositionServiceServer may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to VehiclePositionServiceServer will
+// result in compilation errors.
+type UnsafeVehiclePositionServiceServer interface {
+	mustEmbedUnimplementedVehiclePositionServiceServer()
+}
+
+func RegisterVehiclePositionServiceServer(s grpc.ServiceRegistrar, srv VehiclePositionServiceServer) {
+	// If the following call panics, it indicates UnimplementedVehiclePositionServiceServer was
+	// embedded by pointer and is nil.  This will cause panics if an
+	// unimplemented method is ever invoked, so we test this at initialization
+	// time to prevent it from happening at runtime later due to I/O.
+	if t, ok := srv.(interface{ testEmbeddedByValue() }); ok {
+		t.testEmbeddedByValue()
+	}
+	s.RegisterService(&VehiclePositionService_ServiceDesc, srv)
+}
+
+func _VehiclePositionService_GetVehicleRoute_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetVehicleRouteRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(VehiclePositionServiceServer).GetVehicleRoute(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: VehiclePositionService_GetVehicleRoute_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(VehiclePositionServiceServer).GetVehicleRoute(ctx, req.(*GetVehicleRouteRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _VehiclePositionService_SaveEstimatedRoute_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SaveEstimatedRouteRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(VehiclePositionServiceServer).SaveEstimatedRoute(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: VehiclePositionService_SaveEstimatedRoute_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(VehiclePositionServiceServer).SaveEstimatedRoute(ctx, req.(*SaveEstimatedRouteRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _VehiclePositionService_GetEstimatedRoute_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetEstimatedRouteRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(VehiclePositionServiceServer).GetEstimatedRoute(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: VehiclePositionService_GetEstimatedRoute_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(VehiclePositionServiceServer).GetEstimatedRoute(ctx, req.(*GetEstimatedRouteRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+// VehiclePositionService_ServiceDesc is the grpc.ServiceDesc for VehiclePositionService service.
+// It's only intended for direct use with grpc.RegisterService,
+// and not to be introspected or modified (even as a copy)
+var VehiclePositionService_ServiceDesc = grpc.ServiceDesc{
+	ServiceName: "trackers.VehiclePositionService",
+	HandlerType: (*VehiclePositionServiceServer)(nil),
+	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "GetVehicleRoute",
+			Handler:    _VehiclePositionService_GetVehicleRoute_Handler,
+		},
+		{
+			MethodName: "SaveEstimatedRoute",
+			Handler:    _VehiclePositionService_SaveEstimatedRoute_Handler,
+		},
+		{
+			MethodName: "GetEstimatedRoute",
+			Handler:    _VehiclePositionService_GetEstimatedRoute_Handler,
+		},
+	},
+	Streams:  []grpc.StreamDesc{},
+	Metadata: "trackers/trackers.proto",
+}

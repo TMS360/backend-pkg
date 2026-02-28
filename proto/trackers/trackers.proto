@@ -59,3 +59,66 @@ message VehicleLocationUpdateBatch {
   repeated VehicleLocationUpdate updates = 1;
   google.protobuf.Timestamp batch_time = 2;
 }
+
+// VehiclePositionService provides vehicle position history (served by samsara-tracker)
+service VehiclePositionService {
+  // GetVehicleRoute returns GPS route points for a truck within a time range
+  rpc GetVehicleRoute(GetVehicleRouteRequest) returns (GetVehicleRouteResponse);
+
+  // SaveEstimatedRoute stores estimated route polylines from HERE Maps
+  rpc SaveEstimatedRoute(SaveEstimatedRouteRequest) returns (SaveEstimatedRouteResponse);
+
+  // GetEstimatedRoute retrieves estimated route polylines for a trip
+  rpc GetEstimatedRoute(GetEstimatedRouteRequest) returns (GetEstimatedRouteResponse);
+}
+
+message GetVehicleRouteRequest {
+  string truck_id = 1;
+  google.protobuf.Timestamp from = 2;
+  google.protobuf.Timestamp to = 3;
+}
+
+message RoutePoint {
+  double latitude = 1;
+  double longitude = 2;
+  double heading = 3;
+  double speed = 4;
+  google.protobuf.Timestamp gps_time = 5;
+  string address = 6;
+}
+
+message GetVehicleRouteResponse {
+  repeated RoutePoint points = 1;
+}
+
+// Estimated route messages
+
+message EstimatedRouteLeg {
+  int32 leg_index = 1;
+  string polyline = 2;           // HERE Flexible Polyline encoded string
+  int32 distance_meters = 3;
+  int32 duration_seconds = 4;
+}
+
+message SaveEstimatedRouteRequest {
+  string trip_id = 1;
+  string company_id = 2;
+  repeated EstimatedRouteLeg legs = 3;
+  int32 total_distance_meters = 4;
+  int32 total_duration_seconds = 5;
+}
+
+message SaveEstimatedRouteResponse {
+  bool success = 1;
+}
+
+message GetEstimatedRouteRequest {
+  string trip_id = 1;
+}
+
+message GetEstimatedRouteResponse {
+  string trip_id = 1;
+  repeated EstimatedRouteLeg legs = 2;
+  int32 total_distance_meters = 3;
+  int32 total_duration_seconds = 4;
+}

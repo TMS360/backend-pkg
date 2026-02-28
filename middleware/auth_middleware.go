@@ -48,6 +48,16 @@ func IdentifyUser(publicKey *rsa.PublicKey) gin.HandlerFunc {
 
 		claims, ok := token.Claims.(*consts.UserClaims)
 		if ok {
+			claims.RolesMap = make(map[string]struct{}, len(claims.Roles))
+			for _, r := range claims.Roles {
+				claims.RolesMap[r] = struct{}{}
+			}
+
+			claims.PermissionsMap = make(map[string]struct{}, len(claims.Permissions))
+			for _, p := range claims.Permissions {
+				claims.PermissionsMap[p] = struct{}{}
+			}
+
 			ctxWithActor := WithActor(ctx.Request.Context(), claims.UserID, claims, tokenString)
 			ctx.Request = ctx.Request.WithContext(ctxWithActor)
 		}

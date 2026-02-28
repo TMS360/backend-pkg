@@ -2,8 +2,10 @@ package savedfilter
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"sync"
+	"time"
 
 	"github.com/TMS360/backend-pkg/middleware"
 	"github.com/google/uuid"
@@ -29,6 +31,14 @@ func NewService(repo Repository) *Service {
 	}
 }
 
+// NewCountOnlyService creates a Service that only supports counting entities.
+// Used by services that extend SavedFilter via Federation without owning the data.
+func NewCountOnlyService() *Service {
+	return &Service{
+		countFuncs: make(map[string]CountFunc),
+	}
+}
+
 // RegisterCountFunc registers a callback that counts entities for a given entity type.
 func (s *Service) RegisterCountFunc(entityType string, fn CountFunc) {
 	s.mu.Lock()
@@ -40,6 +50,15 @@ func (s *Service) getCountFunc(entityType string) CountFunc {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	return s.countFuncs[entityType]
+}
+
+// Count returns the count of entities matching the given filter for the specified entity type.
+func (s *Service) Count(ctx context.Context, entityType string, filter json.RawMessage) (int64, error) {
+	countFn := s.getCountFunc(entityType)
+	if countFn == nil {
+		return 0, nil
+	}
+	return countFn(ctx, filter)
 }
 
 func (s *Service) Create(ctx context.Context, input CreateInput) (*SavedFilter, error) {
@@ -61,7 +80,6 @@ func (s *Service) Create(ctx context.Context, input CreateInput) (*SavedFilter, 
 		EntityType: input.EntityType,
 		Name:       input.Name,
 		Filter:     input.Filter,
-		Position:   int(count),
 	}
 
 	if err := s.repo.Create(ctx, filter); err != nil {
@@ -86,6 +104,8 @@ func (s *Service) Update(ctx context.Context, id uuid.UUID, input UpdateInput) (
 	if input.Filter != nil {
 		filter.Filter = *input.Filter
 	}
+
+	filter.UpdatedAt = time.Now()
 
 	if err := s.repo.Update(ctx, filter); err != nil {
 		return nil, err

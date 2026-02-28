@@ -22,6 +22,7 @@ const _ = grpc.SupportPackageIsVersion9
 
 const (
 	TeamsService_GetDriverCrew_FullMethodName                 = "/teams.TeamsService/GetDriverCrew"
+	TeamsService_GetDriverCrewWithDispatchers_FullMethodName  = "/teams.TeamsService/GetDriverCrewWithDispatchers"
 	TeamsService_GetBusyVehicles_FullMethodName               = "/teams.TeamsService/GetBusyVehicles"
 	TeamsService_GetCurrentDriversByTruckIds_FullMethodName   = "/teams.TeamsService/GetCurrentDriversByTruckIds"
 	TeamsService_GetCurrentDriversByTrailerIds_FullMethodName = "/teams.TeamsService/GetCurrentDriversByTrailerIds"
@@ -33,6 +34,7 @@ const (
 type TeamsServiceClient interface {
 	// Get DriverCrew details by targetDate
 	GetDriverCrew(ctx context.Context, in *GetDriverCrewRequest, opts ...grpc.CallOption) (*GetDriverCrewResponse, error)
+	GetDriverCrewWithDispatchers(ctx context.Context, in *GetDriverCrewRequest, opts ...grpc.CallOption) (*GetDriverCrewWithDispatchersResponse, error)
 	// Returns IDs of vehicles assigned during the requested window
 	GetBusyVehicles(ctx context.Context, in *GetBusyVehiclesRequest, opts ...grpc.CallOption) (*GetBusyVehiclesResponse, error)
 	// Get current drivers for a list of trucks
@@ -52,6 +54,16 @@ func (c *teamsServiceClient) GetDriverCrew(ctx context.Context, in *GetDriverCre
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(GetDriverCrewResponse)
 	err := c.cc.Invoke(ctx, TeamsService_GetDriverCrew_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *teamsServiceClient) GetDriverCrewWithDispatchers(ctx context.Context, in *GetDriverCrewRequest, opts ...grpc.CallOption) (*GetDriverCrewWithDispatchersResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetDriverCrewWithDispatchersResponse)
+	err := c.cc.Invoke(ctx, TeamsService_GetDriverCrewWithDispatchers_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -94,6 +106,7 @@ func (c *teamsServiceClient) GetCurrentDriversByTrailerIds(ctx context.Context, 
 type TeamsServiceServer interface {
 	// Get DriverCrew details by targetDate
 	GetDriverCrew(context.Context, *GetDriverCrewRequest) (*GetDriverCrewResponse, error)
+	GetDriverCrewWithDispatchers(context.Context, *GetDriverCrewRequest) (*GetDriverCrewWithDispatchersResponse, error)
 	// Returns IDs of vehicles assigned during the requested window
 	GetBusyVehicles(context.Context, *GetBusyVehiclesRequest) (*GetBusyVehiclesResponse, error)
 	// Get current drivers for a list of trucks
@@ -111,6 +124,9 @@ type UnimplementedTeamsServiceServer struct{}
 
 func (UnimplementedTeamsServiceServer) GetDriverCrew(context.Context, *GetDriverCrewRequest) (*GetDriverCrewResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetDriverCrew not implemented")
+}
+func (UnimplementedTeamsServiceServer) GetDriverCrewWithDispatchers(context.Context, *GetDriverCrewRequest) (*GetDriverCrewWithDispatchersResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetDriverCrewWithDispatchers not implemented")
 }
 func (UnimplementedTeamsServiceServer) GetBusyVehicles(context.Context, *GetBusyVehiclesRequest) (*GetBusyVehiclesResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetBusyVehicles not implemented")
@@ -156,6 +172,24 @@ func _TeamsService_GetDriverCrew_Handler(srv interface{}, ctx context.Context, d
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(TeamsServiceServer).GetDriverCrew(ctx, req.(*GetDriverCrewRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _TeamsService_GetDriverCrewWithDispatchers_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetDriverCrewRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(TeamsServiceServer).GetDriverCrewWithDispatchers(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: TeamsService_GetDriverCrewWithDispatchers_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(TeamsServiceServer).GetDriverCrewWithDispatchers(ctx, req.(*GetDriverCrewRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -224,6 +258,10 @@ var TeamsService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetDriverCrew",
 			Handler:    _TeamsService_GetDriverCrew_Handler,
+		},
+		{
+			MethodName: "GetDriverCrewWithDispatchers",
+			Handler:    _TeamsService_GetDriverCrewWithDispatchers_Handler,
 		},
 		{
 			MethodName: "GetBusyVehicles",

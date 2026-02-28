@@ -9,6 +9,8 @@ import (
 	"net/url"
 	"strconv"
 	"time"
+
+	"github.com/TMS360/backend-pkg/middleware"
 )
 
 type FmcsaAPI interface {
@@ -29,6 +31,20 @@ func NewClient(baseURL string) FmcsaAPI {
 			Timeout: 10 * time.Second,
 		},
 	}
+}
+
+func (c *client) SetAuthToken(ctx context.Context, req *http.Request) error {
+	actor, err := middleware.GetActor(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get actor from context: %w", err)
+	}
+
+	if actor.Token == nil {
+		return fmt.Errorf("no auth token found in context")
+	}
+
+	req.Header.Set("Authorization", "Bearer "+*actor.Token)
+	return nil
 }
 
 // SearchBrokers calls the FMCSA API to search for brokers based on the provided parameters
@@ -90,6 +106,10 @@ func (c *client) prepareReq(ctx context.Context, entityType string, params Searc
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, reqURL.String(), nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	if err := c.SetAuthToken(ctx, req); err != nil {
+		return nil, fmt.Errorf("failed to set auth token: %w", err)
 	}
 
 	return req, nil

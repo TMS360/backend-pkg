@@ -26,3 +26,8 @@ func (m *SaferAPIMock) FetchByDOTNumber(ctx context.Context, usdot string) (*saf
 	}
 	return args.Get(0).(*saferapi.SaferCompanyDTO), args.Error(1)
 }
+
+func (m *SaferAPIMock) IsValid(saferData *saferapi.SaferCompanyDTO) bool {
+	args := m.Called(saferData)
+	return args.Bool(0)
+}

@@ -23,6 +23,11 @@ type Actor struct {
 	Claims   *UserClaims
 	Token    *string
 	IsSystem bool
+
+	// For guests
+	IsGuest          bool
+	AccessResource   *string
+	AccessResourceID *uuid.UUID
 }
 
 func (actor *Actor) IsSuperAdmin() bool {
@@ -57,5 +62,12 @@ type UserClaims struct {
 	PermissionsMap map[string]struct{} `json:"perms_map"`
 
 	// Embed Standard/Registered claims for standard fields like exp, iat, iss
+	jwt.RegisteredClaims
+}
+
+// GuestClaims defines the minimal payload needed for a shareable link.
+type GuestClaims struct {
+	Resource   string    `json:"res"`
+	ResourceID uuid.UUID `json:"res_id"`
 	jwt.RegisteredClaims
 }

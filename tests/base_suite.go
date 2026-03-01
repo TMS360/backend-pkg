@@ -37,10 +37,15 @@ func (s *BaseSuite) SetupSuite(dbCfg config.PostgresSQLConfig) {
 
 	s.UserID = uuid.New()
 	s.CompanyID = uuid.New()
-	s.Ctx = middleware.WithActor(context.Background(), s.UserID, &consts.UserClaims{
-		UserID:    s.UserID,
-		CompanyID: utils.Pointer(s.CompanyID),
-	}, "test-token")
+
+	s.Ctx = middleware.WithActor(context.Background(), &consts.Actor{
+		ID: s.UserID,
+		Claims: &consts.UserClaims{
+			UserID:    s.UserID,
+			CompanyID: utils.Pointer(s.CompanyID),
+		},
+		Token: utils.Pointer("test-token"),
+	})
 
 	s.DBConn = db.WithContext(s.Ctx)
 }

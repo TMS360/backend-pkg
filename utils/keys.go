@@ -1,7 +1,9 @@
 package utils
 
 import (
+	"crypto/ed25519"
 	"crypto/rsa"
+	"encoding/base64"
 	"fmt"
 	"os"
 
@@ -64,4 +66,41 @@ func LoadRSAPublicKeyFromPath(path string) (*rsa.PublicKey, error) {
 	}
 
 	return key, nil
+}
+
+// LoadEd25519PrivateKey decodes a base64 string into a usable private key.
+func LoadEd25519PrivateKey(base64Key string) (ed25519.PrivateKey, error) {
+	if base64Key == "" {
+		return nil, fmt.Errorf("ed25519 private key is empty")
+	}
+
+	decoded, err := base64.StdEncoding.DecodeString(base64Key)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decode base64 key: %w", err)
+	}
+
+	// Ed25519 private keys must be exactly 64 bytes long
+	if len(decoded) != ed25519.PrivateKeySize {
+		return nil, fmt.Errorf("invalid ed25519 private key length: expected %d, got %d", ed25519.PrivateKeySize, len(decoded))
+	}
+
+	return ed25519.PrivateKey(decoded), nil
+}
+
+// LoadEd25519PublicKey is the equivalent for the public key (needs to be exactly 32 bytes).
+func LoadEd25519PublicKey(base64Key string) (ed25519.PublicKey, error) {
+	if base64Key == "" {
+		return nil, fmt.Errorf("ed25519 public key is empty")
+	}
+
+	decoded, err := base64.StdEncoding.DecodeString(base64Key)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decode base64 key: %w", err)
+	}
+
+	if len(decoded) != ed25519.PublicKeySize {
+		return nil, fmt.Errorf("invalid ed25519 public key length: expected %d, got %d", ed25519.PublicKeySize, len(decoded))
+	}
+
+	return ed25519.PublicKey(decoded), nil
 }

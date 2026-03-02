@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/TMS360/backend-pkg/consts"
+	"github.com/TMS360/backend-pkg/debug"
 	"github.com/TMS360/backend-pkg/utils"
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
@@ -44,8 +45,10 @@ func IdentifyUser(rsaPubKey *rsa.PublicKey, args ...string) gin.HandlerFunc {
 		}
 
 		// 2. Attempt Guest Authentication (Fallback)
+		debug.Dump(ctx.GetHeader("X-Guest-Token"), "X-Guest-Token header value")
 		if guestToken := ctx.GetHeader("X-Guest-Token"); guestToken != "" && guestSecretKey != nil {
 			actor, err := parseGuestToken(guestToken, guestSecretKey)
+			debug.Dump(actor, "Parsed guest actor")
 			if err == nil {
 				ctx.Request = ctx.Request.WithContext(WithActor(ctx.Request.Context(), actor))
 				ctx.Next()

@@ -7,6 +7,7 @@ import (
 
 	"github.com/99designs/gqlgen/graphql"
 	"github.com/TMS360/backend-pkg/consts"
+	"github.com/TMS360/backend-pkg/debug"
 	"github.com/TMS360/backend-pkg/middleware"
 )
 
@@ -16,6 +17,7 @@ func AuthDirective(ctx context.Context, obj interface{}, next graphql.Resolver) 
 		return nil, consts.ErrUnauthorized
 	}
 
+	debug.Dump(actor, "actor")
 	if actor.IsGuest {
 		return nil, consts.ErrUnauthorized
 	}
@@ -29,6 +31,8 @@ func AuthGuestDirective(ctx context.Context, obj interface{}, next graphql.Resol
 	if err != nil || actor == nil {
 		return nil, consts.ErrUnauthorized
 	}
+
+	debug.Dump(actor, "actor")
 
 	return next(ctx)
 }

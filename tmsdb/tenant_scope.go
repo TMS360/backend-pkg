@@ -39,7 +39,7 @@ func (t *TenantScopePlugin) addTenantCondition(db *gorm.DB) {
 	}
 
 	// 3. SuperAdmin Bypass
-	if actor.IsSuperAdmin() {
+	if actor.IsSuperAdmin() || actor.IsGuest {
 		return
 	}
 

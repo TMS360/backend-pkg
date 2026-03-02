@@ -94,16 +94,16 @@ func parseAuthToken(authHeader string, publicKey *rsa.PublicKey) (*consts.Actor,
 	}, nil
 }
 
-func parseGuestToken(tokenString string, pubKey ed25519.PublicKey) (*consts.Actor, error) {
+func parseGuestToken(tokenString string, secretKey []byte) (*consts.Actor, error) {
 	token, err := jwt.ParseWithClaims(tokenString, &consts.GuestClaims{}, func(t *jwt.Token) (interface{}, error) {
-		if _, ok := t.Method.(*jwt.SigningMethodEd25519); !ok {
+		if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, fmt.Errorf("unexpected signing method: %v", t.Header["alg"])
 		}
-		return pubKey, nil
+		return secretKey, nil
 	})
 
 	if err != nil || !token.Valid {
-		return nil, fmt.Errorf("invalid guest token: %w", err)
+		return nil, fmt.Errorf("invalid or expired guest token: %w", err)
 	}
 
 	claims, ok := token.Claims.(*consts.GuestClaims)

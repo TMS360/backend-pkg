@@ -59,6 +59,8 @@ func (s *SMTPSender) SendEmail(to []string, subject string, templateFile string,
 		return fmt.Errorf("failed to send email to %v: %w", to, err)
 	}
 
+	fmt.Printf("Email sent successfully to %v with subject '%s'\n", to, subject)
+
 	return nil
 }
 

@@ -278,7 +278,8 @@ func (x *GetBusyVehiclesResponse) GetTrailerIds() []string {
 
 type GetCurrentDriversByTruckIdsRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	TruckIds      []string               `protobuf:"bytes,1,rep,name=truck_ids,json=truckIds,proto3" json:"truck_ids,omitempty"`
+	TargetDate    string                 `protobuf:"bytes,1,opt,name=target_date,json=targetDate,proto3" json:"target_date,omitempty"` // Format: YYYY-MM-DD
+	TruckIds      []string               `protobuf:"bytes,2,rep,name=truck_ids,json=truckIds,proto3" json:"truck_ids,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -311,6 +312,13 @@ func (x *GetCurrentDriversByTruckIdsRequest) ProtoReflect() protoreflect.Message
 // Deprecated: Use GetCurrentDriversByTruckIdsRequest.ProtoReflect.Descriptor instead.
 func (*GetCurrentDriversByTruckIdsRequest) Descriptor() ([]byte, []int) {
 	return file_teams_teams_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *GetCurrentDriversByTruckIdsRequest) GetTargetDate() string {
+	if x != nil {
+		return x.TargetDate
+	}
+	return ""
 }
 
 func (x *GetCurrentDriversByTruckIdsRequest) GetTruckIds() []string {
@@ -366,7 +374,8 @@ func (x *GetCurrentDriversByTruckIdsResponse) GetData() []*DriverCrewInfo {
 
 type GetCurrentDriversByTrailerIdsRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	TrailerIds    []string               `protobuf:"bytes,1,rep,name=trailer_ids,json=trailerIds,proto3" json:"trailer_ids,omitempty"`
+	TargetDate    string                 `protobuf:"bytes,1,opt,name=target_date,json=targetDate,proto3" json:"target_date,omitempty"` // Format: YYYY-MM-DD
+	TrailerIds    []string               `protobuf:"bytes,2,rep,name=trailer_ids,json=trailerIds,proto3" json:"trailer_ids,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -399,6 +408,13 @@ func (x *GetCurrentDriversByTrailerIdsRequest) ProtoReflect() protoreflect.Messa
 // Deprecated: Use GetCurrentDriversByTrailerIdsRequest.ProtoReflect.Descriptor instead.
 func (*GetCurrentDriversByTrailerIdsRequest) Descriptor() ([]byte, []int) {
 	return file_teams_teams_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *GetCurrentDriversByTrailerIdsRequest) GetTargetDate() string {
+	if x != nil {
+		return x.TargetDate
+	}
+	return ""
 }
 
 func (x *GetCurrentDriversByTrailerIdsRequest) GetTrailerIds() []string {
@@ -600,13 +616,17 @@ const file_teams_teams_proto_rawDesc = "" +
 	"\x17GetBusyVehiclesResponse\x12\x1b\n" +
 	"\ttruck_ids\x18\x01 \x03(\tR\btruckIds\x12\x1f\n" +
 	"\vtrailer_ids\x18\x02 \x03(\tR\n" +
-	"trailerIds\"A\n" +
-	"\"GetCurrentDriversByTruckIdsRequest\x12\x1b\n" +
-	"\ttruck_ids\x18\x01 \x03(\tR\btruckIds\"P\n" +
+	"trailerIds\"b\n" +
+	"\"GetCurrentDriversByTruckIdsRequest\x12\x1f\n" +
+	"\vtarget_date\x18\x01 \x01(\tR\n" +
+	"targetDate\x12\x1b\n" +
+	"\ttruck_ids\x18\x02 \x03(\tR\btruckIds\"P\n" +
 	"#GetCurrentDriversByTruckIdsResponse\x12)\n" +
-	"\x04data\x18\x01 \x03(\v2\x15.teams.DriverCrewInfoR\x04data\"G\n" +
+	"\x04data\x18\x01 \x03(\v2\x15.teams.DriverCrewInfoR\x04data\"h\n" +
 	"$GetCurrentDriversByTrailerIdsRequest\x12\x1f\n" +
-	"\vtrailer_ids\x18\x01 \x03(\tR\n" +
+	"\vtarget_date\x18\x01 \x01(\tR\n" +
+	"targetDate\x12\x1f\n" +
+	"\vtrailer_ids\x18\x02 \x03(\tR\n" +
 	"trailerIds\"R\n" +
 	"%GetCurrentDriversByTrailerIdsResponse\x12)\n" +
 	"\x04data\x18\x01 \x03(\v2\x15.teams.DriverCrewInfoR\x04data\"\xe5\x01\n" +

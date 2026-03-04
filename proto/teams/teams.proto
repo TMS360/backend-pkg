@@ -46,7 +46,8 @@ message GetBusyVehiclesResponse {
 }
 
 message GetCurrentDriversByTruckIdsRequest {
-  repeated string truck_ids = 1;
+  string target_date = 1; // Format: YYYY-MM-DD
+  repeated string truck_ids = 2;
 }
 
 message GetCurrentDriversByTruckIdsResponse {
@@ -54,7 +55,8 @@ message GetCurrentDriversByTruckIdsResponse {
 }
 
 message GetCurrentDriversByTrailerIdsRequest {
-  repeated string trailer_ids = 1;
+  string target_date = 1; // Format: YYYY-MM-DD
+  repeated string trailer_ids = 2;
 }
 
 message GetCurrentDriversByTrailerIdsResponse {

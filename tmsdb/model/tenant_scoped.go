@@ -27,8 +27,8 @@ func (cb *CompanyBase) IsTenantScoped() bool {
 // BeforeCreate is the GORM hook that runs automatically for any model embedding CompanyBase.
 func (cb *CompanyBase) BeforeCreate(tx *gorm.DB) error {
 	ctx := tx.Statement.Context
-
 	actor, _ := middleware.GetActor(ctx)
+
 	if actor == nil {
 		// Internal process (e.g., kafka consumer, cron job)
 		if cb.CompanyID == uuid.Nil {
@@ -41,14 +41,18 @@ func (cb *CompanyBase) BeforeCreate(tx *gorm.DB) error {
 		return fmt.Errorf("create is forbidden for guests")
 	}
 
-	if actor.IsSuperAdmin() || actor.IsSystem {
-		return nil
+	// NEW LOGIC: Always try to use the actor's CompanyID if they have one
+	if actor.Claims.CompanyID != nil && cb.CompanyID == uuid.Nil {
+		cb.CompanyID = *actor.Claims.CompanyID
 	}
 
-	if actor.Claims.CompanyID == nil {
+	// Now check if it's still missing, but allow SuperAdmins to bypass IF they provided it manually
+	if cb.CompanyID == uuid.Nil {
+		if actor.IsSuperAdmin() || actor.IsSystem {
+			return fmt.Errorf("system/superadmin must explicitly provide company_id")
+		}
 		return fmt.Errorf("actor has no company_id")
 	}
 
-	cb.CompanyID = *actor.Claims.CompanyID
 	return nil
 }

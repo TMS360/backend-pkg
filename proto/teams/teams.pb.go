@@ -454,11 +454,12 @@ func (x *GetCurrentDriversByTrailerIdsResponse) GetData() []*DriverCrewInfo {
 
 type DriverCrewInfo struct {
 	state             protoimpl.MessageState `protogen:"open.v1"`
-	PrimaryDriverId   string                 `protobuf:"bytes,1,opt,name=primary_driver_id,json=primaryDriverId,proto3" json:"primary_driver_id,omitempty"`
-	SecondaryDriverId string                 `protobuf:"bytes,2,opt,name=secondary_driver_id,json=secondaryDriverId,proto3" json:"secondary_driver_id,omitempty"`
-	TruckId           string                 `protobuf:"bytes,3,opt,name=truck_id,json=truckId,proto3" json:"truck_id,omitempty"`
-	TrailerId         string                 `protobuf:"bytes,4,opt,name=trailer_id,json=trailerId,proto3" json:"trailer_id,omitempty"`
-	PlanId            string                 `protobuf:"bytes,5,opt,name=plan_id,json=planId,proto3" json:"plan_id,omitempty"`
+	DriverCrewId      string                 `protobuf:"bytes,1,opt,name=driver_crew_id,json=driverCrewId,proto3" json:"driver_crew_id,omitempty"`
+	PrimaryDriverId   string                 `protobuf:"bytes,2,opt,name=primary_driver_id,json=primaryDriverId,proto3" json:"primary_driver_id,omitempty"`
+	SecondaryDriverId string                 `protobuf:"bytes,3,opt,name=secondary_driver_id,json=secondaryDriverId,proto3" json:"secondary_driver_id,omitempty"`
+	TruckId           string                 `protobuf:"bytes,4,opt,name=truck_id,json=truckId,proto3" json:"truck_id,omitempty"`
+	TrailerId         string                 `protobuf:"bytes,5,opt,name=trailer_id,json=trailerId,proto3" json:"trailer_id,omitempty"`
+	PlanId            string                 `protobuf:"bytes,6,opt,name=plan_id,json=planId,proto3" json:"plan_id,omitempty"`
 	unknownFields     protoimpl.UnknownFields
 	sizeCache         protoimpl.SizeCache
 }
@@ -491,6 +492,13 @@ func (x *DriverCrewInfo) ProtoReflect() protoreflect.Message {
 // Deprecated: Use DriverCrewInfo.ProtoReflect.Descriptor instead.
 func (*DriverCrewInfo) Descriptor() ([]byte, []int) {
 	return file_teams_teams_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *DriverCrewInfo) GetDriverCrewId() string {
+	if x != nil {
+		return x.DriverCrewId
+	}
+	return ""
 }
 
 func (x *DriverCrewInfo) GetPrimaryDriverId() string {
@@ -601,14 +609,15 @@ const file_teams_teams_proto_rawDesc = "" +
 	"\vtrailer_ids\x18\x01 \x03(\tR\n" +
 	"trailerIds\"R\n" +
 	"%GetCurrentDriversByTrailerIdsResponse\x12)\n" +
-	"\x04data\x18\x01 \x03(\v2\x15.teams.DriverCrewInfoR\x04data\"\xbf\x01\n" +
-	"\x0eDriverCrewInfo\x12*\n" +
-	"\x11primary_driver_id\x18\x01 \x01(\tR\x0fprimaryDriverId\x12.\n" +
-	"\x13secondary_driver_id\x18\x02 \x01(\tR\x11secondaryDriverId\x12\x19\n" +
-	"\btruck_id\x18\x03 \x01(\tR\atruckId\x12\x1d\n" +
+	"\x04data\x18\x01 \x03(\v2\x15.teams.DriverCrewInfoR\x04data\"\xe5\x01\n" +
+	"\x0eDriverCrewInfo\x12$\n" +
+	"\x0edriver_crew_id\x18\x01 \x01(\tR\fdriverCrewId\x12*\n" +
+	"\x11primary_driver_id\x18\x02 \x01(\tR\x0fprimaryDriverId\x12.\n" +
+	"\x13secondary_driver_id\x18\x03 \x01(\tR\x11secondaryDriverId\x12\x19\n" +
+	"\btruck_id\x18\x04 \x01(\tR\atruckId\x12\x1d\n" +
 	"\n" +
-	"trailer_id\x18\x04 \x01(\tR\ttrailerId\x12\x17\n" +
-	"\aplan_id\x18\x05 \x01(\tR\x06planId\"(\n" +
+	"trailer_id\x18\x05 \x01(\tR\ttrailerId\x12\x17\n" +
+	"\aplan_id\x18\x06 \x01(\tR\x06planId\"(\n" +
 	"\vTrailerInfo\x12\x19\n" +
 	"\btruck_id\x18\x01 \x01(\tR\atruckId2\x88\x04\n" +
 	"\fTeamsService\x12J\n" +

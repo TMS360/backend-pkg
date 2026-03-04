@@ -5,10 +5,10 @@ import (
 	"encoding/json"
 	"time"
 
-	"github.com/TMS360/backend-pkg/consts"
 	"github.com/TMS360/backend-pkg/eventlog/events"
 	"github.com/TMS360/backend-pkg/middleware"
 	"github.com/TMS360/backend-pkg/tmsdb/model"
+	"github.com/TMS360/backend-pkg/utils"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
@@ -44,8 +44,13 @@ func (m *GormTransactionManager) GetDB(ctx context.Context) *gorm.DB {
 // Publish implements the logic DIRECTLY here. No Repo.
 func (m *GormTransactionManager) Publish(ctx context.Context, aggType, evtType string, aggID uuid.UUID, data interface{}) error {
 	actor, _ := middleware.GetActor(ctx)
-	if actor == nil {
-		actor = &consts.Actor{ID: uuid.Nil, IsSystem: true}
+
+	var actorID, companyID *uuid.UUID
+	if actor != nil {
+		actorID = utils.Pointer(actor.ID)
+		if actor.Claims.CompanyID != nil {
+			companyID = utils.Pointer(*actor.Claims.CompanyID)
+		}
 	}
 
 	dataBytes, err := json.Marshal(data)
@@ -56,7 +61,8 @@ func (m *GormTransactionManager) Publish(ctx context.Context, aggType, evtType s
 	eventPayload := events.EventPayload{
 		SourceService: m.sourceService,
 		EventID:       uuid.New(),
-		ActorID:       actor.ID,
+		ActorID:       actorID,
+		CompanyID:     companyID,
 		EntityType:    aggType,
 		EntityID:      aggID,
 		Action:        evtType,
@@ -70,7 +76,6 @@ func (m *GormTransactionManager) Publish(ctx context.Context, aggType, evtType s
 	}
 
 	event := &model.OutboxEvent{
-		ID:            uuid.New(),
 		AggregateID:   aggID,
 		AggregateType: aggType,
 		EventType:     evtType,

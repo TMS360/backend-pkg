@@ -12,7 +12,7 @@ type EventPayload struct {
 	//RequestID     string      `json:"request_id"`
 	EventID       uuid.UUID       `json:"event_id"`
 	ActorID       *uuid.UUID      `json:"actor_id"`
-	CompanyID     uuid.UUID       `json:"company_id"`
+	CompanyID     *uuid.UUID      `json:"company_id"`
 	EntityType    string          `json:"entity_type"` // users, orders, etc.
 	EntityID      uuid.UUID       `json:"entity_id"`
 	Action        string          `json:"action"`         // created, updated, deleted

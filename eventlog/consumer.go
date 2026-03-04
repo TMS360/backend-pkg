@@ -11,7 +11,6 @@ import (
 	"github.com/TMS360/backend-pkg/eventlog/events"
 	"github.com/TMS360/backend-pkg/eventlog/rules"
 	"github.com/TMS360/backend-pkg/middleware"
-	"github.com/TMS360/backend-pkg/utils"
 	"github.com/google/uuid"
 	"github.com/segmentio/kafka-go"
 )
@@ -108,7 +107,7 @@ func (c *Consumer) dispatch(ctx context.Context, event events.EventPayload) erro
 		IsSystem: true, // Flag it as a background process if needed
 		Claims: &consts.UserClaims{
 			UserID:    actorID,
-			CompanyID: utils.Pointer(event.CompanyID), // Inject the tenant!
+			CompanyID: event.CompanyID, // Inject the tenant!
 		},
 	}
 

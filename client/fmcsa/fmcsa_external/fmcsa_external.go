@@ -1,4 +1,4 @@
-package fmcsa
+package fmcsa_external
 
 import (
 	"context"
@@ -10,19 +10,19 @@ import (
 	"time"
 )
 
-type FmcsaAPI interface {
+type FmcsaExternalApi interface {
 	SearchCompaniesByName(ctx context.Context, name string) ([]Carrier, error)
 }
 
-type client struct {
+type clientExternal struct {
 	apiKey     string
 	httpClient *http.Client
 	baseURL    string
 }
 
-// NewClient creates a client with a 10-second timeout
-func NewClient(apiKey string) FmcsaAPI {
-	return &client{
+// NewClientExternal creates a clientExternal with a 10-second timeout
+func NewClientExternal(apiKey string) FmcsaExternalApi {
+	return &clientExternal{
 		apiKey:  apiKey,
 		baseURL: "https://mobile.fmcsa.dot.gov/qc/services/carriers/",
 		httpClient: &http.Client{
@@ -32,7 +32,7 @@ func NewClient(apiKey string) FmcsaAPI {
 }
 
 // SearchCompaniesByName calls the FMCSA API
-func (c *client) SearchCompaniesByName(ctx context.Context, name string) ([]Carrier, error) {
+func (c *clientExternal) SearchCompaniesByName(ctx context.Context, name string) ([]Carrier, error) {
 	fmt.Println("Searching FMCSA for company name: ", url.PathEscape(name))
 	req, err := c.prepareReq(ctx, "name/"+url.PathEscape(name))
 	if err != nil {
@@ -71,7 +71,7 @@ func (c *client) SearchCompaniesByName(ctx context.Context, name string) ([]Carr
 	return carriers, nil
 }
 
-func (c *client) prepareReq(ctx context.Context, endpoint string) (*http.Request, error) {
+func (c *clientExternal) prepareReq(ctx context.Context, endpoint string) (*http.Request, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.baseURL+endpoint, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)

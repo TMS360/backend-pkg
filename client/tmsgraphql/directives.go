@@ -11,8 +11,22 @@ import (
 )
 
 func AuthDirective(ctx context.Context, obj interface{}, next graphql.Resolver) (interface{}, error) {
-	_, err := middleware.GetActor(ctx)
+	actor, err := middleware.GetActor(ctx)
 	if err != nil {
+		return nil, consts.ErrUnauthorized
+	}
+
+	if actor.IsGuest {
+		return nil, consts.ErrUnauthorized
+	}
+
+	return next(ctx)
+}
+
+// AuthGuestDirective allows both standard users and guests. Used for @authGuest.
+func AuthGuestDirective(ctx context.Context, obj interface{}, next graphql.Resolver) (interface{}, error) {
+	actor, err := middleware.GetActor(ctx)
+	if err != nil || actor == nil {
 		return nil, consts.ErrUnauthorized
 	}
 

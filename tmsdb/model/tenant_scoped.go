@@ -37,6 +37,10 @@ func (cb *CompanyBase) BeforeCreate(tx *gorm.DB) error {
 		return nil
 	}
 
+	if actor.IsGuest {
+		return fmt.Errorf("create is forbidden for guests")
+	}
+
 	if actor.IsSuperAdmin() || actor.IsSystem {
 		return nil
 	}

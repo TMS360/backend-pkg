@@ -23,6 +23,11 @@ type Actor struct {
 	Claims   *UserClaims
 	Token    *string
 	IsSystem bool
+
+	// For guests
+	IsGuest          bool
+	AccessResource   *string
+	AccessResourceID *uuid.UUID
 }
 
 func (actor *Actor) IsSuperAdmin() bool {
@@ -48,13 +53,19 @@ func (actor *Actor) GetCompanyID() *uuid.UUID {
 }
 
 type UserClaims struct {
-	UserID         uuid.UUID           `json:"sub"`
-	CompanyID      *uuid.UUID          `json:"company_id"`
-	ActorType      ActorType           `json:"actor_type"`
-	Roles          []string            `json:"roles"`
-	RolesMap       map[string]struct{} `json:"roles_map"`
-	Permissions    []string            `json:"perms"`
-	PermissionsMap map[string]struct{} `json:"perms_map"`
+	UserID      uuid.UUID  `json:"sub"`
+	CompanyID   *uuid.UUID `json:"company_id"`
+	ActorType   ActorType  `json:"actor_type"`
+	Roles       []string   `json:"roles"`
+	Permissions []string   `json:"perms"`
+
+	// --- Guest/Share Fields ---
+	Resource   string    `json:"res,omitempty"`
+	ResourceID uuid.UUID `json:"res_id,omitempty"`
+
+	// Internal Maps (Use JSON:"-" so they don't interfere with JWT parsing)
+	RolesMap       map[string]struct{} `json:"-"`
+	PermissionsMap map[string]struct{} `json:"-"`
 
 	// Embed Standard/Registered claims for standard fields like exp, iat, iss
 	jwt.RegisteredClaims

@@ -1,47 +1,58 @@
 package fmcsa
 
-// SearchResponse matches the root JSON object
+// SearchParams encapsulates query arguments for clean API usage.
+type SearchParams struct {
+	Query      string
+	Limit      int
+	Offset     int
+	ActiveOnly bool
+}
+
 type SearchResponse struct {
-	Content       []Content `json:"content"`
-	RetrievalDate string    `json:"retrievalDate"`
+	Query         string   `json:"query"`
+	SearchType    string   `json:"search_type"`
+	Count         int      `json:"count"`
+	Results       []Result `json:"results"`
+	DataAvailable bool     `json:"data_available"`
 }
 
-type Content struct {
-	Carrier Carrier `json:"carrier"`
-	// We can ignore "_links" unless we need to make follow-up calls
+type Result struct {
+	DotNumber        int     `json:"dot_number"`
+	LegalName        string  `json:"legal_name"`
+	DbaName          string  `json:"dba_name"`
+	EntityType       string  `json:"entity_type"`
+	OperatingStatus  string  `json:"operating_status"`
+	StatusCode       string  `json:"status_code"`
+	Phone            string  `json:"phone"`
+	PhyStreet        string  `json:"phy_street"`
+	PhyCity          string  `json:"phy_city"`
+	PhyState         string  `json:"phy_state"`
+	PhyZip           string  `json:"phy_zip"`
+	PhyCountry       string  `json:"phy_country"`
+	MailStreet       string  `json:"mail_street"`
+	MailCity         string  `json:"mail_city"`
+	MailState        string  `json:"mail_state"`
+	MailZip          string  `json:"mail_zip"`
+	MailCountry      string  `json:"mail_country"`
+	CarrierOperation string  `json:"carrier_operation"`
+	Classdef         string  `json:"classdef"`
+	PowerUnits       int     `json:"power_units"`
+	TotalDrivers     int     `json:"total_drivers"`
+	IsCarrier        bool    `json:"is_carrier"`
+	IsBroker         bool    `json:"is_broker"`
+	McNumber         string  `json:"mc_number"`
+	FfNumber         string  `json:"ff_number"`
+	Score            float64 `json:"score"`
 }
 
-type Carrier struct {
-	LegalName        string  `json:"legalName"`
-	DbaName          *string `json:"dbaName"` // Nullable
-	DotNumber        int     `json:"dotNumber"`
-	StatusCode       string  `json:"statusCode"`       // "A" (Active), "I" (Inactive)
-	AllowedToOperate string  `json:"allowedToOperate"` // "Y" or "N"
-
-	// Address Fields
-	PhyStreet  string `json:"phyStreet"`
-	PhyCity    string `json:"phyCity"`
-	PhyState   string `json:"phyState"`
-	PhyZipcode string `json:"phyZipcode"`
-	PhyCountry string `json:"phyCountry"`
-
-	// Stats
-	TotalPowerUnits int `json:"totalPowerUnits"`
-	TotalDrivers    int `json:"totalDrivers"`
-
-	// Nested Objects
-	CarrierOperation *CarrierOperation `json:"carrierOperation"`
-	CensusTypeId     *CensusType       `json:"censusTypeId"`
-
-	// Safety / Status
-	OosDate *string `json:"oosDate"` // Nullable date string
+type HTTPValidationError struct {
+	Detail []ValidationErrorDetail `json:"detail"`
 }
 
-type CarrierOperation struct {
-	Code string `json:"carrierOperationCode"`
-	Desc string `json:"carrierOperationDesc"` // Maps to 'carrier_operation'
-}
-
-type CensusType struct {
-	Desc string `json:"censusTypeDesc"` // Maps to 'entity_type'
+type ValidationErrorDetail struct {
+	Loc   []any          `json:"loc"`
+	Msg   string         `json:"msg"`
+	Type  string         `json:"type"`
+	Input any            `json:"input,omitempty"`
+	Ctx   map[string]any `json:"ctx,omitempty"`
 }

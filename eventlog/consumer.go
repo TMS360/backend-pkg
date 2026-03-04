@@ -7,8 +7,12 @@ import (
 	"log"
 	"time"
 
+	"github.com/TMS360/backend-pkg/consts"
 	"github.com/TMS360/backend-pkg/eventlog/events"
 	"github.com/TMS360/backend-pkg/eventlog/rules"
+	"github.com/TMS360/backend-pkg/middleware"
+	"github.com/TMS360/backend-pkg/utils"
+	"github.com/google/uuid"
 	"github.com/segmentio/kafka-go"
 )
 
@@ -90,13 +94,34 @@ func (c *Consumer) Start(ctx context.Context) {
 }
 
 func (c *Consumer) dispatch(ctx context.Context, event events.EventPayload) error {
-
 	handlerKey := fmt.Sprintf("%s.%s", event.EntityType, event.Action)
+
+	// Default to Nil UUID if it's a system event without a specific actor
+	actorID := uuid.Nil
+	if event.ActorID != nil {
+		actorID = *event.ActorID
+	}
+
+	// Create a "Synthetic" Background Actor
+	systemActor := &consts.Actor{
+		ID:       actorID,
+		IsSystem: true, // Flag it as a background process if needed
+		Claims: &consts.UserClaims{
+			UserID:    actorID,
+			CompanyID: utils.Pointer(event.CompanyID), // Inject the tenant!
+		},
+	}
+
+	// Wrap the context so the GORM plugin can find it
+	ctxWithActor := middleware.WithActor(ctx, systemActor)
+
+	handlerFound := false
 	if handlers, exists := c.systemHandlers[handlerKey]; exists {
+		handlerFound = true
 		for _, handler := range handlers {
 			log.Printf("Executing System Handler for EntityType %s", event.EntityType)
-			if err := handler(ctx, event); err != nil {
-				log.Printf("System handler execution failed: %v", err)
+			if err := handler(ctxWithActor, event); err != nil {
+				log.Printf("❌ System handler execution failed: %v", err)
 			}
 		}
 	}
@@ -115,9 +140,14 @@ func (c *Consumer) dispatch(ctx context.Context, event events.EventPayload) erro
 		}
 
 		log.Printf("Executing Rule %s -> Action %s", rule.ID, rule.ActionType)
-		if err := handler(ctx, event, rule.ActionConfig); err != nil {
+		if err := handler(ctxWithActor, event, rule.ActionConfig); err != nil {
 			log.Printf("Action execution failed: %v", err)
 		}
 	}
+
+	if !handlerFound {
+		log.Printf("⚠️ No handlers matched for event: %s", handlerKey)
+	}
+
 	return nil
 }

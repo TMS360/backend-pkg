@@ -25,16 +25,27 @@ Examples:
 - { isNull: true }
 """
 input StringFilter {
+    """Exact match: field = value"""
     equals: String
+    """Negation: field != value"""
     not: String
+    """Inclusion list: field IN (values)"""
     in: [String!]
+    """Exclusion list: field NOT IN (values)"""
     notIn: [String!]
+    """Substring match: field LIKE '%value%'"""
     contains: String
+    """Prefix match: field LIKE 'value%'"""
     startsWith: String
+    """Suffix match: field LIKE '%value'"""
     endsWith: String
+    """Raw LIKE pattern (use % and _ wildcards)"""
     like: String
+    """Regular expression match: field ~ pattern"""
     regex: String
+    """Case sensitivity mode (default: case-sensitive)"""
     mode: QueryMode
+    """Null check: true = IS NULL, false = IS NOT NULL"""
     isNull: Boolean
 }
 
@@ -47,14 +58,23 @@ Examples:
 - { gt: 0 }
 """
 input IntFilter {
+    """Exact match: field = value"""
     equals: Int
+    """Negation: field != value"""
     not: Int
+    """Inclusion list: field IN (values)"""
     in: [Int!]
+    """Exclusion list: field NOT IN (values)"""
     notIn: [Int!]
+    """Less than: field < value"""
     lt: Int
+    """Less than or equal: field <= value"""
     lte: Int
+    """Greater than: field > value"""
     gt: Int
+    """Greater than or equal: field >= value"""
     gte: Int
+    """Null check: true = IS NULL, false = IS NOT NULL"""
     isNull: Boolean
 }
 
@@ -66,20 +86,31 @@ Examples:
 - { gt: 1000.0 }
 """
 input FloatFilter {
+    """Exact match: field = value"""
     equals: Float
+    """Negation: field != value"""
     not: Float
+    """Inclusion list: field IN (values)"""
     in: [Float!]
+    """Exclusion list: field NOT IN (values)"""
     notIn: [Float!]
+    """Less than: field < value"""
     lt: Float
+    """Less than or equal: field <= value"""
     lte: Float
+    """Greater than: field > value"""
     gt: Float
+    """Greater than or equal: field >= value"""
     gte: Float
+    """Null check: true = IS NULL, false = IS NOT NULL"""
     isNull: Boolean
 }
 
 """Boolean filter"""
 input BoolFilter {
+    """Exact match: field = true/false"""
     equals: Boolean
+    """Null check: true = IS NULL, false = IS NOT NULL"""
     isNull: Boolean
 }
 
@@ -90,32 +121,51 @@ Examples:
 - { gte: "2024-01-01T00:00:00Z", lt: "2024-02-01T00:00:00Z" }
 """
 input DateTimeFilter {
+    """Exact match: field = value"""
     equals: DateTime
+    """Negation: field != value"""
     not: DateTime
+    """Inclusion list: field IN (values)"""
     in: [DateTime!]
+    """Exclusion list: field NOT IN (values)"""
     notIn: [DateTime!]
+    """Less than (before): field < value"""
     lt: DateTime
+    """Less than or equal (before or at): field <= value"""
     lte: DateTime
+    """Greater than (after): field > value"""
     gt: DateTime
+    """Greater than or equal (at or after): field >= value"""
     gte: DateTime
+    """Null check: true = IS NULL, false = IS NOT NULL"""
     isNull: Boolean
 }
 
 """ID filter"""
 input IDFilter {
+    """Exact match: field = value"""
     equals: ID
+    """Negation: field != value"""
     not: ID
+    """Inclusion list: field IN (values)"""
     in: [ID!]
+    """Exclusion list: field NOT IN (values)"""
     notIn: [ID!]
+    """Null check: true = IS NULL, false = IS NOT NULL"""
     isNull: Boolean
 }
 
 """UUID filter"""
 input UUIDFilter {
+    """Exact match: field = value"""
     equals: UUID
+    """Negation: field != value"""
     not: UUID
+    """Inclusion list: field IN (values)"""
     in: [UUID!]
+    """Exclusion list: field NOT IN (values)"""
     notIn: [UUID!]
+    """Null check: true = IS NULL, false = IS NOT NULL"""
     isNull: Boolean
 }
 
@@ -128,11 +178,18 @@ Examples:
 - { hasKeys: ["name", "email"] }
 """
 input JSONFilter {
+    """Exact match: field = value"""
     equals: JSON
+    """JSON containment: field @> value (field contains the given JSON)"""
     contains: JSON
+    """Reverse containment: field <@ value (field is contained by the given JSON)"""
     containedBy: JSON
+    """Key existence: field ? key (JSON has the specified key)"""
     hasKey: String
+    """All keys exist: field ?& keys (JSON has all specified keys)"""
     hasKeys: [String!]
+    """Any key exists: field ?| keys (JSON has at least one of the specified keys)"""
     hasAnyKey: [String!]
+    """Null check: true = IS NULL, false = IS NOT NULL"""
     isNull: Boolean
 }

@@ -57,6 +57,51 @@ func (c *client) SearchCarriers(ctx context.Context, params SearchParams) (*Sear
 	return c.executeSearch(ctx, "carriers", params)
 }
 
+func (c *client) GetCompany(ctx context.Context, dotNumber string) (*Result, error) {
+	reqURL, err := url.Parse(fmt.Sprintf("%s/api/v1/companies/%s", c.baseURL, dotNumber))
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse URL: %w", err)
+	}
+
+	q := reqURL.Query()
+	q.Add("dot_number", dotNumber)
+	reqURL.RawQuery = q.Encode()
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, reqURL.String(), nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	if err := c.SetAuthToken(ctx, req); err != nil {
+		return nil, fmt.Errorf("failed to set auth token: %w", err)
+	}
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("fmcsa api call failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	bodyBytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read response body: %w", err)
+	}
+
+	// --- LOGGING ---
+	fmt.Printf("Fmcsa Status: %s\n", resp.Status)
+	fmt.Printf("Fmcsa Body: %s\n", string(bodyBytes))
+
+	if resp.StatusCode > 300 {
+		return nil, c.handleAPIError(resp.StatusCode, bodyBytes)
+	}
+
+	var result Result
+	if err := json.Unmarshal(bodyBytes, &result); err != nil {
+		return nil, fmt.Errorf("failed to decode fmcsa response: %w", err)
+	}
+	return &result, nil
+}
+
 func (c *client) executeSearch(ctx context.Context, entityType string, params SearchParams) (*SearchResponse, error) {
 	req, err := c.prepareReq(ctx, entityType, params)
 	if err != nil {

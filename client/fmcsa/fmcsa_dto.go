@@ -1,5 +1,10 @@
 package fmcsa
 
+import (
+	"log/slog"
+	"strings"
+)
+
 // SearchParams encapsulates query arguments for clean API usage.
 type SearchParams struct {
 	Query      string
@@ -50,6 +55,42 @@ type Result struct {
 	AllowedToOperate  *bool   `json:"allowed_to_operate,omitempty"`
 	OutOfServiceDate  *string `json:"out_of_service_date,omitempty"`
 	LiveDataAvailable *bool   `json:"live_data_available,omitempty"`
+}
+
+func (result *Result) IsValid() bool {
+	if result.OperatingStatus == "NOT AUTHORIZED" {
+		slog.Error("FMCSA result is not authorized", "DOT", result.DotNumber, "MC", result.McNumber)
+		return false
+	}
+
+	if result.AllowedToOperate != nil && *result.AllowedToOperate == false {
+		slog.Error("FMCSA result is not allowed to operate", "DOT", result.DotNumber, "MC", result.McNumber)
+		return false
+	}
+
+	return true
+}
+
+// CheckIsCarrier strictly verifies if the company operates as a carrier.
+func (result *Result) CheckIsCarrier() bool {
+	// 1. Trust the direct boolean flag if the API populated it correctly
+	if result.IsCarrier {
+		return true
+	}
+
+	// 2. Fallback: Parse the EntityType string (case-insensitive)
+	return strings.Contains(strings.ToLower(result.EntityType), "carrier")
+}
+
+// CheckIsBroker strictly verifies if the company operates as a broker.
+func (result *Result) CheckIsBroker() bool {
+	// 1. Trust the direct boolean flag
+	if result.IsBroker {
+		return true
+	}
+
+	// 2. Fallback: Parse the EntityType string
+	return strings.Contains(strings.ToLower(result.EntityType), "broker")
 }
 
 type HTTPValidationError struct {

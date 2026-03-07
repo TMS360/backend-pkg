@@ -22,9 +22,11 @@ import (
 var mcRegex = regexp.MustCompile(`^[0-9]+$`)
 
 type FmcsaAPI interface {
+	SearchByDOT(ctx context.Context, dot string, entityType *string) (*Result, error)
+	SearchByMC(ctx context.Context, mc string, entityType *string) (*Result, error)
+	GetCompany(ctx context.Context, dotNumber string) (*Result, error)
 	SearchBrokers(ctx context.Context, params SearchParams) (*SearchResponse, error)
 	SearchCarriers(ctx context.Context, params SearchParams) (*SearchResponse, error)
-	GetCompany(ctx context.Context, dotNumber string) (*Result, error)
 }
 
 type client struct {

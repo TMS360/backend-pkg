@@ -3,15 +3,23 @@ package fmcsa
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"net/url"
+	"regexp"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/TMS360/backend-pkg/middleware"
+	"github.com/TMS360/backend-pkg/utils"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
+
+var mcRegex = regexp.MustCompile(`^[0-9]+$`)
 
 type FmcsaAPI interface {
 	SearchBrokers(ctx context.Context, params SearchParams) (*SearchResponse, error)
@@ -55,6 +63,93 @@ func (c *client) SearchBrokers(ctx context.Context, params SearchParams) (*Searc
 // SearchCarriers calls the FMCSA API to search for carriers based on the provided parameters
 func (c *client) SearchCarriers(ctx context.Context, params SearchParams) (*SearchResponse, error) {
 	return c.executeSearch(ctx, "carriers", params)
+}
+
+// SearchByDOT searches the FMCSA API and strictly filters in-memory for an exact DOT match.
+func (c *client) SearchByDOT(ctx context.Context, dot string, entityType *string) (*Result, error) {
+	dot = strings.TrimSpace(dot)
+	if dot == "" {
+		return nil, status.Error(codes.InvalidArgument, "DOT number cannot be empty")
+	}
+
+	if !mcRegex.MatchString(dot) {
+		return nil, errors.New("MC number must contain only integers")
+	}
+
+	results, err := c.FetchFMCSAResults(ctx, dot, entityType)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(results) == 0 {
+		return nil, nil // No match found, return nil without error
+	}
+
+	return utils.Pointer(results[0]), nil
+}
+
+// SearchByMC searches the FMCSA API and strictly filters in-memory for an exact MC match.
+func (c *client) SearchByMC(ctx context.Context, mc string, entityType *string) (*Result, error) {
+	mc = strings.TrimSpace(mc)
+	if mc == "" {
+		return nil, status.Error(codes.InvalidArgument, "MC number cannot be empty")
+	}
+
+	if !mcRegex.MatchString(mc) {
+		return nil, errors.New("MC number must contain only integers")
+	}
+
+	// Clean the input to purely numeric (e.g., "MC-12345" becomes "12345")
+	cleanInputMC := strings.ReplaceAll(strings.ToUpper(mc), "MC-", "")
+	cleanInputMC = strings.ReplaceAll(cleanInputMC, "FF-", "")
+	cleanInputMC = strings.ReplaceAll(cleanInputMC, "MX-", "")
+
+	results, err := c.FetchFMCSAResults(ctx, cleanInputMC, entityType)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(results) == 0 {
+		return nil, nil // No match found, return nil without error
+	}
+
+	return utils.Pointer(results[0]), nil
+}
+
+// FetchFMCSAResults handles the core FMCSA API invocation and routing.
+func (c *client) FetchFMCSAResults(ctx context.Context, query string, entityType *string) ([]Result, error) {
+	if entityType == nil || strings.TrimSpace(*entityType) == "" {
+		return nil, status.Error(codes.InvalidArgument, "entity type is required")
+	}
+
+	params := SearchParams{
+		Query:      query,
+		Limit:      20,
+		Offset:     0,
+		ActiveOnly: true,
+	}
+
+	var searchResults *SearchResponse
+	var err error
+
+	eType := utils.ValOrEmpty(entityType)
+	if eType == "carrier" {
+		searchResults, err = c.SearchCarriers(ctx, params)
+	} else if eType == "broker" {
+		searchResults, err = c.SearchBrokers(ctx, params)
+	} else {
+		return nil, status.Error(codes.InvalidArgument, "entity type must be either 'carrier' or 'broker'")
+	}
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to search FMCSA for %s: %w", eType, err)
+	}
+
+	if searchResults == nil || len(searchResults.Results) == 0 {
+		return []Result{}, nil
+	}
+
+	return searchResults.Results, nil
 }
 
 func (c *client) executeSearch(ctx context.Context, entityType string, params SearchParams) (*SearchResponse, error) {

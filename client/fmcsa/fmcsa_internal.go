@@ -64,7 +64,15 @@ func (c *client) SearchByDOT(ctx context.Context, dot string, entityType *string
 		return nil, nil // No match found, return nil without error
 	}
 
-	return utils.Pointer(results[0]), nil
+	var result *Result
+	for i := range results {
+		resultDot := strconv.Itoa(results[i].DotNumber)
+		if resultDot == dot {
+			result = &results[i]
+		}
+	}
+
+	return result, nil
 }
 
 // SearchByMC searches the FMCSA API and strictly filters in-memory for an exact MC match.
@@ -92,7 +100,19 @@ func (c *client) SearchByMC(ctx context.Context, mc string, entityType *string) 
 		return nil, nil // No match found, return nil without error
 	}
 
-	return utils.Pointer(results[0]), nil
+	var result *Result
+	for i := range results {
+		// Clean the API result MC number for a safe, purely numeric comparison
+		cleanResultMC := strings.ReplaceAll(strings.ToUpper(results[i].McNumber), "MC-", "")
+		cleanResultMC = strings.ReplaceAll(cleanResultMC, "FF-", "")
+		cleanResultMC = strings.ReplaceAll(cleanResultMC, "MX-", "")
+
+		if cleanResultMC == cleanInputMC {
+			result = &results[i]
+		}
+	}
+
+	return result, nil
 }
 
 func (c *client) GetCompany(ctx context.Context, dotNumber string) (*Result, error) {

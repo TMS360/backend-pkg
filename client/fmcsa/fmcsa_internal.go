@@ -24,6 +24,7 @@ var mcRegex = regexp.MustCompile(`^[0-9]+$`)
 type FmcsaAPI interface {
 	SearchBrokers(ctx context.Context, params SearchParams) (*SearchResponse, error)
 	SearchCarriers(ctx context.Context, params SearchParams) (*SearchResponse, error)
+	GetCompany(ctx context.Context, dotNumber string) (*Result, error)
 }
 
 type client struct {

@@ -32,14 +32,13 @@ func (t *TenantScopePlugin) addTenantCondition(db *gorm.DB) {
 	}
 
 	// 2. Get Actor
-	ctx := db.Statement.Context
-	actor, _ := middleware.GetActor(ctx)
+	actor, _ := middleware.GetActor(db.Statement.Context)
 	if actor == nil {
 		return
 	}
 
 	// 3. SuperAdmin Bypass
-	if actor.IsSuperAdmin() {
+	if actor.IsSuperAdmin() || actor.IsGuest {
 		return
 	}
 

@@ -46,7 +46,8 @@ message GetBusyVehiclesResponse {
 }
 
 message GetCurrentDriversByTruckIdsRequest {
-  repeated string truck_ids = 1;
+  string target_date = 1; // Format: YYYY-MM-DD
+  repeated string truck_ids = 2;
 }
 
 message GetCurrentDriversByTruckIdsResponse {
@@ -54,7 +55,8 @@ message GetCurrentDriversByTruckIdsResponse {
 }
 
 message GetCurrentDriversByTrailerIdsRequest {
-  repeated string trailer_ids = 1;
+  string target_date = 1; // Format: YYYY-MM-DD
+  repeated string trailer_ids = 2;
 }
 
 message GetCurrentDriversByTrailerIdsResponse {
@@ -62,11 +64,12 @@ message GetCurrentDriversByTrailerIdsResponse {
 }
 
 message DriverCrewInfo {
-  string primary_driver_id = 1;
-  string secondary_driver_id = 2;
-  string truck_id = 3;
-  string trailer_id = 4;
-  string plan_id = 5;
+  string driver_crew_id = 1;
+  string primary_driver_id = 2;
+  string secondary_driver_id = 3;
+  string truck_id = 4;
+  string trailer_id = 5;
+  string plan_id = 6;
 }
 
 message TrailerInfo {

@@ -2,7 +2,6 @@ package middleware
 
 import (
 	"context"
-	"crypto/ed25519"
 	"crypto/rsa"
 	"errors"
 	"fmt"
@@ -18,11 +17,18 @@ import (
 )
 
 // IdentifyUser извлекает и проверяет JWT из заголовка Authorization и устанавливает информацию о пользователе в контекст
-func IdentifyUser(rsaPubKey *rsa.PublicKey, args ...ed25519.PublicKey) gin.HandlerFunc {
-	// 1. Safely extract the optional Ed25519 public key
-	var edPubKey ed25519.PublicKey
+func IdentifyUser(rsaPubKey *rsa.PublicKey, args ...string) gin.HandlerFunc {
+	// 1. Safely extract and validate the optional Guest Secret Key
+	var guestSecretKey []byte
 	if len(args) > 0 {
-		edPubKey = args[0]
+		secret := args[0]
+		if len(secret) >= 32 {
+			// ONLY assign if it meets the cryptographic security standard
+			guestSecretKey = []byte(secret)
+		} else if secret != "" {
+			// Log a WARNING (not debug) if they tried to pass a weak key
+			slog.Warn("SHARE_LINK secret is too short (must be >= 32 chars). Guest auth disabled.")
+		}
 	}
 
 	return func(ctx *gin.Context) {
@@ -38,8 +44,8 @@ func IdentifyUser(rsaPubKey *rsa.PublicKey, args ...ed25519.PublicKey) gin.Handl
 		}
 
 		// 2. Attempt Guest Authentication (Fallback)
-		if guestToken := ctx.GetHeader("X-Guest-Token"); guestToken != "" && edPubKey != nil {
-			actor, err := parseGuestToken(guestToken, edPubKey)
+		if guestToken := ctx.GetHeader("X-Guest-Token"); guestToken != "" && guestSecretKey != nil {
+			actor, err := parseGuestToken(guestToken, guestSecretKey)
 			if err == nil {
 				ctx.Request = ctx.Request.WithContext(WithActor(ctx.Request.Context(), actor))
 				ctx.Next()
@@ -94,29 +100,28 @@ func parseAuthToken(authHeader string, publicKey *rsa.PublicKey) (*consts.Actor,
 	}, nil
 }
 
-func parseGuestToken(tokenString string, pubKey ed25519.PublicKey) (*consts.Actor, error) {
-	token, err := jwt.ParseWithClaims(tokenString, &consts.GuestClaims{}, func(t *jwt.Token) (interface{}, error) {
-		if _, ok := t.Method.(*jwt.SigningMethodEd25519); !ok {
+func parseGuestToken(tokenString string, secretKey []byte) (*consts.Actor, error) {
+	token, err := jwt.ParseWithClaims(tokenString, &consts.UserClaims{}, func(t *jwt.Token) (interface{}, error) {
+		if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, fmt.Errorf("unexpected signing method: %v", t.Header["alg"])
 		}
-		return pubKey, nil
+		return secretKey, nil
 	})
 
 	if err != nil || !token.Valid {
-		return nil, fmt.Errorf("invalid guest token: %w", err)
+		return nil, fmt.Errorf("invalid or expired guest token: %w", err)
 	}
 
-	claims, ok := token.Claims.(*consts.GuestClaims)
+	claims, ok := token.Claims.(*consts.UserClaims)
 	if !ok {
 		return nil, errors.New("failed to cast guest claims")
 	}
 
 	return &consts.Actor{
-		ID:               uuid.Nil,
-		Token:            utils.Pointer(tokenString),
-		IsGuest:          true,
-		AccessResource:   &claims.Resource,
-		AccessResourceID: &claims.ResourceID,
+		ID:      uuid.Nil,
+		Claims:  claims,
+		Token:   utils.Pointer(tokenString),
+		IsGuest: true,
 	}, nil
 }
 

@@ -9,11 +9,11 @@ type SearchParams struct {
 }
 
 type SearchResponse struct {
-	Query         string   `json:"query"`
-	SearchType    string   `json:"search_type"`
-	Count         int      `json:"count"`
-	Results       []Result `json:"results"`
-	DataAvailable bool     `json:"data_available"`
+	Query         string    `json:"query"`
+	SearchType    string    `json:"search_type"`
+	Count         int       `json:"count"`
+	Results       []*Result `json:"results"`
+	DataAvailable bool      `json:"data_available"`
 }
 
 type Result struct {

@@ -25,6 +25,7 @@ type FmcsaAPI interface {
 	SearchByDOT(ctx context.Context, dot string, entityType *string) (*Result, error)
 	SearchByMC(ctx context.Context, mc string, entityType *string) (*Result, error)
 	GetCompany(ctx context.Context, dotNumber string) (*Result, error)
+	FetchFMCSAResults(ctx context.Context, query string, entityType *string) ([]*Result, error)
 	SearchBrokers(ctx context.Context, params SearchParams) (*SearchResponse, error)
 	SearchCarriers(ctx context.Context, params SearchParams) (*SearchResponse, error)
 }
@@ -68,7 +69,7 @@ func (c *client) SearchByDOT(ctx context.Context, dot string, entityType *string
 	for i := range results {
 		resultDot := strconv.Itoa(results[i].DotNumber)
 		if resultDot == dot {
-			result = &results[i]
+			result = results[i]
 		}
 	}
 
@@ -108,7 +109,7 @@ func (c *client) SearchByMC(ctx context.Context, mc string, entityType *string) 
 		cleanResultMC = strings.ReplaceAll(cleanResultMC, "MX-", "")
 
 		if cleanResultMC == cleanInputMC {
-			result = &results[i]
+			result = results[i]
 		}
 	}
 
@@ -161,7 +162,7 @@ func (c *client) GetCompany(ctx context.Context, dotNumber string) (*Result, err
 }
 
 // FetchFMCSAResults handles the core FMCSA API invocation and routing.
-func (c *client) FetchFMCSAResults(ctx context.Context, query string, entityType *string) ([]Result, error) {
+func (c *client) FetchFMCSAResults(ctx context.Context, query string, entityType *string) ([]*Result, error) {
 	if entityType == nil || strings.TrimSpace(*entityType) == "" {
 		return nil, status.Error(codes.InvalidArgument, "entity type is required")
 	}
@@ -190,7 +191,7 @@ func (c *client) FetchFMCSAResults(ctx context.Context, query string, entityType
 	}
 
 	if searchResults == nil || len(searchResults.Results) == 0 {
-		return []Result{}, nil
+		return []*Result{}, nil
 	}
 
 	return searchResults.Results, nil

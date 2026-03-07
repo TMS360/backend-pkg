@@ -42,30 +42,6 @@ func NewClient(baseURL string) FmcsaAPI {
 	}
 }
 
-func (c *client) SetAuthToken(ctx context.Context, req *http.Request) error {
-	actor, err := middleware.GetActor(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to get actor from context: %w", err)
-	}
-
-	if actor.Token == nil {
-		return fmt.Errorf("no auth token found in context")
-	}
-
-	req.Header.Set("Authorization", "Bearer "+*actor.Token)
-	return nil
-}
-
-// SearchBrokers calls the FMCSA API to search for brokers based on the provided parameters
-func (c *client) SearchBrokers(ctx context.Context, params SearchParams) (*SearchResponse, error) {
-	return c.executeSearch(ctx, "brokers", params)
-}
-
-// SearchCarriers calls the FMCSA API to search for carriers based on the provided parameters
-func (c *client) SearchCarriers(ctx context.Context, params SearchParams) (*SearchResponse, error) {
-	return c.executeSearch(ctx, "carriers", params)
-}
-
 // SearchByDOT searches the FMCSA API and strictly filters in-memory for an exact DOT match.
 func (c *client) SearchByDOT(ctx context.Context, dot string, entityType *string) (*Result, error) {
 	dot = strings.TrimSpace(dot)
@@ -117,6 +93,51 @@ func (c *client) SearchByMC(ctx context.Context, mc string, entityType *string) 
 	return utils.Pointer(results[0]), nil
 }
 
+func (c *client) GetCompany(ctx context.Context, dotNumber string) (*Result, error) {
+	reqURL, err := url.Parse(fmt.Sprintf("%s/api/v1/companies/%s", c.baseURL, dotNumber))
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse URL: %w", err)
+	}
+
+	q := reqURL.Query()
+	q.Add("dot_number", dotNumber)
+	reqURL.RawQuery = q.Encode()
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, reqURL.String(), nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	if err := c.setAuthToken(ctx, req); err != nil {
+		return nil, fmt.Errorf("failed to set auth token: %w", err)
+	}
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("fmcsa api call failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	bodyBytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read response body: %w", err)
+	}
+
+	// --- LOGGING ---
+	fmt.Printf("Fmcsa Status: %s\n", resp.Status)
+	fmt.Printf("Fmcsa Body: %s\n", string(bodyBytes))
+
+	if resp.StatusCode > 300 {
+		return nil, c.handleAPIError(resp.StatusCode, bodyBytes)
+	}
+
+	var result Result
+	if err := json.Unmarshal(bodyBytes, &result); err != nil {
+		return nil, fmt.Errorf("failed to decode fmcsa response: %w", err)
+	}
+	return &result, nil
+}
+
 // FetchFMCSAResults handles the core FMCSA API invocation and routing.
 func (c *client) FetchFMCSAResults(ctx context.Context, query string, entityType *string) ([]Result, error) {
 	if entityType == nil || strings.TrimSpace(*entityType) == "" {
@@ -151,6 +172,16 @@ func (c *client) FetchFMCSAResults(ctx context.Context, query string, entityType
 	}
 
 	return searchResults.Results, nil
+}
+
+// SearchBrokers calls the FMCSA API to search for brokers based on the provided parameters
+func (c *client) SearchBrokers(ctx context.Context, params SearchParams) (*SearchResponse, error) {
+	return c.executeSearch(ctx, "brokers", params)
+}
+
+// SearchCarriers calls the FMCSA API to search for carriers based on the provided parameters
+func (c *client) SearchCarriers(ctx context.Context, params SearchParams) (*SearchResponse, error) {
+	return c.executeSearch(ctx, "carriers", params)
 }
 
 func (c *client) executeSearch(ctx context.Context, entityType string, params SearchParams) (*SearchResponse, error) {
@@ -204,11 +235,25 @@ func (c *client) prepareReq(ctx context.Context, entityType string, params Searc
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
 
-	if err := c.SetAuthToken(ctx, req); err != nil {
+	if err := c.setAuthToken(ctx, req); err != nil {
 		return nil, fmt.Errorf("failed to set auth token: %w", err)
 	}
 
 	return req, nil
+}
+
+func (c *client) setAuthToken(ctx context.Context, req *http.Request) error {
+	actor, err := middleware.GetActor(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get actor from context: %w", err)
+	}
+
+	if actor.Token == nil {
+		return fmt.Errorf("no auth token found in context")
+	}
+
+	req.Header.Set("Authorization", "Bearer "+*actor.Token)
+	return nil
 }
 
 func (c *client) handleAPIError(status int, bodyBytes []byte) error {

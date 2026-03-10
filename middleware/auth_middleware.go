@@ -86,7 +86,7 @@ func ClearAuthContext() gin.HandlerFunc {
 }
 
 func WithActor(ctx context.Context, actor *consts.Actor) context.Context {
-	return context.WithValue(ctx, consts.ActorCtx, *actor)
+	return context.WithValue(ctx, consts.ActorCtx, actor)
 }
 
 func WithSystemActor(ctx context.Context) context.Context {

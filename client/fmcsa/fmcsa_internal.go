@@ -86,6 +86,10 @@ func (c *client) VerifyCompany(ctx context.Context, dotNumber, entityType string
 
 // GetCompany retrieves company details by DOT number. It returns nil if the company is not found.
 func (c *client) GetCompany(ctx context.Context, dotNumber string) (*Result, error) {
+	if err := c.validateDotNumber(dotNumber); err != nil {
+		return nil, err
+	}
+
 	reqURL, err := url.Parse(fmt.Sprintf("%s/api/v1/companies/%s", c.baseURL, dotNumber))
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse URL: %w", err)
@@ -131,17 +135,12 @@ func (c *client) GetCompany(ctx context.Context, dotNumber string) (*Result, err
 }
 
 // SearchByDOT searches the FMCSA API and strictly filters in-memory for an exact DOT match.
-func (c *client) SearchByDOT(ctx context.Context, dot, entityType string) (*Result, error) {
-	dot = strings.TrimSpace(dot)
-	if dot == "" {
-		return nil, status.Error(codes.InvalidArgument, "DOT number cannot be empty")
+func (c *client) SearchByDOT(ctx context.Context, dotNumber, entityType string) (*Result, error) {
+	if err := c.validateDotNumber(dotNumber); err != nil {
+		return nil, err
 	}
 
-	if !mcRegex.MatchString(dot) {
-		return nil, errors.New("MC number must contain only integers")
-	}
-
-	results, err := c.FetchFMCSAResults(ctx, dot, entityType)
+	results, err := c.FetchFMCSAResults(ctx, dotNumber, entityType)
 	if err != nil {
 		return nil, err
 	}
@@ -153,7 +152,7 @@ func (c *client) SearchByDOT(ctx context.Context, dot, entityType string) (*Resu
 	var result *Result
 	for i := range results {
 		resultDot := strconv.Itoa(results[i].DotNumber)
-		if resultDot == dot {
+		if resultDot == dotNumber {
 			result = results[i]
 			return result, nil
 		}
@@ -163,18 +162,13 @@ func (c *client) SearchByDOT(ctx context.Context, dot, entityType string) (*Resu
 }
 
 // SearchByMC searches the FMCSA API and strictly filters in-memory for an exact MC match.
-func (c *client) SearchByMC(ctx context.Context, mc, entityType string) (*Result, error) {
-	mc = strings.TrimSpace(mc)
-	if mc == "" {
-		return nil, status.Error(codes.InvalidArgument, "MC number cannot be empty")
-	}
-
-	if !mcRegex.MatchString(mc) {
-		return nil, errors.New("MC number must contain only integers")
+func (c *client) SearchByMC(ctx context.Context, mcNumber, entityType string) (*Result, error) {
+	if err := c.validateMCNumber(mcNumber); err != nil {
+		return nil, err
 	}
 
 	// Clean the input to purely numeric (e.g., "MC-12345" becomes "12345")
-	cleanInputMC := strings.ReplaceAll(strings.ToUpper(mc), "MC-", "")
+	cleanInputMC := strings.ReplaceAll(strings.ToUpper(mcNumber), "MC-", "")
 	cleanInputMC = strings.ReplaceAll(cleanInputMC, "FF-", "")
 	cleanInputMC = strings.ReplaceAll(cleanInputMC, "MX-", "")
 
@@ -246,4 +240,30 @@ func (c *client) SearchBrokers(ctx context.Context, params SearchParams) (*Searc
 // SearchCarriers calls the FMCSA API to search for carriers based on the provided parameters
 func (c *client) SearchCarriers(ctx context.Context, params SearchParams) (*SearchResponse, error) {
 	return c.executeSearch(ctx, "carriers", params)
+}
+
+func (c *client) validateDotNumber(dot string) error {
+	dot = strings.TrimSpace(dot)
+	if dot == "" {
+		return status.Error(codes.InvalidArgument, "DOT number cannot be empty")
+	}
+
+	if !mcRegex.MatchString(dot) {
+		return errors.New("MC number must contain only integers")
+	}
+
+	return nil
+}
+
+func (c *client) validateMCNumber(mcNumber string) error {
+	mcNumber = strings.TrimSpace(mcNumber)
+	if mcNumber == "" {
+		return status.Error(codes.InvalidArgument, "MC number cannot be empty")
+	}
+
+	if !mcRegex.MatchString(mcNumber) {
+		return errors.New("MC number must contain only integers")
+	}
+
+	return nil
 }

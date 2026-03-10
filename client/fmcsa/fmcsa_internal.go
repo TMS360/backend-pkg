@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/TMS360/backend-pkg/client/fmcsa/fmcsa_errors"
 	"github.com/TMS360/backend-pkg/middleware"
 	"github.com/TMS360/backend-pkg/utils"
 	"google.golang.org/grpc/codes"
@@ -22,6 +23,8 @@ import (
 var mcRegex = regexp.MustCompile(`^[0-9]+$`)
 
 type FmcsaAPI interface {
+	CheckCompanyByMC(ctx context.Context, mcNumber string) (*Result, error)
+	CheckCompanyByDOT(ctx context.Context, dotNumber string) (*Result, error)
 	SearchByDOT(ctx context.Context, dot string, entityType *string) (*Result, error)
 	SearchByMC(ctx context.Context, mc string, entityType *string) (*Result, error)
 	GetCompany(ctx context.Context, dotNumber string) (*Result, error)
@@ -53,6 +56,32 @@ type authModeKey struct{}
 // WithSystemAuth wraps the context with a flag indicating system-level auth should be used
 func WithSystemAuth(ctx context.Context) context.Context {
 	return context.WithValue(ctx, authModeKey{}, true)
+}
+
+func (c *client) CheckCompanyByMC(ctx context.Context, mcNumber string) (*Result, error) {
+	systemCtx := WithSystemAuth(ctx)
+	fmcsaData, err := c.SearchByMC(systemCtx, mcNumber, utils.Pointer("carrier"))
+	if err != nil || fmcsaData == nil {
+		return nil, fmcsa_errors.NewMCVerificationError(400, mcNumber, err)
+	}
+	return c.verifyCompany(systemCtx, strconv.Itoa(fmcsaData.DotNumber))
+}
+
+func (c *client) CheckCompanyByDOT(ctx context.Context, dotNumber string) (*Result, error) {
+	systemCtx := WithSystemAuth(ctx)
+	return c.verifyCompany(systemCtx, dotNumber)
+}
+
+// verifyCompany (private helper) encapsulates shared fetching and validation logic.
+func (c *client) verifyCompany(ctx context.Context, dotNumber string) (*Result, error) {
+	company, err := c.GetCompany(ctx, dotNumber)
+	if err != nil || company == nil {
+		return nil, fmcsa_errors.NewCompanyCheckError(400, dotNumber, err)
+	}
+	if !company.IsValid() {
+		return nil, fmcsa_errors.NewCompanyNoAuthError(400)
+	}
+	return company, nil
 }
 
 // SearchByDOT searches the FMCSA API and strictly filters in-memory for an exact DOT match.

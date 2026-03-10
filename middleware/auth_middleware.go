@@ -59,6 +59,58 @@ func IdentifyUser(rsaPubKey *rsa.PublicKey, args ...string) gin.HandlerFunc {
 	}
 }
 
+// RequireAuth проверяет, был ли пользователь установлен в контекст предыдущим middleware
+func RequireAuth() gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		actor, err := GetActor(ctx.Request.Context())
+		if err != nil {
+			ctx.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+			return
+		}
+
+		// Prevent guests from accessing standard REST routes
+		if actor.IsGuest {
+			ctx.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+			return
+		}
+
+		ctx.Next()
+	}
+}
+
+func ClearAuthContext() gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		ctx.Request = ctx.Request.WithContext(WithActor(ctx.Request.Context(), nil))
+		ctx.Next()
+	}
+}
+
+func WithActor(ctx context.Context, actor *consts.Actor) context.Context {
+	return context.WithValue(ctx, consts.ActorCtx, *actor)
+}
+
+func WithSystemActor(ctx context.Context) context.Context {
+	return context.WithValue(ctx, consts.ActorCtx, consts.Actor{ID: uuid.Nil, IsSystem: true})
+}
+
+// GetActor safely extracts the actor.
+func GetActor(ctx context.Context) (*consts.Actor, error) {
+	actor, ok := ctx.Value(consts.ActorCtx).(consts.Actor)
+	if !ok {
+		return nil, errors.New("actor not found in context")
+	}
+	return &actor, nil
+}
+
+// MustGetActor for when you are sure (or want to panic/default)
+func MustGetActor(ctx context.Context) *consts.Actor {
+	actor, ok := ctx.Value(consts.ActorCtx).(consts.Actor)
+	if !ok {
+		return &consts.Actor{ID: uuid.Nil, Claims: nil, IsSystem: true}
+	}
+	return &actor
+}
+
 func parseAuthToken(authHeader string, publicKey *rsa.PublicKey) (*consts.Actor, error) {
 	parts := strings.Split(authHeader, " ")
 	if len(parts) != 2 || parts[0] != "Bearer" {
@@ -123,49 +175,4 @@ func parseGuestToken(tokenString string, secretKey []byte) (*consts.Actor, error
 		Token:   utils.Pointer(tokenString),
 		IsGuest: true,
 	}, nil
-}
-
-// RequireAuth проверяет, был ли пользователь установлен в контекст предыдущим middleware
-func RequireAuth() gin.HandlerFunc {
-	return func(ctx *gin.Context) {
-		actor, err := GetActor(ctx.Request.Context())
-		if err != nil {
-			ctx.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
-			return
-		}
-
-		// Prevent guests from accessing standard REST routes
-		if actor.IsGuest {
-			ctx.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
-			return
-		}
-
-		ctx.Next()
-	}
-}
-
-func WithActor(ctx context.Context, actor *consts.Actor) context.Context {
-	return context.WithValue(ctx, consts.ActorCtx, *actor)
-}
-
-func WithSystemActor(ctx context.Context) context.Context {
-	return context.WithValue(ctx, consts.ActorCtx, consts.Actor{ID: uuid.Nil, IsSystem: true})
-}
-
-// GetActor safely extracts the actor.
-func GetActor(ctx context.Context) (*consts.Actor, error) {
-	actor, ok := ctx.Value(consts.ActorCtx).(consts.Actor)
-	if !ok {
-		return nil, errors.New("actor not found in context")
-	}
-	return &actor, nil
-}
-
-// MustGetActor for when you are sure (or want to panic/default)
-func MustGetActor(ctx context.Context) *consts.Actor {
-	actor, ok := ctx.Value(consts.ActorCtx).(consts.Actor)
-	if !ok {
-		return &consts.Actor{ID: uuid.Nil, Claims: nil, IsSystem: true}
-	}
-	return &actor
 }

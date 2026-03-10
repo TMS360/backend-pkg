@@ -95,20 +95,20 @@ func WithSystemActor(ctx context.Context) context.Context {
 
 // GetActor safely extracts the actor.
 func GetActor(ctx context.Context) (*consts.Actor, error) {
-	actor, ok := ctx.Value(consts.ActorCtx).(consts.Actor)
+	actor, ok := ctx.Value(consts.ActorCtx).(*consts.Actor)
 	if !ok {
 		return nil, errors.New("actor not found in context")
 	}
-	return &actor, nil
+	return actor, nil
 }
 
 // MustGetActor for when you are sure (or want to panic/default)
 func MustGetActor(ctx context.Context) *consts.Actor {
-	actor, ok := ctx.Value(consts.ActorCtx).(consts.Actor)
+	actor, ok := ctx.Value(consts.ActorCtx).(*consts.Actor)
 	if !ok {
 		return &consts.Actor{ID: uuid.Nil, Claims: nil, IsSystem: true}
 	}
-	return &actor
+	return actor
 }
 
 func parseAuthToken(authHeader string, publicKey *rsa.PublicKey) (*consts.Actor, error) {

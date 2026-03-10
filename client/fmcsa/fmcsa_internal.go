@@ -31,18 +31,28 @@ type FmcsaAPI interface {
 }
 
 type client struct {
-	httpClient *http.Client
-	baseURL    string
+	httpClient   *http.Client
+	baseURL      string
+	systemAPIKey string
 }
 
 // NewClient creates a clientExternal with a 10-second timeout
-func NewClient(baseURL string) FmcsaAPI {
+func NewClient(baseURL string, systemAPIKey string) FmcsaAPI {
 	return &client{
-		baseURL: baseURL,
+		baseURL:      baseURL,
+		systemAPIKey: systemAPIKey,
 		httpClient: &http.Client{
 			Timeout: 10 * time.Second,
 		},
 	}
+}
+
+// 1. Define an unexported type for the context key to prevent collisions
+type authModeKey struct{}
+
+// WithSystemAuth wraps the context with a flag indicating system-level auth should be used
+func WithSystemAuth(ctx context.Context) context.Context {
+	return context.WithValue(ctx, authModeKey{}, true)
 }
 
 // SearchByDOT searches the FMCSA API and strictly filters in-memory for an exact DOT match.
@@ -70,10 +80,11 @@ func (c *client) SearchByDOT(ctx context.Context, dot string, entityType *string
 		resultDot := strconv.Itoa(results[i].DotNumber)
 		if resultDot == dot {
 			result = results[i]
+			return result, nil
 		}
 	}
 
-	return result, nil
+	return nil, nil
 }
 
 // SearchByMC searches the FMCSA API and strictly filters in-memory for an exact MC match.
@@ -110,10 +121,11 @@ func (c *client) SearchByMC(ctx context.Context, mc string, entityType *string) 
 
 		if cleanResultMC == cleanInputMC {
 			result = results[i]
+			return result, nil
 		}
 	}
 
-	return result, nil
+	return nil, nil
 }
 
 func (c *client) GetCompany(ctx context.Context, dotNumber string) (*Result, error) {
@@ -266,6 +278,15 @@ func (c *client) prepareReq(ctx context.Context, entityType string, params Searc
 }
 
 func (c *client) setAuthToken(ctx context.Context, req *http.Request) error {
+	// Option A: Explicit System Override
+	if isSystemAuth(ctx) {
+		if c.systemAPIKey == "" {
+			return fmt.Errorf("system API key is not configured on the client")
+		}
+		req.Header.Set("X-API-Key", c.systemAPIKey)
+		return nil
+	}
+
 	actor, err := middleware.GetActor(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to get actor from context: %w", err)
@@ -297,4 +318,9 @@ func (c *client) handleAPIError(status int, bodyBytes []byte) error {
 	default:
 		return fmt.Errorf("api returned unexpected status %d (Body: %s)", status, string(bodyBytes))
 	}
+}
+
+func isSystemAuth(ctx context.Context) bool {
+	val, ok := ctx.Value(authModeKey{}).(bool)
+	return ok && val
 }

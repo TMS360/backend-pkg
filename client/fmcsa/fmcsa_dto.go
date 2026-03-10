@@ -73,24 +73,32 @@ func (result *Result) IsValid() bool {
 
 // CheckIsCarrier strictly verifies if the company operates as a carrier.
 func (result *Result) CheckIsCarrier() bool {
-	// 1. Trust the direct boolean flag if the API populated it correctly
 	if result.IsCarrier {
 		return true
 	}
-
-	// 2. Fallback: Parse the EntityType string (case-insensitive)
 	return strings.Contains(strings.ToLower(result.EntityType), "carrier")
 }
 
 // CheckIsBroker strictly verifies if the company operates as a broker.
 func (result *Result) CheckIsBroker() bool {
-	// 1. Trust the direct boolean flag
 	if result.IsBroker {
 		return true
 	}
-
-	// 2. Fallback: Parse the EntityType string
 	return strings.Contains(strings.ToLower(result.EntityType), "broker")
+}
+
+// CheckIs strictly verifies if the company operates as the specified entity type (e.g., "carrier", "broker").
+func (result *Result) CheckIs(entityType string) bool {
+	entityType = strings.ToLower(strings.TrimSpace(entityType))
+	switch entityType {
+	case "carrier":
+		return result.CheckIsCarrier()
+	case "broker":
+		return result.CheckIsBroker()
+	default:
+		slog.Warn("Unknown entity type for CheckIs", "entity_type", entityType)
+		return false
+	}
 }
 
 type HTTPValidationError struct {

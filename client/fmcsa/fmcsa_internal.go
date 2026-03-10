@@ -22,11 +22,11 @@ var mcRegex = regexp.MustCompile(`^[0-9]+$`)
 
 type FmcsaAPI interface {
 	CheckCompanyByMC(ctx context.Context, mcNumber, entityType string) (*Result, error)
-	CheckCompanyByDOT(ctx context.Context, dotNumber string) (*Result, error)
+	CheckCompanyByDOT(ctx context.Context, dotNumber, entityType string) (*Result, error)
 	GetCompany(ctx context.Context, dotNumber string) (*Result, error)
-	VerifyCompany(ctx context.Context, dotNumber string) (*Result, error)
-	SearchByDOT(ctx context.Context, dot string, entityType string) (*Result, error)
-	SearchByMC(ctx context.Context, mc string, entityType string) (*Result, error)
+	VerifyCompany(ctx context.Context, dotNumber, entityType string) (*Result, error)
+	SearchByDOT(ctx context.Context, dot, entityType string) (*Result, error)
+	SearchByMC(ctx context.Context, mc, entityType string) (*Result, error)
 	FetchFMCSAResults(ctx context.Context, query string, entityType string) ([]*Result, error)
 	SearchBrokers(ctx context.Context, params SearchParams) (*SearchResponse, error)
 	SearchCarriers(ctx context.Context, params SearchParams) (*SearchResponse, error)
@@ -62,15 +62,15 @@ func (c *client) CheckCompanyByMC(ctx context.Context, mcNumber, entityType stri
 	if err != nil || fmcsaData == nil {
 		return nil, fmcsa_errors.NewMCVerificationError(400, mcNumber, err)
 	}
-	return c.VerifyCompany(ctx, strconv.Itoa(fmcsaData.DotNumber))
+	return c.VerifyCompany(ctx, strconv.Itoa(fmcsaData.DotNumber), entityType)
 }
 
-func (c *client) CheckCompanyByDOT(ctx context.Context, dotNumber string) (*Result, error) {
-	return c.VerifyCompany(ctx, dotNumber)
+func (c *client) CheckCompanyByDOT(ctx context.Context, dotNumber, entityType string) (*Result, error) {
+	return c.VerifyCompany(ctx, dotNumber, entityType)
 }
 
 // VerifyCompany encapsulates shared fetching and validation logic.
-func (c *client) VerifyCompany(ctx context.Context, dotNumber string) (*Result, error) {
+func (c *client) VerifyCompany(ctx context.Context, dotNumber, entityType string) (*Result, error) {
 	company, err := c.GetCompany(ctx, dotNumber)
 	if err != nil || company == nil {
 		return nil, fmcsa_errors.NewCompanyCheckError(400, dotNumber, err)
@@ -78,7 +78,56 @@ func (c *client) VerifyCompany(ctx context.Context, dotNumber string) (*Result, 
 	if !company.IsValid() {
 		return nil, fmcsa_errors.NewCompanyNoAuthError(400)
 	}
+	if !company.CheckIs(entityType) {
+		return nil, fmcsa_errors.NewCompanyInvalidEntityError(400, entityType, company.EntityType)
+	}
 	return company, nil
+}
+
+// GetCompany retrieves company details by DOT number. It returns nil if the company is not found.
+func (c *client) GetCompany(ctx context.Context, dotNumber string) (*Result, error) {
+	reqURL, err := url.Parse(fmt.Sprintf("%s/api/v1/companies/%s", c.baseURL, dotNumber))
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse URL: %w", err)
+	}
+
+	q := reqURL.Query()
+	q.Add("dot_number", dotNumber)
+	reqURL.RawQuery = q.Encode()
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, reqURL.String(), nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	if err := c.setAuthToken(ctx, req); err != nil {
+		return nil, fmt.Errorf("failed to set auth token: %w", err)
+	}
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("fmcsa api call failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	bodyBytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read response body: %w", err)
+	}
+
+	// --- LOGGING ---
+	fmt.Printf("Fmcsa Status: %s\n", resp.Status)
+	fmt.Printf("Fmcsa Body: %s\n", string(bodyBytes))
+
+	if resp.StatusCode > 300 {
+		return nil, c.handleAPIError(resp.StatusCode, bodyBytes)
+	}
+
+	var result Result
+	if err := json.Unmarshal(bodyBytes, &result); err != nil {
+		return nil, fmt.Errorf("failed to decode fmcsa response: %w", err)
+	}
+	return &result, nil
 }
 
 // SearchByDOT searches the FMCSA API and strictly filters in-memory for an exact DOT match.
@@ -152,51 +201,6 @@ func (c *client) SearchByMC(ctx context.Context, mc, entityType string) (*Result
 	}
 
 	return nil, nil
-}
-
-func (c *client) GetCompany(ctx context.Context, dotNumber string) (*Result, error) {
-	reqURL, err := url.Parse(fmt.Sprintf("%s/api/v1/companies/%s", c.baseURL, dotNumber))
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse URL: %w", err)
-	}
-
-	q := reqURL.Query()
-	q.Add("dot_number", dotNumber)
-	reqURL.RawQuery = q.Encode()
-
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, reqURL.String(), nil)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create request: %w", err)
-	}
-
-	if err := c.setAuthToken(ctx, req); err != nil {
-		return nil, fmt.Errorf("failed to set auth token: %w", err)
-	}
-
-	resp, err := c.httpClient.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("fmcsa api call failed: %w", err)
-	}
-	defer resp.Body.Close()
-
-	bodyBytes, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read response body: %w", err)
-	}
-
-	// --- LOGGING ---
-	fmt.Printf("Fmcsa Status: %s\n", resp.Status)
-	fmt.Printf("Fmcsa Body: %s\n", string(bodyBytes))
-
-	if resp.StatusCode > 300 {
-		return nil, c.handleAPIError(resp.StatusCode, bodyBytes)
-	}
-
-	var result Result
-	if err := json.Unmarshal(bodyBytes, &result); err != nil {
-		return nil, fmt.Errorf("failed to decode fmcsa response: %w", err)
-	}
-	return &result, nil
 }
 
 // FetchFMCSAResults handles the core FMCSA API invocation and routing.

@@ -14,7 +14,6 @@ import (
 	"time"
 
 	"github.com/TMS360/backend-pkg/client/fmcsa/fmcsa_errors"
-	"github.com/TMS360/backend-pkg/utils"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -22,12 +21,13 @@ import (
 var mcRegex = regexp.MustCompile(`^[0-9]+$`)
 
 type FmcsaAPI interface {
-	CheckCompanyByMC(ctx context.Context, mcNumber string) (*Result, error)
+	CheckCompanyByMC(ctx context.Context, mcNumber, entityType string) (*Result, error)
 	CheckCompanyByDOT(ctx context.Context, dotNumber string) (*Result, error)
-	SearchByDOT(ctx context.Context, dot string, entityType *string) (*Result, error)
-	SearchByMC(ctx context.Context, mc string, entityType *string) (*Result, error)
 	GetCompany(ctx context.Context, dotNumber string) (*Result, error)
-	FetchFMCSAResults(ctx context.Context, query string, entityType *string) ([]*Result, error)
+	VerifyCompany(ctx context.Context, dotNumber string) (*Result, error)
+	SearchByDOT(ctx context.Context, dot string, entityType string) (*Result, error)
+	SearchByMC(ctx context.Context, mc string, entityType string) (*Result, error)
+	FetchFMCSAResults(ctx context.Context, query string, entityType string) ([]*Result, error)
 	SearchBrokers(ctx context.Context, params SearchParams) (*SearchResponse, error)
 	SearchCarriers(ctx context.Context, params SearchParams) (*SearchResponse, error)
 }
@@ -57,22 +57,22 @@ func WithSystemAuth(ctx context.Context) context.Context {
 	return context.WithValue(ctx, authModeKey{}, true)
 }
 
-func (c *client) CheckCompanyByMC(ctx context.Context, mcNumber string) (*Result, error) {
+func (c *client) CheckCompanyByMC(ctx context.Context, mcNumber, entityType string) (*Result, error) {
 	systemCtx := WithSystemAuth(ctx)
-	fmcsaData, err := c.SearchByMC(systemCtx, mcNumber, utils.Pointer("carrier"))
+	fmcsaData, err := c.SearchByMC(systemCtx, mcNumber, entityType)
 	if err != nil || fmcsaData == nil {
 		return nil, fmcsa_errors.NewMCVerificationError(400, mcNumber, err)
 	}
-	return c.verifyCompany(systemCtx, strconv.Itoa(fmcsaData.DotNumber))
+	return c.VerifyCompany(systemCtx, strconv.Itoa(fmcsaData.DotNumber))
 }
 
 func (c *client) CheckCompanyByDOT(ctx context.Context, dotNumber string) (*Result, error) {
 	systemCtx := WithSystemAuth(ctx)
-	return c.verifyCompany(systemCtx, dotNumber)
+	return c.VerifyCompany(systemCtx, dotNumber)
 }
 
-// verifyCompany (private helper) encapsulates shared fetching and validation logic.
-func (c *client) verifyCompany(ctx context.Context, dotNumber string) (*Result, error) {
+// VerifyCompany encapsulates shared fetching and validation logic.
+func (c *client) VerifyCompany(ctx context.Context, dotNumber string) (*Result, error) {
 	company, err := c.GetCompany(ctx, dotNumber)
 	if err != nil || company == nil {
 		return nil, fmcsa_errors.NewCompanyCheckError(400, dotNumber, err)
@@ -84,7 +84,7 @@ func (c *client) verifyCompany(ctx context.Context, dotNumber string) (*Result, 
 }
 
 // SearchByDOT searches the FMCSA API and strictly filters in-memory for an exact DOT match.
-func (c *client) SearchByDOT(ctx context.Context, dot string, entityType *string) (*Result, error) {
+func (c *client) SearchByDOT(ctx context.Context, dot, entityType string) (*Result, error) {
 	dot = strings.TrimSpace(dot)
 	if dot == "" {
 		return nil, status.Error(codes.InvalidArgument, "DOT number cannot be empty")
@@ -116,7 +116,7 @@ func (c *client) SearchByDOT(ctx context.Context, dot string, entityType *string
 }
 
 // SearchByMC searches the FMCSA API and strictly filters in-memory for an exact MC match.
-func (c *client) SearchByMC(ctx context.Context, mc string, entityType *string) (*Result, error) {
+func (c *client) SearchByMC(ctx context.Context, mc, entityType string) (*Result, error) {
 	mc = strings.TrimSpace(mc)
 	if mc == "" {
 		return nil, status.Error(codes.InvalidArgument, "MC number cannot be empty")
@@ -202,8 +202,8 @@ func (c *client) GetCompany(ctx context.Context, dotNumber string) (*Result, err
 }
 
 // FetchFMCSAResults handles the core FMCSA API invocation and routing.
-func (c *client) FetchFMCSAResults(ctx context.Context, query string, entityType *string) ([]*Result, error) {
-	if entityType == nil || strings.TrimSpace(*entityType) == "" {
+func (c *client) FetchFMCSAResults(ctx context.Context, query, entityType string) ([]*Result, error) {
+	if entityType == "" || strings.TrimSpace(entityType) == "" {
 		return nil, status.Error(codes.InvalidArgument, "entity type is required")
 	}
 
@@ -217,17 +217,16 @@ func (c *client) FetchFMCSAResults(ctx context.Context, query string, entityType
 	var searchResults *SearchResponse
 	var err error
 
-	eType := utils.ValOrEmpty(entityType)
-	if eType == "carrier" {
+	if entityType == "carrier" {
 		searchResults, err = c.SearchCarriers(ctx, params)
-	} else if eType == "broker" {
+	} else if entityType == "broker" {
 		searchResults, err = c.SearchBrokers(ctx, params)
 	} else {
 		return nil, status.Error(codes.InvalidArgument, "entity type must be either 'carrier' or 'broker'")
 	}
 
 	if err != nil {
-		return nil, fmt.Errorf("failed to search FMCSA for %s: %w", eType, err)
+		return nil, fmt.Errorf("failed to search FMCSA for %s: %w", entityType, err)
 	}
 
 	if searchResults == nil || len(searchResults.Results) == 0 {

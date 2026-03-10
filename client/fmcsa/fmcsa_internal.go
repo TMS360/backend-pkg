@@ -58,17 +58,15 @@ func WithSystemAuth(ctx context.Context) context.Context {
 }
 
 func (c *client) CheckCompanyByMC(ctx context.Context, mcNumber, entityType string) (*Result, error) {
-	systemCtx := WithSystemAuth(ctx)
-	fmcsaData, err := c.SearchByMC(systemCtx, mcNumber, entityType)
+	fmcsaData, err := c.SearchByMC(ctx, mcNumber, entityType)
 	if err != nil || fmcsaData == nil {
 		return nil, fmcsa_errors.NewMCVerificationError(400, mcNumber, err)
 	}
-	return c.VerifyCompany(systemCtx, strconv.Itoa(fmcsaData.DotNumber))
+	return c.VerifyCompany(ctx, strconv.Itoa(fmcsaData.DotNumber))
 }
 
 func (c *client) CheckCompanyByDOT(ctx context.Context, dotNumber string) (*Result, error) {
-	systemCtx := WithSystemAuth(ctx)
-	return c.VerifyCompany(systemCtx, dotNumber)
+	return c.VerifyCompany(ctx, dotNumber)
 }
 
 // VerifyCompany encapsulates shared fetching and validation logic.

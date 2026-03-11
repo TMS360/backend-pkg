@@ -220,6 +220,50 @@ func ConvertIDFilter(pf *filterspb.IDFilter) *IDFilter {
 }
 
 // ============================================================================
+// tmsdb → Proto filter converters (reverse direction, for gRPC clients)
+// ============================================================================
+
+// ToProtoStringFilter converts tmsdb StringFilter to proto StringFilter.
+func ToProtoStringFilter(f *StringFilter) *filterspb.StringFilter {
+	if f == nil {
+		return nil
+	}
+
+	pf := &filterspb.StringFilter{
+		Equals:     f.Equals,
+		Not:        f.Not,
+		In:         f.In,
+		NotIn:      f.NotIn,
+		Contains:   f.Contains,
+		StartsWith: f.StartsWith,
+		EndsWith:   f.EndsWith,
+		Like:       f.Like,
+		Regex:      f.Regex,
+		IsNull:     f.IsNull,
+	}
+
+	if f.Mode == QueryModeInsensitive {
+		pf.Mode = filterspb.QueryMode_QUERY_MODE_INSENSITIVE
+	}
+
+	return pf
+}
+
+// ToProtoIDFilter converts tmsdb IDFilter to proto IDFilter.
+func ToProtoIDFilter(f *IDFilter) *filterspb.IDFilter {
+	if f == nil {
+		return nil
+	}
+	return &filterspb.IDFilter{
+		Equals: f.Equals,
+		Not:    f.Not,
+		In:     f.In,
+		NotIn:  f.NotIn,
+		IsNull: f.IsNull,
+	}
+}
+
+// ============================================================================
 // Helpers
 // ============================================================================
 

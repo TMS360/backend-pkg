@@ -10,6 +10,7 @@ package couriers
 
 import (
 	context "context"
+	filters "github.com/TMS360/backend-pkg/proto/filters"
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
@@ -24,6 +25,7 @@ const _ = grpc.SupportPackageIsVersion9
 const (
 	CouriersService_UpdateCache_FullMethodName   = "/couriers.CouriersService/UpdateCache"
 	CouriersService_GetUsersByIds_FullMethodName = "/couriers.CouriersService/GetUsersByIds"
+	CouriersService_ResolveIDs_FullMethodName    = "/couriers.CouriersService/ResolveIDs"
 )
 
 // CouriersServiceClient is the client API for CouriersService service.
@@ -32,6 +34,8 @@ const (
 type CouriersServiceClient interface {
 	UpdateCache(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*UpdateCacheResponse, error)
 	GetUsersByIds(ctx context.Context, in *GetUsersByIdsRequest, opts ...grpc.CallOption) (*GetUsersByIdsResponse, error)
+	// Cross-service filtering: returns user IDs matching the filter
+	ResolveIDs(ctx context.Context, in *UserFilter, opts ...grpc.CallOption) (*filters.IDsResponse, error)
 }
 
 type couriersServiceClient struct {
@@ -62,12 +66,24 @@ func (c *couriersServiceClient) GetUsersByIds(ctx context.Context, in *GetUsersB
 	return out, nil
 }
 
+func (c *couriersServiceClient) ResolveIDs(ctx context.Context, in *UserFilter, opts ...grpc.CallOption) (*filters.IDsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(filters.IDsResponse)
+	err := c.cc.Invoke(ctx, CouriersService_ResolveIDs_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // CouriersServiceServer is the server API for CouriersService service.
 // All implementations must embed UnimplementedCouriersServiceServer
 // for forward compatibility.
 type CouriersServiceServer interface {
 	UpdateCache(context.Context, *emptypb.Empty) (*UpdateCacheResponse, error)
 	GetUsersByIds(context.Context, *GetUsersByIdsRequest) (*GetUsersByIdsResponse, error)
+	// Cross-service filtering: returns user IDs matching the filter
+	ResolveIDs(context.Context, *UserFilter) (*filters.IDsResponse, error)
 	mustEmbedUnimplementedCouriersServiceServer()
 }
 
@@ -83,6 +99,9 @@ func (UnimplementedCouriersServiceServer) UpdateCache(context.Context, *emptypb.
 }
 func (UnimplementedCouriersServiceServer) GetUsersByIds(context.Context, *GetUsersByIdsRequest) (*GetUsersByIdsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetUsersByIds not implemented")
+}
+func (UnimplementedCouriersServiceServer) ResolveIDs(context.Context, *UserFilter) (*filters.IDsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ResolveIDs not implemented")
 }
 func (UnimplementedCouriersServiceServer) mustEmbedUnimplementedCouriersServiceServer() {}
 func (UnimplementedCouriersServiceServer) testEmbeddedByValue()                         {}
@@ -141,6 +160,24 @@ func _CouriersService_GetUsersByIds_Handler(srv interface{}, ctx context.Context
 	return interceptor(ctx, in, info, handler)
 }
 
+func _CouriersService_ResolveIDs_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UserFilter)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CouriersServiceServer).ResolveIDs(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: CouriersService_ResolveIDs_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CouriersServiceServer).ResolveIDs(ctx, req.(*UserFilter))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // CouriersService_ServiceDesc is the grpc.ServiceDesc for CouriersService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -155,6 +192,10 @@ var CouriersService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetUsersByIds",
 			Handler:    _CouriersService_GetUsersByIds_Handler,
+		},
+		{
+			MethodName: "ResolveIDs",
+			Handler:    _CouriersService_ResolveIDs_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

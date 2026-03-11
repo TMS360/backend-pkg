@@ -9,6 +9,7 @@
 package couriers
 
 import (
+	filters "github.com/TMS360/backend-pkg/proto/filters"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	emptypb "google.golang.org/protobuf/types/known/emptypb"
@@ -24,6 +25,82 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+type UserFilter struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Name          *filters.StringFilter  `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	Email         *filters.StringFilter  `protobuf:"bytes,2,opt,name=email,proto3" json:"email,omitempty"`
+	Phone         *filters.StringFilter  `protobuf:"bytes,3,opt,name=phone,proto3" json:"phone,omitempty"`
+	Role          *filters.StringFilter  `protobuf:"bytes,4,opt,name=role,proto3" json:"role,omitempty"`
+	Search        *string                `protobuf:"bytes,5,opt,name=search,proto3,oneof" json:"search,omitempty"` // full-text search across name, email
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UserFilter) Reset() {
+	*x = UserFilter{}
+	mi := &file_couriers_couriers_proto_msgTypes[0]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UserFilter) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UserFilter) ProtoMessage() {}
+
+func (x *UserFilter) ProtoReflect() protoreflect.Message {
+	mi := &file_couriers_couriers_proto_msgTypes[0]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UserFilter.ProtoReflect.Descriptor instead.
+func (*UserFilter) Descriptor() ([]byte, []int) {
+	return file_couriers_couriers_proto_rawDescGZIP(), []int{0}
+}
+
+func (x *UserFilter) GetName() *filters.StringFilter {
+	if x != nil {
+		return x.Name
+	}
+	return nil
+}
+
+func (x *UserFilter) GetEmail() *filters.StringFilter {
+	if x != nil {
+		return x.Email
+	}
+	return nil
+}
+
+func (x *UserFilter) GetPhone() *filters.StringFilter {
+	if x != nil {
+		return x.Phone
+	}
+	return nil
+}
+
+func (x *UserFilter) GetRole() *filters.StringFilter {
+	if x != nil {
+		return x.Role
+	}
+	return nil
+}
+
+func (x *UserFilter) GetSearch() string {
+	if x != nil && x.Search != nil {
+		return *x.Search
+	}
+	return ""
+}
+
 type UpdateCacheResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Success       bool                   `protobuf:"varint,1,opt,name=success,proto3" json:"success,omitempty"`
@@ -33,7 +110,7 @@ type UpdateCacheResponse struct {
 
 func (x *UpdateCacheResponse) Reset() {
 	*x = UpdateCacheResponse{}
-	mi := &file_couriers_couriers_proto_msgTypes[0]
+	mi := &file_couriers_couriers_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -45,7 +122,7 @@ func (x *UpdateCacheResponse) String() string {
 func (*UpdateCacheResponse) ProtoMessage() {}
 
 func (x *UpdateCacheResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_couriers_couriers_proto_msgTypes[0]
+	mi := &file_couriers_couriers_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -58,7 +135,7 @@ func (x *UpdateCacheResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateCacheResponse.ProtoReflect.Descriptor instead.
 func (*UpdateCacheResponse) Descriptor() ([]byte, []int) {
-	return file_couriers_couriers_proto_rawDescGZIP(), []int{0}
+	return file_couriers_couriers_proto_rawDescGZIP(), []int{1}
 }
 
 func (x *UpdateCacheResponse) GetSuccess() bool {
@@ -77,7 +154,7 @@ type GetUsersByIdsRequest struct {
 
 func (x *GetUsersByIdsRequest) Reset() {
 	*x = GetUsersByIdsRequest{}
-	mi := &file_couriers_couriers_proto_msgTypes[1]
+	mi := &file_couriers_couriers_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -89,7 +166,7 @@ func (x *GetUsersByIdsRequest) String() string {
 func (*GetUsersByIdsRequest) ProtoMessage() {}
 
 func (x *GetUsersByIdsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_couriers_couriers_proto_msgTypes[1]
+	mi := &file_couriers_couriers_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -102,7 +179,7 @@ func (x *GetUsersByIdsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetUsersByIdsRequest.ProtoReflect.Descriptor instead.
 func (*GetUsersByIdsRequest) Descriptor() ([]byte, []int) {
-	return file_couriers_couriers_proto_rawDescGZIP(), []int{1}
+	return file_couriers_couriers_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *GetUsersByIdsRequest) GetUserIds() []string {
@@ -121,7 +198,7 @@ type GetUsersByIdsResponse struct {
 
 func (x *GetUsersByIdsResponse) Reset() {
 	*x = GetUsersByIdsResponse{}
-	mi := &file_couriers_couriers_proto_msgTypes[2]
+	mi := &file_couriers_couriers_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -133,7 +210,7 @@ func (x *GetUsersByIdsResponse) String() string {
 func (*GetUsersByIdsResponse) ProtoMessage() {}
 
 func (x *GetUsersByIdsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_couriers_couriers_proto_msgTypes[2]
+	mi := &file_couriers_couriers_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -146,7 +223,7 @@ func (x *GetUsersByIdsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetUsersByIdsResponse.ProtoReflect.Descriptor instead.
 func (*GetUsersByIdsResponse) Descriptor() ([]byte, []int) {
-	return file_couriers_couriers_proto_rawDescGZIP(), []int{2}
+	return file_couriers_couriers_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *GetUsersByIdsResponse) GetUsers() []*UserInfo {
@@ -166,7 +243,7 @@ type UserInfo struct {
 
 func (x *UserInfo) Reset() {
 	*x = UserInfo{}
-	mi := &file_couriers_couriers_proto_msgTypes[3]
+	mi := &file_couriers_couriers_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -178,7 +255,7 @@ func (x *UserInfo) String() string {
 func (*UserInfo) ProtoMessage() {}
 
 func (x *UserInfo) ProtoReflect() protoreflect.Message {
-	mi := &file_couriers_couriers_proto_msgTypes[3]
+	mi := &file_couriers_couriers_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -191,7 +268,7 @@ func (x *UserInfo) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UserInfo.ProtoReflect.Descriptor instead.
 func (*UserInfo) Descriptor() ([]byte, []int) {
-	return file_couriers_couriers_proto_rawDescGZIP(), []int{3}
+	return file_couriers_couriers_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *UserInfo) GetId() string {
@@ -212,7 +289,15 @@ var File_couriers_couriers_proto protoreflect.FileDescriptor
 
 const file_couriers_couriers_proto_rawDesc = "" +
 	"\n" +
-	"\x17couriers/couriers.proto\x12\bcouriers\x1a\x1bgoogle/protobuf/empty.proto\"/\n" +
+	"\x17couriers/couriers.proto\x12\bcouriers\x1a\x1bgoogle/protobuf/empty.proto\x1a\x15filters/filters.proto\"\xe4\x01\n" +
+	"\n" +
+	"UserFilter\x12)\n" +
+	"\x04name\x18\x01 \x01(\v2\x15.filters.StringFilterR\x04name\x12+\n" +
+	"\x05email\x18\x02 \x01(\v2\x15.filters.StringFilterR\x05email\x12+\n" +
+	"\x05phone\x18\x03 \x01(\v2\x15.filters.StringFilterR\x05phone\x12)\n" +
+	"\x04role\x18\x04 \x01(\v2\x15.filters.StringFilterR\x04role\x12\x1b\n" +
+	"\x06search\x18\x05 \x01(\tH\x00R\x06search\x88\x01\x01B\t\n" +
+	"\a_search\"/\n" +
 	"\x13UpdateCacheResponse\x12\x18\n" +
 	"\asuccess\x18\x01 \x01(\bR\asuccess\"1\n" +
 	"\x14GetUsersByIdsRequest\x12\x19\n" +
@@ -221,10 +306,12 @@ const file_couriers_couriers_proto_rawDesc = "" +
 	"\x05users\x18\x01 \x03(\v2\x12.couriers.UserInfoR\x05users\".\n" +
 	"\bUserInfo\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
-	"\x04name\x18\x02 \x01(\tR\x04name2\xa9\x01\n" +
+	"\x04name\x18\x02 \x01(\tR\x04name2\xe3\x01\n" +
 	"\x0fCouriersService\x12D\n" +
 	"\vUpdateCache\x12\x16.google.protobuf.Empty\x1a\x1d.couriers.UpdateCacheResponse\x12P\n" +
-	"\rGetUsersByIds\x12\x1e.couriers.GetUsersByIdsRequest\x1a\x1f.couriers.GetUsersByIdsResponseB.Z,github.com/TMS360/backend-pkg/proto/couriersb\x06proto3"
+	"\rGetUsersByIds\x12\x1e.couriers.GetUsersByIdsRequest\x1a\x1f.couriers.GetUsersByIdsResponse\x128\n" +
+	"\n" +
+	"ResolveIDs\x12\x14.couriers.UserFilter\x1a\x14.filters.IDsResponseB.Z,github.com/TMS360/backend-pkg/proto/couriersb\x06proto3"
 
 var (
 	file_couriers_couriers_proto_rawDescOnce sync.Once
@@ -238,25 +325,34 @@ func file_couriers_couriers_proto_rawDescGZIP() []byte {
 	return file_couriers_couriers_proto_rawDescData
 }
 
-var file_couriers_couriers_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
+var file_couriers_couriers_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
 var file_couriers_couriers_proto_goTypes = []any{
-	(*UpdateCacheResponse)(nil),   // 0: couriers.UpdateCacheResponse
-	(*GetUsersByIdsRequest)(nil),  // 1: couriers.GetUsersByIdsRequest
-	(*GetUsersByIdsResponse)(nil), // 2: couriers.GetUsersByIdsResponse
-	(*UserInfo)(nil),              // 3: couriers.UserInfo
-	(*emptypb.Empty)(nil),         // 4: google.protobuf.Empty
+	(*UserFilter)(nil),            // 0: couriers.UserFilter
+	(*UpdateCacheResponse)(nil),   // 1: couriers.UpdateCacheResponse
+	(*GetUsersByIdsRequest)(nil),  // 2: couriers.GetUsersByIdsRequest
+	(*GetUsersByIdsResponse)(nil), // 3: couriers.GetUsersByIdsResponse
+	(*UserInfo)(nil),              // 4: couriers.UserInfo
+	(*filters.StringFilter)(nil),  // 5: filters.StringFilter
+	(*emptypb.Empty)(nil),         // 6: google.protobuf.Empty
+	(*filters.IDsResponse)(nil),   // 7: filters.IDsResponse
 }
 var file_couriers_couriers_proto_depIdxs = []int32{
-	3, // 0: couriers.GetUsersByIdsResponse.users:type_name -> couriers.UserInfo
-	4, // 1: couriers.CouriersService.UpdateCache:input_type -> google.protobuf.Empty
-	1, // 2: couriers.CouriersService.GetUsersByIds:input_type -> couriers.GetUsersByIdsRequest
-	0, // 3: couriers.CouriersService.UpdateCache:output_type -> couriers.UpdateCacheResponse
-	2, // 4: couriers.CouriersService.GetUsersByIds:output_type -> couriers.GetUsersByIdsResponse
-	3, // [3:5] is the sub-list for method output_type
-	1, // [1:3] is the sub-list for method input_type
-	1, // [1:1] is the sub-list for extension type_name
-	1, // [1:1] is the sub-list for extension extendee
-	0, // [0:1] is the sub-list for field type_name
+	5, // 0: couriers.UserFilter.name:type_name -> filters.StringFilter
+	5, // 1: couriers.UserFilter.email:type_name -> filters.StringFilter
+	5, // 2: couriers.UserFilter.phone:type_name -> filters.StringFilter
+	5, // 3: couriers.UserFilter.role:type_name -> filters.StringFilter
+	4, // 4: couriers.GetUsersByIdsResponse.users:type_name -> couriers.UserInfo
+	6, // 5: couriers.CouriersService.UpdateCache:input_type -> google.protobuf.Empty
+	2, // 6: couriers.CouriersService.GetUsersByIds:input_type -> couriers.GetUsersByIdsRequest
+	0, // 7: couriers.CouriersService.ResolveIDs:input_type -> couriers.UserFilter
+	1, // 8: couriers.CouriersService.UpdateCache:output_type -> couriers.UpdateCacheResponse
+	3, // 9: couriers.CouriersService.GetUsersByIds:output_type -> couriers.GetUsersByIdsResponse
+	7, // 10: couriers.CouriersService.ResolveIDs:output_type -> filters.IDsResponse
+	8, // [8:11] is the sub-list for method output_type
+	5, // [5:8] is the sub-list for method input_type
+	5, // [5:5] is the sub-list for extension type_name
+	5, // [5:5] is the sub-list for extension extendee
+	0, // [0:5] is the sub-list for field type_name
 }
 
 func init() { file_couriers_couriers_proto_init() }
@@ -264,13 +360,14 @@ func file_couriers_couriers_proto_init() {
 	if File_couriers_couriers_proto != nil {
 		return
 	}
+	file_couriers_couriers_proto_msgTypes[0].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_couriers_couriers_proto_rawDesc), len(file_couriers_couriers_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   4,
+			NumMessages:   5,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

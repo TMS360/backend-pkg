@@ -5,6 +5,7 @@ package loads;
 
 import "google/protobuf/timestamp.proto";
 import "google/protobuf/empty.proto";
+import "filters/filters.proto";
 
 option go_package = "github.com/TMS360/backend-pkg/proto/loads";
 
@@ -35,6 +36,30 @@ service LoadsService {
 
   // Stream vehicle locations
   rpc StreamVehicleLocations(StreamVehicleLocationsRequest) returns (stream VehicleLocation);
+
+  // Cross-service filtering: returns shipment IDs matching the filter
+  rpc ResolveShipmentIDs(ShipmentFilterRequest) returns (filters.IDsResponse);
+
+  // Cross-service filtering: returns trip IDs matching the filter
+  rpc ResolveTripIDs(TripFilterRequest) returns (filters.IDsResponse);
+}
+
+message ShipmentFilterRequest {
+  filters.StringFilter load_id = 1;
+  filters.StringFilter status = 2;
+  filters.IntFilter shipment_number = 3;
+  filters.IDFilter broker_id = 4;
+  filters.DateTimeFilter created_at = 5;
+  optional string search = 6;
+}
+
+message TripFilterRequest {
+  filters.StringFilter status = 1;
+  filters.IDFilter truck_id = 2;
+  filters.IDFilter trailer_id = 3;
+  filters.IDFilter driver_id = 4;
+  filters.DateTimeFilter created_at = 5;
+  optional string search = 6;
 }
 
 message GetDriverTripDetailsRequest {

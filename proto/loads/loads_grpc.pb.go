@@ -10,6 +10,7 @@ package loads
 
 import (
 	context "context"
+	filters "github.com/TMS360/backend-pkg/proto/filters"
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
@@ -31,6 +32,8 @@ const (
 	LoadsService_GetVehicleAssignments_FullMethodName  = "/loads.LoadsService/GetVehicleAssignments"
 	LoadsService_UpdateVehicleLocation_FullMethodName  = "/loads.LoadsService/UpdateVehicleLocation"
 	LoadsService_StreamVehicleLocations_FullMethodName = "/loads.LoadsService/StreamVehicleLocations"
+	LoadsService_ResolveShipmentIDs_FullMethodName     = "/loads.LoadsService/ResolveShipmentIDs"
+	LoadsService_ResolveTripIDs_FullMethodName         = "/loads.LoadsService/ResolveTripIDs"
 )
 
 // LoadsServiceClient is the client API for LoadsService service.
@@ -56,6 +59,10 @@ type LoadsServiceClient interface {
 	UpdateVehicleLocation(ctx context.Context, in *UpdateVehicleLocationRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// Stream vehicle locations
 	StreamVehicleLocations(ctx context.Context, in *StreamVehicleLocationsRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[VehicleLocation], error)
+	// Cross-service filtering: returns shipment IDs matching the filter
+	ResolveShipmentIDs(ctx context.Context, in *ShipmentFilterRequest, opts ...grpc.CallOption) (*filters.IDsResponse, error)
+	// Cross-service filtering: returns trip IDs matching the filter
+	ResolveTripIDs(ctx context.Context, in *TripFilterRequest, opts ...grpc.CallOption) (*filters.IDsResponse, error)
 }
 
 type loadsServiceClient struct {
@@ -165,6 +172,26 @@ func (c *loadsServiceClient) StreamVehicleLocations(ctx context.Context, in *Str
 // This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
 type LoadsService_StreamVehicleLocationsClient = grpc.ServerStreamingClient[VehicleLocation]
 
+func (c *loadsServiceClient) ResolveShipmentIDs(ctx context.Context, in *ShipmentFilterRequest, opts ...grpc.CallOption) (*filters.IDsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(filters.IDsResponse)
+	err := c.cc.Invoke(ctx, LoadsService_ResolveShipmentIDs_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *loadsServiceClient) ResolveTripIDs(ctx context.Context, in *TripFilterRequest, opts ...grpc.CallOption) (*filters.IDsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(filters.IDsResponse)
+	err := c.cc.Invoke(ctx, LoadsService_ResolveTripIDs_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // LoadsServiceServer is the server API for LoadsService service.
 // All implementations must embed UnimplementedLoadsServiceServer
 // for forward compatibility.
@@ -188,6 +215,10 @@ type LoadsServiceServer interface {
 	UpdateVehicleLocation(context.Context, *UpdateVehicleLocationRequest) (*emptypb.Empty, error)
 	// Stream vehicle locations
 	StreamVehicleLocations(*StreamVehicleLocationsRequest, grpc.ServerStreamingServer[VehicleLocation]) error
+	// Cross-service filtering: returns shipment IDs matching the filter
+	ResolveShipmentIDs(context.Context, *ShipmentFilterRequest) (*filters.IDsResponse, error)
+	// Cross-service filtering: returns trip IDs matching the filter
+	ResolveTripIDs(context.Context, *TripFilterRequest) (*filters.IDsResponse, error)
 	mustEmbedUnimplementedLoadsServiceServer()
 }
 
@@ -224,6 +255,12 @@ func (UnimplementedLoadsServiceServer) UpdateVehicleLocation(context.Context, *U
 }
 func (UnimplementedLoadsServiceServer) StreamVehicleLocations(*StreamVehicleLocationsRequest, grpc.ServerStreamingServer[VehicleLocation]) error {
 	return status.Error(codes.Unimplemented, "method StreamVehicleLocations not implemented")
+}
+func (UnimplementedLoadsServiceServer) ResolveShipmentIDs(context.Context, *ShipmentFilterRequest) (*filters.IDsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ResolveShipmentIDs not implemented")
+}
+func (UnimplementedLoadsServiceServer) ResolveTripIDs(context.Context, *TripFilterRequest) (*filters.IDsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ResolveTripIDs not implemented")
 }
 func (UnimplementedLoadsServiceServer) mustEmbedUnimplementedLoadsServiceServer() {}
 func (UnimplementedLoadsServiceServer) testEmbeddedByValue()                      {}
@@ -401,6 +438,42 @@ func _LoadsService_StreamVehicleLocations_Handler(srv interface{}, stream grpc.S
 // This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
 type LoadsService_StreamVehicleLocationsServer = grpc.ServerStreamingServer[VehicleLocation]
 
+func _LoadsService_ResolveShipmentIDs_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ShipmentFilterRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(LoadsServiceServer).ResolveShipmentIDs(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: LoadsService_ResolveShipmentIDs_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(LoadsServiceServer).ResolveShipmentIDs(ctx, req.(*ShipmentFilterRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _LoadsService_ResolveTripIDs_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(TripFilterRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(LoadsServiceServer).ResolveTripIDs(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: LoadsService_ResolveTripIDs_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(LoadsServiceServer).ResolveTripIDs(ctx, req.(*TripFilterRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // LoadsService_ServiceDesc is the grpc.ServiceDesc for LoadsService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -439,6 +512,14 @@ var LoadsService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "UpdateVehicleLocation",
 			Handler:    _LoadsService_UpdateVehicleLocation_Handler,
+		},
+		{
+			MethodName: "ResolveShipmentIDs",
+			Handler:    _LoadsService_ResolveShipmentIDs_Handler,
+		},
+		{
+			MethodName: "ResolveTripIDs",
+			Handler:    _LoadsService_ResolveTripIDs_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{

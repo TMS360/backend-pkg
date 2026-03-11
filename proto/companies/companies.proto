@@ -1,0 +1,24 @@
+syntax = "proto3";
+
+package companies;
+
+import "filters/filters.proto";
+
+option go_package = "github.com/TMS360/backend-pkg/proto/companies";
+
+service CompanyService {
+  // ResolveIDs returns company IDs matching the given filter.
+  // Used for cross-service filtering (e.g. backend-load filters shipments by company name).
+  rpc ResolveIDs(CompanyFilter) returns (filters.IDsResponse);
+}
+
+message CompanyFilter {
+  filters.StringFilter name = 1;
+  filters.StringFilter mc_number = 2;
+  filters.StringFilter email = 3;
+  filters.StringFilter legal_name = 4;
+  filters.StringFilter dba_name = 5;
+  filters.StringFilter usdot = 6;
+  filters.StringFilter operating_status = 7;
+  optional string search = 8; // full-text search across name, mc_number, legal_name, usdot
+}

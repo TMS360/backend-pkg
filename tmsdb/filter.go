@@ -737,3 +737,24 @@ func ApplyLogical[T any](fb *FilterBuilder, or []*T, and []*T, not *T, applyFn f
 		})
 	}
 }
+
+// StringFilterToSearch extracts the first non-nil string value from a StringFilter
+// for use as a cross-service search term.
+func StringFilterToSearch(f *StringFilter) *string {
+	if f == nil {
+		return nil
+	}
+	if f.Contains != nil {
+		return f.Contains
+	}
+	if f.Equals != nil {
+		return f.Equals
+	}
+	if f.StartsWith != nil {
+		return f.StartsWith
+	}
+	if f.Like != nil {
+		return f.Like
+	}
+	return nil
+}

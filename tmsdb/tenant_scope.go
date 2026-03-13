@@ -76,7 +76,7 @@ func (t *TenantScopePlugin) applyScope(db *gorm.DB, isRead bool) {
 	// 5. Apply the Clause based on Operation Type and Interface
 	if isRead && isShared {
 		// READ on a Shared table: User can see their own company records OR system records
-		db.Where(fmt.Sprintf("%s.company_id = ? OR %s.is_system = ?", quotedTable, quotedTable), companyID, true)
+		db.Where(fmt.Sprintf("(%s.company_id = ? OR %s.is_system = ?)", quotedTable, quotedTable), companyID, true)
 	} else {
 		// WRITE on a Shared table, OR ANY operation on a strict Tenant table:
 		// User is strictly locked to their own company_id.

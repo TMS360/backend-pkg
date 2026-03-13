@@ -36,6 +36,11 @@ func (t *TenantScopePlugin) addTenantConditionWrite(db *gorm.DB) {
 
 // addTenantCondition adds tenant filtering conditions to the DB query
 func (t *TenantScopePlugin) applyScope(db *gorm.DB, isRead bool) {
+	// 1. NEW: Respect GORM's .Unscoped()
+	if db.Statement.Unscoped {
+		return
+	}
+
 	// 1. Safe Interface Implementation Check (Handles single structs AND slices)
 	isTenantScoped, isShared := checkTenantInterfaces(db)
 

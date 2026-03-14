@@ -34,6 +34,7 @@ const (
 	LoadsService_StreamVehicleLocations_FullMethodName = "/loads.LoadsService/StreamVehicleLocations"
 	LoadsService_ResolveShipmentIDs_FullMethodName     = "/loads.LoadsService/ResolveShipmentIDs"
 	LoadsService_ResolveTripIDs_FullMethodName         = "/loads.LoadsService/ResolveTripIDs"
+	LoadsService_GetShipmentChatMembers_FullMethodName = "/loads.LoadsService/GetShipmentChatMembers"
 )
 
 // LoadsServiceClient is the client API for LoadsService service.
@@ -63,6 +64,8 @@ type LoadsServiceClient interface {
 	ResolveShipmentIDs(ctx context.Context, in *ShipmentFilterRequest, opts ...grpc.CallOption) (*filters.IDsResponse, error)
 	// Cross-service filtering: returns trip IDs matching the filter
 	ResolveTripIDs(ctx context.Context, in *TripFilterRequest, opts ...grpc.CallOption) (*filters.IDsResponse, error)
+	// Get chat members for a shipment (dispatchers + drivers from current trip)
+	GetShipmentChatMembers(ctx context.Context, in *GetShipmentChatMembersRequest, opts ...grpc.CallOption) (*GetShipmentChatMembersResponse, error)
 }
 
 type loadsServiceClient struct {
@@ -192,6 +195,16 @@ func (c *loadsServiceClient) ResolveTripIDs(ctx context.Context, in *TripFilterR
 	return out, nil
 }
 
+func (c *loadsServiceClient) GetShipmentChatMembers(ctx context.Context, in *GetShipmentChatMembersRequest, opts ...grpc.CallOption) (*GetShipmentChatMembersResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetShipmentChatMembersResponse)
+	err := c.cc.Invoke(ctx, LoadsService_GetShipmentChatMembers_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // LoadsServiceServer is the server API for LoadsService service.
 // All implementations must embed UnimplementedLoadsServiceServer
 // for forward compatibility.
@@ -219,6 +232,8 @@ type LoadsServiceServer interface {
 	ResolveShipmentIDs(context.Context, *ShipmentFilterRequest) (*filters.IDsResponse, error)
 	// Cross-service filtering: returns trip IDs matching the filter
 	ResolveTripIDs(context.Context, *TripFilterRequest) (*filters.IDsResponse, error)
+	// Get chat members for a shipment (dispatchers + drivers from current trip)
+	GetShipmentChatMembers(context.Context, *GetShipmentChatMembersRequest) (*GetShipmentChatMembersResponse, error)
 	mustEmbedUnimplementedLoadsServiceServer()
 }
 
@@ -261,6 +276,9 @@ func (UnimplementedLoadsServiceServer) ResolveShipmentIDs(context.Context, *Ship
 }
 func (UnimplementedLoadsServiceServer) ResolveTripIDs(context.Context, *TripFilterRequest) (*filters.IDsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ResolveTripIDs not implemented")
+}
+func (UnimplementedLoadsServiceServer) GetShipmentChatMembers(context.Context, *GetShipmentChatMembersRequest) (*GetShipmentChatMembersResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetShipmentChatMembers not implemented")
 }
 func (UnimplementedLoadsServiceServer) mustEmbedUnimplementedLoadsServiceServer() {}
 func (UnimplementedLoadsServiceServer) testEmbeddedByValue()                      {}
@@ -474,6 +492,24 @@ func _LoadsService_ResolveTripIDs_Handler(srv interface{}, ctx context.Context, 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _LoadsService_GetShipmentChatMembers_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetShipmentChatMembersRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(LoadsServiceServer).GetShipmentChatMembers(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: LoadsService_GetShipmentChatMembers_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(LoadsServiceServer).GetShipmentChatMembers(ctx, req.(*GetShipmentChatMembersRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // LoadsService_ServiceDesc is the grpc.ServiceDesc for LoadsService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -520,6 +556,10 @@ var LoadsService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ResolveTripIDs",
 			Handler:    _LoadsService_ResolveTripIDs_Handler,
+		},
+		{
+			MethodName: "GetShipmentChatMembers",
+			Handler:    _LoadsService_GetShipmentChatMembers_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{

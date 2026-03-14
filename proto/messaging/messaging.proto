@@ -1,0 +1,24 @@
+syntax = "proto3";
+
+package messaging;
+
+option go_package = "github.com/TMS360/backend-pkg/proto/messaging";
+
+// MessagingService provides conversation and member management via gRPC.
+service MessagingService {
+  // SyncEntityMembers adds new members to the conversation linked to an entity.
+  // If the conversation does not exist yet, it returns NOT_FOUND.
+  // Existing members are kept; only missing member_ids are added.
+  rpc SyncEntityMembers(SyncEntityMembersRequest) returns (SyncEntityMembersResponse);
+}
+
+message SyncEntityMembersRequest {
+  string entity_type = 1; // e.g. "shipments", "orders", etc.
+  string entity_id   = 2; // UUID of the entity
+  repeated string member_ids = 3; // user UUIDs to ensure are members
+}
+
+message SyncEntityMembersResponse {
+  bool success = 1;
+  int32 added_count = 2; // number of newly added members
+}

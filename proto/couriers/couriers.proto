@@ -4,6 +4,7 @@ syntax = "proto3";
 package couriers;
 
 import "google/protobuf/empty.proto";
+import "filters/filters.proto";
 
 option go_package = "github.com/TMS360/backend-pkg/proto/couriers";
 
@@ -11,6 +12,17 @@ service CouriersService {
   rpc UpdateCache(google.protobuf.Empty) returns (UpdateCacheResponse);
 
   rpc GetUsersByIds(GetUsersByIdsRequest) returns (GetUsersByIdsResponse);
+
+  // Cross-service filtering: returns user IDs matching the filter
+  rpc ResolveIDs(UserFilter) returns (filters.IDsResponse);
+}
+
+message UserFilter {
+  filters.StringFilter name = 1;
+  filters.StringFilter email = 2;
+  filters.StringFilter phone = 3;
+  filters.StringFilter role = 4;
+  optional string search = 5; // full-text search across name, email
 }
 
 message UpdateCacheResponse {

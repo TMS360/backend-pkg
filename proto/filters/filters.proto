@@ -1,0 +1,91 @@
+// Shared filter types for cross-service filtering.
+// Each service imports these types and defines entity-specific filter messages.
+syntax = "proto3";
+
+package filters;
+
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/TMS360/backend-pkg/proto/filters";
+
+// ============================================================================
+// FILTER TYPES
+// ============================================================================
+
+enum QueryMode {
+  QUERY_MODE_DEFAULT = 0;     // LIKE (case-sensitive)
+  QUERY_MODE_INSENSITIVE = 1; // ILIKE (case-insensitive)
+}
+
+message StringFilter {
+  optional string equals = 1;
+  optional string not = 2;
+  repeated string in = 3;
+  repeated string not_in = 4;
+  optional string contains = 5;
+  optional string starts_with = 6;
+  optional string ends_with = 7;
+  optional string like = 8;
+  optional string regex = 9;
+  QueryMode mode = 10;
+  optional bool is_null = 11;
+}
+
+message IntFilter {
+  optional int32 equals = 1;
+  optional int32 not = 2;
+  repeated int32 in = 3;
+  repeated int32 not_in = 4;
+  optional int32 lt = 5;
+  optional int32 lte = 6;
+  optional int32 gt = 7;
+  optional int32 gte = 8;
+  optional bool is_null = 9;
+}
+
+message FloatFilter {
+  optional double equals = 1;
+  optional double not = 2;
+  repeated double in = 3;
+  repeated double not_in = 4;
+  optional double lt = 5;
+  optional double lte = 6;
+  optional double gt = 7;
+  optional double gte = 8;
+  optional bool is_null = 9;
+}
+
+message BoolFilter {
+  optional bool equals = 1;
+  optional bool is_null = 2;
+}
+
+message DateTimeFilter {
+  optional google.protobuf.Timestamp equals = 1;
+  optional google.protobuf.Timestamp not = 2;
+  repeated google.protobuf.Timestamp in = 3;
+  repeated google.protobuf.Timestamp not_in = 4;
+  optional google.protobuf.Timestamp lt = 5;
+  optional google.protobuf.Timestamp lte = 6;
+  optional google.protobuf.Timestamp gt = 7;
+  optional google.protobuf.Timestamp gte = 8;
+  optional bool is_null = 9;
+}
+
+message IDFilter {
+  optional string equals = 1;
+  optional string not = 2;
+  repeated string in = 3;
+  repeated string not_in = 4;
+  optional bool is_null = 5;
+}
+
+// ============================================================================
+// SHARED RESPONSE
+// ============================================================================
+
+// IDsResponse is the universal response for ResolveIDs RPCs.
+// Every service returns this when asked to resolve filters to IDs.
+message IDsResponse {
+  repeated string ids = 1;
+}

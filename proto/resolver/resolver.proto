@@ -1,0 +1,24 @@
+syntax = "proto3";
+
+package resolver;
+
+import "google/protobuf/struct.proto";
+import "filters/filters.proto";
+
+option go_package = "github.com/TMS360/backend-pkg/proto/resolver";
+
+// ResolverService is a universal cross-service filter resolver.
+// Any service can implement this to allow other services to resolve entity IDs by filter.
+service ResolverService {
+  rpc ResolveIDs(ResolveIDsRequest) returns (filters.IDsResponse);
+}
+
+message ResolveIDsRequest {
+  // Entity name, e.g. "companies", "users", "shipments", "trucks"
+  string entity = 1;
+  // Generic filter as a JSON-like struct. Each key is a field name,
+  // value is an object with filter operators (equals, contains, in, etc.)
+  google.protobuf.Struct filter = 2;
+  // Optional full-text search across entity fields
+  optional string search = 3;
+}

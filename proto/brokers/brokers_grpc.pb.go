@@ -10,6 +10,7 @@ package brokers
 
 import (
 	context "context"
+	filters "github.com/TMS360/backend-pkg/proto/filters"
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
@@ -24,6 +25,7 @@ const (
 	BrokerService_GetBrokers_FullMethodName       = "/brokers.BrokerService/GetBrokers"
 	BrokerService_GetOrCreateByMC_FullMethodName  = "/brokers.BrokerService/GetOrCreateByMC"
 	BrokerService_GetOrCreateByDOT_FullMethodName = "/brokers.BrokerService/GetOrCreateByDOT"
+	BrokerService_ResolveIDs_FullMethodName       = "/brokers.BrokerService/ResolveIDs"
 )
 
 // BrokerServiceClient is the client API for BrokerService service.
@@ -34,6 +36,8 @@ type BrokerServiceClient interface {
 	// Internal endpoint: Finds a broker by MC or creates a "Stub" profile
 	GetOrCreateByMC(ctx context.Context, in *GetOrCreateByMCRequest, opts ...grpc.CallOption) (*GetOrCreateResponse, error)
 	GetOrCreateByDOT(ctx context.Context, in *GetOrCreateByDOTRequest, opts ...grpc.CallOption) (*GetOrCreateResponse, error)
+	// Cross-service filtering: returns broker IDs matching the filter
+	ResolveIDs(ctx context.Context, in *BrokerFilter, opts ...grpc.CallOption) (*filters.IDsResponse, error)
 }
 
 type brokerServiceClient struct {
@@ -74,6 +78,16 @@ func (c *brokerServiceClient) GetOrCreateByDOT(ctx context.Context, in *GetOrCre
 	return out, nil
 }
 
+func (c *brokerServiceClient) ResolveIDs(ctx context.Context, in *BrokerFilter, opts ...grpc.CallOption) (*filters.IDsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(filters.IDsResponse)
+	err := c.cc.Invoke(ctx, BrokerService_ResolveIDs_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // BrokerServiceServer is the server API for BrokerService service.
 // All implementations must embed UnimplementedBrokerServiceServer
 // for forward compatibility.
@@ -82,6 +96,8 @@ type BrokerServiceServer interface {
 	// Internal endpoint: Finds a broker by MC or creates a "Stub" profile
 	GetOrCreateByMC(context.Context, *GetOrCreateByMCRequest) (*GetOrCreateResponse, error)
 	GetOrCreateByDOT(context.Context, *GetOrCreateByDOTRequest) (*GetOrCreateResponse, error)
+	// Cross-service filtering: returns broker IDs matching the filter
+	ResolveIDs(context.Context, *BrokerFilter) (*filters.IDsResponse, error)
 	mustEmbedUnimplementedBrokerServiceServer()
 }
 
@@ -100,6 +116,9 @@ func (UnimplementedBrokerServiceServer) GetOrCreateByMC(context.Context, *GetOrC
 }
 func (UnimplementedBrokerServiceServer) GetOrCreateByDOT(context.Context, *GetOrCreateByDOTRequest) (*GetOrCreateResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetOrCreateByDOT not implemented")
+}
+func (UnimplementedBrokerServiceServer) ResolveIDs(context.Context, *BrokerFilter) (*filters.IDsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ResolveIDs not implemented")
 }
 func (UnimplementedBrokerServiceServer) mustEmbedUnimplementedBrokerServiceServer() {}
 func (UnimplementedBrokerServiceServer) testEmbeddedByValue()                       {}
@@ -176,6 +195,24 @@ func _BrokerService_GetOrCreateByDOT_Handler(srv interface{}, ctx context.Contex
 	return interceptor(ctx, in, info, handler)
 }
 
+func _BrokerService_ResolveIDs_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(BrokerFilter)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(BrokerServiceServer).ResolveIDs(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: BrokerService_ResolveIDs_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(BrokerServiceServer).ResolveIDs(ctx, req.(*BrokerFilter))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // BrokerService_ServiceDesc is the grpc.ServiceDesc for BrokerService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -194,6 +231,10 @@ var BrokerService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetOrCreateByDOT",
 			Handler:    _BrokerService_GetOrCreateByDOT_Handler,
+		},
+		{
+			MethodName: "ResolveIDs",
+			Handler:    _BrokerService_ResolveIDs_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

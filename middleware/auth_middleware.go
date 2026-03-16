@@ -90,7 +90,7 @@ func WithActor(ctx context.Context, actor *consts.Actor) context.Context {
 }
 
 func WithSystemActor(ctx context.Context) context.Context {
-	return context.WithValue(ctx, consts.ActorCtx, consts.Actor{ID: uuid.Nil, IsSystem: true})
+	return context.WithValue(ctx, consts.ActorCtx, &consts.Actor{ID: uuid.Nil, IsSystem: true})
 }
 
 // GetActor safely extracts the actor.

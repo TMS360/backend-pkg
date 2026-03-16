@@ -10,6 +10,7 @@ package teams
 
 import (
 	context "context"
+	filters "github.com/TMS360/backend-pkg/proto/filters"
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
@@ -26,6 +27,10 @@ const (
 	TeamsService_GetBusyVehicles_FullMethodName               = "/teams.TeamsService/GetBusyVehicles"
 	TeamsService_GetCurrentDriversByTruckIds_FullMethodName   = "/teams.TeamsService/GetCurrentDriversByTruckIds"
 	TeamsService_GetCurrentDriversByTrailerIds_FullMethodName = "/teams.TeamsService/GetCurrentDriversByTrailerIds"
+	TeamsService_ResolveDriverCrewIDs_FullMethodName          = "/teams.TeamsService/ResolveDriverCrewIDs"
+	TeamsService_ResolveTruckIDs_FullMethodName               = "/teams.TeamsService/ResolveTruckIDs"
+	TeamsService_ResolveTrailerIDs_FullMethodName             = "/teams.TeamsService/ResolveTrailerIDs"
+	TeamsService_ResolveDriverIDs_FullMethodName              = "/teams.TeamsService/ResolveDriverIDs"
 )
 
 // TeamsServiceClient is the client API for TeamsService service.
@@ -40,6 +45,14 @@ type TeamsServiceClient interface {
 	// Get current drivers for a list of trucks
 	GetCurrentDriversByTruckIds(ctx context.Context, in *GetCurrentDriversByTruckIdsRequest, opts ...grpc.CallOption) (*GetCurrentDriversByTruckIdsResponse, error)
 	GetCurrentDriversByTrailerIds(ctx context.Context, in *GetCurrentDriversByTrailerIdsRequest, opts ...grpc.CallOption) (*GetCurrentDriversByTrailerIdsResponse, error)
+	// Cross-service filtering: returns driver crew IDs matching the filter
+	ResolveDriverCrewIDs(ctx context.Context, in *DriverCrewFilter, opts ...grpc.CallOption) (*filters.IDsResponse, error)
+	// Cross-service filtering: returns truck IDs matching the filter
+	ResolveTruckIDs(ctx context.Context, in *TruckFilter, opts ...grpc.CallOption) (*filters.IDsResponse, error)
+	// Cross-service filtering: returns trailer IDs matching the filter
+	ResolveTrailerIDs(ctx context.Context, in *TrailerFilter, opts ...grpc.CallOption) (*filters.IDsResponse, error)
+	// Cross-service filtering: returns driver IDs matching the filter
+	ResolveDriverIDs(ctx context.Context, in *DriverFilter, opts ...grpc.CallOption) (*filters.IDsResponse, error)
 }
 
 type teamsServiceClient struct {
@@ -100,6 +113,46 @@ func (c *teamsServiceClient) GetCurrentDriversByTrailerIds(ctx context.Context, 
 	return out, nil
 }
 
+func (c *teamsServiceClient) ResolveDriverCrewIDs(ctx context.Context, in *DriverCrewFilter, opts ...grpc.CallOption) (*filters.IDsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(filters.IDsResponse)
+	err := c.cc.Invoke(ctx, TeamsService_ResolveDriverCrewIDs_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *teamsServiceClient) ResolveTruckIDs(ctx context.Context, in *TruckFilter, opts ...grpc.CallOption) (*filters.IDsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(filters.IDsResponse)
+	err := c.cc.Invoke(ctx, TeamsService_ResolveTruckIDs_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *teamsServiceClient) ResolveTrailerIDs(ctx context.Context, in *TrailerFilter, opts ...grpc.CallOption) (*filters.IDsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(filters.IDsResponse)
+	err := c.cc.Invoke(ctx, TeamsService_ResolveTrailerIDs_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *teamsServiceClient) ResolveDriverIDs(ctx context.Context, in *DriverFilter, opts ...grpc.CallOption) (*filters.IDsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(filters.IDsResponse)
+	err := c.cc.Invoke(ctx, TeamsService_ResolveDriverIDs_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // TeamsServiceServer is the server API for TeamsService service.
 // All implementations must embed UnimplementedTeamsServiceServer
 // for forward compatibility.
@@ -112,6 +165,14 @@ type TeamsServiceServer interface {
 	// Get current drivers for a list of trucks
 	GetCurrentDriversByTruckIds(context.Context, *GetCurrentDriversByTruckIdsRequest) (*GetCurrentDriversByTruckIdsResponse, error)
 	GetCurrentDriversByTrailerIds(context.Context, *GetCurrentDriversByTrailerIdsRequest) (*GetCurrentDriversByTrailerIdsResponse, error)
+	// Cross-service filtering: returns driver crew IDs matching the filter
+	ResolveDriverCrewIDs(context.Context, *DriverCrewFilter) (*filters.IDsResponse, error)
+	// Cross-service filtering: returns truck IDs matching the filter
+	ResolveTruckIDs(context.Context, *TruckFilter) (*filters.IDsResponse, error)
+	// Cross-service filtering: returns trailer IDs matching the filter
+	ResolveTrailerIDs(context.Context, *TrailerFilter) (*filters.IDsResponse, error)
+	// Cross-service filtering: returns driver IDs matching the filter
+	ResolveDriverIDs(context.Context, *DriverFilter) (*filters.IDsResponse, error)
 	mustEmbedUnimplementedTeamsServiceServer()
 }
 
@@ -136,6 +197,18 @@ func (UnimplementedTeamsServiceServer) GetCurrentDriversByTruckIds(context.Conte
 }
 func (UnimplementedTeamsServiceServer) GetCurrentDriversByTrailerIds(context.Context, *GetCurrentDriversByTrailerIdsRequest) (*GetCurrentDriversByTrailerIdsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetCurrentDriversByTrailerIds not implemented")
+}
+func (UnimplementedTeamsServiceServer) ResolveDriverCrewIDs(context.Context, *DriverCrewFilter) (*filters.IDsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ResolveDriverCrewIDs not implemented")
+}
+func (UnimplementedTeamsServiceServer) ResolveTruckIDs(context.Context, *TruckFilter) (*filters.IDsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ResolveTruckIDs not implemented")
+}
+func (UnimplementedTeamsServiceServer) ResolveTrailerIDs(context.Context, *TrailerFilter) (*filters.IDsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ResolveTrailerIDs not implemented")
+}
+func (UnimplementedTeamsServiceServer) ResolveDriverIDs(context.Context, *DriverFilter) (*filters.IDsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ResolveDriverIDs not implemented")
 }
 func (UnimplementedTeamsServiceServer) mustEmbedUnimplementedTeamsServiceServer() {}
 func (UnimplementedTeamsServiceServer) testEmbeddedByValue()                      {}
@@ -248,6 +321,78 @@ func _TeamsService_GetCurrentDriversByTrailerIds_Handler(srv interface{}, ctx co
 	return interceptor(ctx, in, info, handler)
 }
 
+func _TeamsService_ResolveDriverCrewIDs_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DriverCrewFilter)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(TeamsServiceServer).ResolveDriverCrewIDs(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: TeamsService_ResolveDriverCrewIDs_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(TeamsServiceServer).ResolveDriverCrewIDs(ctx, req.(*DriverCrewFilter))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _TeamsService_ResolveTruckIDs_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(TruckFilter)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(TeamsServiceServer).ResolveTruckIDs(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: TeamsService_ResolveTruckIDs_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(TeamsServiceServer).ResolveTruckIDs(ctx, req.(*TruckFilter))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _TeamsService_ResolveTrailerIDs_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(TrailerFilter)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(TeamsServiceServer).ResolveTrailerIDs(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: TeamsService_ResolveTrailerIDs_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(TeamsServiceServer).ResolveTrailerIDs(ctx, req.(*TrailerFilter))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _TeamsService_ResolveDriverIDs_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DriverFilter)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(TeamsServiceServer).ResolveDriverIDs(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: TeamsService_ResolveDriverIDs_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(TeamsServiceServer).ResolveDriverIDs(ctx, req.(*DriverFilter))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // TeamsService_ServiceDesc is the grpc.ServiceDesc for TeamsService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -274,6 +419,22 @@ var TeamsService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetCurrentDriversByTrailerIds",
 			Handler:    _TeamsService_GetCurrentDriversByTrailerIds_Handler,
+		},
+		{
+			MethodName: "ResolveDriverCrewIDs",
+			Handler:    _TeamsService_ResolveDriverCrewIDs_Handler,
+		},
+		{
+			MethodName: "ResolveTruckIDs",
+			Handler:    _TeamsService_ResolveTruckIDs_Handler,
+		},
+		{
+			MethodName: "ResolveTrailerIDs",
+			Handler:    _TeamsService_ResolveTrailerIDs_Handler,
+		},
+		{
+			MethodName: "ResolveDriverIDs",
+			Handler:    _TeamsService_ResolveDriverIDs_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

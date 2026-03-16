@@ -3,6 +3,8 @@ syntax = "proto3";
 
 package brokers;
 
+import "filters/filters.proto";
+
 option go_package = "github.com/TMS360/backend-pkg/proto/brokers";
 
 service BrokerService {
@@ -11,6 +13,16 @@ service BrokerService {
   // Internal endpoint: Finds a broker by MC or creates a "Stub" profile
   rpc GetOrCreateByMC(GetOrCreateByMCRequest) returns (GetOrCreateResponse);
   rpc GetOrCreateByDOT(GetOrCreateByDOTRequest) returns (GetOrCreateResponse);
+
+  // Cross-service filtering: returns broker IDs matching the filter
+  rpc ResolveIDs(BrokerFilter) returns (filters.IDsResponse);
+}
+
+message BrokerFilter {
+  filters.StringFilter company_name = 1;
+  filters.StringFilter mc_number = 2;
+  filters.StringFilter dot_number = 3;
+  optional string search = 4; // full-text search across company_name, mc_number, dot_number
 }
 
 message Broker {

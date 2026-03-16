@@ -4,6 +4,7 @@ syntax = "proto3";
 package teams;
 
 import "google/protobuf/timestamp.proto";
+import "filters/filters.proto";
 
 option go_package = "github.com/TMS360/backend-pkg/proto/teams";
 
@@ -19,6 +20,55 @@ service TeamsService {
   // Get current drivers for a list of trucks
   rpc GetCurrentDriversByTruckIds (GetCurrentDriversByTruckIdsRequest) returns (GetCurrentDriversByTruckIdsResponse);
   rpc GetCurrentDriversByTrailerIds (GetCurrentDriversByTrailerIdsRequest) returns (GetCurrentDriversByTrailerIdsResponse);
+
+  // Cross-service filtering: returns driver crew IDs matching the filter
+  rpc ResolveDriverCrewIDs(DriverCrewFilter) returns (filters.IDsResponse);
+
+  // Cross-service filtering: returns truck IDs matching the filter
+  rpc ResolveTruckIDs(TruckFilter) returns (filters.IDsResponse);
+
+  // Cross-service filtering: returns trailer IDs matching the filter
+  rpc ResolveTrailerIDs(TrailerFilter) returns (filters.IDsResponse);
+
+  // Cross-service filtering: returns driver IDs matching the filter
+  rpc ResolveDriverIDs(DriverFilter) returns (filters.IDsResponse);
+}
+
+message DriverCrewFilter {
+  filters.IDFilter primary_driver_id = 1;
+  filters.IDFilter truck_id = 2;
+  filters.IDFilter trailer_id = 3;
+  optional string search = 4;
+}
+
+message TruckFilter {
+  filters.StringFilter number = 1;
+  filters.StringFilter vin = 2;
+  filters.StringFilter make = 3;
+  filters.StringFilter model = 4;
+  filters.StringFilter status = 5;
+  filters.IntFilter year = 6;
+  optional string search = 7;
+}
+
+message TrailerFilter {
+  filters.StringFilter number = 1;
+  filters.StringFilter vin = 2;
+  filters.StringFilter make = 3;
+  filters.StringFilter model = 4;
+  filters.StringFilter status = 5;
+  filters.StringFilter trailer_type = 6;
+  optional string search = 7;
+}
+
+message DriverFilter {
+  filters.StringFilter first_name = 1;
+  filters.StringFilter last_name = 2;
+  filters.StringFilter email = 3;
+  filters.StringFilter phone = 4;
+  filters.StringFilter status = 5;
+  filters.StringFilter license_number = 6;
+  optional string search = 7;
 }
 
 message GetDriverCrewRequest {

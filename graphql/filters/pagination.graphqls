@@ -1,4 +1,4 @@
-type Pagination {
+type Pagination @shareable {
     page: Int!
     limit: Int!
     total: Int!

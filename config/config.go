@@ -46,8 +46,11 @@ type PostgresSQLConfig struct {
 }
 
 type KafkaConfig struct {
-	Host string `mapstructure:"HOST"`
-	Port string `mapstructure:"PORT"`
+	Host    string   `mapstructure:"HOST"`
+	Port    string   `mapstructure:"PORT"`
+	Brokers []string `mapstructure:"BROKERS"`
+	GroupID string   `mapstructure:"GROUP_ID"`
+	Topics  []string `mapstructure:"TOPICS"`
 }
 
 type RedisConfig struct {

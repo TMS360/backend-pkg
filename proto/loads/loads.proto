@@ -334,3 +334,4 @@ message GetShipmentChatMembersRequest {
 message GetShipmentChatMembersResponse {
   repeated string member_ids = 1;
 }
+

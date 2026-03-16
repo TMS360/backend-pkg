@@ -23,7 +23,7 @@ const (
 
 type SyncEntityMembersRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	EntityType    string                 `protobuf:"bytes,1,opt,name=entity_type,json=entityType,proto3" json:"entity_type,omitempty"` // e.g. "shipments", "orders", etc.
+	EntityType    string                 `protobuf:"bytes,1,opt,name=entity_type,json=entityType,proto3" json:"entity_type,omitempty"` // e.g. "shipments", "trips", etc.
 	EntityId      string                 `protobuf:"bytes,2,opt,name=entity_id,json=entityId,proto3" json:"entity_id,omitempty"`       // UUID of the entity
 	MemberIds     []string               `protobuf:"bytes,3,rep,name=member_ids,json=memberIds,proto3" json:"member_ids,omitempty"`    // user UUIDs to ensure are members
 	unknownFields protoimpl.UnknownFields
@@ -133,6 +133,126 @@ func (x *SyncEntityMembersResponse) GetAddedCount() int32 {
 	return 0
 }
 
+type SetEntityMembersRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	EntityType    string                 `protobuf:"bytes,1,opt,name=entity_type,json=entityType,proto3" json:"entity_type,omitempty"` // e.g. "shipments", "trips"
+	EntityId      string                 `protobuf:"bytes,2,opt,name=entity_id,json=entityId,proto3" json:"entity_id,omitempty"`       // UUID of the entity
+	MemberIds     []string               `protobuf:"bytes,3,rep,name=member_ids,json=memberIds,proto3" json:"member_ids,omitempty"`    // full list of user UUIDs
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SetEntityMembersRequest) Reset() {
+	*x = SetEntityMembersRequest{}
+	mi := &file_messaging_messaging_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SetEntityMembersRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SetEntityMembersRequest) ProtoMessage() {}
+
+func (x *SetEntityMembersRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_messaging_messaging_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SetEntityMembersRequest.ProtoReflect.Descriptor instead.
+func (*SetEntityMembersRequest) Descriptor() ([]byte, []int) {
+	return file_messaging_messaging_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *SetEntityMembersRequest) GetEntityType() string {
+	if x != nil {
+		return x.EntityType
+	}
+	return ""
+}
+
+func (x *SetEntityMembersRequest) GetEntityId() string {
+	if x != nil {
+		return x.EntityId
+	}
+	return ""
+}
+
+func (x *SetEntityMembersRequest) GetMemberIds() []string {
+	if x != nil {
+		return x.MemberIds
+	}
+	return nil
+}
+
+type SetEntityMembersResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Success       bool                   `protobuf:"varint,1,opt,name=success,proto3" json:"success,omitempty"`
+	AddedCount    int32                  `protobuf:"varint,2,opt,name=added_count,json=addedCount,proto3" json:"added_count,omitempty"`       // number of newly added members
+	RemovedCount  int32                  `protobuf:"varint,3,opt,name=removed_count,json=removedCount,proto3" json:"removed_count,omitempty"` // number of removed members
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SetEntityMembersResponse) Reset() {
+	*x = SetEntityMembersResponse{}
+	mi := &file_messaging_messaging_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SetEntityMembersResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SetEntityMembersResponse) ProtoMessage() {}
+
+func (x *SetEntityMembersResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_messaging_messaging_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SetEntityMembersResponse.ProtoReflect.Descriptor instead.
+func (*SetEntityMembersResponse) Descriptor() ([]byte, []int) {
+	return file_messaging_messaging_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *SetEntityMembersResponse) GetSuccess() bool {
+	if x != nil {
+		return x.Success
+	}
+	return false
+}
+
+func (x *SetEntityMembersResponse) GetAddedCount() int32 {
+	if x != nil {
+		return x.AddedCount
+	}
+	return 0
+}
+
+func (x *SetEntityMembersResponse) GetRemovedCount() int32 {
+	if x != nil {
+		return x.RemovedCount
+	}
+	return 0
+}
+
 var File_messaging_messaging_proto protoreflect.FileDescriptor
 
 const file_messaging_messaging_proto_rawDesc = "" +
@@ -147,9 +267,21 @@ const file_messaging_messaging_proto_rawDesc = "" +
 	"\x19SyncEntityMembersResponse\x12\x18\n" +
 	"\asuccess\x18\x01 \x01(\bR\asuccess\x12\x1f\n" +
 	"\vadded_count\x18\x02 \x01(\x05R\n" +
-	"addedCount2r\n" +
+	"addedCount\"v\n" +
+	"\x17SetEntityMembersRequest\x12\x1f\n" +
+	"\ventity_type\x18\x01 \x01(\tR\n" +
+	"entityType\x12\x1b\n" +
+	"\tentity_id\x18\x02 \x01(\tR\bentityId\x12\x1d\n" +
+	"\n" +
+	"member_ids\x18\x03 \x03(\tR\tmemberIds\"z\n" +
+	"\x18SetEntityMembersResponse\x12\x18\n" +
+	"\asuccess\x18\x01 \x01(\bR\asuccess\x12\x1f\n" +
+	"\vadded_count\x18\x02 \x01(\x05R\n" +
+	"addedCount\x12#\n" +
+	"\rremoved_count\x18\x03 \x01(\x05R\fremovedCount2\xcf\x01\n" +
 	"\x10MessagingService\x12^\n" +
-	"\x11SyncEntityMembers\x12#.messaging.SyncEntityMembersRequest\x1a$.messaging.SyncEntityMembersResponseB/Z-github.com/TMS360/backend-pkg/proto/messagingb\x06proto3"
+	"\x11SyncEntityMembers\x12#.messaging.SyncEntityMembersRequest\x1a$.messaging.SyncEntityMembersResponse\x12[\n" +
+	"\x10SetEntityMembers\x12\".messaging.SetEntityMembersRequest\x1a#.messaging.SetEntityMembersResponseB/Z-github.com/TMS360/backend-pkg/proto/messagingb\x06proto3"
 
 var (
 	file_messaging_messaging_proto_rawDescOnce sync.Once
@@ -163,16 +295,20 @@ func file_messaging_messaging_proto_rawDescGZIP() []byte {
 	return file_messaging_messaging_proto_rawDescData
 }
 
-var file_messaging_messaging_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
+var file_messaging_messaging_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
 var file_messaging_messaging_proto_goTypes = []any{
 	(*SyncEntityMembersRequest)(nil),  // 0: messaging.SyncEntityMembersRequest
 	(*SyncEntityMembersResponse)(nil), // 1: messaging.SyncEntityMembersResponse
+	(*SetEntityMembersRequest)(nil),   // 2: messaging.SetEntityMembersRequest
+	(*SetEntityMembersResponse)(nil),  // 3: messaging.SetEntityMembersResponse
 }
 var file_messaging_messaging_proto_depIdxs = []int32{
 	0, // 0: messaging.MessagingService.SyncEntityMembers:input_type -> messaging.SyncEntityMembersRequest
-	1, // 1: messaging.MessagingService.SyncEntityMembers:output_type -> messaging.SyncEntityMembersResponse
-	1, // [1:2] is the sub-list for method output_type
-	0, // [0:1] is the sub-list for method input_type
+	2, // 1: messaging.MessagingService.SetEntityMembers:input_type -> messaging.SetEntityMembersRequest
+	1, // 2: messaging.MessagingService.SyncEntityMembers:output_type -> messaging.SyncEntityMembersResponse
+	3, // 3: messaging.MessagingService.SetEntityMembers:output_type -> messaging.SetEntityMembersResponse
+	2, // [2:4] is the sub-list for method output_type
+	0, // [0:2] is the sub-list for method input_type
 	0, // [0:0] is the sub-list for extension type_name
 	0, // [0:0] is the sub-list for extension extendee
 	0, // [0:0] is the sub-list for field type_name
@@ -189,7 +325,7 @@ func file_messaging_messaging_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_messaging_messaging_proto_rawDesc), len(file_messaging_messaging_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   2,
+			NumMessages:   4,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

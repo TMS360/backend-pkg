@@ -10,10 +10,15 @@ service MessagingService {
   // If the conversation does not exist yet, it returns NOT_FOUND.
   // Existing members are kept; only missing member_ids are added.
   rpc SyncEntityMembers(SyncEntityMembersRequest) returns (SyncEntityMembersResponse);
+
+  // SetEntityMembers sets the full member list for an entity conversation.
+  // If the conversation does not exist, it creates one (entity_thread type).
+  // Members not in the new list are removed; new members are added.
+  rpc SetEntityMembers(SetEntityMembersRequest) returns (SetEntityMembersResponse);
 }
 
 message SyncEntityMembersRequest {
-  string entity_type = 1; // e.g. "shipments", "orders", etc.
+  string entity_type = 1; // e.g. "shipments", "trips", etc.
   string entity_id   = 2; // UUID of the entity
   repeated string member_ids = 3; // user UUIDs to ensure are members
 }
@@ -21,4 +26,16 @@ message SyncEntityMembersRequest {
 message SyncEntityMembersResponse {
   bool success = 1;
   int32 added_count = 2; // number of newly added members
+}
+
+message SetEntityMembersRequest {
+  string entity_type = 1; // e.g. "shipments", "trips"
+  string entity_id   = 2; // UUID of the entity
+  repeated string member_ids = 3; // full list of user UUIDs
+}
+
+message SetEntityMembersResponse {
+  bool success = 1;
+  int32 added_count = 2;   // number of newly added members
+  int32 removed_count = 3; // number of removed members
 }

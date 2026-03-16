@@ -20,6 +20,7 @@ const _ = grpc.SupportPackageIsVersion9
 
 const (
 	MessagingService_SyncEntityMembers_FullMethodName = "/messaging.MessagingService/SyncEntityMembers"
+	MessagingService_SetEntityMembers_FullMethodName  = "/messaging.MessagingService/SetEntityMembers"
 )
 
 // MessagingServiceClient is the client API for MessagingService service.
@@ -32,6 +33,10 @@ type MessagingServiceClient interface {
 	// If the conversation does not exist yet, it returns NOT_FOUND.
 	// Existing members are kept; only missing member_ids are added.
 	SyncEntityMembers(ctx context.Context, in *SyncEntityMembersRequest, opts ...grpc.CallOption) (*SyncEntityMembersResponse, error)
+	// SetEntityMembers sets the full member list for an entity conversation.
+	// If the conversation does not exist, it creates one (entity_thread type).
+	// Members not in the new list are removed; new members are added.
+	SetEntityMembers(ctx context.Context, in *SetEntityMembersRequest, opts ...grpc.CallOption) (*SetEntityMembersResponse, error)
 }
 
 type messagingServiceClient struct {
@@ -52,6 +57,16 @@ func (c *messagingServiceClient) SyncEntityMembers(ctx context.Context, in *Sync
 	return out, nil
 }
 
+func (c *messagingServiceClient) SetEntityMembers(ctx context.Context, in *SetEntityMembersRequest, opts ...grpc.CallOption) (*SetEntityMembersResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SetEntityMembersResponse)
+	err := c.cc.Invoke(ctx, MessagingService_SetEntityMembers_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // MessagingServiceServer is the server API for MessagingService service.
 // All implementations must embed UnimplementedMessagingServiceServer
 // for forward compatibility.
@@ -62,6 +77,10 @@ type MessagingServiceServer interface {
 	// If the conversation does not exist yet, it returns NOT_FOUND.
 	// Existing members are kept; only missing member_ids are added.
 	SyncEntityMembers(context.Context, *SyncEntityMembersRequest) (*SyncEntityMembersResponse, error)
+	// SetEntityMembers sets the full member list for an entity conversation.
+	// If the conversation does not exist, it creates one (entity_thread type).
+	// Members not in the new list are removed; new members are added.
+	SetEntityMembers(context.Context, *SetEntityMembersRequest) (*SetEntityMembersResponse, error)
 	mustEmbedUnimplementedMessagingServiceServer()
 }
 
@@ -74,6 +93,9 @@ type UnimplementedMessagingServiceServer struct{}
 
 func (UnimplementedMessagingServiceServer) SyncEntityMembers(context.Context, *SyncEntityMembersRequest) (*SyncEntityMembersResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method SyncEntityMembers not implemented")
+}
+func (UnimplementedMessagingServiceServer) SetEntityMembers(context.Context, *SetEntityMembersRequest) (*SetEntityMembersResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method SetEntityMembers not implemented")
 }
 func (UnimplementedMessagingServiceServer) mustEmbedUnimplementedMessagingServiceServer() {}
 func (UnimplementedMessagingServiceServer) testEmbeddedByValue()                          {}
@@ -114,6 +136,24 @@ func _MessagingService_SyncEntityMembers_Handler(srv interface{}, ctx context.Co
 	return interceptor(ctx, in, info, handler)
 }
 
+func _MessagingService_SetEntityMembers_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SetEntityMembersRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MessagingServiceServer).SetEntityMembers(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MessagingService_SetEntityMembers_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MessagingServiceServer).SetEntityMembers(ctx, req.(*SetEntityMembersRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // MessagingService_ServiceDesc is the grpc.ServiceDesc for MessagingService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -124,6 +164,10 @@ var MessagingService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "SyncEntityMembers",
 			Handler:    _MessagingService_SyncEntityMembers_Handler,
+		},
+		{
+			MethodName: "SetEntityMembers",
+			Handler:    _MessagingService_SetEntityMembers_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

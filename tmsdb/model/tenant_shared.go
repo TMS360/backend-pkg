@@ -90,3 +90,23 @@ func (stb *SharedTenantBase) BeforeUpdate(tx *gorm.DB) error {
 
 	return nil
 }
+
+func (stb *SharedTenantBase) BeforeDelete(tx *gorm.DB) error {
+	ctx := tx.Statement.Context
+	actor, _ := middleware.GetActor(ctx)
+
+	// 1. Internal/System Processes - Allow
+	if actor == nil || actor.IsSystem {
+		return nil
+	}
+
+	// 2. Security Check: If the record being deleted is marked as System
+	// We check the struct currently being passed to the Delete call.
+	if stb.IsSystem {
+		if !actor.IsSuperAdmin() {
+			return fmt.Errorf("security error: only super admins can delete system records")
+		}
+	}
+
+	return nil
+}

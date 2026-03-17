@@ -69,3 +69,24 @@ func (stb *SharedTenantBase) BeforeCreate(tx *gorm.DB) error {
 
 	return nil
 }
+
+func (stb *SharedTenantBase) BeforeUpdate(tx *gorm.DB) error {
+	ctx := tx.Statement.Context
+	actor, _ := middleware.GetActor(ctx)
+
+	// 1. Internal/System Processes
+	if actor == nil || actor.IsSystem {
+		return nil
+	}
+
+	// 2. Security Check: If the record being updated is a SYSTEM record
+	// We check the 'IsSystem' field of the struct being passed to Update
+	if stb.IsSystem {
+		if !actor.IsSuperAdmin() {
+			// This is the error your test is looking for!
+			return fmt.Errorf("security error: only super admins can update system records")
+		}
+	}
+
+	return nil
+}

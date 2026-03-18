@@ -55,8 +55,8 @@ func (t *TenantScopePlugin) applyScope(db *gorm.DB, isRead bool) {
 		return
 	}
 
-	// 3. SuperAdmin Bypass
-	if actor.IsSuperAdmin() || actor.IsGuest {
+	// 3. SuperAdmin / System Bypass
+	if actor.IsSystem || actor.IsSuperAdmin() || actor.IsGuest {
 		return
 	}
 

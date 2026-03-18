@@ -20,10 +20,20 @@ func Client() *redis.Client {
 	return client
 }
 
-func Set(ctx context.Context, key string, value any, ttl time.Duration) error {
+func buildKey(ctx context.Context, key string) string {
 	actor, _ := middleware.GetActor(ctx)
+	if actor == nil {
+		return key
+	}
 	companyID := actor.GetCompanyID()
-	key = fmt.Sprintf("%d:%s", companyID, key)
+	if companyID == nil {
+		return key
+	}
+	return fmt.Sprintf("%s:%s", companyID.String(), key)
+}
+
+func Set(ctx context.Context, key string, value any, ttl time.Duration) error {
+	key = buildKey(ctx, key)
 
 	data, err := json.Marshal(value)
 	if err != nil {
@@ -33,9 +43,7 @@ func Set(ctx context.Context, key string, value any, ttl time.Duration) error {
 }
 
 func Get(ctx context.Context, key string, dest any) error {
-	actor, _ := middleware.GetActor(ctx)
-	companyID := actor.GetCompanyID()
-	key = fmt.Sprintf("%d:%s", companyID, key)
+	key = buildKey(ctx, key)
 
 	data, err := client.Get(ctx, key).Bytes()
 	if err != nil {
@@ -45,18 +53,12 @@ func Get(ctx context.Context, key string, dest any) error {
 }
 
 func Delete(ctx context.Context, key string) error {
-	actor, _ := middleware.GetActor(ctx)
-	companyID := actor.GetCompanyID()
-	key = fmt.Sprintf("%d:%s", companyID, key)
-
+	key = buildKey(ctx, key)
 	return client.Del(ctx, key).Err()
 }
 
 func Exists(ctx context.Context, key string) (bool, error) {
-	actor, _ := middleware.GetActor(ctx)
-	companyID := actor.GetCompanyID()
-	key = fmt.Sprintf("%d:%s", companyID, key)
-
+	key = buildKey(ctx, key)
 	n, err := client.Exists(ctx, key).Result()
 	return n > 0, err
 }

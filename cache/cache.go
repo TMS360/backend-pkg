@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/TMS360/backend-pkg/middleware"
 	"github.com/go-redis/redis/v8"
 )
 
@@ -20,6 +21,10 @@ func Client() *redis.Client {
 }
 
 func Set(ctx context.Context, key string, value any, ttl time.Duration) error {
+	actor, _ := middleware.GetActor(ctx)
+	companyID := actor.GetCompanyID()
+	key = fmt.Sprintf("%d:%s", companyID, key)
+
 	data, err := json.Marshal(value)
 	if err != nil {
 		return fmt.Errorf("cache: marshal error: %w", err)
@@ -28,6 +33,10 @@ func Set(ctx context.Context, key string, value any, ttl time.Duration) error {
 }
 
 func Get(ctx context.Context, key string, dest any) error {
+	actor, _ := middleware.GetActor(ctx)
+	companyID := actor.GetCompanyID()
+	key = fmt.Sprintf("%d:%s", companyID, key)
+
 	data, err := client.Get(ctx, key).Bytes()
 	if err != nil {
 		return err
@@ -36,10 +45,18 @@ func Get(ctx context.Context, key string, dest any) error {
 }
 
 func Delete(ctx context.Context, key string) error {
+	actor, _ := middleware.GetActor(ctx)
+	companyID := actor.GetCompanyID()
+	key = fmt.Sprintf("%d:%s", companyID, key)
+
 	return client.Del(ctx, key).Err()
 }
 
 func Exists(ctx context.Context, key string) (bool, error) {
+	actor, _ := middleware.GetActor(ctx)
+	companyID := actor.GetCompanyID()
+	key = fmt.Sprintf("%d:%s", companyID, key)
+
 	n, err := client.Exists(ctx, key).Result()
 	return n > 0, err
 }

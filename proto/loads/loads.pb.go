@@ -2334,6 +2334,94 @@ func (x *VehicleLocation) GetDriverId() string {
 	return ""
 }
 
+type GetShipmentChatMembersRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	ShipmentId    string                 `protobuf:"bytes,1,opt,name=shipment_id,json=shipmentId,proto3" json:"shipment_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetShipmentChatMembersRequest) Reset() {
+	*x = GetShipmentChatMembersRequest{}
+	mi := &file_loads_loads_proto_msgTypes[25]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetShipmentChatMembersRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetShipmentChatMembersRequest) ProtoMessage() {}
+
+func (x *GetShipmentChatMembersRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_loads_loads_proto_msgTypes[25]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetShipmentChatMembersRequest.ProtoReflect.Descriptor instead.
+func (*GetShipmentChatMembersRequest) Descriptor() ([]byte, []int) {
+	return file_loads_loads_proto_rawDescGZIP(), []int{25}
+}
+
+func (x *GetShipmentChatMembersRequest) GetShipmentId() string {
+	if x != nil {
+		return x.ShipmentId
+	}
+	return ""
+}
+
+type GetShipmentChatMembersResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	MemberIds     []string               `protobuf:"bytes,1,rep,name=member_ids,json=memberIds,proto3" json:"member_ids,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetShipmentChatMembersResponse) Reset() {
+	*x = GetShipmentChatMembersResponse{}
+	mi := &file_loads_loads_proto_msgTypes[26]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetShipmentChatMembersResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetShipmentChatMembersResponse) ProtoMessage() {}
+
+func (x *GetShipmentChatMembersResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_loads_loads_proto_msgTypes[26]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetShipmentChatMembersResponse.ProtoReflect.Descriptor instead.
+func (*GetShipmentChatMembersResponse) Descriptor() ([]byte, []int) {
+	return file_loads_loads_proto_rawDescGZIP(), []int{26}
+}
+
+func (x *GetShipmentChatMembersResponse) GetMemberIds() []string {
+	if x != nil {
+		return x.MemberIds
+	}
+	return nil
+}
+
 var File_loads_loads_proto protoreflect.FileDescriptor
 
 const file_loads_loads_proto_rawDesc = "" +
@@ -2530,7 +2618,13 @@ const file_loads_loads_proto_rawDesc = "" +
 	"\x05speed\x18\x06 \x01(\x01R\x05speed\x125\n" +
 	"\bgps_time\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\agpsTime\x12\x17\n" +
 	"\atrip_id\x18\b \x01(\tR\x06tripId\x12\x1b\n" +
-	"\tdriver_id\x18\t \x01(\tR\bdriverId*\x8a\x02\n" +
+	"\tdriver_id\x18\t \x01(\tR\bdriverId\"@\n" +
+	"\x1dGetShipmentChatMembersRequest\x12\x1f\n" +
+	"\vshipment_id\x18\x01 \x01(\tR\n" +
+	"shipmentId\"?\n" +
+	"\x1eGetShipmentChatMembersResponse\x12\x1d\n" +
+	"\n" +
+	"member_ids\x18\x01 \x03(\tR\tmemberIds*\x8a\x02\n" +
 	"\x0eShipmentStatus\x12\x1f\n" +
 	"\x1bSHIPMENT_STATUS_UNSPECIFIED\x10\x00\x12\x1b\n" +
 	"\x17SHIPMENT_STATUS_PENDING\x10\x01\x12\x1d\n" +
@@ -2570,7 +2664,7 @@ const file_loads_loads_proto_rawDesc = "" +
 	"\vVehicleType\x12\x1c\n" +
 	"\x18VEHICLE_TYPE_UNSPECIFIED\x10\x00\x12\x16\n" +
 	"\x12VEHICLE_TYPE_TRUCK\x10\x01\x12\x18\n" +
-	"\x14VEHICLE_TYPE_TRAILER\x10\x022\xf0\x06\n" +
+	"\x14VEHICLE_TYPE_TRAILER\x10\x022\xd7\a\n" +
 	"\fLoadsService\x12_\n" +
 	"\x14GetDriverTripDetails\x12\".loads.GetDriverTripDetailsRequest\x1a#.loads.GetDriverTripDetailsResponse\x12Y\n" +
 	"\x12GetRecentBrokerIDs\x12 .loads.GetRecentBrokerIDsRequest\x1a!.loads.GetRecentBrokerIDsResponse\x12A\n" +
@@ -2582,7 +2676,8 @@ const file_loads_loads_proto_rawDesc = "" +
 	"\x15UpdateVehicleLocation\x12#.loads.UpdateVehicleLocationRequest\x1a\x16.google.protobuf.Empty\x12X\n" +
 	"\x16StreamVehicleLocations\x12$.loads.StreamVehicleLocationsRequest\x1a\x16.loads.VehicleLocation0\x01\x12H\n" +
 	"\x12ResolveShipmentIDs\x12\x1c.loads.ShipmentFilterRequest\x1a\x14.filters.IDsResponse\x12@\n" +
-	"\x0eResolveTripIDs\x12\x18.loads.TripFilterRequest\x1a\x14.filters.IDsResponseB+Z)github.com/TMS360/backend-pkg/proto/loadsb\x06proto3"
+	"\x0eResolveTripIDs\x12\x18.loads.TripFilterRequest\x1a\x14.filters.IDsResponse\x12e\n" +
+	"\x16GetShipmentChatMembers\x12$.loads.GetShipmentChatMembersRequest\x1a%.loads.GetShipmentChatMembersResponseB+Z)github.com/TMS360/backend-pkg/proto/loadsb\x06proto3"
 
 var (
 	file_loads_loads_proto_rawDescOnce sync.Once
@@ -2597,101 +2692,103 @@ func file_loads_loads_proto_rawDescGZIP() []byte {
 }
 
 var file_loads_loads_proto_enumTypes = make([]protoimpl.EnumInfo, 6)
-var file_loads_loads_proto_msgTypes = make([]protoimpl.MessageInfo, 25)
+var file_loads_loads_proto_msgTypes = make([]protoimpl.MessageInfo, 27)
 var file_loads_loads_proto_goTypes = []any{
-	(ShipmentStatus)(0),                   // 0: loads.ShipmentStatus
-	(ShipmentType)(0),                     // 1: loads.ShipmentType
-	(TripStatus)(0),                       // 2: loads.TripStatus
-	(StopType)(0),                         // 3: loads.StopType
-	(StopStatus)(0),                       // 4: loads.StopStatus
-	(VehicleType)(0),                      // 5: loads.VehicleType
-	(*ShipmentFilterRequest)(nil),         // 6: loads.ShipmentFilterRequest
-	(*TripFilterRequest)(nil),             // 7: loads.TripFilterRequest
-	(*GetDriverTripDetailsRequest)(nil),   // 8: loads.GetDriverTripDetailsRequest
-	(*GetDriverTripDetailsResponse)(nil),  // 9: loads.GetDriverTripDetailsResponse
-	(*TripDetails)(nil),                   // 10: loads.TripDetails
-	(*GetRecentBrokerIDsRequest)(nil),     // 11: loads.GetRecentBrokerIDsRequest
-	(*GetRecentBrokerIDsResponse)(nil),    // 12: loads.GetRecentBrokerIDsResponse
-	(*GetShipmentRequest)(nil),            // 13: loads.GetShipmentRequest
-	(*ShipmentResponse)(nil),              // 14: loads.ShipmentResponse
-	(*ListShipmentsRequest)(nil),          // 15: loads.ListShipmentsRequest
-	(*ListShipmentsResponse)(nil),         // 16: loads.ListShipmentsResponse
-	(*GetTripRequest)(nil),                // 17: loads.GetTripRequest
-	(*TripResponse)(nil),                  // 18: loads.TripResponse
-	(*ListTripsRequest)(nil),              // 19: loads.ListTripsRequest
-	(*ListTripsResponse)(nil),             // 20: loads.ListTripsResponse
-	(*GetVehicleAssignmentsRequest)(nil),  // 21: loads.GetVehicleAssignmentsRequest
-	(*GetVehicleAssignmentsResponse)(nil), // 22: loads.GetVehicleAssignmentsResponse
-	(*UpdateVehicleLocationRequest)(nil),  // 23: loads.UpdateVehicleLocationRequest
-	(*StreamVehicleLocationsRequest)(nil), // 24: loads.StreamVehicleLocationsRequest
-	(*Shipment)(nil),                      // 25: loads.Shipment
-	(*ShipmentLeg)(nil),                   // 26: loads.ShipmentLeg
-	(*Trip)(nil),                          // 27: loads.Trip
-	(*TripStop)(nil),                      // 28: loads.TripStop
-	(*VehicleAssignment)(nil),             // 29: loads.VehicleAssignment
-	(*VehicleLocation)(nil),               // 30: loads.VehicleLocation
-	(*filters.StringFilter)(nil),          // 31: filters.StringFilter
-	(*filters.IntFilter)(nil),             // 32: filters.IntFilter
-	(*filters.IDFilter)(nil),              // 33: filters.IDFilter
-	(*filters.DateTimeFilter)(nil),        // 34: filters.DateTimeFilter
-	(*timestamppb.Timestamp)(nil),         // 35: google.protobuf.Timestamp
-	(*emptypb.Empty)(nil),                 // 36: google.protobuf.Empty
-	(*filters.IDsResponse)(nil),           // 37: filters.IDsResponse
+	(ShipmentStatus)(0),                    // 0: loads.ShipmentStatus
+	(ShipmentType)(0),                      // 1: loads.ShipmentType
+	(TripStatus)(0),                        // 2: loads.TripStatus
+	(StopType)(0),                          // 3: loads.StopType
+	(StopStatus)(0),                        // 4: loads.StopStatus
+	(VehicleType)(0),                       // 5: loads.VehicleType
+	(*ShipmentFilterRequest)(nil),          // 6: loads.ShipmentFilterRequest
+	(*TripFilterRequest)(nil),              // 7: loads.TripFilterRequest
+	(*GetDriverTripDetailsRequest)(nil),    // 8: loads.GetDriverTripDetailsRequest
+	(*GetDriverTripDetailsResponse)(nil),   // 9: loads.GetDriverTripDetailsResponse
+	(*TripDetails)(nil),                    // 10: loads.TripDetails
+	(*GetRecentBrokerIDsRequest)(nil),      // 11: loads.GetRecentBrokerIDsRequest
+	(*GetRecentBrokerIDsResponse)(nil),     // 12: loads.GetRecentBrokerIDsResponse
+	(*GetShipmentRequest)(nil),             // 13: loads.GetShipmentRequest
+	(*ShipmentResponse)(nil),               // 14: loads.ShipmentResponse
+	(*ListShipmentsRequest)(nil),           // 15: loads.ListShipmentsRequest
+	(*ListShipmentsResponse)(nil),          // 16: loads.ListShipmentsResponse
+	(*GetTripRequest)(nil),                 // 17: loads.GetTripRequest
+	(*TripResponse)(nil),                   // 18: loads.TripResponse
+	(*ListTripsRequest)(nil),               // 19: loads.ListTripsRequest
+	(*ListTripsResponse)(nil),              // 20: loads.ListTripsResponse
+	(*GetVehicleAssignmentsRequest)(nil),   // 21: loads.GetVehicleAssignmentsRequest
+	(*GetVehicleAssignmentsResponse)(nil),  // 22: loads.GetVehicleAssignmentsResponse
+	(*UpdateVehicleLocationRequest)(nil),   // 23: loads.UpdateVehicleLocationRequest
+	(*StreamVehicleLocationsRequest)(nil),  // 24: loads.StreamVehicleLocationsRequest
+	(*Shipment)(nil),                       // 25: loads.Shipment
+	(*ShipmentLeg)(nil),                    // 26: loads.ShipmentLeg
+	(*Trip)(nil),                           // 27: loads.Trip
+	(*TripStop)(nil),                       // 28: loads.TripStop
+	(*VehicleAssignment)(nil),              // 29: loads.VehicleAssignment
+	(*VehicleLocation)(nil),                // 30: loads.VehicleLocation
+	(*GetShipmentChatMembersRequest)(nil),  // 31: loads.GetShipmentChatMembersRequest
+	(*GetShipmentChatMembersResponse)(nil), // 32: loads.GetShipmentChatMembersResponse
+	(*filters.StringFilter)(nil),           // 33: filters.StringFilter
+	(*filters.IntFilter)(nil),              // 34: filters.IntFilter
+	(*filters.IDFilter)(nil),               // 35: filters.IDFilter
+	(*filters.DateTimeFilter)(nil),         // 36: filters.DateTimeFilter
+	(*timestamppb.Timestamp)(nil),          // 37: google.protobuf.Timestamp
+	(*emptypb.Empty)(nil),                  // 38: google.protobuf.Empty
+	(*filters.IDsResponse)(nil),            // 39: filters.IDsResponse
 }
 var file_loads_loads_proto_depIdxs = []int32{
-	31, // 0: loads.ShipmentFilterRequest.load_id:type_name -> filters.StringFilter
-	31, // 1: loads.ShipmentFilterRequest.status:type_name -> filters.StringFilter
-	32, // 2: loads.ShipmentFilterRequest.shipment_number:type_name -> filters.IntFilter
-	33, // 3: loads.ShipmentFilterRequest.broker_id:type_name -> filters.IDFilter
-	34, // 4: loads.ShipmentFilterRequest.created_at:type_name -> filters.DateTimeFilter
-	31, // 5: loads.TripFilterRequest.status:type_name -> filters.StringFilter
-	33, // 6: loads.TripFilterRequest.truck_id:type_name -> filters.IDFilter
-	33, // 7: loads.TripFilterRequest.trailer_id:type_name -> filters.IDFilter
-	33, // 8: loads.TripFilterRequest.driver_id:type_name -> filters.IDFilter
-	34, // 9: loads.TripFilterRequest.created_at:type_name -> filters.DateTimeFilter
+	33, // 0: loads.ShipmentFilterRequest.load_id:type_name -> filters.StringFilter
+	33, // 1: loads.ShipmentFilterRequest.status:type_name -> filters.StringFilter
+	34, // 2: loads.ShipmentFilterRequest.shipment_number:type_name -> filters.IntFilter
+	35, // 3: loads.ShipmentFilterRequest.broker_id:type_name -> filters.IDFilter
+	36, // 4: loads.ShipmentFilterRequest.created_at:type_name -> filters.DateTimeFilter
+	33, // 5: loads.TripFilterRequest.status:type_name -> filters.StringFilter
+	35, // 6: loads.TripFilterRequest.truck_id:type_name -> filters.IDFilter
+	35, // 7: loads.TripFilterRequest.trailer_id:type_name -> filters.IDFilter
+	35, // 8: loads.TripFilterRequest.driver_id:type_name -> filters.IDFilter
+	36, // 9: loads.TripFilterRequest.created_at:type_name -> filters.DateTimeFilter
 	10, // 10: loads.GetDriverTripDetailsResponse.trip_details:type_name -> loads.TripDetails
 	25, // 11: loads.ShipmentResponse.shipment:type_name -> loads.Shipment
 	0,  // 12: loads.ListShipmentsRequest.status:type_name -> loads.ShipmentStatus
-	35, // 13: loads.ListShipmentsRequest.from_date:type_name -> google.protobuf.Timestamp
-	35, // 14: loads.ListShipmentsRequest.to_date:type_name -> google.protobuf.Timestamp
+	37, // 13: loads.ListShipmentsRequest.from_date:type_name -> google.protobuf.Timestamp
+	37, // 14: loads.ListShipmentsRequest.to_date:type_name -> google.protobuf.Timestamp
 	25, // 15: loads.ListShipmentsResponse.shipments:type_name -> loads.Shipment
 	27, // 16: loads.TripResponse.trip:type_name -> loads.Trip
 	2,  // 17: loads.ListTripsRequest.status:type_name -> loads.TripStatus
-	35, // 18: loads.ListTripsRequest.from_date:type_name -> google.protobuf.Timestamp
-	35, // 19: loads.ListTripsRequest.to_date:type_name -> google.protobuf.Timestamp
+	37, // 18: loads.ListTripsRequest.from_date:type_name -> google.protobuf.Timestamp
+	37, // 19: loads.ListTripsRequest.to_date:type_name -> google.protobuf.Timestamp
 	27, // 20: loads.ListTripsResponse.trips:type_name -> loads.Trip
-	35, // 21: loads.GetVehicleAssignmentsRequest.from:type_name -> google.protobuf.Timestamp
-	35, // 22: loads.GetVehicleAssignmentsRequest.to:type_name -> google.protobuf.Timestamp
+	37, // 21: loads.GetVehicleAssignmentsRequest.from:type_name -> google.protobuf.Timestamp
+	37, // 22: loads.GetVehicleAssignmentsRequest.to:type_name -> google.protobuf.Timestamp
 	29, // 23: loads.GetVehicleAssignmentsResponse.assignments:type_name -> loads.VehicleAssignment
 	5,  // 24: loads.UpdateVehicleLocationRequest.vehicle_type:type_name -> loads.VehicleType
-	35, // 25: loads.UpdateVehicleLocationRequest.gps_time:type_name -> google.protobuf.Timestamp
+	37, // 25: loads.UpdateVehicleLocationRequest.gps_time:type_name -> google.protobuf.Timestamp
 	0,  // 26: loads.Shipment.status:type_name -> loads.ShipmentStatus
 	1,  // 27: loads.Shipment.type:type_name -> loads.ShipmentType
 	26, // 28: loads.Shipment.legs:type_name -> loads.ShipmentLeg
-	35, // 29: loads.Shipment.created_at:type_name -> google.protobuf.Timestamp
-	35, // 30: loads.Shipment.updated_at:type_name -> google.protobuf.Timestamp
+	37, // 29: loads.Shipment.created_at:type_name -> google.protobuf.Timestamp
+	37, // 30: loads.Shipment.updated_at:type_name -> google.protobuf.Timestamp
 	3,  // 31: loads.ShipmentLeg.stop_type:type_name -> loads.StopType
-	35, // 32: loads.ShipmentLeg.appointment_from:type_name -> google.protobuf.Timestamp
-	35, // 33: loads.ShipmentLeg.appointment_to:type_name -> google.protobuf.Timestamp
-	35, // 34: loads.ShipmentLeg.actual_arrival:type_name -> google.protobuf.Timestamp
-	35, // 35: loads.ShipmentLeg.actual_departure:type_name -> google.protobuf.Timestamp
+	37, // 32: loads.ShipmentLeg.appointment_from:type_name -> google.protobuf.Timestamp
+	37, // 33: loads.ShipmentLeg.appointment_to:type_name -> google.protobuf.Timestamp
+	37, // 34: loads.ShipmentLeg.actual_arrival:type_name -> google.protobuf.Timestamp
+	37, // 35: loads.ShipmentLeg.actual_departure:type_name -> google.protobuf.Timestamp
 	2,  // 36: loads.Trip.status:type_name -> loads.TripStatus
 	28, // 37: loads.Trip.stops:type_name -> loads.TripStop
-	35, // 38: loads.Trip.start_time:type_name -> google.protobuf.Timestamp
-	35, // 39: loads.Trip.end_time:type_name -> google.protobuf.Timestamp
-	35, // 40: loads.Trip.created_at:type_name -> google.protobuf.Timestamp
-	35, // 41: loads.Trip.updated_at:type_name -> google.protobuf.Timestamp
+	37, // 38: loads.Trip.start_time:type_name -> google.protobuf.Timestamp
+	37, // 39: loads.Trip.end_time:type_name -> google.protobuf.Timestamp
+	37, // 40: loads.Trip.created_at:type_name -> google.protobuf.Timestamp
+	37, // 41: loads.Trip.updated_at:type_name -> google.protobuf.Timestamp
 	3,  // 42: loads.TripStop.stop_type:type_name -> loads.StopType
-	35, // 43: loads.TripStop.planned_arrival:type_name -> google.protobuf.Timestamp
-	35, // 44: loads.TripStop.actual_arrival:type_name -> google.protobuf.Timestamp
-	35, // 45: loads.TripStop.planned_departure:type_name -> google.protobuf.Timestamp
-	35, // 46: loads.TripStop.actual_departure:type_name -> google.protobuf.Timestamp
+	37, // 43: loads.TripStop.planned_arrival:type_name -> google.protobuf.Timestamp
+	37, // 44: loads.TripStop.actual_arrival:type_name -> google.protobuf.Timestamp
+	37, // 45: loads.TripStop.planned_departure:type_name -> google.protobuf.Timestamp
+	37, // 46: loads.TripStop.actual_departure:type_name -> google.protobuf.Timestamp
 	4,  // 47: loads.TripStop.status:type_name -> loads.StopStatus
 	5,  // 48: loads.VehicleAssignment.vehicle_type:type_name -> loads.VehicleType
-	35, // 49: loads.VehicleAssignment.assigned_from:type_name -> google.protobuf.Timestamp
-	35, // 50: loads.VehicleAssignment.assigned_to:type_name -> google.protobuf.Timestamp
+	37, // 49: loads.VehicleAssignment.assigned_from:type_name -> google.protobuf.Timestamp
+	37, // 50: loads.VehicleAssignment.assigned_to:type_name -> google.protobuf.Timestamp
 	5,  // 51: loads.VehicleLocation.vehicle_type:type_name -> loads.VehicleType
-	35, // 52: loads.VehicleLocation.gps_time:type_name -> google.protobuf.Timestamp
+	37, // 52: loads.VehicleLocation.gps_time:type_name -> google.protobuf.Timestamp
 	8,  // 53: loads.LoadsService.GetDriverTripDetails:input_type -> loads.GetDriverTripDetailsRequest
 	11, // 54: loads.LoadsService.GetRecentBrokerIDs:input_type -> loads.GetRecentBrokerIDsRequest
 	13, // 55: loads.LoadsService.GetShipment:input_type -> loads.GetShipmentRequest
@@ -2703,19 +2800,21 @@ var file_loads_loads_proto_depIdxs = []int32{
 	24, // 61: loads.LoadsService.StreamVehicleLocations:input_type -> loads.StreamVehicleLocationsRequest
 	6,  // 62: loads.LoadsService.ResolveShipmentIDs:input_type -> loads.ShipmentFilterRequest
 	7,  // 63: loads.LoadsService.ResolveTripIDs:input_type -> loads.TripFilterRequest
-	9,  // 64: loads.LoadsService.GetDriverTripDetails:output_type -> loads.GetDriverTripDetailsResponse
-	12, // 65: loads.LoadsService.GetRecentBrokerIDs:output_type -> loads.GetRecentBrokerIDsResponse
-	14, // 66: loads.LoadsService.GetShipment:output_type -> loads.ShipmentResponse
-	16, // 67: loads.LoadsService.ListShipments:output_type -> loads.ListShipmentsResponse
-	18, // 68: loads.LoadsService.GetTrip:output_type -> loads.TripResponse
-	20, // 69: loads.LoadsService.ListTrips:output_type -> loads.ListTripsResponse
-	22, // 70: loads.LoadsService.GetVehicleAssignments:output_type -> loads.GetVehicleAssignmentsResponse
-	36, // 71: loads.LoadsService.UpdateVehicleLocation:output_type -> google.protobuf.Empty
-	30, // 72: loads.LoadsService.StreamVehicleLocations:output_type -> loads.VehicleLocation
-	37, // 73: loads.LoadsService.ResolveShipmentIDs:output_type -> filters.IDsResponse
-	37, // 74: loads.LoadsService.ResolveTripIDs:output_type -> filters.IDsResponse
-	64, // [64:75] is the sub-list for method output_type
-	53, // [53:64] is the sub-list for method input_type
+	31, // 64: loads.LoadsService.GetShipmentChatMembers:input_type -> loads.GetShipmentChatMembersRequest
+	9,  // 65: loads.LoadsService.GetDriverTripDetails:output_type -> loads.GetDriverTripDetailsResponse
+	12, // 66: loads.LoadsService.GetRecentBrokerIDs:output_type -> loads.GetRecentBrokerIDsResponse
+	14, // 67: loads.LoadsService.GetShipment:output_type -> loads.ShipmentResponse
+	16, // 68: loads.LoadsService.ListShipments:output_type -> loads.ListShipmentsResponse
+	18, // 69: loads.LoadsService.GetTrip:output_type -> loads.TripResponse
+	20, // 70: loads.LoadsService.ListTrips:output_type -> loads.ListTripsResponse
+	22, // 71: loads.LoadsService.GetVehicleAssignments:output_type -> loads.GetVehicleAssignmentsResponse
+	38, // 72: loads.LoadsService.UpdateVehicleLocation:output_type -> google.protobuf.Empty
+	30, // 73: loads.LoadsService.StreamVehicleLocations:output_type -> loads.VehicleLocation
+	39, // 74: loads.LoadsService.ResolveShipmentIDs:output_type -> filters.IDsResponse
+	39, // 75: loads.LoadsService.ResolveTripIDs:output_type -> filters.IDsResponse
+	32, // 76: loads.LoadsService.GetShipmentChatMembers:output_type -> loads.GetShipmentChatMembersResponse
+	65, // [65:77] is the sub-list for method output_type
+	53, // [53:65] is the sub-list for method input_type
 	53, // [53:53] is the sub-list for extension type_name
 	53, // [53:53] is the sub-list for extension extendee
 	0,  // [0:53] is the sub-list for field type_name
@@ -2734,7 +2833,7 @@ func file_loads_loads_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_loads_loads_proto_rawDesc), len(file_loads_loads_proto_rawDesc)),
 			NumEnums:      6,
-			NumMessages:   25,
+			NumMessages:   27,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

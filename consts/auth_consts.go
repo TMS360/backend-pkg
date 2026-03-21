@@ -49,6 +49,9 @@ func (actor *Actor) IsAdmin() bool {
 }
 
 func (actor *Actor) GetCompanyID() *uuid.UUID {
+	if actor.Claims == nil {
+		return nil
+	}
 	return actor.Claims.CompanyID
 }
 

@@ -42,6 +42,9 @@ service LoadsService {
 
   // Cross-service filtering: returns trip IDs matching the filter
   rpc ResolveTripIDs(TripFilterRequest) returns (filters.IDsResponse);
+
+  // Get chat members for a shipment (dispatchers + drivers from current trip)
+  rpc GetShipmentChatMembers(GetShipmentChatMembersRequest) returns (GetShipmentChatMembersResponse);
 }
 
 message ShipmentFilterRequest {
@@ -323,3 +326,12 @@ enum VehicleType {
   VEHICLE_TYPE_TRUCK = 1;
   VEHICLE_TYPE_TRAILER = 2;
 }
+
+message GetShipmentChatMembersRequest {
+  string shipment_id = 1;
+}
+
+message GetShipmentChatMembersResponse {
+  repeated string member_ids = 1;
+}
+

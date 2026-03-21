@@ -2,10 +2,7 @@ package outbox
 
 import (
 	"context"
-	"reflect"
-	"strings"
 
-	"github.com/TMS360/backend-pkg/eventlog/events"
 	"github.com/TMS360/backend-pkg/tmsdb"
 	"github.com/TMS360/backend-pkg/tmsdb/model"
 	"gorm.io/gorm/clause"

@@ -12,6 +12,6 @@ type TransactionManager interface {
 	// If fn returns an error, Rollback occurs; if nil, Commit occurs.
 	WithTransaction(ctx context.Context, fn func(ctx context.Context) error) error
 	GetDB(ctx context.Context) *gorm.DB
-	Publish(ctx context.Context, aggType, evtType string, aggID uuid.UUID, data interface{}) error
+	Publish(ctx context.Context, aggType, evtType string, aggID uuid.UUID, data interface{}, oldData ...interface{}) error
 	Filter(ctx context.Context, model interface{}) *FilterBuilder
 }

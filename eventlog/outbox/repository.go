@@ -3,6 +3,7 @@ package outbox
 import (
 	"context"
 	"reflect"
+	"strings"
 
 	"github.com/TMS360/backend-pkg/eventlog/events"
 	"github.com/TMS360/backend-pkg/tmsdb"
@@ -44,35 +45,4 @@ func (r *repo) DeleteBatch(ctx context.Context, ids []string) error {
 	return r.tm.GetDB(ctx).
 		Where("id IN ?", ids).
 		Delete(&model.OutboxEvent{}).Error
-}
-
-// CalculateChanges compares two structs and returns a list of changes.
-func CalculateChanges(oldVal, newVal interface{}) []events.Change {
-	var changes []events.Change
-
-	vOld := reflect.ValueOf(oldVal).Elem()
-	vNew := reflect.ValueOf(newVal).Elem()
-	typeOf := vOld.Type()
-
-	for i := 0; i < vOld.NumField(); i++ {
-		field := typeOf.Field(i)
-
-		// Skip unexported fields or fields tagged to be ignored
-		if field.PkgPath != "" {
-			continue
-		}
-
-		valOld := vOld.Field(i).Interface()
-		valNew := vNew.Field(i).Interface()
-
-		if !reflect.DeepEqual(valOld, valNew) {
-			changes = append(changes, events.Change{
-				Field:    field.Name, // Or use field.Tag.Get("json")
-				OldValue: valOld,
-				NewValue: valNew,
-			})
-		}
-	}
-
-	return changes
 }

@@ -493,26 +493,66 @@ func (fb *FilterBuilder) Enum(col string, equals, not *string, in, notIn []strin
 // ============================================================================
 
 // OR объединяет условия через OR
+//func (fb *FilterBuilder) OR(conditions ...func(*FilterBuilder)) *FilterBuilder {
+//	if len(conditions) == 0 {
+//		return fb
+//	}
+//
+//	fb.db = fb.db.Where(fb.db.Session(&gorm.Session{NewDB: true}).Scopes(func(db *gorm.DB) *gorm.DB {
+//		var result *gorm.DB
+//		for i, cond := range conditions {
+//			subDB := db.Session(&gorm.Session{NewDB: true}).Model(fb.model)
+//			subFB := &FilterBuilder{db: subDB, model: fb.model, maxLimit: fb.maxLimit}
+//			cond(subFB)
+//
+//			if i == 0 {
+//				result = subFB.db
+//			} else {
+//				result = result.Or(subFB.db)
+//			}
+//		}
+//		return result
+//	}))
+//	return fb
+//}
+
+// OR объединяет условия через OR
 func (fb *FilterBuilder) OR(conditions ...func(*FilterBuilder)) *FilterBuilder {
 	if len(conditions) == 0 {
 		return fb
 	}
 
-	fb.db = fb.db.Where(fb.db.Session(&gorm.Session{NewDB: true}).Scopes(func(db *gorm.DB) *gorm.DB {
-		var result *gorm.DB
-		for i, cond := range conditions {
-			subDB := db.Session(&gorm.Session{NewDB: true}).Model(fb.model)
-			subFB := &FilterBuilder{db: subDB, model: fb.model, maxLimit: fb.maxLimit}
-			cond(subFB)
+	var result *gorm.DB
+	for i, cond := range conditions {
+		// 1. Create a clean DB session to isolate the WHERE clauses
+		subDB := fb.db.Session(&gorm.Session{NewDB: true})
 
-			if i == 0 {
-				result = subFB.db
-			} else {
-				result = result.Or(subFB.db)
-			}
+		// 2. Safely inherit the current query context (Table or Model)
+		// This ensures subqueries like .Some() keep their "Table" context
+		// instead of getting overridden by the root model.
+		if fb.db.Statement.Table != "" {
+			subDB = subDB.Table(fb.db.Statement.Table)
+		} else if fb.db.Statement.Model != nil {
+			subDB = subDB.Model(fb.db.Statement.Model)
 		}
-		return result
-	}))
+
+		// 3. Execute the condition
+		subFB := &FilterBuilder{db: subDB, model: fb.model, maxLimit: fb.maxLimit}
+		cond(subFB)
+
+		// 4. Chain the OR logic
+		if i == 0 {
+			result = subFB.db
+		} else {
+			result = result.Or(subFB.db)
+		}
+	}
+
+	// 5. Apply the fully built OR block back to the main builder
+	if result != nil {
+		fb.db = fb.db.Where(result)
+	}
+
 	return fb
 }
 

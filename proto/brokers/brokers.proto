@@ -27,6 +27,7 @@ message CreateCompanyContactRequest {
   optional string name = 2;
   optional string email = 3;
   optional string contact_number = 4;
+  bool is_current = 5;
 }
 
 message UpdateCompanyContactRequest {

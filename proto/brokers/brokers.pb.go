@@ -30,6 +30,7 @@ type CreateCompanyContactRequest struct {
 	Name          *string                `protobuf:"bytes,2,opt,name=name,proto3,oneof" json:"name,omitempty"`
 	Email         *string                `protobuf:"bytes,3,opt,name=email,proto3,oneof" json:"email,omitempty"`
 	ContactNumber *string                `protobuf:"bytes,4,opt,name=contact_number,json=contactNumber,proto3,oneof" json:"contact_number,omitempty"`
+	IsCurrent     bool                   `protobuf:"varint,5,opt,name=is_current,json=isCurrent,proto3" json:"is_current,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -90,6 +91,13 @@ func (x *CreateCompanyContactRequest) GetContactNumber() string {
 		return *x.ContactNumber
 	}
 	return ""
+}
+
+func (x *CreateCompanyContactRequest) GetIsCurrent() bool {
+	if x != nil {
+		return x.IsCurrent
+	}
+	return false
 }
 
 type UpdateCompanyContactRequest struct {
@@ -662,13 +670,15 @@ var File_brokers_brokers_proto protoreflect.FileDescriptor
 
 const file_brokers_brokers_proto_rawDesc = "" +
 	"\n" +
-	"\x15brokers/brokers.proto\x12\abrokers\x1a\x15filters/filters.proto\"\xc2\x01\n" +
+	"\x15brokers/brokers.proto\x12\abrokers\x1a\x15filters/filters.proto\"\xe1\x01\n" +
 	"\x1bCreateCompanyContactRequest\x12\x1d\n" +
 	"\n" +
 	"company_id\x18\x01 \x01(\tR\tcompanyId\x12\x17\n" +
 	"\x04name\x18\x02 \x01(\tH\x00R\x04name\x88\x01\x01\x12\x19\n" +
 	"\x05email\x18\x03 \x01(\tH\x01R\x05email\x88\x01\x01\x12*\n" +
-	"\x0econtact_number\x18\x04 \x01(\tH\x02R\rcontactNumber\x88\x01\x01B\a\n" +
+	"\x0econtact_number\x18\x04 \x01(\tH\x02R\rcontactNumber\x88\x01\x01\x12\x1d\n" +
+	"\n" +
+	"is_current\x18\x05 \x01(\bR\tisCurrentB\a\n" +
 	"\x05_nameB\b\n" +
 	"\x06_emailB\x11\n" +
 	"\x0f_contact_number\"\xe6\x01\n" +

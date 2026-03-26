@@ -51,6 +51,13 @@ func (b BillingType) String() string {
 	return string(b)
 }
 
+type AddressType string
+
+const (
+	AddressTypePhysical AddressType = "Physical/Mailing"
+	AddressBilling      AddressType = "Billing"
+)
+
 // PaymentMethodType enum for payment methods
 type PaymentMethodType string
 

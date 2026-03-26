@@ -22,7 +22,7 @@ func NewCompanyInvalidEntityError(status int, entity, actualEntity string) *Comp
 
 // Error satisfies the error interface with a dynamic message
 func (e *CompanyInvalidEntityError) Error() string {
-	return fmt.Sprintf("entity must be %s to sign up: %s", strings.ToUpper(e.Entity), e.ActualEntity)
+	return fmt.Sprintf("entity must be %s: %s", strings.ToUpper(e.Entity), e.ActualEntity)
 }
 
 // Unwrap allows errors.Is and errors.As to see the underlying error

@@ -134,15 +134,7 @@ func parseAuthToken(authHeader string, publicKey *rsa.PublicKey) (*consts.Actor,
 		return nil, errors.New("failed to cast user claims")
 	}
 
-	claims.RolesMap = make(map[string]struct{}, len(claims.Roles))
-	for _, r := range claims.Roles {
-		claims.RolesMap[r] = struct{}{}
-	}
-
-	claims.PermissionsMap = make(map[string]struct{}, len(claims.Permissions))
-	for _, p := range claims.Permissions {
-		claims.PermissionsMap[p] = struct{}{}
-	}
+	claims.PopulateMaps()
 
 	return &consts.Actor{
 		ID:      claims.UserID,

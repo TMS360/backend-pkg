@@ -73,3 +73,17 @@ type UserClaims struct {
 	// Embed Standard/Registered claims for standard fields like exp, iat, iss
 	jwt.RegisteredClaims
 }
+
+// PopulateMaps hydrates the fast-lookup maps from the string slices.
+// Call this AFTER parsing a JWT or BEFORE injecting into an internal Go context.
+func (c *UserClaims) PopulateMaps() {
+	c.RolesMap = make(map[string]struct{}, len(c.Roles))
+	for _, r := range c.Roles {
+		c.RolesMap[r] = struct{}{}
+	}
+
+	c.PermissionsMap = make(map[string]struct{}, len(c.Permissions))
+	for _, p := range c.Permissions {
+		c.PermissionsMap[p] = struct{}{}
+	}
+}

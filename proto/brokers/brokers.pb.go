@@ -24,258 +24,6 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-type CreateCompanyContactRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	CompanyId     string                 `protobuf:"bytes,1,opt,name=company_id,json=companyId,proto3" json:"company_id,omitempty"`
-	Name          *string                `protobuf:"bytes,2,opt,name=name,proto3,oneof" json:"name,omitempty"`
-	Email         *string                `protobuf:"bytes,3,opt,name=email,proto3,oneof" json:"email,omitempty"`
-	ContactNumber *string                `protobuf:"bytes,4,opt,name=contact_number,json=contactNumber,proto3,oneof" json:"contact_number,omitempty"`
-	IsCurrent     bool                   `protobuf:"varint,5,opt,name=is_current,json=isCurrent,proto3" json:"is_current,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *CreateCompanyContactRequest) Reset() {
-	*x = CreateCompanyContactRequest{}
-	mi := &file_brokers_brokers_proto_msgTypes[0]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *CreateCompanyContactRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*CreateCompanyContactRequest) ProtoMessage() {}
-
-func (x *CreateCompanyContactRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_brokers_brokers_proto_msgTypes[0]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use CreateCompanyContactRequest.ProtoReflect.Descriptor instead.
-func (*CreateCompanyContactRequest) Descriptor() ([]byte, []int) {
-	return file_brokers_brokers_proto_rawDescGZIP(), []int{0}
-}
-
-func (x *CreateCompanyContactRequest) GetCompanyId() string {
-	if x != nil {
-		return x.CompanyId
-	}
-	return ""
-}
-
-func (x *CreateCompanyContactRequest) GetName() string {
-	if x != nil && x.Name != nil {
-		return *x.Name
-	}
-	return ""
-}
-
-func (x *CreateCompanyContactRequest) GetEmail() string {
-	if x != nil && x.Email != nil {
-		return *x.Email
-	}
-	return ""
-}
-
-func (x *CreateCompanyContactRequest) GetContactNumber() string {
-	if x != nil && x.ContactNumber != nil {
-		return *x.ContactNumber
-	}
-	return ""
-}
-
-func (x *CreateCompanyContactRequest) GetIsCurrent() bool {
-	if x != nil {
-		return x.IsCurrent
-	}
-	return false
-}
-
-type UpdateCompanyContactRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	Name          *string                `protobuf:"bytes,2,opt,name=name,proto3,oneof" json:"name,omitempty"`
-	Email         *string                `protobuf:"bytes,3,opt,name=email,proto3,oneof" json:"email,omitempty"`
-	ContactNumber *string                `protobuf:"bytes,4,opt,name=contact_number,json=contactNumber,proto3,oneof" json:"contact_number,omitempty"`
-	IsCurrent     *bool                  `protobuf:"varint,5,opt,name=is_current,json=isCurrent,proto3,oneof" json:"is_current,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *UpdateCompanyContactRequest) Reset() {
-	*x = UpdateCompanyContactRequest{}
-	mi := &file_brokers_brokers_proto_msgTypes[1]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *UpdateCompanyContactRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*UpdateCompanyContactRequest) ProtoMessage() {}
-
-func (x *UpdateCompanyContactRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_brokers_brokers_proto_msgTypes[1]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use UpdateCompanyContactRequest.ProtoReflect.Descriptor instead.
-func (*UpdateCompanyContactRequest) Descriptor() ([]byte, []int) {
-	return file_brokers_brokers_proto_rawDescGZIP(), []int{1}
-}
-
-func (x *UpdateCompanyContactRequest) GetId() string {
-	if x != nil {
-		return x.Id
-	}
-	return ""
-}
-
-func (x *UpdateCompanyContactRequest) GetName() string {
-	if x != nil && x.Name != nil {
-		return *x.Name
-	}
-	return ""
-}
-
-func (x *UpdateCompanyContactRequest) GetEmail() string {
-	if x != nil && x.Email != nil {
-		return *x.Email
-	}
-	return ""
-}
-
-func (x *UpdateCompanyContactRequest) GetContactNumber() string {
-	if x != nil && x.ContactNumber != nil {
-		return *x.ContactNumber
-	}
-	return ""
-}
-
-func (x *UpdateCompanyContactRequest) GetIsCurrent() bool {
-	if x != nil && x.IsCurrent != nil {
-		return *x.IsCurrent
-	}
-	return false
-}
-
-type CompanyContactResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	CompanyId     string                 `protobuf:"bytes,2,opt,name=company_id,json=companyId,proto3" json:"company_id,omitempty"`
-	Name          *string                `protobuf:"bytes,3,opt,name=name,proto3,oneof" json:"name,omitempty"`
-	Email         *string                `protobuf:"bytes,4,opt,name=email,proto3,oneof" json:"email,omitempty"`
-	ContactNumber *string                `protobuf:"bytes,5,opt,name=contact_number,json=contactNumber,proto3,oneof" json:"contact_number,omitempty"`
-	IsCurrent     bool                   `protobuf:"varint,6,opt,name=is_current,json=isCurrent,proto3" json:"is_current,omitempty"`
-	CreatedAt     string                 `protobuf:"bytes,7,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
-	UpdatedAt     string                 `protobuf:"bytes,8,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *CompanyContactResponse) Reset() {
-	*x = CompanyContactResponse{}
-	mi := &file_brokers_brokers_proto_msgTypes[2]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *CompanyContactResponse) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*CompanyContactResponse) ProtoMessage() {}
-
-func (x *CompanyContactResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_brokers_brokers_proto_msgTypes[2]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use CompanyContactResponse.ProtoReflect.Descriptor instead.
-func (*CompanyContactResponse) Descriptor() ([]byte, []int) {
-	return file_brokers_brokers_proto_rawDescGZIP(), []int{2}
-}
-
-func (x *CompanyContactResponse) GetId() string {
-	if x != nil {
-		return x.Id
-	}
-	return ""
-}
-
-func (x *CompanyContactResponse) GetCompanyId() string {
-	if x != nil {
-		return x.CompanyId
-	}
-	return ""
-}
-
-func (x *CompanyContactResponse) GetName() string {
-	if x != nil && x.Name != nil {
-		return *x.Name
-	}
-	return ""
-}
-
-func (x *CompanyContactResponse) GetEmail() string {
-	if x != nil && x.Email != nil {
-		return *x.Email
-	}
-	return ""
-}
-
-func (x *CompanyContactResponse) GetContactNumber() string {
-	if x != nil && x.ContactNumber != nil {
-		return *x.ContactNumber
-	}
-	return ""
-}
-
-func (x *CompanyContactResponse) GetIsCurrent() bool {
-	if x != nil {
-		return x.IsCurrent
-	}
-	return false
-}
-
-func (x *CompanyContactResponse) GetCreatedAt() string {
-	if x != nil {
-		return x.CreatedAt
-	}
-	return ""
-}
-
-func (x *CompanyContactResponse) GetUpdatedAt() string {
-	if x != nil {
-		return x.UpdatedAt
-	}
-	return ""
-}
-
 type BrokerFilter struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	CompanyName   *filters.StringFilter  `protobuf:"bytes,1,opt,name=company_name,json=companyName,proto3" json:"company_name,omitempty"`
@@ -288,7 +36,7 @@ type BrokerFilter struct {
 
 func (x *BrokerFilter) Reset() {
 	*x = BrokerFilter{}
-	mi := &file_brokers_brokers_proto_msgTypes[3]
+	mi := &file_brokers_brokers_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -300,7 +48,7 @@ func (x *BrokerFilter) String() string {
 func (*BrokerFilter) ProtoMessage() {}
 
 func (x *BrokerFilter) ProtoReflect() protoreflect.Message {
-	mi := &file_brokers_brokers_proto_msgTypes[3]
+	mi := &file_brokers_brokers_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -313,7 +61,7 @@ func (x *BrokerFilter) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use BrokerFilter.ProtoReflect.Descriptor instead.
 func (*BrokerFilter) Descriptor() ([]byte, []int) {
-	return file_brokers_brokers_proto_rawDescGZIP(), []int{3}
+	return file_brokers_brokers_proto_rawDescGZIP(), []int{0}
 }
 
 func (x *BrokerFilter) GetCompanyName() *filters.StringFilter {
@@ -356,7 +104,7 @@ type Broker struct {
 
 func (x *Broker) Reset() {
 	*x = Broker{}
-	mi := &file_brokers_brokers_proto_msgTypes[4]
+	mi := &file_brokers_brokers_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -368,7 +116,7 @@ func (x *Broker) String() string {
 func (*Broker) ProtoMessage() {}
 
 func (x *Broker) ProtoReflect() protoreflect.Message {
-	mi := &file_brokers_brokers_proto_msgTypes[4]
+	mi := &file_brokers_brokers_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -381,7 +129,7 @@ func (x *Broker) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Broker.ProtoReflect.Descriptor instead.
 func (*Broker) Descriptor() ([]byte, []int) {
-	return file_brokers_brokers_proto_rawDescGZIP(), []int{4}
+	return file_brokers_brokers_proto_rawDescGZIP(), []int{1}
 }
 
 func (x *Broker) GetId() string {
@@ -421,7 +169,7 @@ type GetBrokersRequest struct {
 
 func (x *GetBrokersRequest) Reset() {
 	*x = GetBrokersRequest{}
-	mi := &file_brokers_brokers_proto_msgTypes[5]
+	mi := &file_brokers_brokers_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -433,7 +181,7 @@ func (x *GetBrokersRequest) String() string {
 func (*GetBrokersRequest) ProtoMessage() {}
 
 func (x *GetBrokersRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_brokers_brokers_proto_msgTypes[5]
+	mi := &file_brokers_brokers_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -446,7 +194,7 @@ func (x *GetBrokersRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetBrokersRequest.ProtoReflect.Descriptor instead.
 func (*GetBrokersRequest) Descriptor() ([]byte, []int) {
-	return file_brokers_brokers_proto_rawDescGZIP(), []int{5}
+	return file_brokers_brokers_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *GetBrokersRequest) GetBrokerIds() []string {
@@ -465,7 +213,7 @@ type GetBrokersResponse struct {
 
 func (x *GetBrokersResponse) Reset() {
 	*x = GetBrokersResponse{}
-	mi := &file_brokers_brokers_proto_msgTypes[6]
+	mi := &file_brokers_brokers_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -477,7 +225,7 @@ func (x *GetBrokersResponse) String() string {
 func (*GetBrokersResponse) ProtoMessage() {}
 
 func (x *GetBrokersResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_brokers_brokers_proto_msgTypes[6]
+	mi := &file_brokers_brokers_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -490,7 +238,7 @@ func (x *GetBrokersResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetBrokersResponse.ProtoReflect.Descriptor instead.
 func (*GetBrokersResponse) Descriptor() ([]byte, []int) {
-	return file_brokers_brokers_proto_rawDescGZIP(), []int{6}
+	return file_brokers_brokers_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *GetBrokersResponse) GetBrokers() []*Broker {
@@ -511,7 +259,7 @@ type GetOrCreateByMCRequest struct {
 
 func (x *GetOrCreateByMCRequest) Reset() {
 	*x = GetOrCreateByMCRequest{}
-	mi := &file_brokers_brokers_proto_msgTypes[7]
+	mi := &file_brokers_brokers_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -523,7 +271,7 @@ func (x *GetOrCreateByMCRequest) String() string {
 func (*GetOrCreateByMCRequest) ProtoMessage() {}
 
 func (x *GetOrCreateByMCRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_brokers_brokers_proto_msgTypes[7]
+	mi := &file_brokers_brokers_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -536,7 +284,7 @@ func (x *GetOrCreateByMCRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetOrCreateByMCRequest.ProtoReflect.Descriptor instead.
 func (*GetOrCreateByMCRequest) Descriptor() ([]byte, []int) {
-	return file_brokers_brokers_proto_rawDescGZIP(), []int{7}
+	return file_brokers_brokers_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *GetOrCreateByMCRequest) GetMcNumber() string {
@@ -564,7 +312,7 @@ type GetOrCreateByDOTRequest struct {
 
 func (x *GetOrCreateByDOTRequest) Reset() {
 	*x = GetOrCreateByDOTRequest{}
-	mi := &file_brokers_brokers_proto_msgTypes[8]
+	mi := &file_brokers_brokers_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -576,7 +324,7 @@ func (x *GetOrCreateByDOTRequest) String() string {
 func (*GetOrCreateByDOTRequest) ProtoMessage() {}
 
 func (x *GetOrCreateByDOTRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_brokers_brokers_proto_msgTypes[8]
+	mi := &file_brokers_brokers_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -589,7 +337,7 @@ func (x *GetOrCreateByDOTRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetOrCreateByDOTRequest.ProtoReflect.Descriptor instead.
 func (*GetOrCreateByDOTRequest) Descriptor() ([]byte, []int) {
-	return file_brokers_brokers_proto_rawDescGZIP(), []int{8}
+	return file_brokers_brokers_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *GetOrCreateByDOTRequest) GetDotNumber() string {
@@ -617,7 +365,7 @@ type GetOrCreateResponse struct {
 
 func (x *GetOrCreateResponse) Reset() {
 	*x = GetOrCreateResponse{}
-	mi := &file_brokers_brokers_proto_msgTypes[9]
+	mi := &file_brokers_brokers_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -629,7 +377,7 @@ func (x *GetOrCreateResponse) String() string {
 func (*GetOrCreateResponse) ProtoMessage() {}
 
 func (x *GetOrCreateResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_brokers_brokers_proto_msgTypes[9]
+	mi := &file_brokers_brokers_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -642,7 +390,7 @@ func (x *GetOrCreateResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetOrCreateResponse.ProtoReflect.Descriptor instead.
 func (*GetOrCreateResponse) Descriptor() ([]byte, []int) {
-	return file_brokers_brokers_proto_rawDescGZIP(), []int{9}
+	return file_brokers_brokers_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *GetOrCreateResponse) GetBrokerId() string {
@@ -670,45 +418,7 @@ var File_brokers_brokers_proto protoreflect.FileDescriptor
 
 const file_brokers_brokers_proto_rawDesc = "" +
 	"\n" +
-	"\x15brokers/brokers.proto\x12\abrokers\x1a\x15filters/filters.proto\"\xe1\x01\n" +
-	"\x1bCreateCompanyContactRequest\x12\x1d\n" +
-	"\n" +
-	"company_id\x18\x01 \x01(\tR\tcompanyId\x12\x17\n" +
-	"\x04name\x18\x02 \x01(\tH\x00R\x04name\x88\x01\x01\x12\x19\n" +
-	"\x05email\x18\x03 \x01(\tH\x01R\x05email\x88\x01\x01\x12*\n" +
-	"\x0econtact_number\x18\x04 \x01(\tH\x02R\rcontactNumber\x88\x01\x01\x12\x1d\n" +
-	"\n" +
-	"is_current\x18\x05 \x01(\bR\tisCurrentB\a\n" +
-	"\x05_nameB\b\n" +
-	"\x06_emailB\x11\n" +
-	"\x0f_contact_number\"\xe6\x01\n" +
-	"\x1bUpdateCompanyContactRequest\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\tR\x02id\x12\x17\n" +
-	"\x04name\x18\x02 \x01(\tH\x00R\x04name\x88\x01\x01\x12\x19\n" +
-	"\x05email\x18\x03 \x01(\tH\x01R\x05email\x88\x01\x01\x12*\n" +
-	"\x0econtact_number\x18\x04 \x01(\tH\x02R\rcontactNumber\x88\x01\x01\x12\"\n" +
-	"\n" +
-	"is_current\x18\x05 \x01(\bH\x03R\tisCurrent\x88\x01\x01B\a\n" +
-	"\x05_nameB\b\n" +
-	"\x06_emailB\x11\n" +
-	"\x0f_contact_numberB\r\n" +
-	"\v_is_current\"\xaa\x02\n" +
-	"\x16CompanyContactResponse\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1d\n" +
-	"\n" +
-	"company_id\x18\x02 \x01(\tR\tcompanyId\x12\x17\n" +
-	"\x04name\x18\x03 \x01(\tH\x00R\x04name\x88\x01\x01\x12\x19\n" +
-	"\x05email\x18\x04 \x01(\tH\x01R\x05email\x88\x01\x01\x12*\n" +
-	"\x0econtact_number\x18\x05 \x01(\tH\x02R\rcontactNumber\x88\x01\x01\x12\x1d\n" +
-	"\n" +
-	"is_current\x18\x06 \x01(\bR\tisCurrent\x12\x1d\n" +
-	"\n" +
-	"created_at\x18\a \x01(\tR\tcreatedAt\x12\x1d\n" +
-	"\n" +
-	"updated_at\x18\b \x01(\tR\tupdatedAtB\a\n" +
-	"\x05_nameB\b\n" +
-	"\x06_emailB\x11\n" +
-	"\x0f_contact_number\"\xda\x01\n" +
+	"\x15brokers/brokers.proto\x12\abrokers\x1a\x15filters/filters.proto\"\xda\x01\n" +
 	"\fBrokerFilter\x128\n" +
 	"\fcompany_name\x18\x01 \x01(\v2\x15.filters.StringFilterR\vcompanyName\x122\n" +
 	"\tmc_number\x18\x02 \x01(\v2\x15.filters.StringFilterR\bmcNumber\x124\n" +
@@ -738,16 +448,14 @@ const file_brokers_brokers_proto_rawDesc = "" +
 	"\tbroker_id\x18\x01 \x01(\tR\bbrokerId\x12\x1f\n" +
 	"\vwas_created\x18\x02 \x01(\bR\n" +
 	"wasCreated\x12'\n" +
-	"\x06broker\x18\x03 \x01(\v2\x0f.brokers.BrokerR\x06broker2\xf5\x03\n" +
+	"\x06broker\x18\x03 \x01(\v2\x0f.brokers.BrokerR\x06broker2\xb7\x02\n" +
 	"\rBrokerService\x12E\n" +
 	"\n" +
 	"GetBrokers\x12\x1a.brokers.GetBrokersRequest\x1a\x1b.brokers.GetBrokersResponse\x12P\n" +
 	"\x0fGetOrCreateByMC\x12\x1f.brokers.GetOrCreateByMCRequest\x1a\x1c.brokers.GetOrCreateResponse\x12R\n" +
 	"\x10GetOrCreateByDOT\x12 .brokers.GetOrCreateByDOTRequest\x1a\x1c.brokers.GetOrCreateResponse\x129\n" +
 	"\n" +
-	"ResolveIDs\x12\x15.brokers.BrokerFilter\x1a\x14.filters.IDsResponse\x12]\n" +
-	"\x14CreateCompanyContact\x12$.brokers.CreateCompanyContactRequest\x1a\x1f.brokers.CompanyContactResponse\x12]\n" +
-	"\x14UpdateCompanyContact\x12$.brokers.UpdateCompanyContactRequest\x1a\x1f.brokers.CompanyContactResponseB-Z+github.com/TMS360/backend-pkg/proto/brokersb\x06proto3"
+	"ResolveIDs\x12\x15.brokers.BrokerFilter\x1a\x14.filters.IDsResponseB-Z+github.com/TMS360/backend-pkg/proto/brokersb\x06proto3"
 
 var (
 	file_brokers_brokers_proto_rawDescOnce sync.Once
@@ -761,44 +469,37 @@ func file_brokers_brokers_proto_rawDescGZIP() []byte {
 	return file_brokers_brokers_proto_rawDescData
 }
 
-var file_brokers_brokers_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
+var file_brokers_brokers_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
 var file_brokers_brokers_proto_goTypes = []any{
-	(*CreateCompanyContactRequest)(nil), // 0: brokers.CreateCompanyContactRequest
-	(*UpdateCompanyContactRequest)(nil), // 1: brokers.UpdateCompanyContactRequest
-	(*CompanyContactResponse)(nil),      // 2: brokers.CompanyContactResponse
-	(*BrokerFilter)(nil),                // 3: brokers.BrokerFilter
-	(*Broker)(nil),                      // 4: brokers.Broker
-	(*GetBrokersRequest)(nil),           // 5: brokers.GetBrokersRequest
-	(*GetBrokersResponse)(nil),          // 6: brokers.GetBrokersResponse
-	(*GetOrCreateByMCRequest)(nil),      // 7: brokers.GetOrCreateByMCRequest
-	(*GetOrCreateByDOTRequest)(nil),     // 8: brokers.GetOrCreateByDOTRequest
-	(*GetOrCreateResponse)(nil),         // 9: brokers.GetOrCreateResponse
-	(*filters.StringFilter)(nil),        // 10: filters.StringFilter
-	(*filters.IDsResponse)(nil),         // 11: filters.IDsResponse
+	(*BrokerFilter)(nil),            // 0: brokers.BrokerFilter
+	(*Broker)(nil),                  // 1: brokers.Broker
+	(*GetBrokersRequest)(nil),       // 2: brokers.GetBrokersRequest
+	(*GetBrokersResponse)(nil),      // 3: brokers.GetBrokersResponse
+	(*GetOrCreateByMCRequest)(nil),  // 4: brokers.GetOrCreateByMCRequest
+	(*GetOrCreateByDOTRequest)(nil), // 5: brokers.GetOrCreateByDOTRequest
+	(*GetOrCreateResponse)(nil),     // 6: brokers.GetOrCreateResponse
+	(*filters.StringFilter)(nil),    // 7: filters.StringFilter
+	(*filters.IDsResponse)(nil),     // 8: filters.IDsResponse
 }
 var file_brokers_brokers_proto_depIdxs = []int32{
-	10, // 0: brokers.BrokerFilter.company_name:type_name -> filters.StringFilter
-	10, // 1: brokers.BrokerFilter.mc_number:type_name -> filters.StringFilter
-	10, // 2: brokers.BrokerFilter.dot_number:type_name -> filters.StringFilter
-	4,  // 3: brokers.GetBrokersResponse.brokers:type_name -> brokers.Broker
-	4,  // 4: brokers.GetOrCreateResponse.broker:type_name -> brokers.Broker
-	5,  // 5: brokers.BrokerService.GetBrokers:input_type -> brokers.GetBrokersRequest
-	7,  // 6: brokers.BrokerService.GetOrCreateByMC:input_type -> brokers.GetOrCreateByMCRequest
-	8,  // 7: brokers.BrokerService.GetOrCreateByDOT:input_type -> brokers.GetOrCreateByDOTRequest
-	3,  // 8: brokers.BrokerService.ResolveIDs:input_type -> brokers.BrokerFilter
-	0,  // 9: brokers.BrokerService.CreateCompanyContact:input_type -> brokers.CreateCompanyContactRequest
-	1,  // 10: brokers.BrokerService.UpdateCompanyContact:input_type -> brokers.UpdateCompanyContactRequest
-	6,  // 11: brokers.BrokerService.GetBrokers:output_type -> brokers.GetBrokersResponse
-	9,  // 12: brokers.BrokerService.GetOrCreateByMC:output_type -> brokers.GetOrCreateResponse
-	9,  // 13: brokers.BrokerService.GetOrCreateByDOT:output_type -> brokers.GetOrCreateResponse
-	11, // 14: brokers.BrokerService.ResolveIDs:output_type -> filters.IDsResponse
-	2,  // 15: brokers.BrokerService.CreateCompanyContact:output_type -> brokers.CompanyContactResponse
-	2,  // 16: brokers.BrokerService.UpdateCompanyContact:output_type -> brokers.CompanyContactResponse
-	11, // [11:17] is the sub-list for method output_type
-	5,  // [5:11] is the sub-list for method input_type
-	5,  // [5:5] is the sub-list for extension type_name
-	5,  // [5:5] is the sub-list for extension extendee
-	0,  // [0:5] is the sub-list for field type_name
+	7, // 0: brokers.BrokerFilter.company_name:type_name -> filters.StringFilter
+	7, // 1: brokers.BrokerFilter.mc_number:type_name -> filters.StringFilter
+	7, // 2: brokers.BrokerFilter.dot_number:type_name -> filters.StringFilter
+	1, // 3: brokers.GetBrokersResponse.brokers:type_name -> brokers.Broker
+	1, // 4: brokers.GetOrCreateResponse.broker:type_name -> brokers.Broker
+	2, // 5: brokers.BrokerService.GetBrokers:input_type -> brokers.GetBrokersRequest
+	4, // 6: brokers.BrokerService.GetOrCreateByMC:input_type -> brokers.GetOrCreateByMCRequest
+	5, // 7: brokers.BrokerService.GetOrCreateByDOT:input_type -> brokers.GetOrCreateByDOTRequest
+	0, // 8: brokers.BrokerService.ResolveIDs:input_type -> brokers.BrokerFilter
+	3, // 9: brokers.BrokerService.GetBrokers:output_type -> brokers.GetBrokersResponse
+	6, // 10: brokers.BrokerService.GetOrCreateByMC:output_type -> brokers.GetOrCreateResponse
+	6, // 11: brokers.BrokerService.GetOrCreateByDOT:output_type -> brokers.GetOrCreateResponse
+	8, // 12: brokers.BrokerService.ResolveIDs:output_type -> filters.IDsResponse
+	9, // [9:13] is the sub-list for method output_type
+	5, // [5:9] is the sub-list for method input_type
+	5, // [5:5] is the sub-list for extension type_name
+	5, // [5:5] is the sub-list for extension extendee
+	0, // [0:5] is the sub-list for field type_name
 }
 
 func init() { file_brokers_brokers_proto_init() }
@@ -807,16 +508,13 @@ func file_brokers_brokers_proto_init() {
 		return
 	}
 	file_brokers_brokers_proto_msgTypes[0].OneofWrappers = []any{}
-	file_brokers_brokers_proto_msgTypes[1].OneofWrappers = []any{}
-	file_brokers_brokers_proto_msgTypes[2].OneofWrappers = []any{}
-	file_brokers_brokers_proto_msgTypes[3].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_brokers_brokers_proto_rawDesc), len(file_brokers_brokers_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   10,
+			NumMessages:   7,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

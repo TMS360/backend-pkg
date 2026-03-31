@@ -10,7 +10,7 @@ import (
 	"github.com/TMS360/backend-pkg/middleware"
 )
 
-func AuthDirective(ctx context.Context, obj interface{}, next graphql.Resolver) (interface{}, error) {
+func AuthDirective(ctx context.Context, obj interface{}, next graphql.Resolver, actorTypes []string) (interface{}, error) {
 	actor, err := middleware.GetActor(ctx)
 	if err != nil {
 		return nil, consts.ErrUnauthorized
@@ -18,6 +18,24 @@ func AuthDirective(ctx context.Context, obj interface{}, next graphql.Resolver) 
 
 	if actor.IsGuest {
 		return nil, consts.ErrUnauthorized
+	}
+
+	if len(actorTypes) > 0 {
+		isAllowed := false
+		currentType := string(actor.Claims.ActorType)
+
+		for _, allowedType := range actorTypes {
+			// e.g., allowedType == "courier", currentType == "courier"
+			if currentType == allowedType {
+				isAllowed = true
+				break
+			}
+		}
+
+		if !isAllowed {
+			// Optional: Create a consts.ErrForbidden for cleaner error handling
+			return nil, fmt.Errorf("forbidden: actor type '%s' does not have access", currentType)
+		}
 	}
 
 	return next(ctx)

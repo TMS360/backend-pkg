@@ -1,13 +1,11 @@
 package enums
 
-import "fmt"
-
 // CustomerType enum for company customer types
 type CustomerType string
 
 const (
-	CustomerTypeBroker  CustomerType = "Broker"
-	CustomerTypeShipper CustomerType = "Shipper"
+	CustomerTypeBroker  CustomerType = "BROKER"
+	CustomerTypeShipper CustomerType = "SHIPPER"
 )
 
 // IsValid checks if the customer type is valid
@@ -29,11 +27,11 @@ func (c CustomerType) String() string {
 type BillingType string
 
 const (
-	BillingTypeFactoringCompany BillingType = "Factoring company"
-	BillingTypeEmail            BillingType = "Email"
-	BillingTypeManual           BillingType = "Manual"
-	BillingTypeWebPortal        BillingType = "Web-site portal"
-	BillingTypeEdi              BillingType = "Edi"
+	BillingTypeFactoringCompany BillingType = "FACTORING_COMPANY"
+	BillingTypeEmail            BillingType = "EMAIL"
+	BillingTypeManual           BillingType = "MANUAL"
+	BillingTypeWebPortal        BillingType = "WEB_PORTAL"
+	BillingTypeEdi              BillingType = "EDI"
 )
 
 // IsValid checks if the billing type is valid
@@ -54,20 +52,20 @@ func (b BillingType) String() string {
 type AddressType string
 
 const (
-	AddressTypePhysical AddressType = "Physical/Mailing"
-	AddressBilling      AddressType = "Billing"
+	AddressTypePhysical AddressType = "PHYSICAL_MAILING"
+	AddressBilling      AddressType = "BILLING"
 )
 
 // PaymentMethodType enum for payment methods
 type PaymentMethodType string
 
 const (
-	PaymentMethodOther     PaymentMethodType = "Other"
-	PaymentMethodBank      PaymentMethodType = "Bank"
-	PaymentMethodZelle     PaymentMethodType = "Zelle"
-	PaymentMethodFactoring PaymentMethodType = "Factoring"
-	PaymentMethodCash      PaymentMethodType = "Cash"
-	PaymentMethodCustomer  PaymentMethodType = "Customer"
+	PaymentMethodOther     PaymentMethodType = "OTHER"
+	PaymentMethodBank      PaymentMethodType = "BANK"
+	PaymentMethodZelle     PaymentMethodType = "ZELLE"
+	PaymentMethodFactoring PaymentMethodType = "FACTORING"
+	PaymentMethodCash      PaymentMethodType = "CASH"
+	PaymentMethodCustomer  PaymentMethodType = "CUSTOMER"
 )
 
 // IsValid checks if the payment method is valid
@@ -90,11 +88,11 @@ func (p PaymentMethodType) String() string {
 type WarningType string
 
 const (
-	WarningTypeDoNotWork       WarningType = "Do Not Work!"
-	WarningTypeWorkWithCaution WarningType = "Work with Caution"
-	WarningTypeTemporaryHold   WarningType = "Temporary Hold"
-	WarningTypeReviewRequired  WarningType = "Review Required"
-	WarningTypeBlacklist       WarningType = "Blacklist"
+	WarningTypeDoNotWork       WarningType = "DO_NOT_WORK"
+	WarningTypeWorkWithCaution WarningType = "WORK_WITH_CAUTION"
+	WarningTypeTemporaryHold   WarningType = "TEMPORARY_HOLD"
+	WarningTypeReviewRequired  WarningType = "REVIEW_REQUIRED"
+	WarningTypeBlacklist       WarningType = "BLACKLIST"
 )
 
 // IsValid checks if the warning type is valid
@@ -111,84 +109,4 @@ func (w WarningType) IsValid() bool {
 // String returns string representation
 func (w WarningType) String() string {
 	return string(w)
-}
-
-// Scan implements the sql.Scanner interface for CustomerType
-func (c *CustomerType) Scan(value interface{}) error {
-	if value == nil {
-		return nil
-	}
-	switch v := value.(type) {
-	case string:
-		*c = CustomerType(v)
-	case []byte:
-		*c = CustomerType(v)
-	default:
-		return fmt.Errorf("cannot scan %T into CustomerType", value)
-	}
-	return nil
-}
-
-// Scan implements the sql.Scanner interface for CompanyStatus
-func (s *CompanyStatus) Scan(value interface{}) error {
-	if value == nil {
-		return nil
-	}
-	switch v := value.(type) {
-	case string:
-		*s = CompanyStatus(v)
-	case []byte:
-		*s = CompanyStatus(v)
-	default:
-		return fmt.Errorf("cannot scan %T into CompanyStatus", value)
-	}
-	return nil
-}
-
-// Scan implements the sql.Scanner interface for BillingType
-func (b *BillingType) Scan(value interface{}) error {
-	if value == nil {
-		return nil
-	}
-	switch v := value.(type) {
-	case string:
-		*b = BillingType(v)
-	case []byte:
-		*b = BillingType(v)
-	default:
-		return fmt.Errorf("cannot scan %T into BillingType", value)
-	}
-	return nil
-}
-
-// Scan implements the sql.Scanner interface for PaymentMethodType
-func (p *PaymentMethodType) Scan(value interface{}) error {
-	if value == nil {
-		return nil
-	}
-	switch v := value.(type) {
-	case string:
-		*p = PaymentMethodType(v)
-	case []byte:
-		*p = PaymentMethodType(v)
-	default:
-		return fmt.Errorf("cannot scan %T into PaymentMethodType", value)
-	}
-	return nil
-}
-
-// Scan implements the sql.Scanner interface for WarningType
-func (w *WarningType) Scan(value interface{}) error {
-	if value == nil {
-		return nil
-	}
-	switch v := value.(type) {
-	case string:
-		*w = WarningType(v)
-	case []byte:
-		*w = WarningType(v)
-	default:
-		return fmt.Errorf("cannot scan %T into WarningType", value)
-	}
-	return nil
 }

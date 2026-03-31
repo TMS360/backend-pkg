@@ -67,7 +67,7 @@ func (s *Service) Create(ctx context.Context, input CreateInput) (*SavedFilter, 
 		return nil, ErrAccessDenied
 	}
 
-	count, err := s.repo.CountByUserAndEntity(ctx, actor.Claims.UserID, input.EntityType)
+	count, err := s.repo.CountByUserAndEntity(ctx, actor.Claims.UserID, input.Entity)
 	if err != nil {
 		return nil, err
 	}
@@ -76,10 +76,10 @@ func (s *Service) Create(ctx context.Context, input CreateInput) (*SavedFilter, 
 	}
 
 	filter := &SavedFilter{
-		UserID:     actor.Claims.UserID,
-		EntityType: input.EntityType,
-		Name:       input.Name,
-		Filter:     input.Filter,
+		UserID: actor.Claims.UserID,
+		Entity: input.Entity,
+		Name:   input.Name,
+		Filter: input.Filter,
 	}
 
 	if err := s.repo.Create(ctx, filter); err != nil {
@@ -168,7 +168,7 @@ func (s *Service) GetByID(ctx context.Context, id uuid.UUID) (*SavedFilterWithCo
 	}
 
 	var count int64
-	if countFn := s.getCountFunc(filter.EntityType); countFn != nil {
+	if countFn := s.getCountFunc(filter.Entity); countFn != nil {
 		count, err = countFn(ctx, filter.Filter)
 		if err != nil {
 			return nil, err

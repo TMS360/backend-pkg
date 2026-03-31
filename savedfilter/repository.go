@@ -26,7 +26,7 @@ func NewRepository(tm tmsdb.TransactionManager) Repository {
 func (r *repository) ListByUserAndEntity(ctx context.Context, userID uuid.UUID, entityType string) ([]*SavedFilter, error) {
 	var filters []*SavedFilter
 	err := r.TM().GetDB(ctx).
-		Where("user_id = ? AND entity_type = ?", userID, entityType).
+		Where("user_id = ? AND entity = ?", userID, entityType).
 		Order("created_at DESC").
 		Find(&filters).Error
 	if err != nil {
@@ -39,7 +39,7 @@ func (r *repository) CountByUserAndEntity(ctx context.Context, userID uuid.UUID,
 	var count int64
 	err := r.TM().GetDB(ctx).
 		Model(&SavedFilter{}).
-		Where("user_id = ? AND entity_type = ?", userID, entityType).
+		Where("user_id = ? AND entity = ?", userID, entityType).
 		Count(&count).Error
 	return count, err
 }

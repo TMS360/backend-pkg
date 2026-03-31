@@ -10,9 +10,9 @@ import (
 type CountFunc func(ctx context.Context, filter json.RawMessage) (int64, error)
 
 type CreateInput struct {
-	Name       string
-	EntityType string
-	Filter     json.RawMessage
+	Name   string
+	Entity string
+	Filter json.RawMessage
 }
 
 type UpdateInput struct {

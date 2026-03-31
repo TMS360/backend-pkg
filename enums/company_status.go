@@ -4,9 +4,9 @@ package enums
 type CompanyStatus string
 
 const (
-	CompanyStatusInactive CompanyStatus = "Inactive"
-	CompanyStatusActive   CompanyStatus = "Active"
-	CompanyStatusBlocked  CompanyStatus = "Blocked"
+	CompanyStatusInactive CompanyStatus = "INACTIVE"
+	CompanyStatusActive   CompanyStatus = "ACTIVE"
+	CompanyStatusBlocked  CompanyStatus = "BLOCKED"
 )
 
 // IsValid checks if the company status is valid

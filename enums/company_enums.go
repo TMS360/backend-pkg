@@ -1,7 +1,5 @@
 package enums
 
-import "fmt"
-
 // CustomerType enum for company customer types
 type CustomerType string
 
@@ -111,84 +109,4 @@ func (w WarningType) IsValid() bool {
 // String returns string representation
 func (w WarningType) String() string {
 	return string(w)
-}
-
-// Scan implements the sql.Scanner interface for CustomerType
-func (c *CustomerType) Scan(value interface{}) error {
-	if value == nil {
-		return nil
-	}
-	switch v := value.(type) {
-	case string:
-		*c = CustomerType(v)
-	case []byte:
-		*c = CustomerType(v)
-	default:
-		return fmt.Errorf("cannot scan %T into CustomerType", value)
-	}
-	return nil
-}
-
-// Scan implements the sql.Scanner interface for CompanyStatus
-func (s *CompanyStatus) Scan(value interface{}) error {
-	if value == nil {
-		return nil
-	}
-	switch v := value.(type) {
-	case string:
-		*s = CompanyStatus(v)
-	case []byte:
-		*s = CompanyStatus(v)
-	default:
-		return fmt.Errorf("cannot scan %T into CompanyStatus", value)
-	}
-	return nil
-}
-
-// Scan implements the sql.Scanner interface for BillingType
-func (b *BillingType) Scan(value interface{}) error {
-	if value == nil {
-		return nil
-	}
-	switch v := value.(type) {
-	case string:
-		*b = BillingType(v)
-	case []byte:
-		*b = BillingType(v)
-	default:
-		return fmt.Errorf("cannot scan %T into BillingType", value)
-	}
-	return nil
-}
-
-// Scan implements the sql.Scanner interface for PaymentMethodType
-func (p *PaymentMethodType) Scan(value interface{}) error {
-	if value == nil {
-		return nil
-	}
-	switch v := value.(type) {
-	case string:
-		*p = PaymentMethodType(v)
-	case []byte:
-		*p = PaymentMethodType(v)
-	default:
-		return fmt.Errorf("cannot scan %T into PaymentMethodType", value)
-	}
-	return nil
-}
-
-// Scan implements the sql.Scanner interface for WarningType
-func (w *WarningType) Scan(value interface{}) error {
-	if value == nil {
-		return nil
-	}
-	switch v := value.(type) {
-	case string:
-		*w = WarningType(v)
-	case []byte:
-		*w = WarningType(v)
-	default:
-		return fmt.Errorf("cannot scan %T into WarningType", value)
-	}
-	return nil
 }

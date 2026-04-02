@@ -26,10 +26,62 @@ message BrokerFilter {
 }
 
 message Broker {
-  string id = 1;           // UUID
+  string id = 1;
   string company_name = 2;
   string mc_number = 3;
   string dot_number = 4;
+
+  // Core info
+  string email = 5;
+  string phone = 6;
+  string customer_type = 7;
+  string status = 8;
+
+  // Legal & identification
+  optional string entity_type = 9;
+  optional string legal_name = 10;
+  optional string dba_name = 11;
+  optional string duns_number = 12;
+  optional string mc_mx_ff_numbers = 13;
+  optional string ff_number = 14;
+
+  // Contact & addresses
+  optional string physical_address = 15;
+  optional string mailing_address = 16;
+
+  // FMCSA Specifics
+  optional int32 power_units = 17;
+  optional int32 drivers = 18;
+  optional string operating_status = 19;
+  optional string mcs_150_form_date = 20;
+  optional string out_of_service_date = 21;
+  optional string latest_update = 22;
+
+  // Arrays
+  repeated string operation_classification = 23;
+  repeated string carrier_operation = 24;
+  repeated string cargo_carried = 25;
+
+  // Metadata
+  optional string safer_url = 26;
+  optional string classdef = 27;
+  bool is_carrier = 28;
+  bool is_broker = 29;
+
+  // Search/Score Metadata
+  optional string status_code = 30;
+  optional double score = 31;
+  optional bool allowed_to_operate = 32;
+
+  // FMCSA Parsed Addresses
+  optional string phy_city = 33;
+  optional string phy_state = 34;
+  optional string phy_zip = 35;
+  optional string phy_country = 36;
+  optional string mail_city = 37;
+  optional string mail_state = 38;
+  optional string mail_zip = 39;
+  optional string mail_country = 40;
 }
 
 message GetBrokersRequest {

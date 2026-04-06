@@ -138,6 +138,8 @@ func (t *TenantScopePlugin) evaluateType(typ reflect.Type) tenantConfig {
 	_, isScoped := modelPtr.(model.TenantScoped)
 	_, isShared := modelPtr.(model.TenantShared)
 
+	fmt.Printf("Type: %v | isScoped: %v | isShared: %v\n", typ, isScoped, isShared)
+
 	return tenantConfig{
 		isScoped: isScoped,
 		isShared: isShared,

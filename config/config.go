@@ -102,6 +102,7 @@ type AwsConfig struct {
 	SecretAccessKey string `mapstructure:"SECRET_ACCESS_KEY"`
 	Region          string `mapstructure:"REGION"`
 	BucketName      string `mapstructure:"BUCKET_NAME"`
+	EndpointURL     string `mapstructure:"ENDPOINT_URL"`
 }
 
 var Prefixes = []string{"http", "db", "kafka", "redis", "jwt", "redis", "mail", "samsara", "here", "clickhouse", "aws"}

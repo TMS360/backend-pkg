@@ -11,6 +11,12 @@ option go_package = "github.com/TMS360/backend-pkg/proto/trackers";
 service TrackersService {
   // StreamVehicleVINs sends a stream of VINs from backend-load to samsara-tracker
   rpc StreamVehicleVINs(StreamVehicleVINsRequest) returns (stream VehicleVIN);
+
+  // GetActiveTripStops returns pending trip stops for a truck
+  rpc GetActiveTripStops(GetActiveTripStopsRequest) returns (GetActiveTripStopsResponse);
+
+  // UpdateStopETA updates the planned arrival time for a trip stop
+  rpc UpdateStopETA(UpdateStopETARequest) returns (UpdateStopETAResponse);
 }
 
 // Request to stream vehicle VINs
@@ -98,6 +104,7 @@ message EstimatedRouteLeg {
   string polyline = 2;           // HERE Flexible Polyline encoded string
   int32 distance_meters = 3;
   int32 duration_seconds = 4;
+  string stop_id = 5;            // UUID of the destination trip stop
 }
 
 message SaveEstimatedRouteRequest {
@@ -106,6 +113,7 @@ message SaveEstimatedRouteRequest {
   repeated EstimatedRouteLeg legs = 3;
   int32 total_distance_meters = 4;
   int32 total_duration_seconds = 5;
+  string truck_id = 6;
 }
 
 message SaveEstimatedRouteResponse {
@@ -121,4 +129,40 @@ message GetEstimatedRouteResponse {
   repeated EstimatedRouteLeg legs = 2;
   int32 total_distance_meters = 3;
   int32 total_duration_seconds = 4;
+}
+
+// Active trip stops for route calculation
+
+message GetActiveTripStopsRequest {
+  string truck_id = 1;
+}
+
+message TripStopInfo {
+  string stop_id = 1;
+  string trip_id = 2;
+  string company_id = 3;
+  string stop_type = 4;       // ORIGIN, PICKUP, DROPOFF, DROPOFF_PICKUP, CARGO_TRANSFER
+  int32 stop_sequence = 5;
+  double latitude = 6;
+  double longitude = 7;
+  string status = 8;          // PENDING, ARRIVED, COMPLETED
+  bool is_complete = 9;
+}
+
+message GetActiveTripStopsResponse {
+  string trip_id = 1;
+  string truck_id = 2;
+  string company_id = 3;
+  repeated TripStopInfo stops = 4;
+}
+
+// ETA update
+
+message UpdateStopETARequest {
+  string stop_id = 1;
+  google.protobuf.Timestamp planned_arrival = 2;
+}
+
+message UpdateStopETAResponse {
+  bool success = 1;
 }

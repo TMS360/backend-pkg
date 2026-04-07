@@ -10,23 +10,13 @@ import (
 	"gorm.io/gorm"
 )
 
-// tenantConfig holds the cached interface flags for a specific struct type
-type tenantConfig struct {
-	isScoped bool
-	isShared bool
-}
-
-// TenantScopePlugin without the typeCache
 type TenantScopePlugin struct{}
-
-func NewTenantScopePlugin() *TenantScopePlugin {
-	return &TenantScopePlugin{}
-}
 
 func (t *TenantScopePlugin) Name() string {
 	return "TenantScopePlugin"
 }
 
+// Initialize registers the plugin with GORM
 func (t *TenantScopePlugin) Initialize(db *gorm.DB) error {
 	db.Callback().Query().Before("gorm:query").Register("tenant:query", t.addTenantConditionQuery)
 	db.Callback().Update().Before("gorm:update").Register("tenant:update", t.addTenantConditionWrite)
@@ -34,65 +24,45 @@ func (t *TenantScopePlugin) Initialize(db *gorm.DB) error {
 	return nil
 }
 
+// addTenantConditionQuery is triggered on SELECT statements
 func (t *TenantScopePlugin) addTenantConditionQuery(db *gorm.DB) {
 	t.applyScope(db, true)
 }
 
+// addTenantConditionWrite is triggered on UPDATE and DELETE statements
 func (t *TenantScopePlugin) addTenantConditionWrite(db *gorm.DB) {
 	t.applyScope(db, false)
 }
 
+// addTenantCondition adds tenant filtering conditions to the DB query
 func (t *TenantScopePlugin) applyScope(db *gorm.DB, isRead bool) {
-	fmt.Println("--- TENANT PLUGIN TRIGGERED ---")
-
 	if db.Statement.Unscoped {
-		fmt.Println("EXIT: Statement is Unscoped")
 		return
 	}
 
-	var targetType reflect.Type
-	if db.Statement.Model != nil {
-		targetType = reflect.TypeOf(db.Statement.Model)
-		fmt.Printf("TARGET: Model detected as %v\n", targetType)
-	} else if db.Statement.Dest != nil {
-		targetType = reflect.TypeOf(db.Statement.Dest)
-		fmt.Printf("TARGET: Dest detected as %v\n", targetType)
-	} else {
-		fmt.Println("EXIT: Both Model and Dest are nil")
-		return
-	}
+	isTenantScoped, isShared := checkTenantInterfaces(db)
 
-	// Always evaluate (Cache bypassed)
-	config := t.evaluateType(targetType)
-	fmt.Printf("EVALUATED: %v -> isScoped: %v, isShared: %v\n", targetType, config.isScoped, config.isShared)
-
-	if !config.isScoped && !config.isShared {
-		fmt.Println("EXIT: Type does not implement Tenant interfaces")
+	if !isTenantScoped && !isShared {
 		return
 	}
 
 	actor, _ := middleware.GetActor(db.Statement.Context)
-	if actor == nil {
-		fmt.Println("EXIT: No Actor found in Context")
-		return
-	}
-
-	if actor.IsSystem || actor.IsSuperAdmin() || actor.IsGuest {
-		fmt.Printf("EXIT: Bypassing for privileged actor role. SuperAdmin: %v\n", actor.IsSuperAdmin())
+	if actor == nil || actor.IsSystem || actor.IsSuperAdmin() || actor.IsGuest {
 		return
 	}
 
 	if actor.Claims.CompanyID == nil {
-		fmt.Println("ERROR: Actor found but Claims.CompanyID is nil")
 		db.AddError(errors.New("tenant_plugin: non-admin actor missing company_id"))
 		return
 	}
 
+	// 1. SAFELY RESOLVE TABLE NAME
 	tableName := db.Statement.Table
 	if tableName == "" {
+		// Force GORM to parse the schema based on the Model first, then Dest
 		if db.Statement.Model != nil {
 			_ = db.Statement.Parse(db.Statement.Model)
-		} else {
+		} else if db.Statement.Dest != nil {
 			_ = db.Statement.Parse(db.Statement.Dest)
 		}
 		if db.Statement.Schema != nil {
@@ -101,39 +71,45 @@ func (t *TenantScopePlugin) applyScope(db *gorm.DB, isRead bool) {
 	}
 
 	if tableName == "" {
-		fmt.Println("EXIT: Could not resolve table name")
-		return
+		return // Cannot determine table safely
 	}
 
 	quotedTable := db.Statement.Quote(tableName)
 	companyID := *actor.Claims.CompanyID
 
-	fmt.Printf("SUCCESS: Applying WHERE clause for table %s with CompanyID %s\n", tableName, companyID)
-
-	if isRead && config.isShared {
+	if isRead && isShared {
 		db.Where(fmt.Sprintf("(%s.company_id = ? OR %s.is_system = ?)", quotedTable, quotedTable), companyID, true)
 	} else {
 		db.Where(fmt.Sprintf("%s.company_id = ?", quotedTable), companyID)
 	}
 }
 
-func (t *TenantScopePlugin) evaluateType(typ reflect.Type) tenantConfig {
-	for typ.Kind() == reflect.Ptr || typ.Kind() == reflect.Slice || typ.Kind() == reflect.Array {
-		typ = typ.Elem()
+func checkTenantInterfaces(db *gorm.DB) (isTenantScoped bool, isShared bool) {
+	var targetType reflect.Type
+
+	// 1. THE FIX: Prioritize explicitly set .Model() (Crucial for .Scan aggregations)
+	if db.Statement.Model != nil {
+		targetType = reflect.TypeOf(db.Statement.Model)
+	} else if db.Statement.Dest != nil {
+		targetType = reflect.TypeOf(db.Statement.Dest) // Fallback for standard queries
+	} else {
+		return false, false
 	}
 
-	if typ.Kind() != reflect.Struct {
-		return tenantConfig{isScoped: false, isShared: false}
+	// 2. Unwrap Pointers, Slices, and Arrays to get the base Struct
+	for targetType.Kind() == reflect.Ptr || targetType.Kind() == reflect.Slice || targetType.Kind() == reflect.Array {
+		targetType = targetType.Elem()
 	}
 
-	modelPtr := reflect.New(typ).Interface()
-
-	// Ensure the interfaces being checked exactly match the package where they are defined
-	_, isScoped := modelPtr.(model.TenantScoped)
-	_, isShared := modelPtr.(model.TenantShared)
-
-	return tenantConfig{
-		isScoped: isScoped,
-		isShared: isShared,
+	if targetType.Kind() != reflect.Struct {
+		return false, false
 	}
+
+	// 3. Create pointer and assert interfaces
+	modelPtr := reflect.New(targetType).Interface()
+
+	_, isTenantScoped = modelPtr.(model.TenantScoped)
+	_, isShared = modelPtr.(model.TenantShared)
+
+	return isTenantScoped, isShared
 }

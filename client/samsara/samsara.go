@@ -51,7 +51,8 @@ type VehicleLocation struct {
 }
 
 type VehicleLocationResponse struct {
-	Data []VehicleLocation `json:"data"`
+	Data       []VehicleLocation `json:"data"`
+	Pagination Pagination        `json:"pagination"`
 }
 
 // ============================================================================
@@ -535,7 +536,6 @@ func (c *Client) GetAllVehiclesLocationsWithTime(ctx context.Context, startTime,
 // GetAllVehiclesStats получает GPS статистику для ВСЕХ транспортных средств сразу.
 // Использует endpoint /fleet/vehicles/stats?types=gps без фильтрации по ID.
 func (c *Client) GetAllVehiclesStats(ctx context.Context) ([]VehicleLocation, error) {
-	// Точный путь из вашего старого рабочего кода
 	path := "/fleet/vehicles/stats?types=gps"
 
 	resp, err := c.doRequest(ctx, http.MethodGet, path, nil)
@@ -550,6 +550,55 @@ func (c *Client) GetAllVehiclesStats(ctx context.Context) ([]VehicleLocation, er
 	}
 
 	return locationResponse.Data, nil
+}
+
+// VehicleStatsFeedResult holds the feed response with cursor for next call.
+type VehicleStatsFeedResult struct {
+	Data      []VehicleLocation
+	EndCursor string
+	HasMore   bool
+}
+
+// GetVehicleStatsFeed follows a feed of vehicle GPS stats.
+// First call (cursor=""): returns most recent stats for all vehicles + endCursor.
+// Subsequent calls (cursor=endCursor): returns only changes since last call.
+// Returns all pages in one call by following pagination automatically.
+func (c *Client) GetVehicleStatsFeed(ctx context.Context, cursor string) (*VehicleStatsFeedResult, error) {
+	var allData []VehicleLocation
+	currentCursor := cursor
+
+	for {
+		path := "/fleet/vehicles/stats/feed?types=gps"
+		if currentCursor != "" {
+			path += "&after=" + currentCursor
+		}
+
+		resp, err := c.doRequest(ctx, http.MethodGet, path, nil)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get vehicle stats feed: %w", err)
+		}
+
+		var feedResponse VehicleLocationResponse
+		if err := json.NewDecoder(resp.Body).Decode(&feedResponse); err != nil {
+			resp.Body.Close()
+			return nil, fmt.Errorf("failed to decode feed response: %w", err)
+		}
+		resp.Body.Close()
+
+		allData = append(allData, feedResponse.Data...)
+		currentCursor = feedResponse.Pagination.EndCursor
+
+		// If no more pages immediately available, return
+		if !feedResponse.Pagination.HasNextPage {
+			break
+		}
+	}
+
+	return &VehicleStatsFeedResult{
+		Data:      allData,
+		EndCursor: currentCursor,
+		HasMore:   false,
+	}, nil
 }
 
 // ============================================================================

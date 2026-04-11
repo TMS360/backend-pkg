@@ -51,7 +51,21 @@ type VehicleLocation struct {
 }
 
 type VehicleLocationResponse struct {
-	Data []VehicleLocation `json:"data"`
+	Data       []VehicleLocation `json:"data"`
+	Pagination Pagination        `json:"pagination"`
+}
+
+// VehicleLocationFeed — feed response where gps is an array, not a single object
+type VehicleLocationFeed struct {
+	ID          string                 `json:"id"`
+	Name        string                 `json:"name"`
+	ExternalIDs map[string]interface{} `json:"externalIds,omitempty"`
+	Gps         []GpsCoordinates       `json:"gps"` // feed returns array
+}
+
+type VehicleLocationFeedResponse struct {
+	Data       []VehicleLocationFeed `json:"data"`
+	Pagination Pagination            `json:"pagination"`
 }
 
 // ============================================================================
@@ -535,7 +549,6 @@ func (c *Client) GetAllVehiclesLocationsWithTime(ctx context.Context, startTime,
 // GetAllVehiclesStats получает GPS статистику для ВСЕХ транспортных средств сразу.
 // Использует endpoint /fleet/vehicles/stats?types=gps без фильтрации по ID.
 func (c *Client) GetAllVehiclesStats(ctx context.Context) ([]VehicleLocation, error) {
-	// Точный путь из вашего старого рабочего кода
 	path := "/fleet/vehicles/stats?types=gps"
 
 	resp, err := c.doRequest(ctx, http.MethodGet, path, nil)
@@ -550,6 +563,84 @@ func (c *Client) GetAllVehiclesStats(ctx context.Context) ([]VehicleLocation, er
 	}
 
 	return locationResponse.Data, nil
+}
+
+// VehicleStatsFeedResult holds the feed response with cursor for next call.
+type VehicleStatsFeedResult struct {
+	Data      []VehicleLocation
+	EndCursor string
+	HasMore   bool
+}
+
+// GetVehicleStatsFeed follows a feed of vehicle GPS stats.
+// First call (cursor=""): returns most recent stats for all vehicles + endCursor.
+// Subsequent calls (cursor=endCursor): returns only changes since last call.
+// Returns all pages in one call by following pagination automatically.
+func (c *Client) GetVehicleStatsFeed(ctx context.Context, cursor string) (*VehicleStatsFeedResult, error) {
+	var allData []VehicleLocation
+	currentCursor := cursor
+
+	for {
+		page, err := c.fetchStatsFeedPage(ctx, currentCursor)
+		if err != nil {
+			return nil, err
+		}
+
+		allData = append(allData, page.Data...)
+		currentCursor = page.Pagination.EndCursor
+
+		if !page.Pagination.HasNextPage {
+			break
+		}
+	}
+
+	return &VehicleStatsFeedResult{
+		Data:      allData,
+		EndCursor: currentCursor,
+		HasMore:   false,
+	}, nil
+}
+
+// fetchStatsFeedPage fetches a single page of the stats feed.
+// Feed returns gps as array (not single object like snapshot), so we parse
+// with VehicleLocationFeedResponse and convert to VehicleLocationResponse.
+func (c *Client) fetchStatsFeedPage(ctx context.Context, cursor string) (*VehicleLocationResponse, error) {
+	path := "/fleet/vehicles/stats/feed?types=gps"
+	if cursor != "" {
+		path += "&after=" + cursor
+	}
+
+	resp, err := c.doRequest(ctx, http.MethodGet, path, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get vehicle stats feed page: %w", err)
+	}
+	defer resp.Body.Close()
+
+	var feedResponse VehicleLocationFeedResponse
+	if err := json.NewDecoder(resp.Body).Decode(&feedResponse); err != nil {
+		return nil, fmt.Errorf("failed to decode feed response: %w", err)
+	}
+
+	// Convert feed format (gps array) to standard format (gps single object)
+	// Take the latest GPS point from each vehicle's array
+	result := &VehicleLocationResponse{
+		Pagination: feedResponse.Pagination,
+	}
+	for _, v := range feedResponse.Data {
+		loc := VehicleLocation{
+			ID:          v.ID,
+			Name:        v.Name,
+			ExternalIDs: v.ExternalIDs,
+		}
+		// Take the last (most recent) GPS point
+		if len(v.Gps) > 0 {
+			latest := v.Gps[len(v.Gps)-1]
+			loc.Gps = &latest
+		}
+		result.Data = append(result.Data, loc)
+	}
+
+	return result, nil
 }
 
 // ============================================================================

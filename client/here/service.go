@@ -39,6 +39,8 @@ type RouteInfo struct {
 	DurationWithTrafficSeconds int
 	// Estimated arrival time
 	EstimatedArrival time.Time
+	// Encoded polyline geometry for the route
+	Polyline string
 	// Toll cost if available
 	TollCost *float64
 	// Toll currency
@@ -71,6 +73,8 @@ type RouteLegInfo struct {
 	DurationSeconds int
 	// Estimated arrival at this stop
 	EstimatedArrival time.Time
+	// Encoded polyline geometry for this leg
+	Polyline string
 }
 
 // Service provides HERE Maps API operations
@@ -280,6 +284,7 @@ func (s *service) CalculateMultiStopRoute(ctx context.Context, waypoints []Coord
 			DistanceMeters:   routeInfo.DistanceMeters,
 			DurationSeconds:  routeInfo.DurationSeconds,
 			EstimatedArrival: routeInfo.EstimatedArrival,
+			Polyline:         routeInfo.Polyline,
 		}
 
 		result.Legs = append(result.Legs, leg)
@@ -313,6 +318,8 @@ func (s *service) parseRouteResponse(resp *RouteResponse, departureTime *time.Ti
 		info.DurationSeconds = section.Summary.BaseDuration
 		info.DurationWithTrafficSeconds = section.Summary.Duration
 	}
+
+	info.Polyline = section.Polyline
 
 	// Calculate ETA
 	departure := time.Now()

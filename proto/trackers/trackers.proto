@@ -105,6 +105,7 @@ message EstimatedRouteLeg {
   int32 distance_meters = 3;
   int32 duration_seconds = 4;
   string stop_id = 5;            // UUID of the destination trip stop
+  string route_type = 6;         // "static" (stop-to-stop) or "dynamic" (truck-to-stop)
 }
 
 message SaveEstimatedRouteRequest {

@@ -57,3 +57,12 @@ func NewErrorPresenter(isDebug bool) graphql.ErrorPresenterFunc {
 		return gqlErr
 	}
 }
+
+// FillErrors is a helper function to create a slice of errors with the same error repeated n times. This can be useful for batch operations where you want to return the same error for multiple items.
+func FillErrors(n int, err error) []error {
+	errs := make([]error, n)
+	for i := 0; i < n; i++ {
+		errs[i] = err
+	}
+	return errs
+}

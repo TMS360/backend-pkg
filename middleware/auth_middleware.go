@@ -17,20 +17,7 @@ import (
 )
 
 // IdentifyUser извлекает и проверяет JWT из заголовка Authorization и устанавливает информацию о пользователе в контекст
-func IdentifyUser(rsaPubKey *rsa.PublicKey, args ...string) gin.HandlerFunc {
-	// 1. Safely extract and validate the optional Guest Secret Key
-	var guestSecretKey []byte
-	if len(args) > 0 {
-		secret := args[0]
-		if len(secret) >= 32 {
-			// ONLY assign if it meets the cryptographic security standard
-			guestSecretKey = []byte(secret)
-		} else if secret != "" {
-			// Log a WARNING (not debug) if they tried to pass a weak key
-			slog.Warn("SHARE_LINK secret is too short (must be >= 32 chars). Guest auth disabled.")
-		}
-	}
-
+func IdentifyUser(rsaPubKey *rsa.PublicKey) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		// 1. Attempt System User Authentication
 		if authHeader := ctx.GetHeader("Authorization"); authHeader != "" {
@@ -41,17 +28,6 @@ func IdentifyUser(rsaPubKey *rsa.PublicKey, args ...string) gin.HandlerFunc {
 				return
 			}
 			slog.Debug("System auth attempt failed", "error", err)
-		}
-
-		// 2. Attempt Guest Authentication (Fallback)
-		if guestToken := ctx.GetHeader("X-Guest-Token"); guestToken != "" && guestSecretKey != nil {
-			actor, err := parseGuestToken(guestToken, guestSecretKey)
-			if err == nil {
-				ctx.Request = ctx.Request.WithContext(WithActor(ctx.Request.Context(), actor))
-				ctx.Next()
-				return
-			}
-			slog.Debug("Guest auth attempt failed", "error", err)
 		}
 
 		// 3. Unauthenticated (Anonymous)

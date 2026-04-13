@@ -4,7 +4,7 @@
 // versions:
 // - protoc-gen-go-grpc v1.6.0
 // - protoc             v7.34.1
-// source: proto/trackers/trackers.proto
+// source: trackers/trackers.proto
 
 package trackers
 
@@ -209,7 +209,7 @@ var TrackersService_ServiceDesc = grpc.ServiceDesc{
 			ServerStreams: true,
 		},
 	},
-	Metadata: "proto/trackers/trackers.proto",
+	Metadata: "trackers/trackers.proto",
 }
 
 const (
@@ -398,5 +398,5 @@ var VehiclePositionService_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "proto/trackers/trackers.proto",
+	Metadata: "trackers/trackers.proto",
 }

@@ -45,6 +45,15 @@ service LoadsService {
 
   // Get chat members for a shipment (dispatchers + drivers from current trip)
   rpc GetShipmentChatMembers(GetShipmentChatMembersRequest) returns (GetShipmentChatMembersResponse);
+
+  // Chat entity suggestions: active/upcoming loads for a driver
+  rpc GetDriverActiveLoads(GetDriverActiveLoadsRequest) returns (GetDriverActiveLoadsResponse);
+
+  // Chat entity suggestions: loads with unsettled payments (last N days)
+  rpc GetDriverUnsettledLoads(GetDriverUnsettledLoadsRequest) returns (GetDriverUnsettledLoadsResponse);
+
+  // Chat entity suggestions: loads with missing/rejected documents
+  rpc GetDriverDocIssueLoads(GetDriverDocIssueLoadsRequest) returns (GetDriverDocIssueLoadsResponse);
 }
 
 message ShipmentFilterRequest {
@@ -333,5 +342,41 @@ message GetShipmentChatMembersRequest {
 
 message GetShipmentChatMembersResponse {
   repeated string member_ids = 1;
+}
+
+// ── Chat Entity Suggestions ──────────────────────────────
+
+message LoadSuggestion {
+  string id = 1;              // shipment UUID
+  string load_id = 2;         // display: "Load #4821"
+  string status = 3;          // current shipment status
+  string pickup_location = 4; // "Dallas, TX"
+  string delivery_location = 5; // "Chicago, IL"
+  string meta = 6;            // extra info: "Settlement pending $1,420"
+}
+
+message GetDriverActiveLoadsRequest {
+  string driver_id = 1;
+}
+
+message GetDriverActiveLoadsResponse {
+  repeated LoadSuggestion loads = 1;
+}
+
+message GetDriverUnsettledLoadsRequest {
+  string driver_id = 1;
+  int32 days_back = 2; // default 90
+}
+
+message GetDriverUnsettledLoadsResponse {
+  repeated LoadSuggestion loads = 1;
+}
+
+message GetDriverDocIssueLoadsRequest {
+  string driver_id = 1;
+}
+
+message GetDriverDocIssueLoadsResponse {
+  repeated LoadSuggestion loads = 1;
 }
 

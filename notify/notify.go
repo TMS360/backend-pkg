@@ -15,7 +15,7 @@ type Publisher struct {
 
 // TransactionManager is the subset of tmsdb.TransactionManager needed for publishing.
 type TransactionManager interface {
-	Publish(ctx context.Context, aggType, evtType string, aggID uuid.UUID, data interface{}) error
+	Publish(ctx context.Context, aggType, evtType string, aggID uuid.UUID, data interface{}, oldData ...interface{}) error
 }
 
 // NewPublisher creates a notification publisher.

@@ -23,11 +23,7 @@ type Actor struct {
 	Claims   *UserClaims
 	Token    *string
 	IsSystem bool
-
-	// For guests
-	IsGuest          bool
-	AccessResource   *string
-	AccessResourceID *uuid.UUID
+	IsGuest  bool
 }
 
 func (actor *Actor) IsSuperAdmin() bool {

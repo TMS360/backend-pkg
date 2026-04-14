@@ -621,23 +621,25 @@ func (c *Client) fetchStatsFeedPage(ctx context.Context, cursor string) (*Vehicl
 		return nil, fmt.Errorf("failed to decode feed response: %w", err)
 	}
 
-	// Convert feed format (gps array) to standard format (gps single object)
-	// Take the latest GPS point from each vehicle's array
+	// Convert feed format (gps array) to standard format.
+	// Each GPS point becomes a separate VehicleLocation entry
+	// so all points are saved to ClickHouse for smooth route rendering.
 	result := &VehicleLocationResponse{
 		Pagination: feedResponse.Pagination,
 	}
 	for _, v := range feedResponse.Data {
-		loc := VehicleLocation{
-			ID:          v.ID,
-			Name:        v.Name,
-			ExternalIDs: v.ExternalIDs,
+		if len(v.Gps) == 0 {
+			continue
 		}
-		// Take the last (most recent) GPS point
-		if len(v.Gps) > 0 {
-			latest := v.Gps[len(v.Gps)-1]
-			loc.Gps = &latest
+		for i := range v.Gps {
+			gps := v.Gps[i]
+			result.Data = append(result.Data, VehicleLocation{
+				ID:          v.ID,
+				Name:        v.Name,
+				ExternalIDs: v.ExternalIDs,
+				Gps:         &gps,
+			})
 		}
-		result.Data = append(result.Data, loc)
 	}
 
 	return result, nil

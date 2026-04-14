@@ -15,7 +15,7 @@ type Publisher struct {
 
 // TransactionManager is the subset of tmsdb.TransactionManager needed for publishing.
 type TransactionManager interface {
-	Publish(ctx context.Context, aggType, evtType string, aggID uuid.UUID, data interface{}) error
+	Publish(ctx context.Context, aggType, evtType string, aggID uuid.UUID, data interface{}, oldData ...interface{}) error
 }
 
 // NewPublisher creates a notification publisher.
@@ -45,6 +45,28 @@ const (
 	PriorityUrgent NotificationPriority = "URGENT"
 )
 
+// ActionType defines what the client should do when the notification is tapped.
+type ActionType string
+
+const (
+	ActionRedirect ActionType = "redirect"  // Navigate to a route/screen in the app
+	ActionOpenLink ActionType = "open_link" // Open an external URL
+	ActionOpenChat ActionType = "open_chat" // Open a specific chat thread
+	ActionNone     ActionType = "none"      // Just display, no action on tap
+)
+
+// NotificationAction tells the client what to do when the notification is tapped.
+//
+// Examples:
+//
+//	redirect:  {Type: "redirect",  Params: {"route": "/loads/uuid"}}
+//	open_link: {Type: "open_link", Params: {"url": "https://..."}}
+//	open_chat: {Type: "open_chat", Params: {"thread_id": "uuid", "category": "dispatch", "load_id": "uuid"}}
+type NotificationAction struct {
+	Type   ActionType             `json:"type"`
+	Params map[string]interface{} `json:"params,omitempty"`
+}
+
 // Notification is the payload for sending a direct notification.
 type Notification struct {
 	// UserIDs — list of recipient user UUIDs (required).
@@ -64,6 +86,10 @@ type Notification struct {
 
 	// Metadata — extra data like redirect_url, entity references (optional).
 	Metadata map[string]interface{} `json:"metadata,omitempty"`
+
+	// Action — what the client should do when notification is tapped (optional).
+	// If set, it is included in metadata under the "action" key.
+	Action *NotificationAction `json:"action,omitempty"`
 
 	// EntityType — source entity type, e.g. "shipments" (optional, for tracking).
 	EntityType string `json:"source_entity_type,omitempty"`
@@ -123,6 +149,12 @@ func (p *Publisher) Send(ctx context.Context, n Notification) error {
 
 	if n.Body != "" {
 		data["body"] = n.Body
+	}
+	if n.Action != nil {
+		if n.Metadata == nil {
+			n.Metadata = make(map[string]interface{})
+		}
+		n.Metadata["action"] = n.Action
 	}
 	if n.Metadata != nil {
 		data["metadata"] = n.Metadata

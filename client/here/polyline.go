@@ -8,8 +8,8 @@ import (
 
 // DecodedCoordinate represents a single decoded lat/lng pair from a flexible polyline.
 type DecodedCoordinate struct {
-	Lat float64 `json:"latitude"`
-	Lng float64 `json:"longitude"`
+	Lat float64 `json:"lat"`
+	Lng float64 `json:"long"`
 }
 
 // HERE Flexible Polyline alphabet (NOT the same as Google Polyline).

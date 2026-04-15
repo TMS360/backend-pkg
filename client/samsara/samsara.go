@@ -41,13 +41,20 @@ type GpsCoordinates struct {
 	IsEcuSpeed bool `json:"isEcuSpeed"`
 }
 
+// FuelPercent - данные об уровне топлива
+type FuelPercent struct {
+	Value float64 `json:"value"`
+	Time  string  `json:"time"`
+}
+
 // VehicleLocation - местоположение транспорта с GPS
 type VehicleLocation struct {
-	ID          string                 `json:"id"`
-	Name        string                 `json:"name"`
-	Vin         string                 `json:"vin,omitempty"`
-	ExternalIDs map[string]interface{} `json:"externalIds,omitempty"`
-	Gps         *GpsCoordinates        `json:"gps"`
+	ID           string                 `json:"id"`
+	Name         string                 `json:"name"`
+	Vin          string                 `json:"vin,omitempty"`
+	ExternalIDs  map[string]interface{} `json:"externalIds,omitempty"`
+	Gps          *GpsCoordinates        `json:"gps"`
+	FuelPercents *FuelPercent           `json:"fuelPercents"`
 }
 
 type VehicleLocationResponse struct {
@@ -57,10 +64,11 @@ type VehicleLocationResponse struct {
 
 // VehicleLocationFeed — feed response where gps is an array, not a single object
 type VehicleLocationFeed struct {
-	ID          string                 `json:"id"`
-	Name        string                 `json:"name"`
-	ExternalIDs map[string]interface{} `json:"externalIds,omitempty"`
-	Gps         []GpsCoordinates       `json:"gps"` // feed returns array
+	ID           string                 `json:"id"`
+	Name         string                 `json:"name"`
+	ExternalIDs  map[string]interface{} `json:"externalIds,omitempty"`
+	Gps          []GpsCoordinates       `json:"gps"`          // feed returns array
+	FuelPercents []FuelPercent          `json:"fuelPercents"`  // feed returns array
 }
 
 type VehicleLocationFeedResponse struct {
@@ -549,7 +557,7 @@ func (c *Client) GetAllVehiclesLocationsWithTime(ctx context.Context, startTime,
 // GetAllVehiclesStats получает GPS статистику для ВСЕХ транспортных средств сразу.
 // Использует endpoint /fleet/vehicles/stats?types=gps без фильтрации по ID.
 func (c *Client) GetAllVehiclesStats(ctx context.Context) ([]VehicleLocation, error) {
-	path := "/fleet/vehicles/stats?types=gps"
+	path := "/fleet/vehicles/stats?types=gps,fuelPercents"
 
 	resp, err := c.doRequest(ctx, http.MethodGet, path, nil)
 	if err != nil {
@@ -605,7 +613,7 @@ func (c *Client) GetVehicleStatsFeed(ctx context.Context, cursor string) (*Vehic
 // Feed returns gps as array (not single object like snapshot), so we parse
 // with VehicleLocationFeedResponse and convert to VehicleLocationResponse.
 func (c *Client) fetchStatsFeedPage(ctx context.Context, cursor string) (*VehicleLocationResponse, error) {
-	path := "/fleet/vehicles/stats/feed?types=gps"
+	path := "/fleet/vehicles/stats/feed?types=gps,fuelPercents"
 	if cursor != "" {
 		path += "&after=" + cursor
 	}
@@ -631,13 +639,22 @@ func (c *Client) fetchStatsFeedPage(ctx context.Context, cursor string) (*Vehicl
 		if len(v.Gps) == 0 {
 			continue
 		}
+
+		// Take latest fuel percent reading for this vehicle
+		var fuelPercent *FuelPercent
+		if len(v.FuelPercents) > 0 {
+			fp := v.FuelPercents[len(v.FuelPercents)-1]
+			fuelPercent = &fp
+		}
+
 		for i := range v.Gps {
 			gps := v.Gps[i]
 			result.Data = append(result.Data, VehicleLocation{
-				ID:          v.ID,
-				Name:        v.Name,
-				ExternalIDs: v.ExternalIDs,
-				Gps:         &gps,
+				ID:           v.ID,
+				Name:         v.Name,
+				ExternalIDs:  v.ExternalIDs,
+				Gps:          &gps,
+				FuelPercents: fuelPercent,
 			})
 		}
 	}

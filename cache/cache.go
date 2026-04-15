@@ -42,6 +42,18 @@ func Set(ctx context.Context, key string, value any, ttl time.Duration) error {
 	return client.Set(ctx, key, data, ttl).Err()
 }
 
+// SetNX sets the key only if it does not already exist.
+// Returns true if the key was newly set, false if it already existed.
+func SetNX(ctx context.Context, key string, value any, ttl time.Duration) (bool, error) {
+	key = buildKey(ctx, key)
+
+	data, err := json.Marshal(value)
+	if err != nil {
+		return false, fmt.Errorf("cache: marshal error: %w", err)
+	}
+	return client.SetNX(ctx, key, data, ttl).Result()
+}
+
 func Get(ctx context.Context, key string, dest any) error {
 	key = buildKey(ctx, key)
 

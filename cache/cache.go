@@ -57,6 +57,16 @@ func Delete(ctx context.Context, key string) error {
 	return client.Del(ctx, key).Err()
 }
 
+func DeleteKeys(ctx context.Context, keys []string) error {
+	if len(keys) == 0 {
+		return nil
+	}
+	for i, key := range keys {
+		keys[i] = buildKey(ctx, key)
+	}
+	return client.Del(ctx, keys...).Err()
+}
+
 func Exists(ctx context.Context, key string) (bool, error) {
 	key = buildKey(ctx, key)
 	n, err := client.Exists(ctx, key).Result()

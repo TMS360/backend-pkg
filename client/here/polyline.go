@@ -12,6 +12,22 @@ type DecodedCoordinate struct {
 	Lng float64 `json:"lng"`
 }
 
+// HERE Flexible Polyline alphabet (NOT the same as Google Polyline).
+// Each character maps to its index (0–63).
+const flexPolylineAlphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_"
+
+// flexCharToValue is a lookup table for fast character decoding.
+var flexCharToValue [256]int
+
+func init() {
+	for i := range flexCharToValue {
+		flexCharToValue[i] = -1
+	}
+	for i := 0; i < len(flexPolylineAlphabet); i++ {
+		flexCharToValue[flexPolylineAlphabet[i]] = i
+	}
+}
+
 // DecodeFlexiblePolyline decodes a HERE Maps flexible polyline string into coordinates.
 // HERE Routing v8 API returns polylines in this format by default.
 // Reference: https://github.com/heremaps/flexible-polyline
@@ -23,7 +39,14 @@ func DecodeFlexiblePolyline(encoded string) ([]DecodedCoordinate, error) {
 	data := []byte(encoded)
 	index := 0
 
-	// Decode header: precision (4 bits) | thirdDimType (3 bits) | thirdDimPrecision (4 bits)
+	// Step 1: Read version (usually 1)
+	_, idx, err := decodeUnsignedValue(data, index)
+	if err != nil {
+		return nil, fmt.Errorf("flexpolyline: failed to decode version: %w", err)
+	}
+	index = idx
+
+	// Step 2: Read header content
 	headerValue, idx, err := decodeUnsignedValue(data, index)
 	if err != nil {
 		return nil, fmt.Errorf("flexpolyline: failed to decode header: %w", err)
@@ -102,11 +125,11 @@ func DecodePolylineToJSON(encoded string) (string, error) {
 }
 
 func decodePolylineChar(c byte) (int64, error) {
-	v := int64(c) - 63
-	if v < 0 || v > 63 {
+	v := flexCharToValue[c]
+	if v < 0 {
 		return 0, fmt.Errorf("invalid character %q", c)
 	}
-	return v, nil
+	return int64(v), nil
 }
 
 func decodeUnsignedValue(data []byte, index int) (int64, int, error) {

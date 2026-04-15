@@ -461,15 +461,16 @@ func (x *GetVehicleRouteRequest) GetTo() *timestamppb.Timestamp {
 }
 
 type RoutePoint struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Latitude      float64                `protobuf:"fixed64,1,opt,name=latitude,proto3" json:"latitude,omitempty"`
-	Longitude     float64                `protobuf:"fixed64,2,opt,name=longitude,proto3" json:"longitude,omitempty"`
-	Heading       float64                `protobuf:"fixed64,3,opt,name=heading,proto3" json:"heading,omitempty"`
-	Speed         float64                `protobuf:"fixed64,4,opt,name=speed,proto3" json:"speed,omitempty"`
-	GpsTime       *timestamppb.Timestamp `protobuf:"bytes,5,opt,name=gps_time,json=gpsTime,proto3" json:"gps_time,omitempty"`
-	Address       string                 `protobuf:"bytes,6,opt,name=address,proto3" json:"address,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	Latitude       float64                `protobuf:"fixed64,1,opt,name=latitude,proto3" json:"latitude,omitempty"`
+	Longitude      float64                `protobuf:"fixed64,2,opt,name=longitude,proto3" json:"longitude,omitempty"`
+	Heading        float64                `protobuf:"fixed64,3,opt,name=heading,proto3" json:"heading,omitempty"`
+	Speed          float64                `protobuf:"fixed64,4,opt,name=speed,proto3" json:"speed,omitempty"`
+	GpsTime        *timestamppb.Timestamp `protobuf:"bytes,5,opt,name=gps_time,json=gpsTime,proto3" json:"gps_time,omitempty"`
+	Address        string                 `protobuf:"bytes,6,opt,name=address,proto3" json:"address,omitempty"`
+	HeadingDegrees float64                `protobuf:"fixed64,7,opt,name=heading_degrees,json=headingDegrees,proto3" json:"heading_degrees,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *RoutePoint) Reset() {
@@ -542,6 +543,13 @@ func (x *RoutePoint) GetAddress() string {
 		return x.Address
 	}
 	return ""
+}
+
+func (x *RoutePoint) GetHeadingDegrees() float64 {
+	if x != nil {
+		return x.HeadingDegrees
+	}
+	return 0
 }
 
 type GetVehicleRouteResponse struct {
@@ -1276,7 +1284,7 @@ const file_trackers_trackers_proto_rawDesc = "" +
 	"\x16GetVehicleRouteRequest\x12\x19\n" +
 	"\btruck_id\x18\x01 \x01(\tR\atruckId\x12.\n" +
 	"\x04from\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\x04from\x12*\n" +
-	"\x02to\x18\x03 \x01(\v2\x1a.google.protobuf.TimestampR\x02to\"\xc7\x01\n" +
+	"\x02to\x18\x03 \x01(\v2\x1a.google.protobuf.TimestampR\x02to\"\xf0\x01\n" +
 	"\n" +
 	"RoutePoint\x12\x1a\n" +
 	"\blatitude\x18\x01 \x01(\x01R\blatitude\x12\x1c\n" +
@@ -1284,7 +1292,8 @@ const file_trackers_trackers_proto_rawDesc = "" +
 	"\aheading\x18\x03 \x01(\x01R\aheading\x12\x14\n" +
 	"\x05speed\x18\x04 \x01(\x01R\x05speed\x125\n" +
 	"\bgps_time\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\agpsTime\x12\x18\n" +
-	"\aaddress\x18\x06 \x01(\tR\aaddress\"G\n" +
+	"\aaddress\x18\x06 \x01(\tR\aaddress\x12'\n" +
+	"\x0fheading_degrees\x18\a \x01(\x01R\x0eheadingDegrees\"G\n" +
 	"\x17GetVehicleRouteResponse\x12,\n" +
 	"\x06points\x18\x01 \x03(\v2\x14.trackers.RoutePointR\x06points\"\xfa\x01\n" +
 	"\x11EstimatedRouteLeg\x12\x1b\n" +

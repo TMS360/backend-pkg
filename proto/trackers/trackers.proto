@@ -91,6 +91,7 @@ message RoutePoint {
   double speed = 4;
   google.protobuf.Timestamp gps_time = 5;
   string address = 6;
+  double heading_degrees = 7;
 }
 
 message GetVehicleRouteResponse {

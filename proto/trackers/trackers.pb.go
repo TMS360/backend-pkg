@@ -596,6 +596,7 @@ type EstimatedRouteLeg struct {
 	DurationSeconds int32                  `protobuf:"varint,4,opt,name=duration_seconds,json=durationSeconds,proto3" json:"duration_seconds,omitempty"`
 	StopId          string                 `protobuf:"bytes,5,opt,name=stop_id,json=stopId,proto3" json:"stop_id,omitempty"`          // UUID of the destination trip stop
 	RouteType       string                 `protobuf:"bytes,6,opt,name=route_type,json=routeType,proto3" json:"route_type,omitempty"` // "static" (stop-to-stop) or "dynamic" (truck-to-stop)
+	Coordinates     string                 `protobuf:"bytes,7,opt,name=coordinates,proto3" json:"coordinates,omitempty"`              // Decoded polyline as JSON: [[lat,lng],...]
 	unknownFields   protoimpl.UnknownFields
 	sizeCache       protoimpl.SizeCache
 }
@@ -668,6 +669,13 @@ func (x *EstimatedRouteLeg) GetStopId() string {
 func (x *EstimatedRouteLeg) GetRouteType() string {
 	if x != nil {
 		return x.RouteType
+	}
+	return ""
+}
+
+func (x *EstimatedRouteLeg) GetCoordinates() string {
+	if x != nil {
+		return x.Coordinates
 	}
 	return ""
 }
@@ -1278,7 +1286,7 @@ const file_trackers_trackers_proto_rawDesc = "" +
 	"\bgps_time\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\agpsTime\x12\x18\n" +
 	"\aaddress\x18\x06 \x01(\tR\aaddress\"G\n" +
 	"\x17GetVehicleRouteResponse\x12,\n" +
-	"\x06points\x18\x01 \x03(\v2\x14.trackers.RoutePointR\x06points\"\xd8\x01\n" +
+	"\x06points\x18\x01 \x03(\v2\x14.trackers.RoutePointR\x06points\"\xfa\x01\n" +
 	"\x11EstimatedRouteLeg\x12\x1b\n" +
 	"\tleg_index\x18\x01 \x01(\x05R\blegIndex\x12\x1a\n" +
 	"\bpolyline\x18\x02 \x01(\tR\bpolyline\x12'\n" +
@@ -1286,7 +1294,8 @@ const file_trackers_trackers_proto_rawDesc = "" +
 	"\x10duration_seconds\x18\x04 \x01(\x05R\x0fdurationSeconds\x12\x17\n" +
 	"\astop_id\x18\x05 \x01(\tR\x06stopId\x12\x1d\n" +
 	"\n" +
-	"route_type\x18\x06 \x01(\tR\trouteType\"\x89\x02\n" +
+	"route_type\x18\x06 \x01(\tR\trouteType\x12 \n" +
+	"\vcoordinates\x18\a \x01(\tR\vcoordinates\"\x89\x02\n" +
 	"\x19SaveEstimatedRouteRequest\x12\x17\n" +
 	"\atrip_id\x18\x01 \x01(\tR\x06tripId\x12\x1d\n" +
 	"\n" +

@@ -106,6 +106,7 @@ message EstimatedRouteLeg {
   int32 duration_seconds = 4;
   string stop_id = 5;            // UUID of the destination trip stop
   string route_type = 6;         // "static" (stop-to-stop) or "dynamic" (truck-to-stop)
+  string coordinates = 7;        // Decoded polyline as JSON: [[lat,lng],...]
 }
 
 message SaveEstimatedRouteRequest {

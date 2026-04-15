@@ -119,28 +119,3 @@ func parseAuthToken(authHeader string, publicKey *rsa.PublicKey) (*consts.Actor,
 		IsGuest: false,
 	}, nil
 }
-
-func parseGuestToken(tokenString string, secretKey []byte) (*consts.Actor, error) {
-	token, err := jwt.ParseWithClaims(tokenString, &consts.UserClaims{}, func(t *jwt.Token) (interface{}, error) {
-		if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
-			return nil, fmt.Errorf("unexpected signing method: %v", t.Header["alg"])
-		}
-		return secretKey, nil
-	})
-
-	if err != nil || !token.Valid {
-		return nil, fmt.Errorf("invalid or expired guest token: %w", err)
-	}
-
-	claims, ok := token.Claims.(*consts.UserClaims)
-	if !ok {
-		return nil, errors.New("failed to cast guest claims")
-	}
-
-	return &consts.Actor{
-		ID:      uuid.Nil,
-		Claims:  claims,
-		Token:   utils.Pointer(tokenString),
-		IsGuest: true,
-	}, nil
-}

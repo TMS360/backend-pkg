@@ -8,8 +8,8 @@ import (
 
 // DecodedCoordinate represents a single decoded lat/lng pair from a flexible polyline.
 type DecodedCoordinate struct {
-	Lat float64 `json:"lat"`
-	Lng float64 `json:"lng"`
+	Lat float64 `json:"latitude"`
+	Lng float64 `json:"longitude"`
 }
 
 // HERE Flexible Polyline alphabet (NOT the same as Google Polyline).
@@ -102,7 +102,8 @@ func DecodeFlexiblePolyline(encoded string) ([]DecodedCoordinate, error) {
 	return coords, nil
 }
 
-// DecodePolylineToJSON decodes a flexible polyline and returns a JSON string: [[lat,lng],...]
+// DecodePolylineToJSON decodes a flexible polyline and returns a JSON string:
+// [{"latitude":50.10228,"longitude":8.69821},...]
 func DecodePolylineToJSON(encoded string) (string, error) {
 	coords, err := DecodeFlexiblePolyline(encoded)
 	if err != nil {
@@ -112,12 +113,7 @@ func DecodePolylineToJSON(encoded string) (string, error) {
 		return "[]", nil
 	}
 
-	pairs := make([][2]float64, len(coords))
-	for i, c := range coords {
-		pairs[i] = [2]float64{c.Lat, c.Lng}
-	}
-
-	b, err := json.Marshal(pairs)
+	b, err := json.Marshal(coords)
 	if err != nil {
 		return "[]", fmt.Errorf("flexpolyline: failed to marshal: %w", err)
 	}

@@ -88,7 +88,7 @@ func (gh *Handler) Middleware() gin.HandlerFunc {
 func (gh *Handler) Directive(ctx context.Context, obj interface{}, next graphql.Resolver, resource string) (interface{}, error) {
 	actor, err := middleware.GetActor(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("unauthorized: no actor")
+		return nil, consts.ErrUnauthorized
 	}
 	if !actor.IsGuest {
 		return next(ctx)

@@ -54,6 +54,39 @@ func RequireAuth() gin.HandlerFunc {
 	}
 }
 
+// RequireAuthOrGuest allows access if there's a valid-authenticated user or a guest token, but not if unauthenticated
+func RequireAuthOrGuest() gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		_, err := GetActor(ctx.Request.Context())
+		if err != nil {
+			ctx.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+			return
+		}
+
+		ctx.Next()
+	}
+}
+
+// CheckGuestResource checks if the actor is a guest and if so, verifies that their claims allow access to the specified resources.
+func CheckGuestResource(allowedResources []string) gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		actor, _ := GetActor(ctx.Request.Context())
+		if !actor.IsGuest {
+			ctx.Next()
+			return
+		}
+
+		for _, r := range allowedResources {
+			if actor.Claims.Resource == r {
+				ctx.Next()
+				return
+			}
+		}
+
+		ctx.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "Forbidden: guest access not allowed for this resource"})
+	}
+}
+
 func ClearAuthContext() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		ctx.Request = ctx.Request.WithContext(WithActor(ctx.Request.Context(), nil))

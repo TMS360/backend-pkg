@@ -117,7 +117,7 @@ func (gh *Handler) maybeLogAccess(ctx context.Context, shareLinkID uuid.UUID, r 
 		AccessedAt:  time.Now().UTC().Format(time.RFC3339),
 	}
 
-	if err := gh.tm.Publish(ctx, "share_link_access", "created", shareLinkID, event); err != nil {
+	if err := gh.tm.Publish(ctx, "share_links", "access_log", shareLinkID, event); err != nil {
 		slog.Error("failed to publish access log event", "err", err)
 	}
 }

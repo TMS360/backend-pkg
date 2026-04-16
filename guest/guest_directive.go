@@ -48,6 +48,7 @@ func (gr *GuestResolver) AuthGuest(
 		ID:      uuid.Nil,
 		IsGuest: true,
 		Claims: &consts.UserClaims{
+			CompanyID:  &resolved.CompanyID,
 			Resource:   resolved.Resource,
 			ResourceID: resolved.ResourceID,
 		},

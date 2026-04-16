@@ -41,8 +41,14 @@ func (gr *GuestResolver) Resolve(ctx context.Context) (context.Context, *Resolve
 		return ctx, nil, fmt.Errorf("invalid resource ID in redis: %w", err)
 	}
 
+	companyID, err := uuid.Parse(data.CompanyID)
+	if err != nil {
+		return ctx, nil, fmt.Errorf("invalid company ID in redis: %w", err)
+	}
+
 	resolved := &ResolvedGuest{
 		ShareLinkID: pending.ShareLinkID,
+		CompanyID:   companyID,
 		Resource:    data.Resource,
 		ResourceID:  resourceID,
 	}

@@ -10,6 +10,7 @@ import (
 // ShareLinkClaims is the JWT payload for guest tokens.
 type ShareLinkClaims struct {
 	ShareLinkID uuid.UUID `json:"slid"`
+	CompanyID   uuid.UUID `json:"cid"`
 	jwt.RegisteredClaims
 }
 

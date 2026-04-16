@@ -19,6 +19,7 @@ const (
 // PendingGuestClaims is set by the middleware after JWT verification (no Redis yet).
 type PendingGuestClaims struct {
 	ShareLinkID uuid.UUID
+	CompanyID   uuid.UUID
 	Request     *http.Request
 }
 

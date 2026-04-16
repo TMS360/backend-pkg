@@ -54,6 +54,9 @@ service LoadsService {
 
   // Chat entity suggestions: loads with missing/rejected documents
   rpc GetDriverDocIssueLoads(GetDriverDocIssueLoadsRequest) returns (GetDriverDocIssueLoadsResponse);
+
+  // Trip chat info: drivers + dispatchers + shipment metadata for chat creation.
+  rpc GetTripChatInfo(GetTripChatInfoRequest) returns (GetTripChatInfoResponse);
 }
 
 message ShipmentFilterRequest {
@@ -378,5 +381,19 @@ message GetDriverDocIssueLoadsRequest {
 
 message GetDriverDocIssueLoadsResponse {
   repeated LoadSuggestion loads = 1;
+}
+
+// ── Trip Chat Info (used by backend-messaging) ─────────────────────────
+message GetTripChatInfoRequest {
+  string trip_id = 1;
+}
+
+message GetTripChatInfoResponse {
+  string shipment_id = 1;
+  string shipment_number = 2;
+  string main_driver_id = 3;
+  optional string secondary_driver_id = 4;
+  repeated string dispatcher_ids = 5;
+  bool is_current_trip = 6;
 }
 

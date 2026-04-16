@@ -38,6 +38,7 @@ const (
 	LoadsService_GetDriverActiveLoads_FullMethodName    = "/loads.LoadsService/GetDriverActiveLoads"
 	LoadsService_GetDriverUnsettledLoads_FullMethodName = "/loads.LoadsService/GetDriverUnsettledLoads"
 	LoadsService_GetDriverDocIssueLoads_FullMethodName  = "/loads.LoadsService/GetDriverDocIssueLoads"
+	LoadsService_GetTripChatInfo_FullMethodName         = "/loads.LoadsService/GetTripChatInfo"
 )
 
 // LoadsServiceClient is the client API for LoadsService service.
@@ -75,6 +76,8 @@ type LoadsServiceClient interface {
 	GetDriverUnsettledLoads(ctx context.Context, in *GetDriverUnsettledLoadsRequest, opts ...grpc.CallOption) (*GetDriverUnsettledLoadsResponse, error)
 	// Chat entity suggestions: loads with missing/rejected documents
 	GetDriverDocIssueLoads(ctx context.Context, in *GetDriverDocIssueLoadsRequest, opts ...grpc.CallOption) (*GetDriverDocIssueLoadsResponse, error)
+	// Trip chat info: drivers + dispatchers + shipment metadata for chat creation.
+	GetTripChatInfo(ctx context.Context, in *GetTripChatInfoRequest, opts ...grpc.CallOption) (*GetTripChatInfoResponse, error)
 }
 
 type loadsServiceClient struct {
@@ -244,6 +247,16 @@ func (c *loadsServiceClient) GetDriverDocIssueLoads(ctx context.Context, in *Get
 	return out, nil
 }
 
+func (c *loadsServiceClient) GetTripChatInfo(ctx context.Context, in *GetTripChatInfoRequest, opts ...grpc.CallOption) (*GetTripChatInfoResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetTripChatInfoResponse)
+	err := c.cc.Invoke(ctx, LoadsService_GetTripChatInfo_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // LoadsServiceServer is the server API for LoadsService service.
 // All implementations must embed UnimplementedLoadsServiceServer
 // for forward compatibility.
@@ -279,6 +292,8 @@ type LoadsServiceServer interface {
 	GetDriverUnsettledLoads(context.Context, *GetDriverUnsettledLoadsRequest) (*GetDriverUnsettledLoadsResponse, error)
 	// Chat entity suggestions: loads with missing/rejected documents
 	GetDriverDocIssueLoads(context.Context, *GetDriverDocIssueLoadsRequest) (*GetDriverDocIssueLoadsResponse, error)
+	// Trip chat info: drivers + dispatchers + shipment metadata for chat creation.
+	GetTripChatInfo(context.Context, *GetTripChatInfoRequest) (*GetTripChatInfoResponse, error)
 	mustEmbedUnimplementedLoadsServiceServer()
 }
 
@@ -333,6 +348,9 @@ func (UnimplementedLoadsServiceServer) GetDriverUnsettledLoads(context.Context, 
 }
 func (UnimplementedLoadsServiceServer) GetDriverDocIssueLoads(context.Context, *GetDriverDocIssueLoadsRequest) (*GetDriverDocIssueLoadsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetDriverDocIssueLoads not implemented")
+}
+func (UnimplementedLoadsServiceServer) GetTripChatInfo(context.Context, *GetTripChatInfoRequest) (*GetTripChatInfoResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetTripChatInfo not implemented")
 }
 func (UnimplementedLoadsServiceServer) mustEmbedUnimplementedLoadsServiceServer() {}
 func (UnimplementedLoadsServiceServer) testEmbeddedByValue()                      {}
@@ -618,6 +636,24 @@ func _LoadsService_GetDriverDocIssueLoads_Handler(srv interface{}, ctx context.C
 	return interceptor(ctx, in, info, handler)
 }
 
+func _LoadsService_GetTripChatInfo_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetTripChatInfoRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(LoadsServiceServer).GetTripChatInfo(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: LoadsService_GetTripChatInfo_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(LoadsServiceServer).GetTripChatInfo(ctx, req.(*GetTripChatInfoRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // LoadsService_ServiceDesc is the grpc.ServiceDesc for LoadsService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -680,6 +716,10 @@ var LoadsService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetDriverDocIssueLoads",
 			Handler:    _LoadsService_GetDriverDocIssueLoads_Handler,
+		},
+		{
+			MethodName: "GetTripChatInfo",
+			Handler:    _LoadsService_GetTripChatInfo_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{

@@ -285,6 +285,94 @@ func (x *UserInfo) GetName() string {
 	return ""
 }
 
+type ListOfficeUsersRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	CompanyId     string                 `protobuf:"bytes,1,opt,name=company_id,json=companyId,proto3" json:"company_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListOfficeUsersRequest) Reset() {
+	*x = ListOfficeUsersRequest{}
+	mi := &file_couriers_couriers_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListOfficeUsersRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListOfficeUsersRequest) ProtoMessage() {}
+
+func (x *ListOfficeUsersRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_couriers_couriers_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListOfficeUsersRequest.ProtoReflect.Descriptor instead.
+func (*ListOfficeUsersRequest) Descriptor() ([]byte, []int) {
+	return file_couriers_couriers_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *ListOfficeUsersRequest) GetCompanyId() string {
+	if x != nil {
+		return x.CompanyId
+	}
+	return ""
+}
+
+type ListOfficeUsersResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	UserIds       []string               `protobuf:"bytes,1,rep,name=user_ids,json=userIds,proto3" json:"user_ids,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListOfficeUsersResponse) Reset() {
+	*x = ListOfficeUsersResponse{}
+	mi := &file_couriers_couriers_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListOfficeUsersResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListOfficeUsersResponse) ProtoMessage() {}
+
+func (x *ListOfficeUsersResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_couriers_couriers_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListOfficeUsersResponse.ProtoReflect.Descriptor instead.
+func (*ListOfficeUsersResponse) Descriptor() ([]byte, []int) {
+	return file_couriers_couriers_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *ListOfficeUsersResponse) GetUserIds() []string {
+	if x != nil {
+		return x.UserIds
+	}
+	return nil
+}
+
 var File_couriers_couriers_proto protoreflect.FileDescriptor
 
 const file_couriers_couriers_proto_rawDesc = "" +
@@ -306,12 +394,18 @@ const file_couriers_couriers_proto_rawDesc = "" +
 	"\x05users\x18\x01 \x03(\v2\x12.couriers.UserInfoR\x05users\".\n" +
 	"\bUserInfo\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
-	"\x04name\x18\x02 \x01(\tR\x04name2\xe3\x01\n" +
+	"\x04name\x18\x02 \x01(\tR\x04name\"7\n" +
+	"\x16ListOfficeUsersRequest\x12\x1d\n" +
+	"\n" +
+	"company_id\x18\x01 \x01(\tR\tcompanyId\"4\n" +
+	"\x17ListOfficeUsersResponse\x12\x19\n" +
+	"\buser_ids\x18\x01 \x03(\tR\auserIds2\xbb\x02\n" +
 	"\x0fCouriersService\x12D\n" +
 	"\vUpdateCache\x12\x16.google.protobuf.Empty\x1a\x1d.couriers.UpdateCacheResponse\x12P\n" +
 	"\rGetUsersByIds\x12\x1e.couriers.GetUsersByIdsRequest\x1a\x1f.couriers.GetUsersByIdsResponse\x128\n" +
 	"\n" +
-	"ResolveIDs\x12\x14.couriers.UserFilter\x1a\x14.filters.IDsResponseB.Z,github.com/TMS360/backend-pkg/proto/couriersb\x06proto3"
+	"ResolveIDs\x12\x14.couriers.UserFilter\x1a\x14.filters.IDsResponse\x12V\n" +
+	"\x0fListOfficeUsers\x12 .couriers.ListOfficeUsersRequest\x1a!.couriers.ListOfficeUsersResponseB.Z,github.com/TMS360/backend-pkg/proto/couriersb\x06proto3"
 
 var (
 	file_couriers_couriers_proto_rawDescOnce sync.Once
@@ -325,31 +419,35 @@ func file_couriers_couriers_proto_rawDescGZIP() []byte {
 	return file_couriers_couriers_proto_rawDescData
 }
 
-var file_couriers_couriers_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
+var file_couriers_couriers_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
 var file_couriers_couriers_proto_goTypes = []any{
-	(*UserFilter)(nil),            // 0: couriers.UserFilter
-	(*UpdateCacheResponse)(nil),   // 1: couriers.UpdateCacheResponse
-	(*GetUsersByIdsRequest)(nil),  // 2: couriers.GetUsersByIdsRequest
-	(*GetUsersByIdsResponse)(nil), // 3: couriers.GetUsersByIdsResponse
-	(*UserInfo)(nil),              // 4: couriers.UserInfo
-	(*filters.StringFilter)(nil),  // 5: filters.StringFilter
-	(*emptypb.Empty)(nil),         // 6: google.protobuf.Empty
-	(*filters.IDsResponse)(nil),   // 7: filters.IDsResponse
+	(*UserFilter)(nil),              // 0: couriers.UserFilter
+	(*UpdateCacheResponse)(nil),     // 1: couriers.UpdateCacheResponse
+	(*GetUsersByIdsRequest)(nil),    // 2: couriers.GetUsersByIdsRequest
+	(*GetUsersByIdsResponse)(nil),   // 3: couriers.GetUsersByIdsResponse
+	(*UserInfo)(nil),                // 4: couriers.UserInfo
+	(*ListOfficeUsersRequest)(nil),  // 5: couriers.ListOfficeUsersRequest
+	(*ListOfficeUsersResponse)(nil), // 6: couriers.ListOfficeUsersResponse
+	(*filters.StringFilter)(nil),    // 7: filters.StringFilter
+	(*emptypb.Empty)(nil),           // 8: google.protobuf.Empty
+	(*filters.IDsResponse)(nil),     // 9: filters.IDsResponse
 }
 var file_couriers_couriers_proto_depIdxs = []int32{
-	5, // 0: couriers.UserFilter.name:type_name -> filters.StringFilter
-	5, // 1: couriers.UserFilter.email:type_name -> filters.StringFilter
-	5, // 2: couriers.UserFilter.phone:type_name -> filters.StringFilter
-	5, // 3: couriers.UserFilter.role:type_name -> filters.StringFilter
+	7, // 0: couriers.UserFilter.name:type_name -> filters.StringFilter
+	7, // 1: couriers.UserFilter.email:type_name -> filters.StringFilter
+	7, // 2: couriers.UserFilter.phone:type_name -> filters.StringFilter
+	7, // 3: couriers.UserFilter.role:type_name -> filters.StringFilter
 	4, // 4: couriers.GetUsersByIdsResponse.users:type_name -> couriers.UserInfo
-	6, // 5: couriers.CouriersService.UpdateCache:input_type -> google.protobuf.Empty
+	8, // 5: couriers.CouriersService.UpdateCache:input_type -> google.protobuf.Empty
 	2, // 6: couriers.CouriersService.GetUsersByIds:input_type -> couriers.GetUsersByIdsRequest
 	0, // 7: couriers.CouriersService.ResolveIDs:input_type -> couriers.UserFilter
-	1, // 8: couriers.CouriersService.UpdateCache:output_type -> couriers.UpdateCacheResponse
-	3, // 9: couriers.CouriersService.GetUsersByIds:output_type -> couriers.GetUsersByIdsResponse
-	7, // 10: couriers.CouriersService.ResolveIDs:output_type -> filters.IDsResponse
-	8, // [8:11] is the sub-list for method output_type
-	5, // [5:8] is the sub-list for method input_type
+	5, // 8: couriers.CouriersService.ListOfficeUsers:input_type -> couriers.ListOfficeUsersRequest
+	1, // 9: couriers.CouriersService.UpdateCache:output_type -> couriers.UpdateCacheResponse
+	3, // 10: couriers.CouriersService.GetUsersByIds:output_type -> couriers.GetUsersByIdsResponse
+	9, // 11: couriers.CouriersService.ResolveIDs:output_type -> filters.IDsResponse
+	6, // 12: couriers.CouriersService.ListOfficeUsers:output_type -> couriers.ListOfficeUsersResponse
+	9, // [9:13] is the sub-list for method output_type
+	5, // [5:9] is the sub-list for method input_type
 	5, // [5:5] is the sub-list for extension type_name
 	5, // [5:5] is the sub-list for extension extendee
 	0, // [0:5] is the sub-list for field type_name
@@ -367,7 +465,7 @@ func file_couriers_couriers_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_couriers_couriers_proto_rawDesc), len(file_couriers_couriers_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   5,
+			NumMessages:   7,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

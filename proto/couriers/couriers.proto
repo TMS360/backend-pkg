@@ -15,6 +15,9 @@ service CouriersService {
 
   // Cross-service filtering: returns user IDs matching the filter
   rpc ResolveIDs(UserFilter) returns (filters.IDsResponse);
+
+  // Returns user_ids of all users in company with role ∉ {driver, super_admin}.
+  rpc ListOfficeUsers(ListOfficeUsersRequest) returns (ListOfficeUsersResponse);
 }
 
 message UserFilter {
@@ -40,4 +43,12 @@ message GetUsersByIdsResponse {
 message UserInfo {
   string id = 1;
   string name = 2;
+}
+
+message ListOfficeUsersRequest {
+  string company_id = 1;
+}
+
+message ListOfficeUsersResponse {
+  repeated string user_ids = 1;
 }

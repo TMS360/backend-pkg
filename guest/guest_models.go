@@ -4,9 +4,9 @@ import "github.com/google/uuid"
 
 // ShareLinkRedisData is stored as JSON in Redis under key share_link:{slid}
 type ShareLinkRedisData struct {
-	CompanyID  uuid.UUID `json:"company_id"`
-	Resource   string    `json:"resource"`
-	ResourceID string    `json:"resource_id"`
+	CompanyID  string `json:"company_id"`
+	Resource   string `json:"resource"`
+	ResourceID string `json:"resource_id"`
 }
 
 // AccessLogEvent is published to Kafka when a new guest visit is detected.

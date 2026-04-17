@@ -13,19 +13,49 @@ import (
 	"github.com/TMS360/backend-pkg/cache"
 	"github.com/TMS360/backend-pkg/consts"
 	"github.com/TMS360/backend-pkg/middleware"
+	"github.com/TMS360/backend-pkg/ratelimit"
 	"github.com/TMS360/backend-pkg/tmsdb"
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 )
 
+// Per-guest rate limit for @authGuest-protected resolvers. Keyed by share link
+// (companyID:resource:resourceID), so one link's bad behavior can't starve
+// others. Tuned low for initial rollout; bump via NewHandler options if needed.
+const (
+	defaultGuestRateLimit  = 10
+	defaultGuestRateWindow = time.Minute
+)
+
 type Handler struct {
-	secret []byte
-	tm     tmsdb.TransactionManager
+	secret     []byte
+	tm         tmsdb.TransactionManager
+	rateLimit  int
+	rateWindow time.Duration
 }
 
-func NewHandler(secret []byte, tm tmsdb.TransactionManager) *Handler {
-	return &Handler{secret: secret, tm: tm}
+type Option func(*Handler)
+
+// WithRateLimit overrides the per-share-link guest rate limit.
+func WithRateLimit(limit int, window time.Duration) Option {
+	return func(h *Handler) {
+		h.rateLimit = limit
+		h.rateWindow = window
+	}
+}
+
+func NewHandler(secret []byte, tm tmsdb.TransactionManager, opts ...Option) *Handler {
+	h := &Handler{
+		secret:     secret,
+		tm:         tm,
+		rateLimit:  defaultGuestRateLimit,
+		rateWindow: defaultGuestRateWindow,
+	}
+	for _, opt := range opts {
+		opt(h)
+	}
+	return h
 }
 
 // Middleware — Gin middleware that resolves guest token and sets actor
@@ -97,6 +127,20 @@ func (gh *Handler) Directive(ctx context.Context, obj interface{}, next graphql.
 	if actor.Claims.Resource != resource {
 		return nil, fmt.Errorf("unauthorized: guest access not allowed for this resource")
 	}
+
+	companyID := ""
+	if actor.Claims.CompanyID != nil {
+		companyID = actor.Claims.CompanyID.String()
+	}
+	key := fmt.Sprintf("guest:%s:%s:%s", companyID, actor.Claims.Resource, actor.Claims.ResourceID)
+	allowed, rlErr := ratelimit.Allow(ctx, key, gh.rateLimit, gh.rateWindow)
+	if rlErr != nil {
+		slog.Warn("guest rate limit check failed — failing open", "err", rlErr)
+	}
+	if !allowed {
+		return nil, fmt.Errorf("429 Too Many Requests: guest rate limit exceeded (%d per %s)", gh.rateLimit, gh.rateWindow)
+	}
+
 	return next(ctx)
 }
 

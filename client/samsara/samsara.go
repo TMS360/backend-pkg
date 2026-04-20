@@ -68,7 +68,7 @@ type VehicleLocationFeed struct {
 	Name         string                 `json:"name"`
 	ExternalIDs  map[string]interface{} `json:"externalIds,omitempty"`
 	Gps          []GpsCoordinates       `json:"gps"`          // feed returns array
-	FuelPercents []FuelPercent          `json:"fuelPercents"`  // feed returns array
+	FuelPercents []FuelPercent          `json:"fuelPercents"` // feed returns array
 }
 
 type VehicleLocationFeedResponse struct {
@@ -351,6 +351,49 @@ type AlertConfigurationResponse struct {
 type AlertConfigurationListResponse struct {
 	Data       []AlertConfiguration `json:"data"`
 	Pagination Pagination           `json:"pagination,omitempty"`
+}
+
+// ============================================================================
+// СТРУКТУРЫ ДЛЯ ВОДИТЕЛЕЙ И SAFETY SCORE
+// ============================================================================
+
+// SamsaraDriver - информация о водителе из Samsara
+type SamsaraDriver struct {
+	ID                     string            `json:"id"`
+	Name                   string            `json:"name"`
+	Username               string            `json:"username,omitempty"`
+	Phone                  string            `json:"phone,omitempty"`
+	LicenseNumber          string            `json:"licenseNumber,omitempty"`
+	LicenseState           string            `json:"licenseState,omitempty"`
+	ExternalIDs            map[string]string `json:"externalIds,omitempty"`
+	DriverActivationStatus string            `json:"driverActivationStatus,omitempty"`
+	CreatedAtTime          string            `json:"createdAtTime,omitempty"`
+	UpdatedAtTime          string            `json:"updatedAtTime,omitempty"`
+}
+
+type DriverListResponse struct {
+	Data       []SamsaraDriver `json:"data"`
+	Pagination Pagination      `json:"pagination"`
+}
+
+type DriverResponse struct {
+	Data SamsaraDriver `json:"data"`
+}
+
+// DriverSafetyScore - данные Safety Score водителя из Samsara
+type DriverSafetyScore struct {
+	SafetyScore               int   `json:"safetyScore"` // 0-100
+	TotalTimeDrivenMs         int64 `json:"totalTimeDrivenMs"`
+	TotalDistanceDrivenMeters int64 `json:"totalDistanceDrivenMeters"`
+	CrashCount                int   `json:"crashCount"`
+	HarshAccelCount           int   `json:"harshAccelCount"`
+	HarshBrakingCount         int   `json:"harshBrakingCount"`
+	HarshTurningCount         int   `json:"harshTurningCount"`
+	SpeedingCount             int   `json:"speedingCount"`
+}
+
+type DriverSafetyScoreResponse struct {
+	Data DriverSafetyScore `json:"data"`
 }
 
 // Client - основной клиент для работы с Samsara API
@@ -1946,4 +1989,87 @@ func CreateFullTemperatureMonitoringSetup(client *Client, ctx context.Context, n
 	}
 
 	return nil
+}
+
+// ============================================================================
+// МЕТОДЫ ДЛЯ РАБОТЫ С ВОДИТЕЛЯМИ И SAFETY SCORE
+// ============================================================================
+
+// ListDrivers получает список всех водителей
+func (c *Client) ListDrivers(ctx context.Context) (drivers []SamsaraDriver, err error) {
+	var allDrivers []SamsaraDriver
+	cursor := ""
+
+	for {
+		path := "/fleet/drivers"
+		if cursor != "" {
+			path += "?after=" + cursor
+		}
+
+		resp, err := c.doRequest(ctx, http.MethodGet, path, nil)
+		if err != nil {
+			return nil, err
+		}
+
+		var listResponse DriverListResponse
+		if decodeErr := json.NewDecoder(resp.Body).Decode(&listResponse); decodeErr != nil {
+			resp.Body.Close()
+			return nil, fmt.Errorf("failed to decode drivers response: %w", decodeErr)
+		}
+		resp.Body.Close()
+
+		allDrivers = append(allDrivers, listResponse.Data...)
+
+		if !listResponse.Pagination.HasNextPage || listResponse.Pagination.EndCursor == "" {
+			break
+		}
+		cursor = listResponse.Pagination.EndCursor
+	}
+
+	return allDrivers, nil
+}
+
+// GetDriver получает информацию о конкретном водителе по Samsara ID
+func (c *Client) GetDriver(ctx context.Context, driverID string) (driver *SamsaraDriver, err error) {
+	path := fmt.Sprintf("/fleet/drivers/%s", driverID)
+	resp, err := c.doRequest(ctx, http.MethodGet, path, nil)
+	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		if closeErr := resp.Body.Close(); closeErr != nil && err == nil {
+			err = fmt.Errorf("failed to close response body: %w", closeErr)
+		}
+	}()
+
+	var driverResponse DriverResponse
+	if err := json.NewDecoder(resp.Body).Decode(&driverResponse); err != nil {
+		return nil, fmt.Errorf("failed to decode driver response: %w", err)
+	}
+
+	return &driverResponse.Data, nil
+}
+
+// GetDriverSafetyScore получает Safety Score водителя за указанный период
+func (c *Client) GetDriverSafetyScore(ctx context.Context, driverID string, startTime, endTime time.Time) (score *DriverSafetyScore, err error) {
+	startMs := startTime.UnixMilli()
+	endMs := endTime.UnixMilli()
+
+	path := fmt.Sprintf("/fleet/drivers/%s/safety-score?startMs=%d&endMs=%d", driverID, startMs, endMs)
+	resp, err := c.doRequest(ctx, http.MethodGet, path, nil)
+	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		if closeErr := resp.Body.Close(); closeErr != nil && err == nil {
+			err = fmt.Errorf("failed to close response body: %w", closeErr)
+		}
+	}()
+
+	var safetyResponse DriverSafetyScoreResponse
+	if err := json.NewDecoder(resp.Body).Decode(&safetyResponse); err != nil {
+		return nil, fmt.Errorf("failed to decode safety score response: %w", err)
+	}
+
+	return &safetyResponse.Data, nil
 }

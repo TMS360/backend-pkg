@@ -24,7 +24,7 @@ import (
 // (companyID:resource:resourceID), so one link's bad behavior can't starve
 // others. Tuned low for initial rollout; bump via NewHandler options if needed.
 const (
-	defaultGuestRateLimit  = 10
+	defaultGuestRateLimit  = 60
 	defaultGuestRateWindow = time.Minute
 )
 

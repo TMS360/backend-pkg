@@ -381,19 +381,18 @@ type DriverResponse struct {
 }
 
 // DriverSafetyScore - данные Safety Score водителя из Samsara
+// Legacy API: GET /v1/fleet/drivers/{driverId}/safety/score?startMs=&endMs=
 type DriverSafetyScore struct {
-	SafetyScore               int   `json:"safetyScore"` // 0-100
-	TotalTimeDrivenMs         int64 `json:"totalTimeDrivenMs"`
-	TotalDistanceDrivenMeters int64 `json:"totalDistanceDrivenMeters"`
-	CrashCount                int   `json:"crashCount"`
-	HarshAccelCount           int   `json:"harshAccelCount"`
-	HarshBrakingCount         int   `json:"harshBrakingCount"`
-	HarshTurningCount         int   `json:"harshTurningCount"`
-	SpeedingCount             int   `json:"speedingCount"`
-}
-
-type DriverSafetyScoreResponse struct {
-	Data DriverSafetyScore `json:"data"`
+	SafetyScore               int    `json:"safetyScore"` // 0-100
+	SafetyScoreRank           string `json:"safetyScoreRank,omitempty"`
+	TotalTimeDrivenMs         int64  `json:"totalTimeDrivenMs"`
+	TotalDistanceDrivenMeters int64  `json:"totalDistanceDrivenMeters"`
+	CrashCount                int    `json:"crashCount"`
+	HarshAccelCount           int    `json:"harshAccelCount"`
+	HarshBrakingCount         int    `json:"harshBrakingCount"`
+	HarshTurningCount         int    `json:"harshTurningCount"`
+	TotalHarshEventCount      int    `json:"totalHarshEventCount"`
+	TimeOverSpeedLimitMs      int64  `json:"timeOverSpeedLimitMs"`
 }
 
 // Client - основной клиент для работы с Samsara API
@@ -2051,11 +2050,12 @@ func (c *Client) GetDriver(ctx context.Context, driverID string) (driver *Samsar
 }
 
 // GetDriverSafetyScore получает Safety Score водителя за указанный период
+// Legacy API: GET /v1/fleet/drivers/{driverId}/safety/score?startMs=&endMs=
+// Duration (endMs - startMs) must be >= 1 hour.
 func (c *Client) GetDriverSafetyScore(ctx context.Context, driverID string, startTime, endTime time.Time) (score *DriverSafetyScore, err error) {
-	startMs := startTime.UnixMilli()
-	endMs := endTime.UnixMilli()
+	path := fmt.Sprintf("/v1/fleet/drivers/%s/safety/score?startMs=%d&endMs=%d",
+		driverID, startTime.UnixMilli(), endTime.UnixMilli())
 
-	path := fmt.Sprintf("/fleet/drivers/%s/safety-score?startMs=%d&endMs=%d", driverID, startMs, endMs)
 	resp, err := c.doRequest(ctx, http.MethodGet, path, nil)
 	if err != nil {
 		return nil, err
@@ -2066,10 +2066,10 @@ func (c *Client) GetDriverSafetyScore(ctx context.Context, driverID string, star
 		}
 	}()
 
-	var safetyResponse DriverSafetyScoreResponse
-	if err := json.NewDecoder(resp.Body).Decode(&safetyResponse); err != nil {
+	var result DriverSafetyScore
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
 		return nil, fmt.Errorf("failed to decode safety score response: %w", err)
 	}
 
-	return &safetyResponse.Data, nil
+	return &result, nil
 }

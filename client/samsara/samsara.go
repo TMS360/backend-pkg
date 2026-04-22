@@ -395,6 +395,34 @@ type DriverSafetyScore struct {
 	TimeOverSpeedLimitMs      int64  `json:"timeOverSpeedLimitMs"`
 }
 
+// DriverSafetyScoreV2 - данные Safety Score из нового API Samsara
+// API: GET /safety-scores/drivers?startTime=&endTime=&driverIds=
+type DriverSafetyScoreV2 struct {
+	DriverID              string                `json:"driverId"`
+	DriverScore           int                   `json:"driverScore"` // 0-100
+	DriveTimeMilliseconds int64                 `json:"driveTimeMilliseconds"`
+	DriveDistanceMeters   int64                 `json:"driveDistanceMeters"`
+	Behaviors             []SafetyScoreBehavior `json:"behaviors"`
+	Speeding              []SafetyScoreSpeeding `json:"speeding"`
+}
+
+type SafetyScoreBehavior struct {
+	BehaviorType string  `json:"behaviorType"`
+	Count        int64   `json:"count"`
+	ScoreImpact  float64 `json:"scoreImpact"`
+}
+
+type SafetyScoreSpeeding struct {
+	SpeedingType         string  `json:"speedingType"`
+	DurationMilliseconds int64   `json:"durationMilliseconds"`
+	ScoreImpact          float64 `json:"scoreImpact"`
+}
+
+type DriverSafetyScoresResponse struct {
+	Data       []DriverSafetyScoreV2 `json:"data"`
+	Pagination Pagination            `json:"pagination"`
+}
+
 // Client - основной клиент для работы с Samsara API
 type Client struct {
 	httpClient *http.Client

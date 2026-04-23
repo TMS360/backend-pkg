@@ -39,6 +39,7 @@ const (
 	LoadsService_GetDriverUnsettledLoads_FullMethodName = "/loads.LoadsService/GetDriverUnsettledLoads"
 	LoadsService_GetDriverDocIssueLoads_FullMethodName  = "/loads.LoadsService/GetDriverDocIssueLoads"
 	LoadsService_GetTripChatInfo_FullMethodName         = "/loads.LoadsService/GetTripChatInfo"
+	LoadsService_GetTripsByIDs_FullMethodName           = "/loads.LoadsService/GetTripsByIDs"
 )
 
 // LoadsServiceClient is the client API for LoadsService service.
@@ -78,6 +79,12 @@ type LoadsServiceClient interface {
 	GetDriverDocIssueLoads(ctx context.Context, in *GetDriverDocIssueLoadsRequest, opts ...grpc.CallOption) (*GetDriverDocIssueLoadsResponse, error)
 	// Trip chat info: drivers + dispatchers + shipment metadata for chat creation.
 	GetTripChatInfo(ctx context.Context, in *GetTripChatInfoRequest, opts ...grpc.CallOption) (*GetTripChatInfoResponse, error)
+	// ── Pay Batch (used by backend-accounting) ─────────────────────────
+	// Returns detailed pay-batch payload for a given set of trip IDs.
+	// Used by backend-accounting when building a pay batch from a pre-selected
+	// list of trips. Filtering/categorisation of trips for the picker UI is
+	// handled by a GraphQL federation query in backend-load — not here.
+	GetTripsByIDs(ctx context.Context, in *GetTripsByIDsRequest, opts ...grpc.CallOption) (*GetTripsByIDsResponse, error)
 }
 
 type loadsServiceClient struct {
@@ -257,6 +264,16 @@ func (c *loadsServiceClient) GetTripChatInfo(ctx context.Context, in *GetTripCha
 	return out, nil
 }
 
+func (c *loadsServiceClient) GetTripsByIDs(ctx context.Context, in *GetTripsByIDsRequest, opts ...grpc.CallOption) (*GetTripsByIDsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetTripsByIDsResponse)
+	err := c.cc.Invoke(ctx, LoadsService_GetTripsByIDs_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // LoadsServiceServer is the server API for LoadsService service.
 // All implementations must embed UnimplementedLoadsServiceServer
 // for forward compatibility.
@@ -294,6 +311,12 @@ type LoadsServiceServer interface {
 	GetDriverDocIssueLoads(context.Context, *GetDriverDocIssueLoadsRequest) (*GetDriverDocIssueLoadsResponse, error)
 	// Trip chat info: drivers + dispatchers + shipment metadata for chat creation.
 	GetTripChatInfo(context.Context, *GetTripChatInfoRequest) (*GetTripChatInfoResponse, error)
+	// ── Pay Batch (used by backend-accounting) ─────────────────────────
+	// Returns detailed pay-batch payload for a given set of trip IDs.
+	// Used by backend-accounting when building a pay batch from a pre-selected
+	// list of trips. Filtering/categorisation of trips for the picker UI is
+	// handled by a GraphQL federation query in backend-load — not here.
+	GetTripsByIDs(context.Context, *GetTripsByIDsRequest) (*GetTripsByIDsResponse, error)
 	mustEmbedUnimplementedLoadsServiceServer()
 }
 
@@ -351,6 +374,9 @@ func (UnimplementedLoadsServiceServer) GetDriverDocIssueLoads(context.Context, *
 }
 func (UnimplementedLoadsServiceServer) GetTripChatInfo(context.Context, *GetTripChatInfoRequest) (*GetTripChatInfoResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetTripChatInfo not implemented")
+}
+func (UnimplementedLoadsServiceServer) GetTripsByIDs(context.Context, *GetTripsByIDsRequest) (*GetTripsByIDsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetTripsByIDs not implemented")
 }
 func (UnimplementedLoadsServiceServer) mustEmbedUnimplementedLoadsServiceServer() {}
 func (UnimplementedLoadsServiceServer) testEmbeddedByValue()                      {}
@@ -654,6 +680,24 @@ func _LoadsService_GetTripChatInfo_Handler(srv interface{}, ctx context.Context,
 	return interceptor(ctx, in, info, handler)
 }
 
+func _LoadsService_GetTripsByIDs_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetTripsByIDsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(LoadsServiceServer).GetTripsByIDs(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: LoadsService_GetTripsByIDs_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(LoadsServiceServer).GetTripsByIDs(ctx, req.(*GetTripsByIDsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // LoadsService_ServiceDesc is the grpc.ServiceDesc for LoadsService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -720,6 +764,10 @@ var LoadsService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetTripChatInfo",
 			Handler:    _LoadsService_GetTripChatInfo_Handler,
+		},
+		{
+			MethodName: "GetTripsByIDs",
+			Handler:    _LoadsService_GetTripsByIDs_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{

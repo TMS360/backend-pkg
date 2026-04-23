@@ -57,6 +57,13 @@ service LoadsService {
 
   // Trip chat info: drivers + dispatchers + shipment metadata for chat creation.
   rpc GetTripChatInfo(GetTripChatInfoRequest) returns (GetTripChatInfoResponse);
+
+  // ── Pay Batch (used by backend-accounting) ─────────────────────────
+  // Returns detailed pay-batch payload for a given set of trip IDs.
+  // Used by backend-accounting when building a pay batch from a pre-selected
+  // list of trips. Filtering/categorisation of trips for the picker UI is
+  // handled by a GraphQL federation query in backend-load — not here.
+  rpc GetTripsByIDs(GetTripsByIDsRequest) returns (GetTripsByIDsResponse);
 }
 
 message ShipmentFilterRequest {
@@ -395,5 +402,45 @@ message GetTripChatInfoResponse {
   optional string secondary_driver_id = 4;
   repeated string dispatcher_ids = 5;
   bool is_current_trip = 6;
+}
+
+// ── Pay Batch (backend-accounting) ─────────────────────────────────────
+
+message GetTripsByIDsRequest {
+  repeated string trip_ids = 1;
+}
+
+message GetTripsByIDsResponse {
+  repeated PayBatchTrip trips = 1;
+}
+
+// Детали trip-а, нужные backend-accounting чтобы создать pay_batch
+// из пре-выбранного списка trip-ов (createPayBatch(tripIds)).
+message PayBatchTrip {
+  string trip_id     = 1;
+  string trip_number = 2;
+
+  optional string load_id   = 3;  // shipment.load_id (display number)
+  string load_number        = 4;
+  optional string driver_id = 5;  // main driver ID, если есть
+  string driver_name        = 6;  // опционально; "" если backend-load не знает (лежит в teams)
+  string shipment_status    = 7;  // IN_TRANSIT / DELIVERED / COMPLETED / READY_FOR_BILLING
+
+  google.protobuf.Timestamp pickup_date   = 8;  // COALESCE(first_stop.checked_in_at, first_leg.appointment_from)
+  google.protobuf.Timestamp delivery_date = 9;  // COALESCE(last_stop.checked_in_at,  last_leg.appointment_from)
+
+  string pickup_city    = 10;
+  string pickup_state   = 11;
+  string delivery_city  = 12;
+  string delivery_state = 13;
+
+  double loaded_miles = 14;
+  double empty_miles  = 15;
+  double total_miles  = 16;
+
+  double total_pay    = 17;  // shipment.total_pay
+  double driver_gross = 18;  // расчётная зарплата водителя (если известна)
+  double rate         = 19;  // shipment.rpm
+  string truck_unit   = 20;  // truck.license / number, "" если нет
 }
 

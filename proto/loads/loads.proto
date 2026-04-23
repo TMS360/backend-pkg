@@ -59,14 +59,10 @@ service LoadsService {
   rpc GetTripChatInfo(GetTripChatInfoRequest) returns (GetTripChatInfoResponse);
 
   // ── Pay Batch (used by backend-accounting) ─────────────────────────
-  // Returns trips of the caller's company whose reference leg
-  // (MIN or MAX leg_sequence, depending on time_type) falls within
-  // [period_start, period_end] AND whose shipment status is one of
-  // IN_TRANSIT / DELIVERED / COMPLETED / READY_FOR_BILLING.
-  rpc GetTripsForPayBatch(GetTripsForPayBatchRequest) returns (GetTripsForPayBatchResponse);
-
   // Returns detailed pay-batch payload for a given set of trip IDs.
-  // Used by backend-accounting when building a pay batch from a pre-selected list.
+  // Used by backend-accounting when building a pay batch from a pre-selected
+  // list of trips. Filtering/categorisation of trips for the picker UI is
+  // handled by a GraphQL federation query in backend-load — not here.
   rpc GetTripsByIDs(GetTripsByIDsRequest) returns (GetTripsByIDsResponse);
 }
 
@@ -410,65 +406,41 @@ message GetTripChatInfoResponse {
 
 // ── Pay Batch (backend-accounting) ─────────────────────────────────────
 
-// Which shipment leg timestamp is used to test the [period_start, period_end] window:
-//   PICKUP   = first leg  (MIN leg_sequence)
-//   DELIVERY = last leg   (MAX leg_sequence)
-// Reference time itself is COALESCE(trip_stop.checked_in_at, shipment_leg.appointment_from).
-enum PayBatchTimeType {
-  PAY_BATCH_TIME_TYPE_UNSPECIFIED = 0;
-  PAY_BATCH_TIME_TYPE_PICKUP      = 1;
-  PAY_BATCH_TIME_TYPE_DELIVERY    = 2;
-}
-
-message GetTripsForPayBatchRequest {
-  google.protobuf.Timestamp period_start = 1;
-  google.protobuf.Timestamp period_end   = 2;
-  PayBatchTimeType          time_type    = 3;
-  // company_id — из auth metadata (handled by interceptor).
-}
-
-message GetTripsForPayBatchResponse {
-  repeated PayBatchTrip trips = 1;
-}
-
 message GetTripsByIDsRequest {
   repeated string trip_ids = 1;
-  // Опционально: если задан, reference_time/pickup/delivery будут посчитаны для этого timeType.
-  PayBatchTimeType time_type = 2;
 }
 
 message GetTripsByIDsResponse {
   repeated PayBatchTrip trips = 1;
 }
 
-// Единый DTO, используемый в обоих Pay-Batch RPC.
+// Детали trip-а, нужные backend-accounting чтобы создать pay_batch
+// из пре-выбранного списка trip-ов (createPayBatch(tripIds)).
 message PayBatchTrip {
-  string trip_id        = 1;
-  string trip_number    = 2;
+  string trip_id     = 1;
+  string trip_number = 2;
 
-  optional string load_id       = 3;  // shipment.load_id (display number)
-  string load_number            = 4;
-  optional string driver_id     = 5;  // main driver ID, если есть
-  string driver_name            = 6;  // опционально; "" если backend-load не знает (лежит в teams)
-  string shipment_status        = 7;  // IN_TRANSIT / DELIVERED / COMPLETED / READY_FOR_BILLING
+  optional string load_id   = 3;  // shipment.load_id (display number)
+  string load_number        = 4;
+  optional string driver_id = 5;  // main driver ID, если есть
+  string driver_name        = 6;  // опционально; "" если backend-load не знает (лежит в teams)
+  string shipment_status    = 7;  // IN_TRANSIT / DELIVERED / COMPLETED / READY_FOR_BILLING
 
-  // Reference time, which was used for the period window test (see PayBatchTimeType above).
-  google.protobuf.Timestamp reference_time = 8;
-  google.protobuf.Timestamp pickup_date    = 9;  // COALESCE(first_stop.checked_in_at, first_leg.appointment_from)
-  google.protobuf.Timestamp delivery_date  = 10; // COALESCE(last_stop.checked_in_at,  last_leg.appointment_from)
+  google.protobuf.Timestamp pickup_date   = 8;  // COALESCE(first_stop.checked_in_at, first_leg.appointment_from)
+  google.protobuf.Timestamp delivery_date = 9;  // COALESCE(last_stop.checked_in_at,  last_leg.appointment_from)
 
-  string pickup_city    = 11;
-  string pickup_state   = 12;
-  string delivery_city  = 13;
-  string delivery_state = 14;
+  string pickup_city    = 10;
+  string pickup_state   = 11;
+  string delivery_city  = 12;
+  string delivery_state = 13;
 
-  double loaded_miles = 15;
-  double empty_miles  = 16;
-  double total_miles  = 17;
+  double loaded_miles = 14;
+  double empty_miles  = 15;
+  double total_miles  = 16;
 
-  double total_pay    = 18;  // shipment.total_pay
-  double driver_gross = 19;  // расчётная зарплата водителя (если известна)
-  double rate         = 20;  // shipment.rpm
-  string truck_unit   = 21;  // truck.license / number, "" если нет
+  double total_pay    = 17;  // shipment.total_pay
+  double driver_gross = 18;  // расчётная зарплата водителя (если известна)
+  double rate         = 19;  // shipment.rpm
+  string truck_unit   = 20;  // truck.license / number, "" если нет
 }
 

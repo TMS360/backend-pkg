@@ -39,7 +39,6 @@ const (
 	LoadsService_GetDriverUnsettledLoads_FullMethodName = "/loads.LoadsService/GetDriverUnsettledLoads"
 	LoadsService_GetDriverDocIssueLoads_FullMethodName  = "/loads.LoadsService/GetDriverDocIssueLoads"
 	LoadsService_GetTripChatInfo_FullMethodName         = "/loads.LoadsService/GetTripChatInfo"
-	LoadsService_GetTripsForPayBatch_FullMethodName     = "/loads.LoadsService/GetTripsForPayBatch"
 	LoadsService_GetTripsByIDs_FullMethodName           = "/loads.LoadsService/GetTripsByIDs"
 )
 
@@ -81,13 +80,10 @@ type LoadsServiceClient interface {
 	// Trip chat info: drivers + dispatchers + shipment metadata for chat creation.
 	GetTripChatInfo(ctx context.Context, in *GetTripChatInfoRequest, opts ...grpc.CallOption) (*GetTripChatInfoResponse, error)
 	// ── Pay Batch (used by backend-accounting) ─────────────────────────
-	// Returns trips of the caller's company whose reference leg
-	// (MIN or MAX leg_sequence, depending on time_type) falls within
-	// [period_start, period_end] AND whose shipment status is one of
-	// IN_TRANSIT / DELIVERED / COMPLETED / READY_FOR_BILLING.
-	GetTripsForPayBatch(ctx context.Context, in *GetTripsForPayBatchRequest, opts ...grpc.CallOption) (*GetTripsForPayBatchResponse, error)
 	// Returns detailed pay-batch payload for a given set of trip IDs.
-	// Used by backend-accounting when building a pay batch from a pre-selected list.
+	// Used by backend-accounting when building a pay batch from a pre-selected
+	// list of trips. Filtering/categorisation of trips for the picker UI is
+	// handled by a GraphQL federation query in backend-load — not here.
 	GetTripsByIDs(ctx context.Context, in *GetTripsByIDsRequest, opts ...grpc.CallOption) (*GetTripsByIDsResponse, error)
 }
 
@@ -268,16 +264,6 @@ func (c *loadsServiceClient) GetTripChatInfo(ctx context.Context, in *GetTripCha
 	return out, nil
 }
 
-func (c *loadsServiceClient) GetTripsForPayBatch(ctx context.Context, in *GetTripsForPayBatchRequest, opts ...grpc.CallOption) (*GetTripsForPayBatchResponse, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(GetTripsForPayBatchResponse)
-	err := c.cc.Invoke(ctx, LoadsService_GetTripsForPayBatch_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
 func (c *loadsServiceClient) GetTripsByIDs(ctx context.Context, in *GetTripsByIDsRequest, opts ...grpc.CallOption) (*GetTripsByIDsResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(GetTripsByIDsResponse)
@@ -326,13 +312,10 @@ type LoadsServiceServer interface {
 	// Trip chat info: drivers + dispatchers + shipment metadata for chat creation.
 	GetTripChatInfo(context.Context, *GetTripChatInfoRequest) (*GetTripChatInfoResponse, error)
 	// ── Pay Batch (used by backend-accounting) ─────────────────────────
-	// Returns trips of the caller's company whose reference leg
-	// (MIN or MAX leg_sequence, depending on time_type) falls within
-	// [period_start, period_end] AND whose shipment status is one of
-	// IN_TRANSIT / DELIVERED / COMPLETED / READY_FOR_BILLING.
-	GetTripsForPayBatch(context.Context, *GetTripsForPayBatchRequest) (*GetTripsForPayBatchResponse, error)
 	// Returns detailed pay-batch payload for a given set of trip IDs.
-	// Used by backend-accounting when building a pay batch from a pre-selected list.
+	// Used by backend-accounting when building a pay batch from a pre-selected
+	// list of trips. Filtering/categorisation of trips for the picker UI is
+	// handled by a GraphQL federation query in backend-load — not here.
 	GetTripsByIDs(context.Context, *GetTripsByIDsRequest) (*GetTripsByIDsResponse, error)
 	mustEmbedUnimplementedLoadsServiceServer()
 }
@@ -391,9 +374,6 @@ func (UnimplementedLoadsServiceServer) GetDriverDocIssueLoads(context.Context, *
 }
 func (UnimplementedLoadsServiceServer) GetTripChatInfo(context.Context, *GetTripChatInfoRequest) (*GetTripChatInfoResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetTripChatInfo not implemented")
-}
-func (UnimplementedLoadsServiceServer) GetTripsForPayBatch(context.Context, *GetTripsForPayBatchRequest) (*GetTripsForPayBatchResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "method GetTripsForPayBatch not implemented")
 }
 func (UnimplementedLoadsServiceServer) GetTripsByIDs(context.Context, *GetTripsByIDsRequest) (*GetTripsByIDsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetTripsByIDs not implemented")
@@ -700,24 +680,6 @@ func _LoadsService_GetTripChatInfo_Handler(srv interface{}, ctx context.Context,
 	return interceptor(ctx, in, info, handler)
 }
 
-func _LoadsService_GetTripsForPayBatch_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(GetTripsForPayBatchRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(LoadsServiceServer).GetTripsForPayBatch(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: LoadsService_GetTripsForPayBatch_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(LoadsServiceServer).GetTripsForPayBatch(ctx, req.(*GetTripsForPayBatchRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
 func _LoadsService_GetTripsByIDs_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(GetTripsByIDsRequest)
 	if err := dec(in); err != nil {
@@ -802,10 +764,6 @@ var LoadsService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetTripChatInfo",
 			Handler:    _LoadsService_GetTripChatInfo_Handler,
-		},
-		{
-			MethodName: "GetTripsForPayBatch",
-			Handler:    _LoadsService_GetTripsForPayBatch_Handler,
 		},
 		{
 			MethodName: "GetTripsByIDs",

@@ -120,3 +120,58 @@ func (e CompanySettingsIntegrationKey) MarshalJSON() ([]byte, error) {
 	e.MarshalGQL(&buf)
 	return buf.Bytes(), nil
 }
+
+type CompanySettingsScoringKey string
+
+const (
+	CompanySettingsScoringKeyScoringSamsaraWeight  CompanySettingsScoringKey = "scoring_samsara_weight"
+	CompanySettingsScoringKeyScoringInternalWeight CompanySettingsScoringKey = "scoring_internal_weight"
+)
+
+var AllCompanySettingsScoringKey = []CompanySettingsScoringKey{
+	CompanySettingsScoringKeyScoringSamsaraWeight,
+	CompanySettingsScoringKeyScoringInternalWeight,
+}
+
+func (e CompanySettingsScoringKey) IsValid() bool {
+	switch e {
+	case CompanySettingsScoringKeyScoringSamsaraWeight, CompanySettingsScoringKeyScoringInternalWeight:
+		return true
+	}
+	return false
+}
+
+func (e CompanySettingsScoringKey) String() string {
+	return string(e)
+}
+
+func (e *CompanySettingsScoringKey) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = CompanySettingsScoringKey(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid CompanySettingsScoringKey", str)
+	}
+	return nil
+}
+
+func (e CompanySettingsScoringKey) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *CompanySettingsScoringKey) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e CompanySettingsScoringKey) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
+}

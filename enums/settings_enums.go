@@ -10,10 +10,11 @@ import (
 type CompanySettingsGeneralKey string
 
 const (
-	CompanySettingsGeneralKeyLogo                     CompanySettingsGeneralKey = "logo"
-	CompanySettingsGeneralKeyHazmatEnabled            CompanySettingsGeneralKey = "hazmat_enabled"
-	CompanySettingsGeneralKeyReeferEnabled            CompanySettingsGeneralKey = "reefer_enabled"
-	CompanySettingsGeneralKeyBrokerHasVerifyShipments CompanySettingsGeneralKey = "broker_has_verify_shipments"
+	CompanySettingsGeneralKeyLogo                      CompanySettingsGeneralKey = "logo"
+	CompanySettingsGeneralKeyHazmatEnabled             CompanySettingsGeneralKey = "hazmat_enabled"
+	CompanySettingsGeneralKeyReeferEnabled             CompanySettingsGeneralKey = "reefer_enabled"
+	CompanySettingsGeneralKeyBrokerHasVerifyShipments  CompanySettingsGeneralKey = "broker_has_verify_shipments"
+	CompanySettingsGeneralKeyTripAssignmentBufferHours CompanySettingsGeneralKey = "trip_assignment_buffer_hours"
 )
 
 var AllCompanySettingsGeneralKey = []CompanySettingsGeneralKey{
@@ -21,11 +22,12 @@ var AllCompanySettingsGeneralKey = []CompanySettingsGeneralKey{
 	CompanySettingsGeneralKeyHazmatEnabled,
 	CompanySettingsGeneralKeyReeferEnabled,
 	CompanySettingsGeneralKeyBrokerHasVerifyShipments,
+	CompanySettingsGeneralKeyTripAssignmentBufferHours,
 }
 
 func (e CompanySettingsGeneralKey) IsValid() bool {
 	switch e {
-	case CompanySettingsGeneralKeyLogo, CompanySettingsGeneralKeyHazmatEnabled, CompanySettingsGeneralKeyReeferEnabled, CompanySettingsGeneralKeyBrokerHasVerifyShipments:
+	case CompanySettingsGeneralKeyLogo, CompanySettingsGeneralKeyHazmatEnabled, CompanySettingsGeneralKeyReeferEnabled, CompanySettingsGeneralKeyBrokerHasVerifyShipments, CompanySettingsGeneralKeyTripAssignmentBufferHours:
 		return true
 	}
 	return false

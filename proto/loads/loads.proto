@@ -59,10 +59,19 @@ service LoadsService {
   rpc GetTripChatInfo(GetTripChatInfoRequest) returns (GetTripChatInfoResponse);
 
   // ── Pay Batch (used by backend-accounting) ─────────────────────────
+  // Returns picker-UI payload for the pay-batch creation screen: two baskets
+  // of trips — those that match the period window (status=DELIVERED) and
+  // IN_TRANSIT trips whose reference leg falls OUTSIDE the window.
+  // Caller (accounting) pre-computes the list of trip IDs that are already
+  // busy (in another active batch or already in some non-superseded
+  // statement) and passes them via `excluded_trip_ids` so backend-load
+  // filters them out at the SQL level.
+  rpc GetTripsForPayBatch(GetTripsForPayBatchRequest) returns (GetTripsForPayBatchResponse);
+
   // Returns detailed pay-batch payload for a given set of trip IDs.
   // Used by backend-accounting when building a pay batch from a pre-selected
-  // list of trips. Filtering/categorisation of trips for the picker UI is
-  // handled by a GraphQL federation query in backend-load — not here.
+  // list of trips (createPayBatch) OR for enriching "already-in-batch"
+  // picker-UI rows with full trip details.
   rpc GetTripsByIDs(GetTripsByIDsRequest) returns (GetTripsByIDsResponse);
 }
 
@@ -406,8 +415,51 @@ message GetTripChatInfoResponse {
 
 // ── Pay Batch (backend-accounting) ─────────────────────────────────────
 
+// Which shipment leg is used to test the [period_start, period_end] window:
+//   PICKUP   = first leg (MIN leg_sequence)   — pickup time
+//   DELIVERY = last leg  (MAX leg_sequence)   — delivery time
+// Reference time itself is COALESCE(trip_stop.checked_in_at, shipment_leg.appointment_from).
+enum PayBatchTimeType {
+  PAY_BATCH_TIME_TYPE_UNSPECIFIED = 0;
+  PAY_BATCH_TIME_TYPE_PICKUP      = 1;
+  PAY_BATCH_TIME_TYPE_DELIVERY    = 2;
+}
+
+message GetTripsForPayBatchRequest {
+  google.protobuf.Timestamp period_start = 1;
+  google.protobuf.Timestamp period_end   = 2;
+  PayBatchTimeType          time_type    = 3;
+
+  // Trips that must NOT appear in response — already in an active pay batch
+  // (draft/posted) or already attached to a non-superseded statement.
+  // Computed by accounting before the call; empty = nothing to exclude.
+  repeated string excluded_trip_ids = 4;
+
+  // If true, response.in_transit_outside_range is populated; if false — empty.
+  // Saves one sub-SELECT when the picker UI doesn't need that column.
+  bool include_in_transit_outside_range = 5;
+
+  // Explicit tenant scope — accounting passes the caller's company_id
+  // (extracted from the caller's JWT) so backend-load can filter without a
+  // gRPC AuthServerInterceptor. When AuthServerInterceptor is wired up on
+  // backend-load, this field can be ignored in favour of the actor in ctx.
+  string company_id = 6;
+}
+
+message GetTripsForPayBatchResponse {
+  // Trips matching status=DELIVERED AND reference leg in [period_start, period_end],
+  // minus `excluded_trip_ids`.
+  repeated PayBatchTrip available = 1;
+
+  // Trips with status=IN_TRANSIT whose reference leg is OUTSIDE the window.
+  // Empty when include_in_transit_outside_range=false.
+  repeated PayBatchTrip in_transit_outside_range = 2;
+}
+
 message GetTripsByIDsRequest {
   repeated string trip_ids = 1;
+  // Same semantics as GetTripsForPayBatchRequest.company_id.
+  string company_id = 2;
 }
 
 message GetTripsByIDsResponse {

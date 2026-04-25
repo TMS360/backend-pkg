@@ -3,6 +3,7 @@ package here
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -12,6 +13,10 @@ import (
 
 	"github.com/TMS360/backend-pkg/config"
 )
+
+// ErrInvalidCredentials is returned by TestConnection when the HERE API
+// rejects the configured API key with a 401 or 403 status.
+var ErrInvalidCredentials = errors.New("here: invalid credentials")
 
 // Route API models
 type RouteRequest struct {
@@ -477,4 +482,35 @@ func (c *Client) Lookup(ctx context.Context, req LookupRequest) (*GeocodeItem, e
 // LookupByID is a simple helper to lookup a place by its HERE ID
 func (c *Client) LookupByID(ctx context.Context, id string) (*GeocodeItem, error) {
 	return c.Lookup(ctx, LookupRequest{ID: id})
+}
+
+// TestConnection validates the API key by making a lightweight authenticated
+// request (GET /v1/revgeocode?at=0,0&limit=1). Returns nil on success,
+// ErrInvalidCredentials on 401/403, or a wrapped error otherwise.
+func (c *Client) TestConnection(ctx context.Context) error {
+	params := url.Values{}
+	params.Set("at", "0,0")
+	params.Set("limit", "1")
+	params.Set("apiKey", c.apiKey)
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.geocodeHost+"/v1/revgeocode?"+params.Encode(), nil)
+	if err != nil {
+		return fmt.Errorf("here: failed to create request: %w", err)
+	}
+	req.Header.Set("Accept", "application/json")
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("here: network error: %w", err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	if resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden {
+		return ErrInvalidCredentials
+	}
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		body, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("here: status %d: %s", resp.StatusCode, string(body))
+	}
+	return nil
 }

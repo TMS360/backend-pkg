@@ -3,6 +3,7 @@ package samsara
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -12,6 +13,10 @@ import (
 
 	"github.com/TMS360/backend-pkg/config"
 )
+
+// ErrInvalidCredentials is returned by TestConnection when the Samsara API
+// rejects the configured API key with a 401 or 403 status.
+var ErrInvalidCredentials = errors.New("samsara: invalid credentials")
 
 // VehicleInfo - информация о транспортном средстве
 type VehicleInfo struct {
@@ -2100,4 +2105,30 @@ func (c *Client) GetDriverSafetyScore(ctx context.Context, driverID string, star
 	}
 
 	return &result, nil
+}
+
+// TestConnection validates the API key by making a lightweight authenticated
+// request (GET /fleet/vehicles?limit=1). Returns nil on success,
+// ErrInvalidCredentials on 401/403, or a wrapped error otherwise.
+func (c *Client) TestConnection(ctx context.Context) error {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.host+"/fleet/vehicles?limit=1", nil)
+	if err != nil {
+		return fmt.Errorf("samsara: failed to create request: %w", err)
+	}
+	req.Header.Set("Authorization", "Bearer "+c.apiKey)
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("samsara: network error: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden {
+		return ErrInvalidCredentials
+	}
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		body, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("samsara: status %d: %s", resp.StatusCode, string(body))
+	}
+	return nil
 }

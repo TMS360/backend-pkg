@@ -26,6 +26,12 @@ message File {
   string filename = 5;
   string mime_type = 6;
   int64 size_bytes = 7;
+  // Document type name from tms-files (e.g. "POD", "BOL", "RC", "INVOICE"). Empty if not classified.
+  string document_type = 8;
+  // Document type UUID. Empty if not classified.
+  string document_type_id = 9;
+  // Document category (e.g. "SHIPMENT", "DRIVER"). Empty if not classified.
+  string category = 10;
 }
 
 message GetFileResponse {

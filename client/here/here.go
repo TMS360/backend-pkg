@@ -26,6 +26,14 @@ type RouteRequest struct {
 	TransportMode string // car, truck, pedestrian, bicycle, scooter
 	Currency      string
 	ReturnOptions []string // tolls, summary, polyline, instructions, etc.
+
+	// Optional navigation extensions. Zero value preserves legacy behavior.
+	Via          []Coordinates    // intermediate waypoints (HERE `via=`, repeated)
+	TruckAttrs   *TruckAttributes // truck dimensions, weight, hazmat, tunnel
+	Avoid        *AvoidOptions    // avoid features / exclude countries
+	Alternatives int              // 0..6 — number of alternative routes
+	Lang         string           // BCP47, e.g. "en-US", "ru-RU"
+	Units        string           // "metric" | "imperial"
 }
 
 type Coordinates struct {
@@ -51,6 +59,12 @@ type RouteSection struct {
 	Tolls     []TollItem     `json:"tolls,omitempty"`
 	Transport *TransportInfo `json:"transport"`
 	Polyline  string         `json:"polyline,omitempty"`
+
+	// Optional navigation fields (populated when requested via `return=`).
+	Actions  []RouteAction `json:"actions,omitempty"`
+	Spans    []RouteSpan   `json:"spans,omitempty"`
+	Notices  []RouteNotice `json:"notices,omitempty"`
+	Language string        `json:"language,omitempty"`
 }
 
 type LocationInfo struct {
@@ -267,10 +281,10 @@ func (c *Client) GetRoute(ctx context.Context, req RouteRequest) (*RouteResponse
 	params.Set("destination", fmt.Sprintf("%f,%f", req.Destination.Latitude, req.Destination.Longitude))
 	params.Set("apiKey", c.apiKey)
 
-	// Transport mode (default to car)
+	// Transport mode (default to truck)
 	transportMode := req.TransportMode
 	if transportMode == "" {
-		transportMode = "car"
+		transportMode = "truck"
 	}
 	params.Set("transportMode", transportMode)
 
@@ -296,6 +310,31 @@ func (c *Client) GetRoute(ctx context.Context, req RouteRequest) (*RouteResponse
 	// Departure time
 	if req.DepartureTime != nil {
 		params.Set("departureTime", req.DepartureTime.Format(time.RFC3339))
+	}
+
+	// Intermediate waypoints (`via=` may be repeated).
+	for _, v := range req.Via {
+		params.Add("via", fmt.Sprintf("%f,%f", v.Latitude, v.Longitude))
+	}
+
+	// Truck attributes — applied only when transportMode=truck makes sense.
+	if req.TruckAttrs != nil {
+		req.TruckAttrs.applyTo(params)
+	}
+
+	// Avoid / exclude options.
+	if req.Avoid != nil {
+		req.Avoid.applyTo(params)
+	}
+
+	if req.Alternatives > 0 {
+		params.Set("alternatives", strconv.Itoa(req.Alternatives))
+	}
+	if req.Lang != "" {
+		params.Set("lang", req.Lang)
+	}
+	if req.Units != "" {
+		params.Set("units", req.Units)
 	}
 
 	fullURL := fmt.Sprintf("%s/v8/routes?%s", c.routerHost, params.Encode())

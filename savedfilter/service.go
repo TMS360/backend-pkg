@@ -80,6 +80,7 @@ func (s *Service) Create(ctx context.Context, input CreateInput) (*SavedFilter, 
 		Entity: input.Entity,
 		Name:   input.Name,
 		Filter: input.Filter,
+		View:   input.View,
 	}
 
 	if err := s.repo.Create(ctx, filter); err != nil {
@@ -103,6 +104,9 @@ func (s *Service) Update(ctx context.Context, id uuid.UUID, input UpdateInput) (
 	}
 	if input.Filter != nil {
 		filter.Filter = *input.Filter
+	}
+	if input.View != nil {
+		filter.View = *input.View
 	}
 
 	filter.UpdatedAt = time.Now()

@@ -13,11 +13,13 @@ type CreateInput struct {
 	Name   string
 	Entity string
 	Filter json.RawMessage
+	View   json.RawMessage
 }
 
 type UpdateInput struct {
 	Name   *string
 	Filter *json.RawMessage
+	View   *json.RawMessage
 }
 
 type SavedFilterWithCount struct {

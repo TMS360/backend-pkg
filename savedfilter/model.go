@@ -16,6 +16,7 @@ type SavedFilter struct {
 	Entity    string          `gorm:"column:entity;type:varchar(50);not null"`
 	Name      string          `gorm:"type:varchar(100);not null"`
 	Filter    json.RawMessage `gorm:"type:jsonb;not null;default:'{}'"`
+	View      json.RawMessage `gorm:"type:jsonb;not null;default:'{}'"`
 	CreatedAt time.Time
 	UpdatedAt time.Time
 }

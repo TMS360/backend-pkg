@@ -12,11 +12,16 @@ service TrackersService {
   // StreamVehicleVINs sends a stream of VINs from backend-load to samsara-tracker
   rpc StreamVehicleVINs(StreamVehicleVINsRequest) returns (stream VehicleVIN);
 
-  // GetActiveTripStops returns pending trip stops for a truck
+  // GetActiveTripStops returns pending trip stops for a truck (admin/debug only)
   rpc GetActiveTripStops(GetActiveTripStopsRequest) returns (GetActiveTripStopsResponse);
 
-  // UpdateStopETA updates the planned arrival time for a trip stop
-  rpc UpdateStopETA(UpdateStopETARequest) returns (UpdateStopETAResponse);
+  // GetTripStops returns all stops for a given trip (used by asset-tracking
+  // to build the initial route after consuming a trips/created Kafka event).
+  rpc GetTripStops(GetTripStopsRequest) returns (GetTripStopsResponse);
+
+  // ApplyRouteETAs writes planned_arrival in batch for a list of stops, called
+  // by asset-tracking after the initial route build (replaces UpdateStopETA).
+  rpc ApplyRouteETAs(ApplyRouteETAsRequest) returns (ApplyRouteETAsResponse);
 }
 
 // Request to stream vehicle VINs
@@ -101,13 +106,17 @@ message GetVehicleRouteResponse {
 // Estimated route messages
 
 message EstimatedRouteLeg {
+  // leg_index 0 is reserved for the origin segment (truck → first pending stop),
+  // 1..N for stop-to-stop segments. Origin is the only leg that may be replaced
+  // (truck change); 1..N are append-only.
   int32 leg_index = 1;
   string polyline = 2;           // HERE Flexible Polyline encoded string
   int32 distance_meters = 3;
   int32 duration_seconds = 4;
   string stop_id = 5;            // UUID of the destination trip stop
-  string route_type = 6;         // "static" (stop-to-stop) or "dynamic" (truck-to-stop)
   string coordinates = 7;        // Decoded polyline as JSON: [[lat,lng],...]
+  reserved 6;                    // formerly route_type — single source: append-once static.
+  reserved "route_type";
 }
 
 message SaveEstimatedRouteRequest {
@@ -159,13 +168,33 @@ message GetActiveTripStopsResponse {
   repeated TripStopInfo stops = 4;
 }
 
-// ETA update
+// Trip stops snapshot (used by asset-tracking after consuming trips/created)
 
-message UpdateStopETARequest {
+message GetTripStopsRequest {
+  string trip_id = 1;
+}
+
+message GetTripStopsResponse {
+  string trip_id = 1;
+  string company_id = 2;
+  string shipment_id = 3;
+  string created_by = 4;        // creator of the parent shipment, used for route_built notification
+  string truck_id = 5;          // optional, may be empty when truck not yet assigned
+  repeated TripStopInfo stops = 6;
+}
+
+// Batched ETA application (replaces per-stop UpdateStopETA)
+
+message StopETA {
   string stop_id = 1;
   google.protobuf.Timestamp planned_arrival = 2;
 }
 
-message UpdateStopETAResponse {
+message ApplyRouteETAsRequest {
+  string trip_id = 1;
+  repeated StopETA etas = 2;
+}
+
+message ApplyRouteETAsResponse {
   bool success = 1;
 }

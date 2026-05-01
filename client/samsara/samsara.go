@@ -2,6 +2,9 @@ package samsara
 
 import (
 	"context"
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -203,10 +206,11 @@ type WebhookDefinition struct {
 	ID            string                `json:"id,omitempty"`
 	Name          string                `json:"name"`
 	URL           string                `json:"url"`
-	Version       string                `json:"version,omitempty"` // e.g., "2018-01-01"
+	Version       string                `json:"version,omitempty"` // e.g., "2018-01-01" / "2024-12-20"
 	EventTypes    []string              `json:"eventTypes,omitempty"`
 	CustomHeaders []WebhookCustomHeader `json:"customHeaders,omitempty"`
 	Enabled       bool                  `json:"enabled,omitempty"`
+	SecretKey     string                `json:"secretKey,omitempty"` // returned by POST /webhooks; used to verify HMAC signatures
 	CreatedAtTime string                `json:"createdAtTime,omitempty"`
 	UpdatedAtTime string                `json:"updatedAtTime,omitempty"`
 }
@@ -224,14 +228,27 @@ type WebhookListResponse struct {
 type WebhookEventType string
 
 const (
-	EventTypeAlert          WebhookEventType = "AlertIncident"
-	EventTypeAddressCreated WebhookEventType = "AddressCreated"
-	EventTypeGeofenceEntry  WebhookEventType = "GeofenceEntry"
-	EventTypeGeofenceExit   WebhookEventType = "GeofenceExit"
-	EventTypeAddressUpdated WebhookEventType = "AddressUpdated"
-	EventTypeAddressDeleted WebhookEventType = "AddressDeleted"
-	EventTypeVehicleUpdated WebhookEventType = "VehicleUpdated"
-	EventTypeDriverUpdated  WebhookEventType = "DriverUpdated"
+	EventTypeAlert                     WebhookEventType = "AlertIncident"
+	EventTypeAddressCreated            WebhookEventType = "AddressCreated"
+	EventTypeGeofenceEntry             WebhookEventType = "GeofenceEntry"
+	EventTypeGeofenceExit              WebhookEventType = "GeofenceExit"
+	EventTypeAddressUpdated            WebhookEventType = "AddressUpdated"
+	EventTypeAddressDeleted            WebhookEventType = "AddressDeleted"
+	EventTypeVehicleUpdated            WebhookEventType = "VehicleUpdated"
+	EventTypeDriverUpdated             WebhookEventType = "DriverUpdated"
+	EventTypeEngineFaultOn             WebhookEventType = "EngineFaultOn"
+	EventTypeEngineFaultOff            WebhookEventType = "EngineFaultOff"
+	EventTypeIssueCreated              WebhookEventType = "IssueCreated"
+	EventTypePredictiveMaintenance     WebhookEventType = "PredictiveMaintenanceAlert"
+	EventTypeGatewayUnplugged          WebhookEventType = "GatewayUnplugged"
+	EventTypeDvirSubmitted             WebhookEventType = "DvirSubmitted"
+	EventTypeMissingDvirPastDue        WebhookEventType = "MissingDvirPastDue"
+	EventTypeSevereSpeedingStarted     WebhookEventType = "SevereSpeedingStarted"
+	EventTypeSevereSpeedingEnded       WebhookEventType = "SevereSpeedingEnded"
+	EventTypeSpeedingEventStarted      WebhookEventType = "SpeedingEventStarted"
+	EventTypeSpeedingEventEnded        WebhookEventType = "SpeedingEventEnded"
+	EventTypeSuddenFuelLevelDrop       WebhookEventType = "SuddenFuelLevelDrop"
+	EventTypeSuddenFuelLevelRise       WebhookEventType = "SuddenFuelLevelRise"
 )
 
 // AlertConditionID - типы условий для алертов
@@ -426,6 +443,114 @@ type SafetyScoreSpeeding struct {
 type DriverSafetyScoresResponse struct {
 	Data       []DriverSafetyScoreV2 `json:"data"`
 	Pagination Pagination            `json:"pagination"`
+}
+
+// ============================================================================
+// СТРУКТУРЫ ДЛЯ ENGINE STATES / FAULT CODES (vehicle stats snapshot/feed)
+// ============================================================================
+
+// EngineStateValue — possible engine state values from Samsara.
+// Snapshot returns this as `engineState.value`; feed may return historical samples
+// under `engineStates: [{time, value}, ...]`.
+type EngineStateValue string
+
+const (
+	EngineStateOn   EngineStateValue = "On"
+	EngineStateOff  EngineStateValue = "Off"
+	EngineStateIdle EngineStateValue = "Idle"
+)
+
+// EngineStateSample — one point-in-time engine state.
+type EngineStateSample struct {
+	Time  string           `json:"time"`
+	Value EngineStateValue `json:"value"`
+}
+
+// J1939DiagnosticTroubleCode — single DTC entry inside faultCodes.j1939.
+type J1939DiagnosticTroubleCode struct {
+	SpnID             int    `json:"spnId"`
+	SpnDescription    string `json:"spnDescription,omitempty"`
+	FmiID             int    `json:"fmiId"`
+	FmiDescription    string `json:"fmiDescription,omitempty"`
+	OccurrenceCount   int    `json:"occurrenceCount"`
+	MilStatus         int    `json:"milStatus"`
+	TxID              int    `json:"txId"`
+	SourceAddressName string `json:"sourceAddressName,omitempty"`
+}
+
+// J1939CheckEngineLights — dashboard indicator state.
+type J1939CheckEngineLights struct {
+	EmissionsIsOn bool `json:"emissionsIsOn"`
+	ProtectIsOn   bool `json:"protectIsOn"`
+	StopIsOn      bool `json:"stopIsOn"`
+	WarningIsOn   bool `json:"warningIsOn"`
+}
+
+// J1939FaultData — j1939 sub-tree of faultCodes.
+type J1939FaultData struct {
+	CheckEngineLights      J1939CheckEngineLights       `json:"checkEngineLights"`
+	DiagnosticTroubleCodes []J1939DiagnosticTroubleCode `json:"diagnosticTroubleCodes"`
+}
+
+// VehicleFaultCodes — snapshot value of faultCodes type.
+type VehicleFaultCodes struct {
+	J1939      J1939FaultData `json:"j1939"`
+	CanBusType string         `json:"canBusType,omitempty"`
+	Time       string         `json:"time"`
+}
+
+// VehicleStats — single vehicle entry from /fleet/vehicles/stats?types=...
+// Snapshot uses singular EngineState/FaultCodes; historical/feed may have arrays
+// under engineStates/faultCodesArr — handled via separate decoder if needed.
+type VehicleStats struct {
+	ID               string                 `json:"id"`
+	Name             string                 `json:"name"`
+	ExternalIDs      map[string]interface{} `json:"externalIds,omitempty"`
+	EngineState      *EngineStateSample     `json:"engineState,omitempty"`
+	EngineStates     []EngineStateSample    `json:"engineStates,omitempty"`
+	FaultCodes       *VehicleFaultCodes     `json:"faultCodes,omitempty"`
+	ObdEngineSeconds *struct {
+		Time  string  `json:"time"`
+		Value float64 `json:"value"`
+	} `json:"obdEngineSeconds,omitempty"`
+}
+
+type VehicleStatsResponse struct {
+	Data       []VehicleStats `json:"data"`
+	Pagination Pagination     `json:"pagination"`
+}
+
+// ============================================================================
+// СТРУКТУРЫ ДЛЯ HOS LOGS (Hours of Service)
+// ============================================================================
+
+// HOSStatusType — driver duty status. Values from Samsara docs.
+type HOSStatusType string
+
+const (
+	HOSStatusDriving             HOSStatusType = "driving"
+	HOSStatusOnDuty              HOSStatusType = "onDuty"
+	HOSStatusOffDuty             HOSStatusType = "offDuty"
+	HOSStatusSleeperBed          HOSStatusType = "sleeperBed"
+	HOSStatusYardMove            HOSStatusType = "yardMove"
+	HOSStatusPersonalConveyance  HOSStatusType = "personalConveyance"
+)
+
+// HOSLogEntry — single HOS segment for a driver.
+type HOSLogEntry struct {
+	DriverID      string        `json:"driverId"`
+	HosStatusType HOSStatusType `json:"hosStatusType"`
+	LogStartMs    int64         `json:"logStartMs"`
+	LogEndMs      int64         `json:"logEndMs"`
+	GroupID       string        `json:"groupId,omitempty"`
+	VehicleID     string        `json:"vehicleId,omitempty"`
+	Location      string        `json:"location,omitempty"`
+	CityState     string        `json:"cityState,omitempty"`
+}
+
+type HOSLogsResponse struct {
+	Data       []HOSLogEntry `json:"data"`
+	Pagination Pagination    `json:"pagination"`
 }
 
 // Client - основной клиент для работы с Samsara API
@@ -684,7 +809,7 @@ func (c *Client) GetVehicleStatsFeed(ctx context.Context, cursor string) (*Vehic
 	}, nil
 }
 
-// fetchStatsFeedPage fetches a single page of the stats feed.
+// fetchStatsFeedPage fetches a single page of the gps/fuel stats feed.
 // Feed returns gps as array (not single object like snapshot), so we parse
 // with VehicleLocationFeedResponse and convert to VehicleLocationResponse.
 func (c *Client) fetchStatsFeedPage(ctx context.Context, cursor string) (*VehicleLocationResponse, error) {
@@ -735,6 +860,126 @@ func (c *Client) fetchStatsFeedPage(ctx context.Context, cursor string) (*Vehicl
 	}
 
 	return result, nil
+}
+
+// ============================================================================
+// МЕТОДЫ ДЛЯ ENGINE STATES / FAULT CODES / HOS
+// ============================================================================
+
+// GetVehicleStatsSnapshot returns the latest snapshot of requested stat types
+// for all vehicles (or filtered by vehicleIDs). types example: ["engineStates","faultCodes"].
+// Use this for periodic reconciliation alongside webhooks (poll fallback).
+func (c *Client) GetVehicleStatsSnapshot(ctx context.Context, types []string, vehicleIDs []string) ([]VehicleStats, error) {
+	if len(types) == 0 {
+		return nil, fmt.Errorf("types cannot be empty")
+	}
+
+	path := "/fleet/vehicles/stats?types=" + strings.Join(types, ",")
+	if len(vehicleIDs) > 0 {
+		path += "&vehicleIds=" + strings.Join(vehicleIDs, ",")
+	}
+
+	var allData []VehicleStats
+	cursor := ""
+	for {
+		page, err := c.fetchVehicleStatsPage(ctx, path, cursor)
+		if err != nil {
+			return nil, err
+		}
+		allData = append(allData, page.Data...)
+		if !page.Pagination.HasNextPage || page.Pagination.EndCursor == "" {
+			break
+		}
+		cursor = page.Pagination.EndCursor
+	}
+	return allData, nil
+}
+
+func (c *Client) fetchVehicleStatsPage(ctx context.Context, basePath, cursor string) (*VehicleStatsResponse, error) {
+	path := basePath
+	if cursor != "" {
+		sep := "&"
+		if !strings.Contains(path, "?") {
+			sep = "?"
+		}
+		path += sep + "after=" + cursor
+	}
+
+	resp, err := c.doRequest(ctx, http.MethodGet, path, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get vehicle stats page: %w", err)
+	}
+	defer resp.Body.Close()
+
+	var statsResponse VehicleStatsResponse
+	if err := json.NewDecoder(resp.Body).Decode(&statsResponse); err != nil {
+		return nil, fmt.Errorf("failed to decode vehicle stats response: %w", err)
+	}
+	return &statsResponse, nil
+}
+
+// GetHOSLogs returns Hours-of-Service segments for the given drivers within
+// the time window. Pages through all results in one call.
+// Requires the API token to have the HOS license/scope; otherwise Samsara
+// responds with 403 "No access to required licenses".
+func (c *Client) GetHOSLogs(ctx context.Context, driverIDs []string, startTime, endTime time.Time) ([]HOSLogEntry, error) {
+	startStr := startTime.UTC().Format(time.RFC3339)
+	endStr := endTime.UTC().Format(time.RFC3339)
+
+	basePath := fmt.Sprintf("/fleet/hos/logs?startTime=%s&endTime=%s", startStr, endStr)
+	if len(driverIDs) > 0 {
+		basePath += "&driverIds=" + strings.Join(driverIDs, ",")
+	}
+
+	var allData []HOSLogEntry
+	cursor := ""
+	for {
+		path := basePath
+		if cursor != "" {
+			path += "&after=" + cursor
+		}
+
+		resp, err := c.doRequest(ctx, http.MethodGet, path, nil)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get HOS logs: %w", err)
+		}
+
+		var hosResponse HOSLogsResponse
+		if decodeErr := json.NewDecoder(resp.Body).Decode(&hosResponse); decodeErr != nil {
+			resp.Body.Close()
+			return nil, fmt.Errorf("failed to decode HOS logs response: %w", decodeErr)
+		}
+		resp.Body.Close()
+
+		allData = append(allData, hosResponse.Data...)
+		if !hosResponse.Pagination.HasNextPage || hosResponse.Pagination.EndCursor == "" {
+			break
+		}
+		cursor = hosResponse.Pagination.EndCursor
+	}
+	return allData, nil
+}
+
+// VerifyWebhookSignature checks an incoming Samsara webhook payload against
+// the secretKey returned by CreateWebhook. Samsara signs the body with
+// HMAC-SHA256 keyed by the secret. The signatureHeader is the raw header value
+// (currently "X-Samsara-Signature" — Samsara may include a "v1=" prefix).
+// Returns true on match, false otherwise. Constant-time compare.
+func VerifyWebhookSignature(body []byte, secretKey, signatureHeader string) bool {
+	if secretKey == "" || signatureHeader == "" {
+		return false
+	}
+	provided := signatureHeader
+	if idx := strings.Index(provided, "="); idx >= 0 && idx < len(provided)-1 {
+		// Strip prefix like "v1=" or "sha256=".
+		provided = provided[idx+1:]
+	}
+
+	mac := hmac.New(sha256.New, []byte(secretKey))
+	mac.Write(body)
+	expected := hex.EncodeToString(mac.Sum(nil))
+
+	return hmac.Equal([]byte(strings.ToLower(provided)), []byte(expected))
 }
 
 // ============================================================================
@@ -1650,6 +1895,16 @@ type WebhookHandler struct {
 	OnEngineIdle    func(event *AlertEvent) error
 	OnVehicleFault  func(event *AlertEvent) error
 	OnHarshEvent    func(event *AlertEvent) error
+	OnEngineOn      func(event *AlertEvent) error
+	OnEngineOff     func(event *AlertEvent) error
+
+	// Native event-type callbacks (raw JSON payload, since each has its own schema)
+	OnEngineFaultOn         func(eventID string, eventMs int64, payload json.RawMessage) error
+	OnEngineFaultOff        func(eventID string, eventMs int64, payload json.RawMessage) error
+	OnIssueCreated          func(eventID string, eventMs int64, payload json.RawMessage) error
+	OnPredictiveMaintenance func(eventID string, eventMs int64, payload json.RawMessage) error
+	OnGatewayUnplugged      func(eventID string, eventMs int64, payload json.RawMessage) error
+	OnDvirSubmitted         func(eventID string, eventMs int64, payload json.RawMessage) error
 
 	// Callbacks для температурных/сенсорных событий
 	OnTemperatureAbove func(event *AlertEvent) error
@@ -1736,6 +1991,30 @@ func (h *WebhookHandler) HandleWebhook(event *WebhookEvent) error {
 
 		if h.OnGeofenceExit != nil {
 			return h.OnGeofenceExit(alertEvent)
+		}
+	case EventTypeEngineFaultOn:
+		if h.OnEngineFaultOn != nil {
+			return h.OnEngineFaultOn(event.EventID, event.EventMs, event.Event)
+		}
+	case EventTypeEngineFaultOff:
+		if h.OnEngineFaultOff != nil {
+			return h.OnEngineFaultOff(event.EventID, event.EventMs, event.Event)
+		}
+	case EventTypeIssueCreated:
+		if h.OnIssueCreated != nil {
+			return h.OnIssueCreated(event.EventID, event.EventMs, event.Event)
+		}
+	case EventTypePredictiveMaintenance:
+		if h.OnPredictiveMaintenance != nil {
+			return h.OnPredictiveMaintenance(event.EventID, event.EventMs, event.Event)
+		}
+	case EventTypeGatewayUnplugged:
+		if h.OnGatewayUnplugged != nil {
+			return h.OnGatewayUnplugged(event.EventID, event.EventMs, event.Event)
+		}
+	case EventTypeDvirSubmitted:
+		if h.OnDvirSubmitted != nil {
+			return h.OnDvirSubmitted(event.EventID, event.EventMs, event.Event)
 		}
 	}
 	return nil

@@ -4,21 +4,30 @@ import (
 	"context"
 	"errors"
 	"log/slog"
+	"net/http"
 
 	"github.com/99designs/gqlgen/graphql"
+	"github.com/TMS360/backend-pkg/middleware"
+	"github.com/TMS360/backend-pkg/observability"
 	"github.com/TMS360/backend-pkg/response"
 	"github.com/TMS360/backend-pkg/validate"
 	"github.com/vektah/gqlparser/v2/gqlerror"
 )
 
-// NewErrorPresenter creates a consistent error formatter for all services
+// NewErrorPresenter creates a consistent error formatter for all services.
+// Every emitted error carries `code` and `requestId` in extensions so clients
+// can branch on the code (never the message) and quote the request ID for
+// support. 5xx errors are also captured to Sentry via observability.
 func NewErrorPresenter(isDebug bool) graphql.ErrorPresenterFunc {
 	return func(ctx context.Context, err error) *gqlerror.Error {
+		requestID := middleware.GetRequestID(ctx)
+
 		if validationErrors := validate.GetValidationErrors(ctx); validationErrors != nil && validationErrors.HasErrors() {
 			return &gqlerror.Error{
 				Message: "Validation failed",
 				Extensions: map[string]interface{}{
 					"code":             "VALIDATION_ERROR",
+					"requestId":        requestID,
 					"validationErrors": validationErrors.ToArray(),
 				},
 			}
@@ -34,9 +43,15 @@ func NewErrorPresenter(isDebug bool) graphql.ErrorPresenterFunc {
 				"code":   customErr.ErrorCode(),
 				"status": customErr.ErrorStatus(),
 			}
+			// Capture server-side errors (5xx) to Sentry. 4xx are user errors —
+			// noisy and rarely actionable for ops.
+			if customErr.ErrorStatus() >= http.StatusInternalServerError {
+				observability.CaptureWithCtx(ctx, err)
+			}
 		} else {
-			// 3. Unexpected errors
-			slog.Error("GraphQL Internal Error", "err", err, "path", gqlErr.Path)
+			// 3. Unexpected errors — always treat as 500-class.
+			slog.Error("GraphQL Internal Error", "err", err, "path", gqlErr.Path, "request_id", requestID)
+			observability.CaptureWithCtx(ctx, err)
 
 			if !isDebug {
 				gqlErr.Message = "Internal Server Error"
@@ -46,11 +61,14 @@ func NewErrorPresenter(isDebug bool) graphql.ErrorPresenterFunc {
 			}
 		}
 
-		// 4. Debug info
+		// 4. Always include requestId so the user/client can quote it.
+		if gqlErr.Extensions == nil {
+			gqlErr.Extensions = make(map[string]any)
+		}
+		gqlErr.Extensions["requestId"] = requestID
+
+		// 5. Debug info
 		if isDebug {
-			if gqlErr.Extensions == nil {
-				gqlErr.Extensions = make(map[string]any)
-			}
 			gqlErr.Extensions["technical"] = err.Error()
 		}
 

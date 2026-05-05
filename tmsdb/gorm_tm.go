@@ -43,8 +43,23 @@ func (m *GormTransactionManager) GetDB(ctx context.Context) *gorm.DB {
 	return m.db.WithContext(ctx)
 }
 
-// Publish implements the logic DIRECTLY here. No Repo.
+// Publish is the legacy shorthand. The published event's root_entity is itself
+// (root_entity_type = aggType, root_entity_id = aggID). For nested leaves that
+// roll up to a parent aggregate (e.g. trip_events → shipments), use Event(...).
 func (m *GormTransactionManager) Publish(ctx context.Context, aggType, evtType string, aggID uuid.UUID, data interface{}, oldData ...interface{}) error {
+	b := m.Event(aggType, evtType, aggID).WithData(data)
+	if len(oldData) > 0 && oldData[0] != nil {
+		b = b.WithOldData(oldData[0])
+	}
+	return b.Publish(ctx)
+}
+
+// Event opens a fluent builder for emitting an event.
+func (m *GormTransactionManager) Event(aggType, evtType string, aggID uuid.UUID) *EventBuilder {
+	return &EventBuilder{tm: m, aggType: aggType, evtType: evtType, aggID: aggID}
+}
+
+func (m *GormTransactionManager) writeEvent(ctx context.Context, b *EventBuilder) error {
 	actor, _ := middleware.GetActor(ctx)
 
 	var actorID, companyID *uuid.UUID
@@ -55,29 +70,39 @@ func (m *GormTransactionManager) Publish(ctx context.Context, aggType, evtType s
 		}
 	}
 
-	dataBytes, err := json.Marshal(data)
+	dataBytes, err := json.Marshal(b.data)
 	if err != nil {
 		return err
 	}
 
-	// 2. Determine if we need to calculate changes
 	var changes []events.Change
-	// Check if oldData was provided AND isn't nil
-	if len(oldData) > 0 && oldData[0] != nil {
-		changes = CalculateChanges(oldData[0], data)
+	if b.oldData != nil {
+		changes = CalculateChanges(b.oldData, b.data)
+	}
+
+	rootType := b.rootType
+	rootID := b.rootID
+	if rootType == "" {
+		// Default: an event roots to itself. Aggregate-root queries will still find
+		// "self-rooted" leaves (shipments, users, …) via this default; nested leaves
+		// that omit WithRoot remain invisible to aggregate queries by design.
+		rootType = b.aggType
+		rootID = b.aggID
 	}
 
 	eventPayload := events.EventPayload{
-		SourceService: m.sourceService,
-		EventID:       uuid.New(),
-		ActorID:       actorID,
-		CompanyID:     companyID,
-		EntityType:    aggType,
-		EntityID:      aggID,
-		Action:        evtType,
-		Data:          json.RawMessage(dataBytes),
-		Changes:       changes,
-		Timestamp:     time.Now(),
+		SourceService:  m.sourceService,
+		EventID:        uuid.New(),
+		ActorID:        actorID,
+		CompanyID:      companyID,
+		EntityType:     b.aggType,
+		EntityID:       b.aggID,
+		Action:         b.evtType,
+		Data:           json.RawMessage(dataBytes),
+		Changes:        changes,
+		Timestamp:      time.Now(),
+		RootEntityType: rootType,
+		RootEntityID:   rootID,
 	}
 
 	payloadBytes, err := json.Marshal(eventPayload)
@@ -86,9 +111,9 @@ func (m *GormTransactionManager) Publish(ctx context.Context, aggType, evtType s
 	}
 
 	event := &model.OutboxEvent{
-		AggregateID:   aggID,
-		AggregateType: aggType,
-		EventType:     evtType,
+		AggregateID:   b.aggID,
+		AggregateType: b.aggType,
+		EventType:     b.evtType,
 		Payload:       payloadBytes,
 		Status:        "PENDING",
 		CreatedAt:     time.Now(),

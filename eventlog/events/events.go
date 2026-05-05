@@ -20,6 +20,13 @@ type EventPayload struct {
 	Timestamp     time.Time       `json:"timestamp"`
 	Data          json.RawMessage `json:"data,omitempty"`    // {id: 123, name: "John Doe", ...}
 	Changes       []Change        `json:"changes,omitempty"` // [{field: "name", old_value: "John", new_value: "John Doe"}, ...]
+
+	// Root entity context lets aggregate audit queries (e.g. "all activity for shipment X")
+	// fan in nested events without a cross-service lookup at read time. When unset on the
+	// wire, the consumer falls back to LeafToRoot[EntityType] / EntityID so legacy producers
+	// keep working.
+	RootEntityType string    `json:"root_entity_type,omitempty"`
+	RootEntityID   uuid.UUID `json:"root_entity_id,omitempty"`
 }
 
 type Change struct {

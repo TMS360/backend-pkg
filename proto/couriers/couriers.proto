@@ -18,6 +18,11 @@ service CouriersService {
 
   // Returns user_ids of all users in company with role ∉ {driver, super_admin}.
   rpc ListOfficeUsers(ListOfficeUsersRequest) returns (ListOfficeUsersResponse);
+
+  // ListUserFiles returns user_files attached to a (entity_type, entity_id) pair
+  // within the requesting actor's tenant. Used by the driver-app aggregator in
+  // tms-loads to surface a driver's personal documents (license, medical card, etc.).
+  rpc ListUserFiles(ListUserFilesRequest) returns (ListUserFilesResponse);
 }
 
 message UserFilter {
@@ -51,4 +56,29 @@ message ListOfficeUsersRequest {
 
 message ListOfficeUsersResponse {
   repeated string user_ids = 1;
+}
+
+message ListUserFilesRequest {
+  // entity_type ∈ {"DRIVER", "DISPATCHER"}
+  string entity_type = 1;
+  string entity_id = 2;
+}
+
+message UserFile {
+  string id = 1;
+  string entity_type = 2;
+  string entity_id = 3;
+  string file_id = 4;
+  string document_type = 5;
+  string document_type_id = 6;
+  string company_id = 7;
+  string uploaded_by = 8;
+  string notes = 9;
+  // RFC3339 timestamps
+  string created_at = 10;
+  string updated_at = 11;
+}
+
+message ListUserFilesResponse {
+  repeated UserFile files = 1;
 }

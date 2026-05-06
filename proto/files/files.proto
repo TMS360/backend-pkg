@@ -8,6 +8,12 @@ service FilesService {
   rpc GetFile (GetFileRequest) returns (GetFileResponse);
   rpc GetFiles (GetFilesRequest) returns (GetFilesResponse);
   rpc Download (DownloadRequest) returns (stream DownloadResponse);
+
+  // ListCompanyFiles returns files in the actor's tenant filtered by document
+  // category. Tenant scoping is enforced server-side via TenantScopePlugin
+  // using the JWT actor in context, so callers cannot probe other tenants.
+  // Empty categories returns no rows (force callers to be explicit).
+  rpc ListCompanyFiles (ListCompanyFilesRequest) returns (ListCompanyFilesResponse);
 }
 
 message GetFileRequest {
@@ -40,6 +46,16 @@ message GetFileResponse {
 
 message GetFilesResponse {
   map<string, File> files = 1;
+}
+
+message ListCompanyFilesRequest {
+  // Document categories to include, e.g. ["GENERAL", "COMPANY"].
+  // Tenant is implicit (actor.company_id) — not part of the request.
+  repeated string categories = 1;
+}
+
+message ListCompanyFilesResponse {
+  repeated File files = 1;
 }
 
 message DownloadRequest {

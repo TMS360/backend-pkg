@@ -21,6 +21,10 @@ service TeamsService {
   rpc GetCurrentDriversByTruckIds (GetCurrentDriversByTruckIdsRequest) returns (GetCurrentDriversByTruckIdsResponse);
   rpc GetCurrentDriversByTrailerIds (GetCurrentDriversByTrailerIdsRequest) returns (GetCurrentDriversByTrailerIdsResponse);
 
+  // Get the driver's currently-active crew snapshot (truck/trailer/plan from the open DriverCrewItem).
+  // Used by the driver-app documents endpoint to resolve which truck/trailer files to surface.
+  rpc GetActiveCrewByDriver(GetActiveCrewByDriverRequest) returns (GetActiveCrewByDriverResponse);
+
   // Cross-service filtering: returns driver crew IDs matching the filter
   rpc ResolveDriverCrewIDs(DriverCrewFilter) returns (filters.IDsResponse);
 
@@ -124,4 +128,19 @@ message DriverCrewInfo {
 
 message TrailerInfo {
   string truck_id = 1;
+}
+
+message GetActiveCrewByDriverRequest {
+  string driver_id = 1;
+}
+
+// Empty crew_id means the driver has no DriverCrew yet (not an error).
+// Empty truck_id/trailer_id/plan_id mean the active item has those fields unset
+// (or no active item exists at all).
+message GetActiveCrewByDriverResponse {
+  string crew_id = 1;
+  string truck_id = 2;
+  string trailer_id = 3;
+  string plan_id = 4;
+  string secondary_driver_id = 5;
 }

@@ -15,6 +15,7 @@ type Config struct {
 	AppURL            string `mapstructure:"APP_URL"`
 	FrontendURL       string `mapstructure:"FRONTEND_URL"`
 	SigningKey        string `mapstructure:"SIGNING_KEY"`
+	CleanupPassword   string `mapstructure:"CLEANUP_PASSWORD"`
 	GRPCPort          string `mapstructure:"GRPC_PORT"`
 	HTTPServer        `mapstructure:"HTTP"`
 	PostgresSQLConfig `mapstructure:"DB"`
@@ -26,6 +27,25 @@ type Config struct {
 	HereConfig        `mapstructure:"HERE"`
 	ClickHouseConfig  `mapstructure:"CLICKHOUSE"`
 	AwsConfig         `mapstructure:"AWS"`
+	ServiceURLs       `mapstructure:"SERVICES"`
+}
+
+// IsProduction reports whether the app is running in production. The codebase
+// uses both "prod" and "production" historically, so check both.
+func (c *Config) IsProduction() bool {
+	return c.AppEnv == "prod" || c.AppEnv == "production"
+}
+
+// ServiceURLs holds base URLs for peer services. Used by the tms-auth tenant-cleaner
+// orchestrator to fan deletes out to each PostgreSQL service. Set via env vars
+// SERVICES_AUTH_URL, SERVICES_BROKERS_URL, etc.
+type ServiceURLs struct {
+	AuthURL     string `mapstructure:"AUTH_URL"`
+	BrokersURL  string `mapstructure:"BROKERS_URL"`
+	LoadsURL    string `mapstructure:"LOADS_URL"`
+	TeamsURL    string `mapstructure:"TEAMS_URL"`
+	FilesURL    string `mapstructure:"FILES_URL"`
+	MediatorURL string `mapstructure:"MEDIATOR_URL"`
 }
 
 type HTTPServer struct {
@@ -105,7 +125,7 @@ type AwsConfig struct {
 	EndpointURL     string `mapstructure:"ENDPOINT_URL"`
 }
 
-var Prefixes = []string{"http", "db", "kafka", "redis", "jwt", "redis", "mail", "samsara", "here", "clickhouse", "aws"}
+var Prefixes = []string{"http", "db", "kafka", "redis", "jwt", "redis", "mail", "samsara", "here", "clickhouse", "aws", "services"}
 
 func MapConfig() {
 	for _, key := range viper.AllKeys() {

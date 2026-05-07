@@ -54,6 +54,41 @@ func RequireAuth() gin.HandlerFunc {
 	}
 }
 
+// RequireAdmin guards routes that require an admin or super_admin role.
+// Must be installed AFTER RequireAuth so that an actor is in context.
+// Used by destructive ops endpoints (e.g. the tenant-data cleaner).
+func RequireAdmin() gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		actor, err := GetActor(ctx.Request.Context())
+		if err != nil || actor == nil {
+			ctx.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+			return
+		}
+		if !actor.IsAdmin() && !actor.IsSuperAdmin() {
+			ctx.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "Admin role required"})
+			return
+		}
+		ctx.Next()
+	}
+}
+
+// RequireSuperAdmin guards routes restricted to super_admin only. Stricter than
+// RequireAdmin — used for the most destructive ops (tenant cleaner orchestrator).
+func RequireSuperAdmin() gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		actor, err := GetActor(ctx.Request.Context())
+		if err != nil || actor == nil {
+			ctx.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+			return
+		}
+		if !actor.IsSuperAdmin() {
+			ctx.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "Super admin role required"})
+			return
+		}
+		ctx.Next()
+	}
+}
+
 // RequireAuthOrGuest allows access if there's a valid-authenticated user or a guest token, but not if unauthenticated
 func RequireAuthOrGuest() gin.HandlerFunc {
 	return func(ctx *gin.Context) {

@@ -88,6 +88,7 @@ func (gh *Handler) Middleware() gin.HandlerFunc {
 		key := fmt.Sprintf("%s:share_link:%s", companyID, claims.ShareLinkID)
 		var data ShareLinkRedisData
 		if err := cache.Get(ctx.Request.Context(), key, &data); err != nil {
+			fmt.Printf("share link not found or revoked: %s", claims.ShareLinkID)
 			slog.Debug("share link not found or revoked", "slid", claims.ShareLinkID)
 			ctx.Next()
 			return

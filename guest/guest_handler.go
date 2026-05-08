@@ -72,12 +72,16 @@ func (gh *Handler) Middleware() gin.HandlerFunc {
 			return
 		}
 
+		fmt.Printf("Received guest token: %s\n", token)
+
 		claims, err := parseGuestToken(token, gh.secret)
 		if err != nil {
 			slog.Debug("guest token parse failed", "error", err)
 			ctx.Next()
 			return
 		}
+
+		fmt.Printf("Parsed guest token claims: %+v\n", claims)
 
 		companyID := claims.CompanyID
 
@@ -88,6 +92,8 @@ func (gh *Handler) Middleware() gin.HandlerFunc {
 			ctx.Next()
 			return
 		}
+
+		fmt.Printf("Fetched share link data from Redis: %+v\n", data)
 
 		resourceID, err := uuid.Parse(data.ResourceID)
 		if err != nil {
@@ -117,6 +123,7 @@ func (gh *Handler) Middleware() gin.HandlerFunc {
 // Directive implements @authGuest(resource: "shipment")
 func (gh *Handler) Directive(ctx context.Context, obj interface{}, next graphql.Resolver, resource string) (interface{}, error) {
 	actor, err := middleware.GetActor(ctx)
+	fmt.Printf("Directive called for resource '%s', actor: %+v, err: %v\n", resource, actor, err)
 	if err != nil {
 		return nil, consts.ErrUnauthorized
 	}

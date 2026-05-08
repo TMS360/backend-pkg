@@ -86,7 +86,7 @@ func (t *TenantScopePlugin) applyScope(db *gorm.DB, isRead bool) {
 	if actor == nil {
 		return
 	}
-	if actor.IsSystem || actor.IsSuperAdmin() || actor.IsGuest {
+	if actor.IsSystem || actor.IsSuperAdmin() {
 		return
 	}
 	if actor.Claims.CompanyID == nil {

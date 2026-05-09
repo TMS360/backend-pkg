@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"strings"
 	"sync"
 	"time"
 
@@ -40,16 +41,19 @@ func NewCountOnlyService() *Service {
 }
 
 // RegisterCountFunc registers a callback that counts entities for a given entity type.
+// Entity type matching is case-insensitive — keys are normalized to lowercase
+// on both registration and lookup, so callers may pass "shipment", "Shipment",
+// or "SHIPMENT" interchangeably.
 func (s *Service) RegisterCountFunc(entityType string, fn CountFunc) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	s.countFuncs[entityType] = fn
+	s.countFuncs[strings.ToLower(entityType)] = fn
 }
 
 func (s *Service) getCountFunc(entityType string) CountFunc {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	return s.countFuncs[entityType]
+	return s.countFuncs[strings.ToLower(entityType)]
 }
 
 // Count returns the count of entities matching the given filter for the specified entity type.

@@ -85,6 +85,7 @@ func (s *Service) Create(ctx context.Context, input CreateInput) (*SavedFilter, 
 		Name:   input.Name,
 		Filter: input.Filter,
 		View:   input.View,
+		Pinned: true,
 	}
 
 	if err := s.repo.Create(ctx, filter); err != nil {
@@ -112,7 +113,33 @@ func (s *Service) Update(ctx context.Context, id uuid.UUID, input UpdateInput) (
 	if input.View != nil {
 		filter.View = *input.View
 	}
+	if input.Pinned != nil {
+		filter.Pinned = *input.Pinned
+	}
 
+	filter.UpdatedAt = time.Now()
+
+	if err := s.repo.Update(ctx, filter); err != nil {
+		return nil, err
+	}
+	return filter, nil
+}
+
+func (s *Service) SetPinned(ctx context.Context, id uuid.UUID, pinned bool) (*SavedFilter, error) {
+	filter, err := s.repo.GetByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := s.checkOwnership(ctx, filter); err != nil {
+		return nil, err
+	}
+
+	if filter.Pinned == pinned {
+		return filter, nil
+	}
+
+	filter.Pinned = pinned
 	filter.UpdatedAt = time.Now()
 
 	if err := s.repo.Update(ctx, filter); err != nil {

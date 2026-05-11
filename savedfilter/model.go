@@ -17,6 +17,7 @@ type SavedFilter struct {
 	Name      string          `gorm:"type:varchar(100);not null"`
 	Filter    json.RawMessage `gorm:"type:jsonb;not null;default:'{}'"`
 	View      json.RawMessage `gorm:"type:jsonb;not null;default:'{}'"`
+	Pinned    bool            `gorm:"type:boolean;not null;default:false"`
 	CreatedAt time.Time
 	UpdatedAt time.Time
 }

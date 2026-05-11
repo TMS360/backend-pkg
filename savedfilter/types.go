@@ -20,6 +20,7 @@ type UpdateInput struct {
 	Name   *string
 	Filter *json.RawMessage
 	View   *json.RawMessage
+	Pinned *bool
 }
 
 type SavedFilterWithCount struct {

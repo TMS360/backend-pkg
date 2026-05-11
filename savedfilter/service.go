@@ -125,6 +125,29 @@ func (s *Service) Update(ctx context.Context, id uuid.UUID, input UpdateInput) (
 	return filter, nil
 }
 
+func (s *Service) SetPinned(ctx context.Context, id uuid.UUID, pinned bool) (*SavedFilter, error) {
+	filter, err := s.repo.GetByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := s.checkOwnership(ctx, filter); err != nil {
+		return nil, err
+	}
+
+	if filter.Pinned == pinned {
+		return filter, nil
+	}
+
+	filter.Pinned = pinned
+	filter.UpdatedAt = time.Now()
+
+	if err := s.repo.Update(ctx, filter); err != nil {
+		return nil, err
+	}
+	return filter, nil
+}
+
 func (s *Service) Delete(ctx context.Context, id uuid.UUID) error {
 	filter, err := s.repo.GetByID(ctx, id)
 	if err != nil {

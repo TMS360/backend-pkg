@@ -5,9 +5,15 @@ type UserRoleEnum string
 const (
 	UserRoleSuperAdmin UserRoleEnum = "super_admin"
 	UserRoleAdmin      UserRoleEnum = "admin"
+	UserRoleManager    UserRoleEnum = "manager"
+	UserRoleAccounting UserRoleEnum = "accounting"
+	UserRoleSafety     UserRoleEnum = "safety"
+	UserRoleFleet      UserRoleEnum = "fleet"
+	UserRoleHr         UserRoleEnum = "hr"
 	UserRoleDispatcher UserRoleEnum = "dispatcher"
 	UserRoleDriver     UserRoleEnum = "driver"
 	UserRoleCustomer   UserRoleEnum = "customer"
+	UserRoleOther      UserRoleEnum = "other"
 )
 
 // String implements the fmt.Stringer interface

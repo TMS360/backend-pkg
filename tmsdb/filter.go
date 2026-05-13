@@ -177,16 +177,18 @@ func NewPagination(input *PaginationInput, total int64) *Pagination {
 // ============================================================================
 
 type FilterBuilder struct {
-	db       *gorm.DB
-	model    interface{}
-	maxLimit int
+	db           *gorm.DB
+	model        interface{}
+	maxLimit     int
+	defaultOrder string
 }
 
 func newFilterBuilder(db *gorm.DB, model interface{}) *FilterBuilder {
 	return &FilterBuilder{
-		db:       db.Model(model),
-		model:    model,
-		maxLimit: 100,
+		db:           db.Model(model),
+		model:        model,
+		maxLimit:     100,
+		defaultOrder: "created_at DESC",
 	}
 }
 
@@ -196,6 +198,15 @@ func (fb *FilterBuilder) DB() *gorm.DB {
 
 func (fb *FilterBuilder) SetMaxLimit(max int) *FilterBuilder {
 	fb.maxLimit = max
+	return fb
+}
+
+// SetDefaultOrder overrides the ORDER BY expression that ApplySort falls
+// back to when no whitelisted sort entry is provided. The argument is appended
+// verbatim to `ORDER BY`, so callers can pass either a bare column ("name")
+// or a column with direction ("registered_at DESC"). Default is "created_at DESC".
+func (fb *FilterBuilder) SetDefaultOrder(defaultOrder string) *FilterBuilder {
+	fb.defaultOrder = defaultOrder
 	return fb
 }
 
@@ -665,7 +676,11 @@ func (fb *FilterBuilder) ApplySort(sorts []*SortInput, allowedFields map[string]
 		applied = true
 	}
 	if !applied {
-		fb.db = fb.db.Order("created_at DESC")
+		fallback := fb.defaultOrder
+		if fallback == "" {
+			fallback = "created_at DESC"
+		}
+		fb.db = fb.db.Order(fallback)
 	}
 	return fb
 }

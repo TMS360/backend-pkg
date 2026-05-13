@@ -5,16 +5,33 @@ import (
 	"embed"
 	"fmt"
 	"html/template"
+	"io"
 	"strconv"
 
 	"github.com/TMS360/backend-pkg/config"
 	"gopkg.in/gomail.v2"
 )
 
+// Attachment is an in-memory file to attach to an outgoing email. Use this when
+// the file is rendered on the fly (e.g. a freshly-generated PDF) and should not
+// touch the local filesystem.
+type Attachment struct {
+	// Filename is the name shown to the email recipient (e.g. "invoice.pdf").
+	Filename string
+	// Content is the raw bytes of the attachment.
+	Content []byte
+	// MIMEType is the Content-Type header for the part (e.g. "application/pdf").
+	// If empty, defaults to "application/octet-stream".
+	MIMEType string
+}
+
 // --- Interface (Best Practice for Testing) ---
 
 type Sender interface {
 	SendEmail(to []string, subject string, templateFile string, data interface{}) error
+	// SendEmailWithAttachments sends an email and attaches one or more in-memory
+	// files. Passing a nil/empty attachments slice is equivalent to SendEmail.
+	SendEmailWithAttachments(to []string, subject string, templateFile string, data interface{}, attachments []Attachment) error
 }
 
 // --- 3. Implementation ---
@@ -41,6 +58,13 @@ func NewSMTPSender(cfg config.MailConfig, templates embed.FS) (*SMTPSender, erro
 }
 
 func (s *SMTPSender) SendEmail(to []string, subject string, templateFile string, data interface{}) error {
+	return s.SendEmailWithAttachments(to, subject, templateFile, data, nil)
+}
+
+// SendEmailWithAttachments renders the template body and dispatches the
+// message with zero or more in-memory attachments. Attachments are streamed
+// via gomail's AttachReader, so the bytes never hit disk.
+func (s *SMTPSender) SendEmailWithAttachments(to []string, subject string, templateFile string, data interface{}, attachments []Attachment) error {
 	// A. Parse the HTML Template
 	body, err := s.parseTemplate(templateFile, data)
 	if err != nil {
@@ -54,12 +78,33 @@ func (s *SMTPSender) SendEmail(to []string, subject string, templateFile string,
 	m.SetHeader("Subject", subject)
 	m.SetBody("text/html", body)
 
-	// C. Send
+	// C. Attach in-memory files (if any).
+	for _, att := range attachments {
+		if att.Filename == "" || len(att.Content) == 0 {
+			continue
+		}
+		mimeType := att.MIMEType
+		if mimeType == "" {
+			mimeType = "application/octet-stream"
+		}
+		content := att.Content
+		m.Attach(att.Filename,
+			gomail.SetCopyFunc(func(w io.Writer) error {
+				_, werr := w.Write(content)
+				return werr
+			}),
+			gomail.SetHeader(map[string][]string{
+				"Content-Type": {mimeType + `; name="` + att.Filename + `"`},
+			}),
+		)
+	}
+
+	// D. Send
 	if err := s.dialer.DialAndSend(m); err != nil {
 		return fmt.Errorf("failed to send email to %v: %w", to, err)
 	}
 
-	fmt.Printf("Email sent successfully to %v with subject '%s'\n", to, subject)
+	fmt.Printf("Email sent successfully to %v with subject '%s' (attachments=%d)\n", to, subject, len(attachments))
 
 	return nil
 }

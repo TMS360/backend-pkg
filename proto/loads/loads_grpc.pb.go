@@ -23,26 +23,25 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	LoadsService_GetDriverTripDetails_FullMethodName        = "/loads.LoadsService/GetDriverTripDetails"
-	LoadsService_GetRecentBrokerIDs_FullMethodName          = "/loads.LoadsService/GetRecentBrokerIDs"
-	LoadsService_GetShipment_FullMethodName                 = "/loads.LoadsService/GetShipment"
-	LoadsService_ListShipments_FullMethodName               = "/loads.LoadsService/ListShipments"
-	LoadsService_GetTrip_FullMethodName                     = "/loads.LoadsService/GetTrip"
-	LoadsService_ListTrips_FullMethodName                   = "/loads.LoadsService/ListTrips"
-	LoadsService_GetVehicleAssignments_FullMethodName       = "/loads.LoadsService/GetVehicleAssignments"
-	LoadsService_UpdateVehicleLocation_FullMethodName       = "/loads.LoadsService/UpdateVehicleLocation"
-	LoadsService_StreamVehicleLocations_FullMethodName      = "/loads.LoadsService/StreamVehicleLocations"
-	LoadsService_ResolveShipmentIDs_FullMethodName          = "/loads.LoadsService/ResolveShipmentIDs"
-	LoadsService_ResolveTripIDs_FullMethodName              = "/loads.LoadsService/ResolveTripIDs"
-	LoadsService_GetShipmentChatMembers_FullMethodName      = "/loads.LoadsService/GetShipmentChatMembers"
-	LoadsService_GetDriverActiveLoads_FullMethodName        = "/loads.LoadsService/GetDriverActiveLoads"
-	LoadsService_GetDriverUnsettledLoads_FullMethodName     = "/loads.LoadsService/GetDriverUnsettledLoads"
-	LoadsService_GetDriverDocIssueLoads_FullMethodName      = "/loads.LoadsService/GetDriverDocIssueLoads"
-	LoadsService_GetTripChatInfo_FullMethodName             = "/loads.LoadsService/GetTripChatInfo"
-	LoadsService_GetTripsForPayBatch_FullMethodName         = "/loads.LoadsService/GetTripsForPayBatch"
-	LoadsService_GetTripsByIDs_FullMethodName               = "/loads.LoadsService/GetTripsByIDs"
-	LoadsService_GetShipmentChargesByTripIDs_FullMethodName = "/loads.LoadsService/GetShipmentChargesByTripIDs"
-	LoadsService_GetUnbilledDriverTrips_FullMethodName      = "/loads.LoadsService/GetUnbilledDriverTrips"
+	LoadsService_GetDriverTripDetails_FullMethodName    = "/loads.LoadsService/GetDriverTripDetails"
+	LoadsService_GetRecentBrokerIDs_FullMethodName      = "/loads.LoadsService/GetRecentBrokerIDs"
+	LoadsService_GetShipment_FullMethodName             = "/loads.LoadsService/GetShipment"
+	LoadsService_ListShipments_FullMethodName           = "/loads.LoadsService/ListShipments"
+	LoadsService_GetTrip_FullMethodName                 = "/loads.LoadsService/GetTrip"
+	LoadsService_ListTrips_FullMethodName               = "/loads.LoadsService/ListTrips"
+	LoadsService_GetVehicleAssignments_FullMethodName   = "/loads.LoadsService/GetVehicleAssignments"
+	LoadsService_UpdateVehicleLocation_FullMethodName   = "/loads.LoadsService/UpdateVehicleLocation"
+	LoadsService_StreamVehicleLocations_FullMethodName  = "/loads.LoadsService/StreamVehicleLocations"
+	LoadsService_ResolveShipmentIDs_FullMethodName      = "/loads.LoadsService/ResolveShipmentIDs"
+	LoadsService_ResolveTripIDs_FullMethodName          = "/loads.LoadsService/ResolveTripIDs"
+	LoadsService_GetShipmentChatMembers_FullMethodName  = "/loads.LoadsService/GetShipmentChatMembers"
+	LoadsService_GetDriverActiveLoads_FullMethodName    = "/loads.LoadsService/GetDriverActiveLoads"
+	LoadsService_GetDriverUnsettledLoads_FullMethodName = "/loads.LoadsService/GetDriverUnsettledLoads"
+	LoadsService_GetDriverDocIssueLoads_FullMethodName  = "/loads.LoadsService/GetDriverDocIssueLoads"
+	LoadsService_GetTripChatInfo_FullMethodName         = "/loads.LoadsService/GetTripChatInfo"
+	LoadsService_GetTripsForPayBatch_FullMethodName     = "/loads.LoadsService/GetTripsForPayBatch"
+	LoadsService_GetTripsByIDs_FullMethodName           = "/loads.LoadsService/GetTripsByIDs"
+	LoadsService_GetUnbilledDriverTrips_FullMethodName  = "/loads.LoadsService/GetUnbilledDriverTrips"
 )
 
 // LoadsServiceClient is the client API for LoadsService service.
@@ -96,12 +95,6 @@ type LoadsServiceClient interface {
 	// list of trips (createPayBatch) OR for enriching "already-in-batch"
 	// picker-UI rows with full trip details.
 	GetTripsByIDs(ctx context.Context, in *GetTripsByIDsRequest, opts ...grpc.CallOption) (*GetTripsByIDsResponse, error)
-	// Returns shipment_charges (Other Pay rows on the parent Shipment of each
-	// trip), grouped by trip_id. Used by backend-accounting when populating
-	// TripDriverExpense lazy auto-copy (EnsureShipmentChargesCopied) and at
-	// Statement.Create through StatementSourcesPuller.
-	// Empty list for a trip means: no shipment charges or shipment was deleted.
-	GetShipmentChargesByTripIDs(ctx context.Context, in *GetShipmentChargesByTripIDsRequest, opts ...grpc.CallOption) (*GetShipmentChargesByTripIDsResponse, error)
 	// Returns trips eligible for MANUAL addition to a Driver Pay Statement:
 	//   - trips.main_driver_id == driver_id
 	//   - shipment.status IN (DELIVERED, COMPLETED, READY_FOR_BILLING)
@@ -309,16 +302,6 @@ func (c *loadsServiceClient) GetTripsByIDs(ctx context.Context, in *GetTripsByID
 	return out, nil
 }
 
-func (c *loadsServiceClient) GetShipmentChargesByTripIDs(ctx context.Context, in *GetShipmentChargesByTripIDsRequest, opts ...grpc.CallOption) (*GetShipmentChargesByTripIDsResponse, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(GetShipmentChargesByTripIDsResponse)
-	err := c.cc.Invoke(ctx, LoadsService_GetShipmentChargesByTripIDs_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
 func (c *loadsServiceClient) GetUnbilledDriverTrips(ctx context.Context, in *GetUnbilledDriverTripsRequest, opts ...grpc.CallOption) (*GetUnbilledDriverTripsResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(GetUnbilledDriverTripsResponse)
@@ -380,12 +363,6 @@ type LoadsServiceServer interface {
 	// list of trips (createPayBatch) OR for enriching "already-in-batch"
 	// picker-UI rows with full trip details.
 	GetTripsByIDs(context.Context, *GetTripsByIDsRequest) (*GetTripsByIDsResponse, error)
-	// Returns shipment_charges (Other Pay rows on the parent Shipment of each
-	// trip), grouped by trip_id. Used by backend-accounting when populating
-	// TripDriverExpense lazy auto-copy (EnsureShipmentChargesCopied) and at
-	// Statement.Create through StatementSourcesPuller.
-	// Empty list for a trip means: no shipment charges or shipment was deleted.
-	GetShipmentChargesByTripIDs(context.Context, *GetShipmentChargesByTripIDsRequest) (*GetShipmentChargesByTripIDsResponse, error)
 	// Returns trips eligible for MANUAL addition to a Driver Pay Statement:
 	//   - trips.main_driver_id == driver_id
 	//   - shipment.status IN (DELIVERED, COMPLETED, READY_FOR_BILLING)
@@ -457,9 +434,6 @@ func (UnimplementedLoadsServiceServer) GetTripsForPayBatch(context.Context, *Get
 }
 func (UnimplementedLoadsServiceServer) GetTripsByIDs(context.Context, *GetTripsByIDsRequest) (*GetTripsByIDsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetTripsByIDs not implemented")
-}
-func (UnimplementedLoadsServiceServer) GetShipmentChargesByTripIDs(context.Context, *GetShipmentChargesByTripIDsRequest) (*GetShipmentChargesByTripIDsResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "method GetShipmentChargesByTripIDs not implemented")
 }
 func (UnimplementedLoadsServiceServer) GetUnbilledDriverTrips(context.Context, *GetUnbilledDriverTripsRequest) (*GetUnbilledDriverTripsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetUnbilledDriverTrips not implemented")
@@ -802,24 +776,6 @@ func _LoadsService_GetTripsByIDs_Handler(srv interface{}, ctx context.Context, d
 	return interceptor(ctx, in, info, handler)
 }
 
-func _LoadsService_GetShipmentChargesByTripIDs_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(GetShipmentChargesByTripIDsRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(LoadsServiceServer).GetShipmentChargesByTripIDs(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: LoadsService_GetShipmentChargesByTripIDs_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(LoadsServiceServer).GetShipmentChargesByTripIDs(ctx, req.(*GetShipmentChargesByTripIDsRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
 func _LoadsService_GetUnbilledDriverTrips_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(GetUnbilledDriverTripsRequest)
 	if err := dec(in); err != nil {
@@ -912,10 +868,6 @@ var LoadsService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetTripsByIDs",
 			Handler:    _LoadsService_GetTripsByIDs_Handler,
-		},
-		{
-			MethodName: "GetShipmentChargesByTripIDs",
-			Handler:    _LoadsService_GetShipmentChargesByTripIDs_Handler,
 		},
 		{
 			MethodName: "GetUnbilledDriverTrips",

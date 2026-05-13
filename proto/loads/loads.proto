@@ -81,6 +81,15 @@ service LoadsService {
   // Empty list for a trip means: no shipment charges or shipment was deleted.
   rpc GetShipmentChargesByTripIDs(GetShipmentChargesByTripIDsRequest)
       returns (GetShipmentChargesByTripIDsResponse);
+
+  // Returns trips eligible for MANUAL addition to a Driver Pay Statement:
+  //   - trips.main_driver_id == driver_id
+  //   - shipment.status IN (DELIVERED, COMPLETED, READY_FOR_BILLING)
+  // No period filter (unlike GetTripsForPayBatch). Caller (accounting) performs
+  // busy-statement / busy-batch exclusion in-memory after the response, so the
+  // request stays minimal.
+  rpc GetUnbilledDriverTrips(GetUnbilledDriverTripsRequest)
+      returns (GetUnbilledDriverTripsResponse);
 }
 
 message ShipmentFilterRequest {
@@ -471,6 +480,19 @@ message GetTripsByIDsRequest {
 }
 
 message GetTripsByIDsResponse {
+  repeated PayBatchTrip trips = 1;
+}
+
+message GetUnbilledDriverTripsRequest {
+  // Tenant scope — accounting passes the caller's company_id from JWT.
+  string company_id = 1;
+  // Trip's main driver — only trips of this driver are returned.
+  string driver_id  = 2;
+}
+
+message GetUnbilledDriverTripsResponse {
+  // Trips of `driver_id` where shipment.status IN
+  // (DELIVERED, COMPLETED, READY_FOR_BILLING). No period filter applied.
   repeated PayBatchTrip trips = 1;
 }
 

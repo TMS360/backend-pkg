@@ -42,6 +42,7 @@ const (
 	LoadsService_GetTripsForPayBatch_FullMethodName         = "/loads.LoadsService/GetTripsForPayBatch"
 	LoadsService_GetTripsByIDs_FullMethodName               = "/loads.LoadsService/GetTripsByIDs"
 	LoadsService_GetShipmentChargesByTripIDs_FullMethodName = "/loads.LoadsService/GetShipmentChargesByTripIDs"
+	LoadsService_GetUnbilledDriverTrips_FullMethodName      = "/loads.LoadsService/GetUnbilledDriverTrips"
 )
 
 // LoadsServiceClient is the client API for LoadsService service.
@@ -101,6 +102,14 @@ type LoadsServiceClient interface {
 	// Statement.Create through StatementSourcesPuller.
 	// Empty list for a trip means: no shipment charges or shipment was deleted.
 	GetShipmentChargesByTripIDs(ctx context.Context, in *GetShipmentChargesByTripIDsRequest, opts ...grpc.CallOption) (*GetShipmentChargesByTripIDsResponse, error)
+	// Returns trips eligible for MANUAL addition to a Driver Pay Statement:
+	//   - trips.main_driver_id == driver_id
+	//   - shipment.status IN (DELIVERED, COMPLETED, READY_FOR_BILLING)
+	//
+	// No period filter (unlike GetTripsForPayBatch). Caller (accounting) performs
+	// busy-statement / busy-batch exclusion in-memory after the response, so the
+	// request stays minimal.
+	GetUnbilledDriverTrips(ctx context.Context, in *GetUnbilledDriverTripsRequest, opts ...grpc.CallOption) (*GetUnbilledDriverTripsResponse, error)
 }
 
 type loadsServiceClient struct {
@@ -310,6 +319,16 @@ func (c *loadsServiceClient) GetShipmentChargesByTripIDs(ctx context.Context, in
 	return out, nil
 }
 
+func (c *loadsServiceClient) GetUnbilledDriverTrips(ctx context.Context, in *GetUnbilledDriverTripsRequest, opts ...grpc.CallOption) (*GetUnbilledDriverTripsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetUnbilledDriverTripsResponse)
+	err := c.cc.Invoke(ctx, LoadsService_GetUnbilledDriverTrips_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // LoadsServiceServer is the server API for LoadsService service.
 // All implementations must embed UnimplementedLoadsServiceServer
 // for forward compatibility.
@@ -367,6 +386,14 @@ type LoadsServiceServer interface {
 	// Statement.Create through StatementSourcesPuller.
 	// Empty list for a trip means: no shipment charges or shipment was deleted.
 	GetShipmentChargesByTripIDs(context.Context, *GetShipmentChargesByTripIDsRequest) (*GetShipmentChargesByTripIDsResponse, error)
+	// Returns trips eligible for MANUAL addition to a Driver Pay Statement:
+	//   - trips.main_driver_id == driver_id
+	//   - shipment.status IN (DELIVERED, COMPLETED, READY_FOR_BILLING)
+	//
+	// No period filter (unlike GetTripsForPayBatch). Caller (accounting) performs
+	// busy-statement / busy-batch exclusion in-memory after the response, so the
+	// request stays minimal.
+	GetUnbilledDriverTrips(context.Context, *GetUnbilledDriverTripsRequest) (*GetUnbilledDriverTripsResponse, error)
 	mustEmbedUnimplementedLoadsServiceServer()
 }
 
@@ -433,6 +460,9 @@ func (UnimplementedLoadsServiceServer) GetTripsByIDs(context.Context, *GetTripsB
 }
 func (UnimplementedLoadsServiceServer) GetShipmentChargesByTripIDs(context.Context, *GetShipmentChargesByTripIDsRequest) (*GetShipmentChargesByTripIDsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetShipmentChargesByTripIDs not implemented")
+}
+func (UnimplementedLoadsServiceServer) GetUnbilledDriverTrips(context.Context, *GetUnbilledDriverTripsRequest) (*GetUnbilledDriverTripsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetUnbilledDriverTrips not implemented")
 }
 func (UnimplementedLoadsServiceServer) mustEmbedUnimplementedLoadsServiceServer() {}
 func (UnimplementedLoadsServiceServer) testEmbeddedByValue()                      {}
@@ -790,6 +820,24 @@ func _LoadsService_GetShipmentChargesByTripIDs_Handler(srv interface{}, ctx cont
 	return interceptor(ctx, in, info, handler)
 }
 
+func _LoadsService_GetUnbilledDriverTrips_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetUnbilledDriverTripsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(LoadsServiceServer).GetUnbilledDriverTrips(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: LoadsService_GetUnbilledDriverTrips_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(LoadsServiceServer).GetUnbilledDriverTrips(ctx, req.(*GetUnbilledDriverTripsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // LoadsService_ServiceDesc is the grpc.ServiceDesc for LoadsService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -868,6 +916,10 @@ var LoadsService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetShipmentChargesByTripIDs",
 			Handler:    _LoadsService_GetShipmentChargesByTripIDs_Handler,
+		},
+		{
+			MethodName: "GetUnbilledDriverTrips",
+			Handler:    _LoadsService_GetUnbilledDriverTrips_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{

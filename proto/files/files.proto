@@ -14,6 +14,14 @@ service FilesService {
   // using the JWT actor in context, so callers cannot probe other tenants.
   // Empty categories returns no rows (force callers to be explicit).
   rpc ListCompanyFiles (ListCompanyFilesRequest) returns (ListCompanyFilesResponse);
+
+  // UploadFile is a universal client-streaming upload. The first message MUST
+  // carry UploadFileMeta (filename, optional content_type, and either
+  // purpose or document_type_id to pick a FileRule). Subsequent messages
+  // carry raw chunks. Server enforces tenant scoping via JWT actor in metadata,
+  // computes SHA256 for dedup, and streams to S3 honoring the chosen FileRule.
+  // Dedup hits return the existing File with was_duplicate=true (not an error).
+  rpc UploadFile (stream UploadFileRequest) returns (UploadFileResponse);
 }
 
 message GetFileRequest {
@@ -68,4 +76,30 @@ message DownloadResponse {
   bytes chunk = 1;
   string file_name = 2;
   string content_type = 3;
+}
+
+message UploadFileRequest {
+  oneof payload {
+    UploadFileMeta meta = 1;
+    bytes chunk = 2;
+  }
+}
+
+message UploadFileMeta {
+  string filename = 1;
+  // Optional. If empty, server sniffs mime from content.
+  string content_type = 2;
+  // Optional. SystemPurpose name, e.g. "PAY_STATEMENT" or "USER_AVATAR".
+  // Either purpose or document_type_id must be set so server can pick a FileRule.
+  string purpose = 3;
+  // Optional. Document type UUID; alternative to purpose for picking a FileRule
+  // via document category mapping.
+  string document_type_id = 4;
+}
+
+message UploadFileResponse {
+  File file = 1;
+  // True when content (by SHA256) was already stored; server returned the
+  // existing record instead of creating a new one. Idempotent re-upload signal.
+  bool was_duplicate = 2;
 }

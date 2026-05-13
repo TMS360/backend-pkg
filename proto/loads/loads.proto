@@ -74,13 +74,14 @@ service LoadsService {
   // picker-UI rows with full trip details.
   rpc GetTripsByIDs(GetTripsByIDsRequest) returns (GetTripsByIDsResponse);
 
-  // Returns shipment_charges (Other Pay rows on the parent Shipment of each
-  // trip), grouped by trip_id. Used by backend-accounting when populating
-  // TripDriverExpense lazy auto-copy (EnsureShipmentChargesCopied) and at
-  // Statement.Create through StatementSourcesPuller.
-  // Empty list for a trip means: no shipment charges or shipment was deleted.
-  rpc GetShipmentChargesByTripIDs(GetShipmentChargesByTripIDsRequest)
-      returns (GetShipmentChargesByTripIDsResponse);
+  // Returns trips eligible for MANUAL addition to a Driver Pay Statement:
+  //   - trips.main_driver_id == driver_id
+  //   - shipment.status IN (DELIVERED, COMPLETED, READY_FOR_BILLING)
+  // No period filter (unlike GetTripsForPayBatch). Caller (accounting) performs
+  // busy-statement / busy-batch exclusion in-memory after the response, so the
+  // request stays minimal.
+  rpc GetUnbilledDriverTrips(GetUnbilledDriverTripsRequest)
+      returns (GetUnbilledDriverTripsResponse);
 }
 
 message ShipmentFilterRequest {
@@ -474,6 +475,19 @@ message GetTripsByIDsResponse {
   repeated PayBatchTrip trips = 1;
 }
 
+message GetUnbilledDriverTripsRequest {
+  // Tenant scope — accounting passes the caller's company_id from JWT.
+  string company_id = 1;
+  // Trip's main driver — only trips of this driver are returned.
+  string driver_id  = 2;
+}
+
+message GetUnbilledDriverTripsResponse {
+  // Trips of `driver_id` where shipment.status IN
+  // (DELIVERED, COMPLETED, READY_FOR_BILLING). No period filter applied.
+  repeated PayBatchTrip trips = 1;
+}
+
 // Детали trip-а, нужные backend-accounting чтобы создать pay_batch
 // из пре-выбранного списка trip-ов (createPayBatch(tripIds)).
 message PayBatchTrip {
@@ -502,40 +516,5 @@ message PayBatchTrip {
   double driver_gross = 18;  // расчётная зарплата водителя (если известна)
   double rate         = 19;  // shipment.rpm
   string truck_unit   = 20;  // truck.license / number, "" если нет
-}
-
-// ── Shipment Charges (DataTruck Shipment Other Pay, img 35-37) ──────────
-// Backend-load владеет shipment_charges (per-shipment). При создании Statement
-// в backend-accounting эти charges копируются в TripDriverExpense (по trip_id),
-// затем в statement_other_pays/deductions.
-
-message GetShipmentChargesByTripIDsRequest {
-  string company_id = 1;     // tenant scope, передаётся accounting-сервисом
-  repeated string trip_ids = 2;
-}
-
-message ShipmentChargeProto {
-  string id              = 1;
-  string shipment_id     = 2;
-  string charge_group_id = 3;
-  // ShipmentChargeType enum: LINEHAUL | TONU | LUMPER | DETENTION |
-  //   EMPTY_MILES | EXTRA_MILES | LAYOVER | FUEL_SURCHARGE |
-  //   EXTRA_STOP | BONUS | FLAT | OTHER
-  string type            = 4;
-  double amount          = 5;
-  double quantity        = 6;
-  double total           = 7;
-  optional string note   = 8;
-}
-
-message TripShipmentCharges {
-  string trip_id = 1;
-  repeated ShipmentChargeProto charges = 2;
-}
-
-message GetShipmentChargesByTripIDsResponse {
-  // Пер-trip группировка. Trip без charges → either omitted или с пустым
-  // `charges`. Caller (accounting) должен корректно обрабатывать оба варианта.
-  repeated TripShipmentCharges trips = 1;
 }
 

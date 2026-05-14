@@ -721,6 +721,98 @@ func (x *UploadFileResponse) GetWasDuplicate() bool {
 	return false
 }
 
+type DeleteFileRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// File UUID. Tenant scoping is enforced server-side, so callers cannot
+	// delete files outside their company.
+	Id            string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DeleteFileRequest) Reset() {
+	*x = DeleteFileRequest{}
+	mi := &file_files_files_proto_msgTypes[12]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DeleteFileRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DeleteFileRequest) ProtoMessage() {}
+
+func (x *DeleteFileRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_files_files_proto_msgTypes[12]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DeleteFileRequest.ProtoReflect.Descriptor instead.
+func (*DeleteFileRequest) Descriptor() ([]byte, []int) {
+	return file_files_files_proto_rawDescGZIP(), []int{12}
+}
+
+func (x *DeleteFileRequest) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+type DeleteFileResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// True when the file was found and removed; false when the id did not exist
+	// (idempotent, no error). Callers can ignore unless they need exact audit.
+	Deleted       bool `protobuf:"varint,1,opt,name=deleted,proto3" json:"deleted,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DeleteFileResponse) Reset() {
+	*x = DeleteFileResponse{}
+	mi := &file_files_files_proto_msgTypes[13]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DeleteFileResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DeleteFileResponse) ProtoMessage() {}
+
+func (x *DeleteFileResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_files_files_proto_msgTypes[13]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DeleteFileResponse.ProtoReflect.Descriptor instead.
+func (*DeleteFileResponse) Descriptor() ([]byte, []int) {
+	return file_files_files_proto_rawDescGZIP(), []int{13}
+}
+
+func (x *DeleteFileResponse) GetDeleted() bool {
+	if x != nil {
+		return x.Deleted
+	}
+	return false
+}
+
 var File_files_files_proto protoreflect.FileDescriptor
 
 const file_files_files_proto_rawDesc = "" +
@@ -774,14 +866,20 @@ const file_files_files_proto_rawDesc = "" +
 	"\x10document_type_id\x18\x04 \x01(\tR\x0edocumentTypeId\"Z\n" +
 	"\x12UploadFileResponse\x12\x1f\n" +
 	"\x04file\x18\x01 \x01(\v2\v.files.FileR\x04file\x12#\n" +
-	"\rwas_duplicate\x18\x02 \x01(\bR\fwasDuplicate2\xde\x02\n" +
+	"\rwas_duplicate\x18\x02 \x01(\bR\fwasDuplicate\"#\n" +
+	"\x11DeleteFileRequest\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\".\n" +
+	"\x12DeleteFileResponse\x12\x18\n" +
+	"\adeleted\x18\x01 \x01(\bR\adeleted2\xa1\x03\n" +
 	"\fFilesService\x128\n" +
 	"\aGetFile\x12\x15.files.GetFileRequest\x1a\x16.files.GetFileResponse\x12;\n" +
 	"\bGetFiles\x12\x16.files.GetFilesRequest\x1a\x17.files.GetFilesResponse\x12=\n" +
 	"\bDownload\x12\x16.files.DownloadRequest\x1a\x17.files.DownloadResponse0\x01\x12S\n" +
 	"\x10ListCompanyFiles\x12\x1e.files.ListCompanyFilesRequest\x1a\x1f.files.ListCompanyFilesResponse\x12C\n" +
 	"\n" +
-	"UploadFile\x12\x18.files.UploadFileRequest\x1a\x19.files.UploadFileResponse(\x01B+Z)github.com/TMS360/backend-pkg/proto/filesb\x06proto3"
+	"UploadFile\x12\x18.files.UploadFileRequest\x1a\x19.files.UploadFileResponse(\x01\x12A\n" +
+	"\n" +
+	"DeleteFile\x12\x18.files.DeleteFileRequest\x1a\x19.files.DeleteFileResponseB+Z)github.com/TMS360/backend-pkg/proto/filesb\x06proto3"
 
 var (
 	file_files_files_proto_rawDescOnce sync.Once
@@ -795,7 +893,7 @@ func file_files_files_proto_rawDescGZIP() []byte {
 	return file_files_files_proto_rawDescData
 }
 
-var file_files_files_proto_msgTypes = make([]protoimpl.MessageInfo, 13)
+var file_files_files_proto_msgTypes = make([]protoimpl.MessageInfo, 15)
 var file_files_files_proto_goTypes = []any{
 	(*GetFileRequest)(nil),           // 0: files.GetFileRequest
 	(*GetFilesRequest)(nil),          // 1: files.GetFilesRequest
@@ -809,11 +907,13 @@ var file_files_files_proto_goTypes = []any{
 	(*UploadFileRequest)(nil),        // 9: files.UploadFileRequest
 	(*UploadFileMeta)(nil),           // 10: files.UploadFileMeta
 	(*UploadFileResponse)(nil),       // 11: files.UploadFileResponse
-	nil,                              // 12: files.GetFilesResponse.FilesEntry
+	(*DeleteFileRequest)(nil),        // 12: files.DeleteFileRequest
+	(*DeleteFileResponse)(nil),       // 13: files.DeleteFileResponse
+	nil,                              // 14: files.GetFilesResponse.FilesEntry
 }
 var file_files_files_proto_depIdxs = []int32{
 	2,  // 0: files.GetFileResponse.file:type_name -> files.File
-	12, // 1: files.GetFilesResponse.files:type_name -> files.GetFilesResponse.FilesEntry
+	14, // 1: files.GetFilesResponse.files:type_name -> files.GetFilesResponse.FilesEntry
 	2,  // 2: files.ListCompanyFilesResponse.files:type_name -> files.File
 	10, // 3: files.UploadFileRequest.meta:type_name -> files.UploadFileMeta
 	2,  // 4: files.UploadFileResponse.file:type_name -> files.File
@@ -823,13 +923,15 @@ var file_files_files_proto_depIdxs = []int32{
 	7,  // 8: files.FilesService.Download:input_type -> files.DownloadRequest
 	5,  // 9: files.FilesService.ListCompanyFiles:input_type -> files.ListCompanyFilesRequest
 	9,  // 10: files.FilesService.UploadFile:input_type -> files.UploadFileRequest
-	3,  // 11: files.FilesService.GetFile:output_type -> files.GetFileResponse
-	4,  // 12: files.FilesService.GetFiles:output_type -> files.GetFilesResponse
-	8,  // 13: files.FilesService.Download:output_type -> files.DownloadResponse
-	6,  // 14: files.FilesService.ListCompanyFiles:output_type -> files.ListCompanyFilesResponse
-	11, // 15: files.FilesService.UploadFile:output_type -> files.UploadFileResponse
-	11, // [11:16] is the sub-list for method output_type
-	6,  // [6:11] is the sub-list for method input_type
+	12, // 11: files.FilesService.DeleteFile:input_type -> files.DeleteFileRequest
+	3,  // 12: files.FilesService.GetFile:output_type -> files.GetFileResponse
+	4,  // 13: files.FilesService.GetFiles:output_type -> files.GetFilesResponse
+	8,  // 14: files.FilesService.Download:output_type -> files.DownloadResponse
+	6,  // 15: files.FilesService.ListCompanyFiles:output_type -> files.ListCompanyFilesResponse
+	11, // 16: files.FilesService.UploadFile:output_type -> files.UploadFileResponse
+	13, // 17: files.FilesService.DeleteFile:output_type -> files.DeleteFileResponse
+	12, // [12:18] is the sub-list for method output_type
+	6,  // [6:12] is the sub-list for method input_type
 	6,  // [6:6] is the sub-list for extension type_name
 	6,  // [6:6] is the sub-list for extension extendee
 	0,  // [0:6] is the sub-list for field type_name
@@ -850,7 +952,7 @@ func file_files_files_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_files_files_proto_rawDesc), len(file_files_files_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   13,
+			NumMessages:   15,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

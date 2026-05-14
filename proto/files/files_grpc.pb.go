@@ -24,6 +24,7 @@ const (
 	FilesService_Download_FullMethodName         = "/files.FilesService/Download"
 	FilesService_ListCompanyFiles_FullMethodName = "/files.FilesService/ListCompanyFiles"
 	FilesService_UploadFile_FullMethodName       = "/files.FilesService/UploadFile"
+	FilesService_DeleteFile_FullMethodName       = "/files.FilesService/DeleteFile"
 )
 
 // FilesServiceClient is the client API for FilesService service.
@@ -45,6 +46,11 @@ type FilesServiceClient interface {
 	// computes SHA256 for dedup, and streams to S3 honoring the chosen FileRule.
 	// Dedup hits return the existing File with was_duplicate=true (not an error).
 	UploadFile(ctx context.Context, opts ...grpc.CallOption) (grpc.ClientStreamingClient[UploadFileRequest, UploadFileResponse], error)
+	// DeleteFile removes the File metadata row and the underlying S3 object.
+	// Idempotent: deleting a missing id returns ok=false but no error so callers
+	// can call it best-effort during cache invalidation / re-export cleanup.
+	// Tenant scoping is enforced server-side via TenantScopePlugin.
+	DeleteFile(ctx context.Context, in *DeleteFileRequest, opts ...grpc.CallOption) (*DeleteFileResponse, error)
 }
 
 type filesServiceClient struct {
@@ -117,6 +123,16 @@ func (c *filesServiceClient) UploadFile(ctx context.Context, opts ...grpc.CallOp
 // This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
 type FilesService_UploadFileClient = grpc.ClientStreamingClient[UploadFileRequest, UploadFileResponse]
 
+func (c *filesServiceClient) DeleteFile(ctx context.Context, in *DeleteFileRequest, opts ...grpc.CallOption) (*DeleteFileResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(DeleteFileResponse)
+	err := c.cc.Invoke(ctx, FilesService_DeleteFile_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // FilesServiceServer is the server API for FilesService service.
 // All implementations must embed UnimplementedFilesServiceServer
 // for forward compatibility.
@@ -136,6 +152,11 @@ type FilesServiceServer interface {
 	// computes SHA256 for dedup, and streams to S3 honoring the chosen FileRule.
 	// Dedup hits return the existing File with was_duplicate=true (not an error).
 	UploadFile(grpc.ClientStreamingServer[UploadFileRequest, UploadFileResponse]) error
+	// DeleteFile removes the File metadata row and the underlying S3 object.
+	// Idempotent: deleting a missing id returns ok=false but no error so callers
+	// can call it best-effort during cache invalidation / re-export cleanup.
+	// Tenant scoping is enforced server-side via TenantScopePlugin.
+	DeleteFile(context.Context, *DeleteFileRequest) (*DeleteFileResponse, error)
 	mustEmbedUnimplementedFilesServiceServer()
 }
 
@@ -160,6 +181,9 @@ func (UnimplementedFilesServiceServer) ListCompanyFiles(context.Context, *ListCo
 }
 func (UnimplementedFilesServiceServer) UploadFile(grpc.ClientStreamingServer[UploadFileRequest, UploadFileResponse]) error {
 	return status.Error(codes.Unimplemented, "method UploadFile not implemented")
+}
+func (UnimplementedFilesServiceServer) DeleteFile(context.Context, *DeleteFileRequest) (*DeleteFileResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method DeleteFile not implemented")
 }
 func (UnimplementedFilesServiceServer) mustEmbedUnimplementedFilesServiceServer() {}
 func (UnimplementedFilesServiceServer) testEmbeddedByValue()                      {}
@@ -254,6 +278,24 @@ func _FilesService_UploadFile_Handler(srv interface{}, stream grpc.ServerStream)
 // This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
 type FilesService_UploadFileServer = grpc.ClientStreamingServer[UploadFileRequest, UploadFileResponse]
 
+func _FilesService_DeleteFile_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeleteFileRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(FilesServiceServer).DeleteFile(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: FilesService_DeleteFile_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(FilesServiceServer).DeleteFile(ctx, req.(*DeleteFileRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // FilesService_ServiceDesc is the grpc.ServiceDesc for FilesService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -272,6 +314,10 @@ var FilesService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ListCompanyFiles",
 			Handler:    _FilesService_ListCompanyFiles_Handler,
+		},
+		{
+			MethodName: "DeleteFile",
+			Handler:    _FilesService_DeleteFile_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{

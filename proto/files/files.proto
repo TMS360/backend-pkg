@@ -22,6 +22,12 @@ service FilesService {
   // computes SHA256 for dedup, and streams to S3 honoring the chosen FileRule.
   // Dedup hits return the existing File with was_duplicate=true (not an error).
   rpc UploadFile (stream UploadFileRequest) returns (UploadFileResponse);
+
+  // DeleteFile removes the File metadata row and the underlying S3 object.
+  // Idempotent: deleting a missing id returns ok=false but no error so callers
+  // can call it best-effort during cache invalidation / re-export cleanup.
+  // Tenant scoping is enforced server-side via TenantScopePlugin.
+  rpc DeleteFile (DeleteFileRequest) returns (DeleteFileResponse);
 }
 
 message GetFileRequest {
@@ -102,4 +108,16 @@ message UploadFileResponse {
   // True when content (by SHA256) was already stored; server returned the
   // existing record instead of creating a new one. Idempotent re-upload signal.
   bool was_duplicate = 2;
+}
+
+message DeleteFileRequest {
+  // File UUID. Tenant scoping is enforced server-side, so callers cannot
+  // delete files outside their company.
+  string id = 1;
+}
+
+message DeleteFileResponse {
+  // True when the file was found and removed; false when the id did not exist
+  // (idempotent, no error). Callers can ignore unless they need exact audit.
+  bool deleted = 1;
 }

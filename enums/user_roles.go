@@ -63,7 +63,7 @@ func (s UserRoleEnum) IsValid() bool {
 // not part of the office hierarchy. UserRoleAdmin stays in the map so JWTs
 // that already carry the role report the correct level for the
 // strictly-below check used by createUser and assignPermissionsTo*.
-var UserRoleHierarchy = map[UserRoleEnum]int16{
+var UserRoleHierarchy = map[UserRoleEnum]int32{
 	UserRoleSuperAdmin: 0,
 	UserRoleAdmin:      1,
 	UserRoleManager:    2,
@@ -79,8 +79,8 @@ var UserRoleHierarchy = map[UserRoleEnum]int16{
 // EffectiveHierarchy returns min(hierarchy) across the given role names.
 // Roles not present in UserRoleHierarchy are ignored. If none of the roles
 // are known, math.MaxInt16 is returned, which represents "no authority".
-func EffectiveHierarchy(roles []string) int16 {
-	best := int16(math.MaxInt16)
+func EffectiveHierarchy(roles []string) int32 {
+	best := int32(math.MaxInt32)
 	for _, name := range roles {
 		if h, ok := UserRoleHierarchy[UserRoleEnum(name)]; ok && h < best {
 			best = h

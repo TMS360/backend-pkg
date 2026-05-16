@@ -18,6 +18,23 @@ import (
 // rejects the configured API key with a 401 or 403 status.
 var ErrInvalidCredentials = errors.New("here: invalid credentials")
 
+// AuthError is returned by doRequest when HERE responds with 401 or 403.
+// Callers use IsAuthError to detect this case and stop polling the tenant.
+type AuthError struct {
+	StatusCode int
+	Body       string
+}
+
+func (e *AuthError) Error() string {
+	return fmt.Sprintf("here auth failed (status %d): %s", e.StatusCode, e.Body)
+}
+
+// IsAuthError reports whether err (or any error it wraps) is a *AuthError.
+func IsAuthError(err error) bool {
+	var ae *AuthError
+	return errors.As(err, &ae)
+}
+
 // Route API models
 type RouteRequest struct {
 	Origin        Coordinates
@@ -258,6 +275,12 @@ func (c *Client) doRequest(ctx context.Context, method, fullURL string) (*http.R
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("failed to execute request: %w", err)
+	}
+
+	if resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden {
+		defer func() { _ = resp.Body.Close() }()
+		body, _ := io.ReadAll(resp.Body)
+		return nil, &AuthError{StatusCode: resp.StatusCode, Body: string(body)}
 	}
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {

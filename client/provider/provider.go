@@ -10,8 +10,13 @@ import (
 	"github.com/TMS360/backend-pkg/middleware"
 )
 
-// ClientProvider manages per-company client instances with sync.Map caching.
-// API keys are fetched from Redis using pattern: {company_id}:setting:{settingKey}
+// ClientProvider builds a per-company client on demand by reading the tenant's
+// API key from Redis at pattern {company_id}:setting:{settingKey}.
+//
+// No in-memory client cache: each call fetches the API key from Redis and
+// builds the client via the factory. This ensures the provider always reflects
+// the latest credential and disables itself automatically when tms-auth deletes
+// the Redis entry in response to a 401/403 (integration deactivation flow).
 //
 // Usage:
 //
@@ -42,7 +47,7 @@ func New[T any](settingKey string, factory func(apiKey string) (T, error)) *Clie
 	}
 }
 
-// Get returns a cached or new client for the company extracted from JWT context.
+// Get returns a fresh client for the company extracted from JWT context.
 func (p *ClientProvider[T]) Get(ctx context.Context) (T, error) {
 	actor, err := middleware.GetActor(ctx)
 	if err != nil {
@@ -57,12 +62,15 @@ func (p *ClientProvider[T]) Get(ctx context.Context) (T, error) {
 	return p.GetByCompanyID(ctx, companyID.String())
 }
 
-// GetByCompanyID returns a cached or new client for the given company.
-// Use this in background workers where there is no actor in context.
+// GetByCompanyID returns a fresh client for the given company by reading the
+// API key from Redis on every call. If the key is absent or empty in Redis
+// (e.g. integration deactivated after a 401/403), an error is returned and the
+// caller should skip the polling tick silently.
 func (p *ClientProvider[T]) GetByCompanyID(ctx context.Context, companyID string) (T, error) {
-	if val, ok := p.clients.Load(companyID); ok {
-		return val.(T), nil
-	}
+	// !!! Not use cache, because if API_KEY will change in redis, it will still use in-memory client
+	//if val, ok := p.clients.Load(companyID); ok {
+	//	return val.(T), nil
+	//}
 
 	apiKey, err := p.fetchAPIKey(ctx, companyID)
 	if err != nil {
@@ -76,8 +84,9 @@ func (p *ClientProvider[T]) GetByCompanyID(ctx context.Context, companyID string
 		return zero, fmt.Errorf("provider: failed to create client for company %s: %w", companyID, err)
 	}
 
-	actual, _ := p.clients.LoadOrStore(companyID, client)
-	return actual.(T), nil
+	// !!! Not use cache, because if API_KEY will change in redis, it will still use in-memory client
+	//actual, _ := p.clients.LoadOrStore(companyID, client)
+	return client, nil
 }
 
 // GetAPIKey returns just the API key for a company without creating a client.

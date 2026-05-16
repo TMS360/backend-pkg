@@ -21,6 +21,24 @@ import (
 // rejects the configured API key with a 401 or 403 status.
 var ErrInvalidCredentials = errors.New("samsara: invalid credentials")
 
+// AuthError is returned by doRequest when Samsara responds with 401 or 403.
+// Callers use IsAuthError to detect this case and stop polling the tenant.
+type AuthError struct {
+	StatusCode int
+	Body       string
+	RequestID  string
+}
+
+func (e *AuthError) Error() string {
+	return fmt.Sprintf("samsara auth failed (status %d, request_id=%s): %s", e.StatusCode, e.RequestID, e.Body)
+}
+
+// IsAuthError reports whether err (or any error it wraps) is a *AuthError.
+func IsAuthError(err error) bool {
+	var ae *AuthError
+	return errors.As(err, &ae)
+}
+
 // VehicleInfo - информация о транспортном средстве
 type VehicleInfo struct {
 	ID   string `json:"id"`
@@ -228,27 +246,27 @@ type WebhookListResponse struct {
 type WebhookEventType string
 
 const (
-	EventTypeAlert                     WebhookEventType = "AlertIncident"
-	EventTypeAddressCreated            WebhookEventType = "AddressCreated"
-	EventTypeGeofenceEntry             WebhookEventType = "GeofenceEntry"
-	EventTypeGeofenceExit              WebhookEventType = "GeofenceExit"
-	EventTypeAddressUpdated            WebhookEventType = "AddressUpdated"
-	EventTypeAddressDeleted            WebhookEventType = "AddressDeleted"
-	EventTypeVehicleUpdated            WebhookEventType = "VehicleUpdated"
-	EventTypeDriverUpdated             WebhookEventType = "DriverUpdated"
-	EventTypeEngineFaultOn             WebhookEventType = "EngineFaultOn"
-	EventTypeEngineFaultOff            WebhookEventType = "EngineFaultOff"
-	EventTypeIssueCreated              WebhookEventType = "IssueCreated"
-	EventTypePredictiveMaintenance     WebhookEventType = "PredictiveMaintenanceAlert"
-	EventTypeGatewayUnplugged          WebhookEventType = "GatewayUnplugged"
-	EventTypeDvirSubmitted             WebhookEventType = "DvirSubmitted"
-	EventTypeMissingDvirPastDue        WebhookEventType = "MissingDvirPastDue"
-	EventTypeSevereSpeedingStarted     WebhookEventType = "SevereSpeedingStarted"
-	EventTypeSevereSpeedingEnded       WebhookEventType = "SevereSpeedingEnded"
-	EventTypeSpeedingEventStarted      WebhookEventType = "SpeedingEventStarted"
-	EventTypeSpeedingEventEnded        WebhookEventType = "SpeedingEventEnded"
-	EventTypeSuddenFuelLevelDrop       WebhookEventType = "SuddenFuelLevelDrop"
-	EventTypeSuddenFuelLevelRise       WebhookEventType = "SuddenFuelLevelRise"
+	EventTypeAlert                 WebhookEventType = "AlertIncident"
+	EventTypeAddressCreated        WebhookEventType = "AddressCreated"
+	EventTypeGeofenceEntry         WebhookEventType = "GeofenceEntry"
+	EventTypeGeofenceExit          WebhookEventType = "GeofenceExit"
+	EventTypeAddressUpdated        WebhookEventType = "AddressUpdated"
+	EventTypeAddressDeleted        WebhookEventType = "AddressDeleted"
+	EventTypeVehicleUpdated        WebhookEventType = "VehicleUpdated"
+	EventTypeDriverUpdated         WebhookEventType = "DriverUpdated"
+	EventTypeEngineFaultOn         WebhookEventType = "EngineFaultOn"
+	EventTypeEngineFaultOff        WebhookEventType = "EngineFaultOff"
+	EventTypeIssueCreated          WebhookEventType = "IssueCreated"
+	EventTypePredictiveMaintenance WebhookEventType = "PredictiveMaintenanceAlert"
+	EventTypeGatewayUnplugged      WebhookEventType = "GatewayUnplugged"
+	EventTypeDvirSubmitted         WebhookEventType = "DvirSubmitted"
+	EventTypeMissingDvirPastDue    WebhookEventType = "MissingDvirPastDue"
+	EventTypeSevereSpeedingStarted WebhookEventType = "SevereSpeedingStarted"
+	EventTypeSevereSpeedingEnded   WebhookEventType = "SevereSpeedingEnded"
+	EventTypeSpeedingEventStarted  WebhookEventType = "SpeedingEventStarted"
+	EventTypeSpeedingEventEnded    WebhookEventType = "SpeedingEventEnded"
+	EventTypeSuddenFuelLevelDrop   WebhookEventType = "SuddenFuelLevelDrop"
+	EventTypeSuddenFuelLevelRise   WebhookEventType = "SuddenFuelLevelRise"
 )
 
 // AlertConditionID - типы условий для алертов
@@ -528,12 +546,12 @@ type VehicleStatsResponse struct {
 type HOSStatusType string
 
 const (
-	HOSStatusDriving             HOSStatusType = "driving"
-	HOSStatusOnDuty              HOSStatusType = "onDuty"
-	HOSStatusOffDuty             HOSStatusType = "offDuty"
-	HOSStatusSleeperBed          HOSStatusType = "sleeperBed"
-	HOSStatusYardMove            HOSStatusType = "yardMove"
-	HOSStatusPersonalConveyance  HOSStatusType = "personalConveyance"
+	HOSStatusDriving            HOSStatusType = "driving"
+	HOSStatusOnDuty             HOSStatusType = "onDuty"
+	HOSStatusOffDuty            HOSStatusType = "offDuty"
+	HOSStatusSleeperBed         HOSStatusType = "sleeperBed"
+	HOSStatusYardMove           HOSStatusType = "yardMove"
+	HOSStatusPersonalConveyance HOSStatusType = "personalConveyance"
 )
 
 // HOSLogEntry — single HOS segment for a driver.
@@ -593,6 +611,16 @@ func (c *Client) doRequest(ctx context.Context, method, path string, body io.Rea
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("failed to execute request: %w", err)
+	}
+
+	if resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden {
+		defer resp.Body.Close()
+		bodyBytes, _ := io.ReadAll(resp.Body)
+		return nil, &AuthError{
+			StatusCode: resp.StatusCode,
+			Body:       string(bodyBytes),
+			RequestID:  resp.Header.Get("X-Request-Id"),
+		}
 	}
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {

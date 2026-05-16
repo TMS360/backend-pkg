@@ -23,25 +23,27 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	LoadsService_GetDriverTripDetails_FullMethodName    = "/loads.LoadsService/GetDriverTripDetails"
-	LoadsService_GetRecentBrokerIDs_FullMethodName      = "/loads.LoadsService/GetRecentBrokerIDs"
-	LoadsService_GetShipment_FullMethodName             = "/loads.LoadsService/GetShipment"
-	LoadsService_ListShipments_FullMethodName           = "/loads.LoadsService/ListShipments"
-	LoadsService_GetTrip_FullMethodName                 = "/loads.LoadsService/GetTrip"
-	LoadsService_ListTrips_FullMethodName               = "/loads.LoadsService/ListTrips"
-	LoadsService_GetVehicleAssignments_FullMethodName   = "/loads.LoadsService/GetVehicleAssignments"
-	LoadsService_UpdateVehicleLocation_FullMethodName   = "/loads.LoadsService/UpdateVehicleLocation"
-	LoadsService_StreamVehicleLocations_FullMethodName  = "/loads.LoadsService/StreamVehicleLocations"
-	LoadsService_ResolveShipmentIDs_FullMethodName      = "/loads.LoadsService/ResolveShipmentIDs"
-	LoadsService_ResolveTripIDs_FullMethodName          = "/loads.LoadsService/ResolveTripIDs"
-	LoadsService_GetShipmentChatMembers_FullMethodName  = "/loads.LoadsService/GetShipmentChatMembers"
-	LoadsService_GetDriverActiveLoads_FullMethodName    = "/loads.LoadsService/GetDriverActiveLoads"
-	LoadsService_GetDriverUnsettledLoads_FullMethodName = "/loads.LoadsService/GetDriverUnsettledLoads"
-	LoadsService_GetDriverDocIssueLoads_FullMethodName  = "/loads.LoadsService/GetDriverDocIssueLoads"
-	LoadsService_GetTripChatInfo_FullMethodName         = "/loads.LoadsService/GetTripChatInfo"
-	LoadsService_GetTripsForPayBatch_FullMethodName     = "/loads.LoadsService/GetTripsForPayBatch"
-	LoadsService_GetTripsByIDs_FullMethodName           = "/loads.LoadsService/GetTripsByIDs"
-	LoadsService_GetUnbilledDriverTrips_FullMethodName  = "/loads.LoadsService/GetUnbilledDriverTrips"
+	LoadsService_GetDriverTripDetails_FullMethodName        = "/loads.LoadsService/GetDriverTripDetails"
+	LoadsService_GetRecentBrokerIDs_FullMethodName          = "/loads.LoadsService/GetRecentBrokerIDs"
+	LoadsService_GetShipment_FullMethodName                 = "/loads.LoadsService/GetShipment"
+	LoadsService_ListShipments_FullMethodName               = "/loads.LoadsService/ListShipments"
+	LoadsService_GetTrip_FullMethodName                     = "/loads.LoadsService/GetTrip"
+	LoadsService_ListTrips_FullMethodName                   = "/loads.LoadsService/ListTrips"
+	LoadsService_GetVehicleAssignments_FullMethodName       = "/loads.LoadsService/GetVehicleAssignments"
+	LoadsService_UpdateVehicleLocation_FullMethodName       = "/loads.LoadsService/UpdateVehicleLocation"
+	LoadsService_StreamVehicleLocations_FullMethodName      = "/loads.LoadsService/StreamVehicleLocations"
+	LoadsService_ResolveShipmentIDs_FullMethodName          = "/loads.LoadsService/ResolveShipmentIDs"
+	LoadsService_ResolveTripIDs_FullMethodName              = "/loads.LoadsService/ResolveTripIDs"
+	LoadsService_GetShipmentChatMembers_FullMethodName      = "/loads.LoadsService/GetShipmentChatMembers"
+	LoadsService_GetDriverActiveLoads_FullMethodName        = "/loads.LoadsService/GetDriverActiveLoads"
+	LoadsService_GetDriverUnsettledLoads_FullMethodName     = "/loads.LoadsService/GetDriverUnsettledLoads"
+	LoadsService_GetDriverDocIssueLoads_FullMethodName      = "/loads.LoadsService/GetDriverDocIssueLoads"
+	LoadsService_GetTripChatInfo_FullMethodName             = "/loads.LoadsService/GetTripChatInfo"
+	LoadsService_GetTripsForPayBatch_FullMethodName         = "/loads.LoadsService/GetTripsForPayBatch"
+	LoadsService_GetTripsByIDs_FullMethodName               = "/loads.LoadsService/GetTripsByIDs"
+	LoadsService_GetUnbilledDriverTrips_FullMethodName      = "/loads.LoadsService/GetUnbilledDriverTrips"
+	LoadsService_GetShipmentsReadyForBilling_FullMethodName = "/loads.LoadsService/GetShipmentsReadyForBilling"
+	LoadsService_GetShipmentsByIDs_FullMethodName           = "/loads.LoadsService/GetShipmentsByIDs"
 )
 
 // LoadsServiceClient is the client API for LoadsService service.
@@ -103,6 +105,19 @@ type LoadsServiceClient interface {
 	// busy-statement / busy-batch exclusion in-memory after the response, so the
 	// request stays minimal.
 	GetUnbilledDriverTrips(ctx context.Context, in *GetUnbilledDriverTripsRequest, opts ...grpc.CallOption) (*GetUnbilledDriverTripsResponse, error)
+	// ── Invoice Batch (used by backend-accounting) ─────────────────────────
+	// Returns shipments eligible for invoicing (status = READY_FOR_BILLING)
+	// with the full billing payload (customer, stops, money, factoring info).
+	// Filters: optional date range against pickup OR delivery (via time_type),
+	// optional customer / MC filter. excluded_shipment_ids removes shipments
+	// already inside an active invoice batch (computed by accounting before
+	// the call).
+	GetShipmentsReadyForBilling(ctx context.Context, in *GetShipmentsReadyForBillingRequest, opts ...grpc.CallOption) (*GetShipmentsReadyForBillingResponse, error)
+	// Returns the billing payload for a pre-selected set of shipments.
+	// Used by backend-accounting when actually building the invoice batch
+	// (createInvoiceBatch) — after the operator has confirmed which shipments
+	// to invoice.
+	GetShipmentsByIDs(ctx context.Context, in *GetShipmentsByIDsRequest, opts ...grpc.CallOption) (*GetShipmentsByIDsResponse, error)
 }
 
 type loadsServiceClient struct {
@@ -312,6 +327,26 @@ func (c *loadsServiceClient) GetUnbilledDriverTrips(ctx context.Context, in *Get
 	return out, nil
 }
 
+func (c *loadsServiceClient) GetShipmentsReadyForBilling(ctx context.Context, in *GetShipmentsReadyForBillingRequest, opts ...grpc.CallOption) (*GetShipmentsReadyForBillingResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetShipmentsReadyForBillingResponse)
+	err := c.cc.Invoke(ctx, LoadsService_GetShipmentsReadyForBilling_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *loadsServiceClient) GetShipmentsByIDs(ctx context.Context, in *GetShipmentsByIDsRequest, opts ...grpc.CallOption) (*GetShipmentsByIDsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetShipmentsByIDsResponse)
+	err := c.cc.Invoke(ctx, LoadsService_GetShipmentsByIDs_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // LoadsServiceServer is the server API for LoadsService service.
 // All implementations must embed UnimplementedLoadsServiceServer
 // for forward compatibility.
@@ -371,6 +406,19 @@ type LoadsServiceServer interface {
 	// busy-statement / busy-batch exclusion in-memory after the response, so the
 	// request stays minimal.
 	GetUnbilledDriverTrips(context.Context, *GetUnbilledDriverTripsRequest) (*GetUnbilledDriverTripsResponse, error)
+	// ── Invoice Batch (used by backend-accounting) ─────────────────────────
+	// Returns shipments eligible for invoicing (status = READY_FOR_BILLING)
+	// with the full billing payload (customer, stops, money, factoring info).
+	// Filters: optional date range against pickup OR delivery (via time_type),
+	// optional customer / MC filter. excluded_shipment_ids removes shipments
+	// already inside an active invoice batch (computed by accounting before
+	// the call).
+	GetShipmentsReadyForBilling(context.Context, *GetShipmentsReadyForBillingRequest) (*GetShipmentsReadyForBillingResponse, error)
+	// Returns the billing payload for a pre-selected set of shipments.
+	// Used by backend-accounting when actually building the invoice batch
+	// (createInvoiceBatch) — after the operator has confirmed which shipments
+	// to invoice.
+	GetShipmentsByIDs(context.Context, *GetShipmentsByIDsRequest) (*GetShipmentsByIDsResponse, error)
 	mustEmbedUnimplementedLoadsServiceServer()
 }
 
@@ -437,6 +485,12 @@ func (UnimplementedLoadsServiceServer) GetTripsByIDs(context.Context, *GetTripsB
 }
 func (UnimplementedLoadsServiceServer) GetUnbilledDriverTrips(context.Context, *GetUnbilledDriverTripsRequest) (*GetUnbilledDriverTripsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetUnbilledDriverTrips not implemented")
+}
+func (UnimplementedLoadsServiceServer) GetShipmentsReadyForBilling(context.Context, *GetShipmentsReadyForBillingRequest) (*GetShipmentsReadyForBillingResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetShipmentsReadyForBilling not implemented")
+}
+func (UnimplementedLoadsServiceServer) GetShipmentsByIDs(context.Context, *GetShipmentsByIDsRequest) (*GetShipmentsByIDsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetShipmentsByIDs not implemented")
 }
 func (UnimplementedLoadsServiceServer) mustEmbedUnimplementedLoadsServiceServer() {}
 func (UnimplementedLoadsServiceServer) testEmbeddedByValue()                      {}
@@ -794,6 +848,42 @@ func _LoadsService_GetUnbilledDriverTrips_Handler(srv interface{}, ctx context.C
 	return interceptor(ctx, in, info, handler)
 }
 
+func _LoadsService_GetShipmentsReadyForBilling_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetShipmentsReadyForBillingRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(LoadsServiceServer).GetShipmentsReadyForBilling(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: LoadsService_GetShipmentsReadyForBilling_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(LoadsServiceServer).GetShipmentsReadyForBilling(ctx, req.(*GetShipmentsReadyForBillingRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _LoadsService_GetShipmentsByIDs_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetShipmentsByIDsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(LoadsServiceServer).GetShipmentsByIDs(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: LoadsService_GetShipmentsByIDs_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(LoadsServiceServer).GetShipmentsByIDs(ctx, req.(*GetShipmentsByIDsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // LoadsService_ServiceDesc is the grpc.ServiceDesc for LoadsService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -872,6 +962,14 @@ var LoadsService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetUnbilledDriverTrips",
 			Handler:    _LoadsService_GetUnbilledDriverTrips_Handler,
+		},
+		{
+			MethodName: "GetShipmentsReadyForBilling",
+			Handler:    _LoadsService_GetShipmentsReadyForBilling_Handler,
+		},
+		{
+			MethodName: "GetShipmentsByIDs",
+			Handler:    _LoadsService_GetShipmentsByIDs_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{

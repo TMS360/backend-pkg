@@ -82,6 +82,23 @@ service LoadsService {
   // request stays minimal.
   rpc GetUnbilledDriverTrips(GetUnbilledDriverTripsRequest)
       returns (GetUnbilledDriverTripsResponse);
+
+  // ── Invoice Batch (used by backend-accounting) ─────────────────────────
+  // Returns shipments eligible for invoicing (status = READY_FOR_BILLING)
+  // with the full billing payload (customer, stops, money, factoring info).
+  // Filters: optional date range against pickup OR delivery (via time_type),
+  // optional customer / MC filter. excluded_shipment_ids removes shipments
+  // already inside an active invoice batch (computed by accounting before
+  // the call).
+  rpc GetShipmentsReadyForBilling(GetShipmentsReadyForBillingRequest)
+      returns (GetShipmentsReadyForBillingResponse);
+
+  // Returns the billing payload for a pre-selected set of shipments.
+  // Used by backend-accounting when actually building the invoice batch
+  // (createInvoiceBatch) — after the operator has confirmed which shipments
+  // to invoice.
+  rpc GetShipmentsByIDs(GetShipmentsByIDsRequest)
+      returns (GetShipmentsByIDsResponse);
 }
 
 message ShipmentFilterRequest {
@@ -308,7 +325,10 @@ message VehicleLocation {
   string driver_id = 9;
 }
 
-// Shipment status enum
+// Shipment status enum — mirror of backend-load domain.ShipmentStatus.
+// String form is preferred in payloads (see PayBatchTrip.shipment_status,
+// ShipmentBillingItem.status); keep this enum only for ListShipmentsRequest
+// filtering.
 enum ShipmentStatus {
   SHIPMENT_STATUS_UNSPECIFIED = 0;
   SHIPMENT_STATUS_PENDING = 1;
@@ -318,6 +338,10 @@ enum ShipmentStatus {
   SHIPMENT_STATUS_DELIVERED = 5;
   SHIPMENT_STATUS_CANCELLED = 6;
   SHIPMENT_STATUS_COMPLETED = 7;
+  SHIPMENT_STATUS_READY_FOR_BILLING = 8;
+  SHIPMENT_STATUS_INVOICED = 9;
+  SHIPMENT_STATUS_PAID = 10;
+  SHIPMENT_STATUS_TONU = 11;
 }
 
 // Shipment type enum
@@ -486,6 +510,87 @@ message GetUnbilledDriverTripsResponse {
   // Trips of `driver_id` where shipment.status IN
   // (DELIVERED, COMPLETED, READY_FOR_BILLING). No period filter applied.
   repeated PayBatchTrip trips = 1;
+}
+
+// ── Invoice Batch messages (backend-accounting) ────────────────────────
+
+message GetShipmentsReadyForBillingRequest {
+  // Tenant scope — accounting passes the caller's company_id (from JWT)
+  // because backend-load's gRPC server runs without AuthServerInterceptor.
+  string company_id = 1;
+
+  // Optional date window. When both ends are set, time_type (PICKUP /
+  // DELIVERY) selects which shipment leg's date is tested against the
+  // window. PAY_BATCH_TIME_TYPE_UNSPECIFIED disables the date filter.
+  optional google.protobuf.Timestamp date_from = 2;
+  optional google.protobuf.Timestamp date_to   = 3;
+  PayBatchTimeType time_type                   = 4;
+
+  // Optional dimensional filters.
+  optional string mc_number   = 5;
+  optional string customer_id = 6;
+
+  // Shipments that must NOT appear in the response — already inside an
+  // active invoice batch. Computed by accounting before the call.
+  repeated string excluded_shipment_ids = 7;
+}
+
+message GetShipmentsReadyForBillingResponse {
+  repeated ShipmentBillingItem shipments = 1;
+}
+
+message GetShipmentsByIDsRequest {
+  // Tenant scope — same semantics as
+  // GetShipmentsReadyForBillingRequest.company_id.
+  string company_id = 1;
+  repeated string shipment_ids = 2;
+}
+
+message GetShipmentsByIDsResponse {
+  repeated ShipmentBillingItem shipments = 1;
+}
+
+// ShipmentBillingItem carries everything backend-accounting needs to:
+//   1. render the picker row (customer, dates, money),
+//   2. denormalise into Invoice (Bill To, Remit To, stops),
+//   3. enforce the "status=READY_FOR_BILLING" precondition on Create.
+//
+// Free-form string fields default to "" when backend-load doesn't know the
+// value (e.g. driver_name lives in backend-teams). Accounting tolerates
+// empty strings and falls back to its own data sources.
+message ShipmentBillingItem {
+  string shipment_id        = 1;
+  optional string load_id   = 2;          // shipment.load_id (display)
+  string load_number        = 3;          // mirror of load_id for clarity
+  int64  shipment_number    = 4;          // shipment.shipment_number
+  string status             = 5;          // shipment.status (free-form)
+
+  // Bill To.
+  string customer_id        = 6;
+  string customer_name      = 7;          // "" when unknown
+  string customer_address   = 8;          // billing address; "" when unknown
+  string customer_mc_number = 9;          // "" when unknown
+
+  // Driver (informational; full name lives in backend-teams).
+  optional string driver_id = 10;
+  string driver_name        = 11;         // "" — accounting hits teams itself
+
+  // Stops (first leg = pickup, last leg = delivery).
+  string pickup_address     = 12;
+  google.protobuf.Timestamp pickup_date     = 13;
+  string delivery_address   = 14;
+  google.protobuf.Timestamp delivery_date   = 15;
+
+  // Money.
+  double total_amount       = 16;         // shipment.total_pay
+
+  // Routing / factoring (placeholders for now — backend-load doesn't yet
+  // own customer billing settings; accounting renders empty values when
+  // these are "").
+  string billing_type           = 17;
+  string mc_number              = 18;
+  string factoring_company_name = 19;
+  string factoring_remit_to     = 20;
 }
 
 // Детали trip-а, нужные backend-accounting чтобы создать pay_batch

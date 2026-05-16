@@ -26,7 +26,7 @@ func NewSaferAPIService(apiKey string) SaferApi {
 		baseURL: "https://saferwebapi.com/v2",
 		apiKey:  apiKey,
 		client: &http.Client{
-			Timeout: 10 * time.Second,
+			Timeout: 30 * time.Second,
 		},
 	}
 }

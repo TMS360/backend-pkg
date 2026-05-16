@@ -9,6 +9,7 @@ import (
 	"mime/multipart"
 	"net/http"
 	"net/textproto"
+	"time"
 
 	"github.com/TMS360/backend-pkg/middleware"
 )
@@ -23,7 +24,9 @@ func NewClient(baseURL, provider string) Client {
 	return &client{
 		baseURL:  baseURL,
 		provider: provider,
-		client:   &http.Client{},
+		client: &http.Client{
+			Timeout: 60 * time.Second,
+		},
 	}
 }
 

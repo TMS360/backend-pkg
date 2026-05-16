@@ -581,7 +581,7 @@ type Client struct {
 // NewClient создаёт новый клиент Samsara с конфигурацией
 func NewClient(cfg config.SamsaraConfig, apiKey string) (*Client, error) {
 	return &Client{
-		httpClient: &http.Client{Timeout: 10 * time.Second},
+		httpClient: &http.Client{Timeout: 30 * time.Second},
 		host:       cfg.Host,
 		apiKey:     apiKey,
 	}, nil
@@ -590,7 +590,7 @@ func NewClient(cfg config.SamsaraConfig, apiKey string) (*Client, error) {
 // NewClientWithToken создаёт клиент только с API ключом (использует дефолтный хост)
 func NewClientWithToken(apiKey string) (*Client, error) {
 	return &Client{
-		httpClient: &http.Client{Timeout: 10 * time.Second},
+		httpClient: &http.Client{Timeout: 30 * time.Second},
 		host:       "https://api.samsara.com",
 		apiKey:     apiKey,
 	}, nil

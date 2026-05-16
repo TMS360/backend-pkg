@@ -26,7 +26,7 @@ func NewClientExternal(apiKey string) FmcsaExternalApi {
 		apiKey:  apiKey,
 		baseURL: "https://mobile.fmcsa.dot.gov/qc/services/carriers/",
 		httpClient: &http.Client{
-			Timeout: 10 * time.Second,
+			Timeout: 60 * time.Second,
 		},
 	}
 }

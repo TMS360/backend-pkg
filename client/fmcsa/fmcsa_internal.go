@@ -38,13 +38,15 @@ type client struct {
 	systemAPIKey string
 }
 
-// NewClient creates a clientExternal with a 10-second timeout
+// NewClient creates a clientExternal whose HTTP timeout is wide enough to let
+// callers control deadlines via context.WithTimeout. FMCSA QCMobile can take
+// 10-15s to respond for live company lookups; this cap is a safety net only.
 func NewClient(baseURL string, systemAPIKey string) FmcsaAPI {
 	return &client{
 		baseURL:      baseURL,
 		systemAPIKey: systemAPIKey,
 		httpClient: &http.Client{
-			Timeout: 10 * time.Second,
+			Timeout: 90 * time.Second,
 		},
 	}
 }

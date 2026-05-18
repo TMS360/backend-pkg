@@ -48,7 +48,7 @@ func (t *TruckAttributes) applyTo(params url.Values) {
 
 // AvoidOptions controls HERE `avoid[*]` and `exclude[*]` parameters.
 type AvoidOptions struct {
-	Features  []string // avoid[features]: tollRoad, ferry, dirtRoad, motorway, tunnel, controlledAccessHighway
+	Features  []string // avoid[features]: ferry, dirtRoad, motorway, tunnel, controlledAccessHighway
 	Countries []string // exclude[countries]: ISO3
 }
 

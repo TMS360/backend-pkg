@@ -14,6 +14,7 @@ type Config struct {
 	AppPort           string `mapstructure:"APP_PORT"`
 	AppURL            string `mapstructure:"APP_URL"`
 	FrontendURL       string `mapstructure:"FRONTEND_URL"`
+	MobileAppURL      string `mapstructure:"MOBILE_APP_URL"`
 	SigningKey        string `mapstructure:"SIGNING_KEY"`
 	CleanupPassword   string `mapstructure:"CLEANUP_PASSWORD"`
 	GRPCPort          string `mapstructure:"GRPC_PORT"`

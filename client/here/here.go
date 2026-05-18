@@ -42,7 +42,7 @@ type RouteRequest struct {
 	DepartureTime *time.Time
 	TransportMode string // car, truck, pedestrian, bicycle, scooter
 	Currency      string
-	ReturnOptions []string // tolls, summary, polyline, instructions, etc.
+	ReturnOptions []string // summary, polyline, instructions, etc.
 
 	// Optional navigation extensions. Zero value preserves legacy behavior.
 	Via          []Coordinates    // intermediate waypoints (HERE `via=`, repeated)
@@ -73,7 +73,6 @@ type RouteSection struct {
 	Departure *LocationInfo  `json:"departure"`
 	Arrival   *LocationInfo  `json:"arrival"`
 	Summary   *RouteSummary  `json:"summary"`
-	Tolls     []TollItem     `json:"tolls,omitempty"`
 	Transport *TransportInfo `json:"transport"`
 	Polyline  string         `json:"polyline,omitempty"`
 
@@ -101,43 +100,9 @@ type Location struct {
 }
 
 type RouteSummary struct {
-	Duration     int     `json:"duration"`     // in seconds
-	Length       int     `json:"length"`       // in meters
-	BaseDuration int     `json:"baseDuration"` // in seconds without traffic
-	TollCost     float64 `json:"tollCost,omitempty"`
-}
-
-// TollItem represents a single toll entry in the HERE v8 routing response.
-// Each route section may contain multiple toll items.
-type TollItem struct {
-	CountryCode             string                   `json:"countryCode,omitempty"`
-	TollSystemRef           int                      `json:"tollSystemRef,omitempty"`
-	TollSystem              string                   `json:"tollSystem,omitempty"`
-	Fares                   []TollFare               `json:"fares,omitempty"`
-	TollCollectionLocations []TollCollectionLocation `json:"tollCollectionLocations,omitempty"`
-}
-
-// TollFare represents a single fare within a toll item.
-type TollFare struct {
-	ID             string     `json:"id,omitempty"`
-	Name           string     `json:"name,omitempty"`
-	Price          TollPrice  `json:"price"`
-	ConvertedPrice *TollPrice `json:"convertedPrice,omitempty"`
-	Reason         string     `json:"reason,omitempty"`
-	PaymentMethods []string   `json:"paymentMethods,omitempty"`
-}
-
-// TollPrice represents a price value with currency.
-type TollPrice struct {
-	Type     string  `json:"type"`
-	Currency string  `json:"currency"`
-	Value    float64 `json:"value"`
-}
-
-// TollCollectionLocation represents a physical toll collection point.
-type TollCollectionLocation struct {
-	Name     string    `json:"name,omitempty"`
-	Location *Location `json:"location,omitempty"`
+	Duration     int `json:"duration"`     // in seconds
+	Length       int `json:"length"`       // in meters
+	BaseDuration int `json:"baseDuration"` // in seconds without traffic
 }
 
 type TransportInfo struct {
@@ -322,10 +287,9 @@ func (c *Client) GetRoute(ctx context.Context, req RouteRequest) (*RouteResponse
 		}
 		params.Set("return", returnStr)
 	} else {
-		params.Set("return", "tolls,summary")
+		params.Set("return", "summary")
 	}
 
-	// Currency for toll costs
 	if req.Currency != "" {
 		params.Set("currency", req.Currency)
 	}
@@ -384,7 +348,7 @@ func (c *Client) GetTruckRoute(ctx context.Context, origin, destination Coordina
 		DepartureTime: departureTime,
 		TransportMode: "truck",
 		Currency:      "USD",
-		ReturnOptions: []string{"tolls", "summary", "polyline"},
+		ReturnOptions: []string{"summary", "polyline"},
 	}
 
 	return c.GetRoute(ctx, req)

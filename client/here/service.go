@@ -41,10 +41,6 @@ type RouteInfo struct {
 	EstimatedArrival time.Time
 	// Encoded polyline geometry for the route
 	Polyline string
-	// Toll cost if available
-	TollCost *float64
-	// Toll currency
-	TollCurrency *string
 }
 
 // MultiStopRouteInfo represents route information for a multi-stop trip
@@ -55,8 +51,6 @@ type MultiStopRouteInfo struct {
 	TotalDurationSeconds int
 	// Per-leg information
 	Legs []RouteLegInfo
-	// Total toll cost
-	TotalTollCost *float64
 }
 
 // RouteLegInfo represents one leg of a multi-stop route
@@ -188,7 +182,7 @@ func (s *service) CalculateRoute(ctx context.Context, origin, destination Coordi
 		DepartureTime: departureTime,
 		TransportMode: "car",
 		Currency:      "USD",
-		ReturnOptions: []string{"tolls", "summary"},
+		ReturnOptions: []string{"summary"},
 	}
 
 	resp, err := s.client.GetRoute(ctx, req)
@@ -265,9 +259,6 @@ func (s *service) CalculateMultiStopRoute(ctx context.Context, waypoints []Coord
 		currentDeparture = &now
 	}
 
-	var totalTollCost float64
-	hasTolls := false
-
 	for i := 0; i < len(waypoints)-1; i++ {
 		origin := waypoints[i]
 		dest := waypoints[i+1]
@@ -291,17 +282,8 @@ func (s *service) CalculateMultiStopRoute(ctx context.Context, waypoints []Coord
 		result.TotalDistanceMeters += routeInfo.DistanceMeters
 		result.TotalDurationSeconds += routeInfo.DurationSeconds
 
-		if routeInfo.TollCost != nil {
-			totalTollCost += *routeInfo.TollCost
-			hasTolls = true
-		}
-
 		// Next leg starts when this one arrives
 		currentDeparture = &routeInfo.EstimatedArrival
-	}
-
-	if hasTolls {
-		result.TotalTollCost = &totalTollCost
 	}
 
 	return result, nil
@@ -327,27 +309,6 @@ func (s *service) parseRouteResponse(resp *RouteResponse, departureTime *time.Ti
 		departure = *departureTime
 	}
 	info.EstimatedArrival = departure.Add(time.Duration(info.DurationWithTrafficSeconds) * time.Second)
-
-	// Extract toll information from the tolls array
-	if len(section.Tolls) > 0 {
-		var totalCost float64
-		var currency string
-		for _, toll := range section.Tolls {
-			for _, fare := range toll.Fares {
-				// Prefer convertedPrice (requested currency) over local price
-				price := fare.Price
-				if fare.ConvertedPrice != nil {
-					price = *fare.ConvertedPrice
-				}
-				totalCost += price.Value
-				if currency == "" {
-					currency = price.Currency
-				}
-			}
-		}
-		info.TollCost = &totalCost
-		info.TollCurrency = &currency
-	}
 
 	return info
 }

@@ -44,9 +44,6 @@ type TruckNavResult struct {
 	PolylineEncoded            string // raw HERE flexible polyline (first section)
 	PolylineDecoded            []DecodedCoordinate
 	Steps                      []NavStep
-	Tolls                      []TollItem
-	TotalTollCost              *float64
-	TollCurrency               *string
 	Notices                    []RouteNotice
 	Alternatives               []*TruckNavResult `json:",omitempty"`
 }
@@ -93,7 +90,6 @@ var navReturnOptions = []string{
 	"summary",
 	"actions",
 	"instructions",
-	"tolls",
 	"spans",
 	"notices",
 	"travelSummary",
@@ -255,9 +251,6 @@ func buildResultFromRoute(r Route, departureTime *time.Time) *TruckNavResult {
 	}
 
 	stepIdx := 0
-	var totalToll float64
-	var tollCurrency string
-	var hasToll bool
 
 	for _, section := range r.Sections {
 		if section.Summary != nil {
@@ -266,7 +259,6 @@ func buildResultFromRoute(r Route, departureTime *time.Time) *TruckNavResult {
 			out.BaseDurationSeconds += section.Summary.BaseDuration
 		}
 
-		out.Tolls = append(out.Tolls, section.Tolls...)
 		out.Notices = append(out.Notices, section.Notices...)
 
 		for _, action := range section.Actions {
@@ -287,20 +279,6 @@ func buildResultFromRoute(r Route, departureTime *time.Time) *TruckNavResult {
 			out.Steps = append(out.Steps, step)
 			stepIdx++
 		}
-
-		for _, toll := range section.Tolls {
-			for _, fare := range toll.Fares {
-				price := fare.Price
-				if fare.ConvertedPrice != nil {
-					price = *fare.ConvertedPrice
-				}
-				totalToll += price.Value
-				if tollCurrency == "" {
-					tollCurrency = price.Currency
-				}
-				hasToll = true
-			}
-		}
 	}
 
 	// Fill PolyEnd by chaining adjacent steps; last step ends at last point.
@@ -310,11 +288,6 @@ func buildResultFromRoute(r Route, departureTime *time.Time) *TruckNavResult {
 		} else if len(out.PolylineDecoded) > 0 {
 			out.Steps[i].PolyEnd = len(out.PolylineDecoded) - 1
 		}
-	}
-
-	if hasToll {
-		out.TotalTollCost = &totalToll
-		out.TollCurrency = &tollCurrency
 	}
 
 	departure := time.Now()

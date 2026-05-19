@@ -14,6 +14,34 @@ type Client struct {
 	db driver.Conn
 }
 
+// EnsureDatabase connects to the ClickHouse server using the `default` database
+// and creates the target database if it does not exist. Idempotent.
+func EnsureDatabase(cfg config.ClickHouseConfig) error {
+	conn, err := clickhouse.Open(&clickhouse.Options{
+		Addr: []string{fmt.Sprintf("%s:%s", cfg.Host, cfg.Port)},
+		Auth: clickhouse.Auth{
+			Database: "default",
+			Username: cfg.User,
+			Password: cfg.Password,
+		},
+		DialTimeout: 5 * time.Second,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to connect to ClickHouse: %w", err)
+	}
+	defer conn.Close()
+
+	if err := conn.Ping(context.Background()); err != nil {
+		return fmt.Errorf("failed to ping ClickHouse: %w", err)
+	}
+
+	stmt := fmt.Sprintf("CREATE DATABASE IF NOT EXISTS `%s`", cfg.DBName)
+	if err := conn.Exec(context.Background(), stmt); err != nil {
+		return fmt.Errorf("failed to create database %s: %w", cfg.DBName, err)
+	}
+	return nil
+}
+
 // NewClient creates a new ClickHouse client with basic connection
 func NewClient(cfg config.ClickHouseConfig) (*Client, error) {
 	conn, err := clickhouse.Open(&clickhouse.Options{

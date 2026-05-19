@@ -1,0 +1,46 @@
+// pkg/proto/customers/customers.proto
+//
+// CustomerService — server-side customer / factoring lookup used by accounting
+// for tasks the Apollo Router can't fulfil (PDF render, Triumph SFTP packet,
+// outbound email). NOT a replacement for the federated Customer type on
+// GraphQL — frontend clients pull customer data through Apollo Federation
+// (Customer @key) from this same service's GraphQL subgraph. gRPC is the
+// internal channel for backend-to-backend.
+syntax = "proto3";
+
+package customers;
+
+option go_package = "github.com/TMS360/backend-pkg/proto/customers";
+
+service CustomerService {
+  // GetCustomers resolves one or many customer ids to full Bill-To +
+  // factoring details. Batched to support invoice batch PDF prints in a
+  // single round trip.
+  rpc GetCustomers(GetCustomersRequest) returns (GetCustomersResponse);
+}
+
+message GetCustomersRequest {
+  repeated string customer_ids = 1; // UUIDs
+}
+
+message GetCustomersResponse {
+  repeated Customer customers = 1;
+}
+
+message Customer {
+  string id = 1;
+  string company_name = 2;
+  string mc_number = 3;
+  // Bill-To address as a single rendered line (city, state, zip joined).
+  // Empty string when not configured.
+  string billing_address = 4;
+  // Optional factoring routing. Absent when the customer pays direct.
+  optional Factoring factoring = 5;
+}
+
+message Factoring {
+  string company_name = 1;
+  // Remit-To address as a single rendered line. Empty when only the company
+  // name is configured.
+  string remit_to = 2;
+}

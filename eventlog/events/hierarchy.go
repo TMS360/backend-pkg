@@ -7,13 +7,20 @@ package events
 type RootEntity string
 
 const (
-	RootShipment     RootEntity = "shipments"
-	RootUser         RootEntity = "users"
-	RootCompany      RootEntity = "companies"
-	RootBroker       RootEntity = "brokers"
-	RootDriverCrew   RootEntity = "driver_crews"
-	RootShareLink    RootEntity = "share_links"
-	RootNotification RootEntity = "notifications"
+	RootShipment         RootEntity = "shipments"
+	RootUser             RootEntity = "users"
+	RootCompany          RootEntity = "companies"
+	RootBroker           RootEntity = "brokers"
+	RootDriverCrew       RootEntity = "driver_crews"
+	RootShareLink        RootEntity = "share_links"
+	RootNotification     RootEntity = "notifications"
+	RootTruck            RootEntity = "trucks"
+	RootTrailer          RootEntity = "trailers"
+	RootInvoice          RootEntity = "invoices"
+	RootPayBatch         RootEntity = "pay_batches"
+	RootFile             RootEntity = "files"
+	RootRateConfirmation RootEntity = "rate_confirmations"
+	RootThread           RootEntity = "conversations"
 )
 
 // LeafToRoot is consulted by the audit consumer when an inbound event lacks
@@ -25,15 +32,43 @@ const (
 // itself and remain invisible to aggregate-root queries (this is the
 // documented "legacy producer" behaviour, not a bug).
 var LeafToRoot = map[string]RootEntity{
-	"shipments":       RootShipment,
-	"shipment_events": RootShipment,
-	"trips":           RootShipment,
-	"trip_events":     RootShipment,
-	"users":           RootUser,
-	"user_events":     RootUser,
-	"companies":       RootCompany,
-	"brokers":         RootBroker,
-	"driver_crews":    RootDriverCrew,
-	"share_links":     RootShareLink,
-	"notifications":   RootNotification,
+	"shipments":            RootShipment,
+	"shipment_events":      RootShipment,
+	"shipment_legs":        RootShipment,
+	"trips":                RootShipment,
+	"trip_events":          RootShipment,
+	"trip_stops":           RootShipment,
+	"users":                RootUser,
+	"user_events":          RootUser,
+	"companies":            RootCompany,
+	"brokers":              RootBroker,
+	"customers":            RootBroker,
+	"customer_contacts":    RootBroker,
+	"driver_crews":         RootDriverCrew,
+	"driver_crew_items":    RootDriverCrew,
+	"driver_pto_events":    RootDriverCrew,
+	"driver_status":        RootDriverCrew,
+	"share_links":          RootShareLink,
+	"notifications":        RootNotification,
+	"trucks":               RootTruck,
+	"truck_events":         RootTruck,
+	"truck_locations":      RootTruck,
+	"trailers":             RootTrailer,
+	"trailer_events":       RootTrailer,
+	"invoices":             RootInvoice,
+	"invoice_events":       RootInvoice,
+	"invoice_lines":        RootInvoice,
+	"invoice_credit_memos": RootInvoice,
+	"payments":             RootInvoice,
+	"pay_batches":          RootPayBatch,
+	"pay_batch_items":      RootPayBatch,
+	"files":                RootFile,
+	"file_events":          RootFile,
+	"order_files":          RootFile,
+	"rate_confirmations":   RootRateConfirmation,
+	"rc_events":            RootRateConfirmation,
+	"conversations":        RootThread,
+	"messages":             RootThread,
+	"mentions":             RootThread,
+	"thread_access":        RootThread,
 }

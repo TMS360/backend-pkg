@@ -145,7 +145,7 @@ func (c *Consumer) dispatch(ctx context.Context, event events.EventPayload) erro
 	}
 
 	if !handlerFound {
-		log.Printf("⚠️ No handlers matched for event: %s", handlerKey)
+		log.Printf("ignored event: %s", handlerKey)
 	}
 
 	return nil

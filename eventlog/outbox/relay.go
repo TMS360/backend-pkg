@@ -63,9 +63,16 @@ func (r *Relay) ProcessBatch(ctx context.Context, limit int) error {
 		var idsToDelete []string
 
 		for _, event := range eventsList {
+			// Producers can route a child entity onto a parent's topic via
+			// EventBuilder.WithTopic. Empty Topic means "no override" — the
+			// relay falls back to EntityType (the legacy behaviour).
+			topic := event.Topic
+			if topic == "" {
+				topic = event.EntityType
+			}
 			kafkaMessages = append(kafkaMessages, kafkaGo.Message{
-				Topic: event.AggregateType,
-				Key:   []byte(event.AggregateID.String()), // Order by EntityID
+				Topic: topic,
+				Key:   []byte(event.EntityID.String()), // Order by EntityID
 				Value: event.Payload,
 				Time:  event.CreatedAt,
 			})

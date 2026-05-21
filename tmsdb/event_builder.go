@@ -27,6 +27,7 @@ type EventBuilder struct {
 	aggID    uuid.UUID
 	rootType string
 	rootID   uuid.UUID
+	topic    string
 	data     interface{}
 	oldData  interface{}
 }
@@ -36,6 +37,17 @@ type EventBuilder struct {
 func (b *EventBuilder) WithRoot(rootType events.RootEntity, rootID uuid.UUID) *EventBuilder {
 	b.rootType = string(rootType)
 	b.rootID = rootID
+	return b
+}
+
+// WithTopic overrides the Kafka topic this event publishes to. By default the
+// relay uses EntityType as the topic. Use WithTopic when a child entity type
+// should route onto its parent's topic (e.g. customer_comments published onto
+// the "customers" topic while keeping entity_type = "customer_comments" for
+// downstream filtering). The entity_type stays distinct, only the Kafka
+// destination changes.
+func (b *EventBuilder) WithTopic(topic string) *EventBuilder {
+	b.topic = topic
 	return b
 }
 

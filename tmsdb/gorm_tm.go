@@ -111,12 +111,13 @@ func (m *GormTransactionManager) writeEvent(ctx context.Context, b *EventBuilder
 	}
 
 	event := &model.OutboxEvent{
-		AggregateID:   b.aggID,
-		AggregateType: b.aggType,
-		EventType:     b.evtType,
-		Payload:       payloadBytes,
-		Status:        "PENDING",
-		CreatedAt:     time.Now(),
+		EntityID:   b.aggID,
+		EntityType: b.aggType,
+		EventType:  b.evtType,
+		Payload:    payloadBytes,
+		Status:     "PENDING",
+		Topic:      b.topic,
+		CreatedAt:  time.Now(),
 	}
 
 	// Uses the active transaction from context automatically

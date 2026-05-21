@@ -26,6 +26,8 @@ type Config struct {
 	MailConfig        `mapstructure:"MAIL"`
 	SamsaraConfig     `mapstructure:"SAMSARA"`
 	HereConfig        `mapstructure:"HERE"`
+	RelayConfig       `mapstructure:"RELAY"`
+	FactoringConfig   `mapstructure:"FACTORING"`
 	ClickHouseConfig  `mapstructure:"CLICKHOUSE"`
 	AwsConfig         `mapstructure:"AWS"`
 	ServiceURLs       `mapstructure:"SERVICES"`
@@ -110,6 +112,19 @@ type HereConfig struct {
 	LookupHost  string `mapstructure:"LOOKUP_HOST"`
 }
 
+type RelayConfig struct {
+	Host string `mapstructure:"HOST"`
+}
+
+// FactoringConfig holds per-provider defaults that callers can override via env.
+// Credentials are NOT stored here — they live per-company in Redis at
+// {company_id}:setting:{provider_type}_credentials as a JSON blob, set by
+// tms360-backend.
+type FactoringConfig struct {
+	TriumphSFTPHost string `mapstructure:"TRIUMPH_SFTP_HOST"`
+	TriumphSFTPPort int    `mapstructure:"TRIUMPH_SFTP_PORT"`
+}
+
 type ClickHouseConfig struct {
 	Host     string `mapstructure:"HOST"`
 	Port     string `mapstructure:"PORT"`
@@ -126,7 +141,7 @@ type AwsConfig struct {
 	EndpointURL     string `mapstructure:"ENDPOINT_URL"`
 }
 
-var Prefixes = []string{"http", "db", "kafka", "redis", "jwt", "redis", "mail", "samsara", "here", "clickhouse", "aws", "services"}
+var Prefixes = []string{"http", "db", "kafka", "redis", "jwt", "redis", "mail", "samsara", "here", "relay", "factoring", "clickhouse", "aws", "services"}
 
 func MapConfig() {
 	for _, key := range viper.AllKeys() {

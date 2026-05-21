@@ -73,16 +73,20 @@ type CompanySettingsIntegrationKey string
 const (
 	CompanySettingsIntegrationKeyHereAPIKey    CompanySettingsIntegrationKey = "here_api_key"
 	CompanySettingsIntegrationKeySamsaraAPIKey CompanySettingsIntegrationKey = "samsara_api_key"
+	CompanySettingsIntegrationKeyRelayAPIKey   CompanySettingsIntegrationKey = "relay_api_key"
 )
 
 var AllCompanySettingsIntegrationKey = []CompanySettingsIntegrationKey{
 	CompanySettingsIntegrationKeyHereAPIKey,
 	CompanySettingsIntegrationKeySamsaraAPIKey,
+	CompanySettingsIntegrationKeyRelayAPIKey,
 }
 
 func (e CompanySettingsIntegrationKey) IsValid() bool {
 	switch e {
-	case CompanySettingsIntegrationKeyHereAPIKey, CompanySettingsIntegrationKeySamsaraAPIKey:
+	case CompanySettingsIntegrationKeyHereAPIKey,
+		CompanySettingsIntegrationKeySamsaraAPIKey,
+		CompanySettingsIntegrationKeyRelayAPIKey:
 		return true
 	}
 	return false

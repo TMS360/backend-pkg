@@ -138,8 +138,8 @@ func CalculateChanges(oldVal, newVal interface{}) []events.Change {
 	}
 
 	// 2. Use reflect.Indirect to safely handle both pointers and direct values
-	vOld := reflect.ValueOf(oldVal).Elem()
-	vNew := reflect.ValueOf(newVal).Elem()
+	vOld := reflect.Indirect(reflect.ValueOf(oldVal))
+	vNew := reflect.Indirect(reflect.ValueOf(newVal))
 
 	// 3. Ensure both are actually structs and of the same type
 	if vOld.Kind() != reflect.Struct || vNew.Kind() != reflect.Struct || vOld.Type() != vNew.Type() {

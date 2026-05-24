@@ -95,6 +95,10 @@ type JWTConfig struct {
 }
 
 type MailConfig struct {
+	// Provider selects the delivery backend: "smtp" (default) or "resend".
+	Provider string `mapstructure:"PROVIDER"`
+	// APIKey is used by HTTP-based providers (e.g. Resend).
+	APIKey   string `mapstructure:"API_KEY"`
 	Host     string `mapstructure:"HOST"`
 	Port     string `mapstructure:"PORT"`
 	Username string `mapstructure:"USERNAME"`

@@ -533,10 +533,19 @@ message GetShipmentsReadyForBillingRequest {
   // Shipments that must NOT appear in the response — already inside an
   // active invoice batch. Computed by accounting before the call.
   repeated string excluded_shipment_ids = 7;
+
+  // Pagination — applied by backend-load at the SQL level. page is
+  // 1-indexed; 0 falls back to page 1. limit <= 0 disables pagination and
+  // returns the full result set (legacy callers).
+  int32 page  = 8;
+  int32 limit = 9;
 }
 
 message GetShipmentsReadyForBillingResponse {
   repeated ShipmentBillingItem shipments = 1;
+  // Pre-pagination row count — lets the caller (GraphQL resolver) build
+  // a *Page wrapper without an extra round-trip.
+  int64 total = 2;
 }
 
 message GetShipmentsByIDsRequest {

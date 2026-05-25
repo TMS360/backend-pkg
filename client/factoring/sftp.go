@@ -32,6 +32,7 @@ type sftpDialer struct {
 	Port            int
 	Username        string
 	Password        string
+	ProviderType    ProviderType        // reported on AuthError; defaults to ProviderTriumphSFTP if empty
 	DialTimeout     time.Duration
 	HostKeyCallback ssh.HostKeyCallback // nil → ssh.InsecureIgnoreHostKey()
 }
@@ -80,7 +81,11 @@ func dialSFTP(ctx context.Context, d sftpDialer) (*sftpClient, error) {
 	if err != nil {
 		_ = tcpConn.Close()
 		if isSSHAuthFailure(err) {
-			return nil, &AuthError{ProviderType: ProviderTriumphSFTP, Cause: err}
+			pt := d.ProviderType
+			if pt == "" {
+				pt = ProviderTriumphSFTP
+			}
+			return nil, &AuthError{ProviderType: pt, Cause: err}
 		}
 		return nil, fmt.Errorf("factoring/sftp: ssh handshake %s: %w", addr, err)
 	}

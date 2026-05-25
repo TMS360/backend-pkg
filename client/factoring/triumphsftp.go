@@ -3,6 +3,8 @@ package factoring
 import (
 	"context"
 	"fmt"
+	"os"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -10,13 +12,20 @@ import (
 // Triumph SFTP transport constants. The per-carrier inbound directory is
 // `.` because Triumph drops every carrier into a chrooted home — uploads at
 // the root of the SSH user's home folder are picked up by their poller.
-// Override is intentionally not supported in v1; if Triumph rotates the host
-// or assigns a per-carrier subdirectory, change these constants in a single
-// place.
+//
+// NewTriumphSFTP transparently swaps these defaults for TEST_SFTP_* env vars
+// when APP_ENV is dev / stage / local, so a self-hosted sftpgo instance can
+// stand in for Triumph end-to-end without any UI or credential changes. The
+// allowlist (NOT a deny-list against "prod") means an unset APP_ENV in
+// production still keeps the real Triumph host — fail-safe by default.
 const (
 	triumphSFTPHost       = "files.triumphbcap.com"
 	triumphSFTPPort       = 22
 	triumphSFTPInboundDir = "."
+
+	envTestSFTPHost       = "TEST_SFTP_HOST"
+	envTestSFTPPort       = "TEST_SFTP_PORT"
+	envTestSFTPInboundDir = "TEST_SFTP_INBOUND_DIR"
 )
 
 // sftpUploader is the subset of *sftpClient that TriumphSFTPProvider needs.
@@ -39,20 +48,67 @@ type sftpUploader interface {
 // the per-company credential because every Triumph SFTP customer hits the
 // same endpoint.
 type TriumphSFTPProvider struct {
-	username string
-	password string
-	dialFn   func(ctx context.Context, d sftpDialer) (sftpUploader, error)
-	now      func() time.Time
+	username     string
+	password     string
+	host         string
+	port         int
+	inboundDir   string
+	providerType ProviderType
+	dialFn       func(ctx context.Context, d sftpDialer) (sftpUploader, error)
+	now          func() time.Time
 }
 
 // NewTriumphSFTP builds a TriumphSFTPProvider for a single submission. Reuse
 // across calls is safe (no internal state), but the connection is opened and
 // closed inside each SubmitBatch.
+//
+// In dev / stage / local environments (APP_ENV allowlist) the transport host
+// is swapped for TEST_SFTP_HOST / TEST_SFTP_PORT / TEST_SFTP_INBOUND_DIR if
+// any of those env vars are set — so the GraphQL surface (one provider type
+// "triumph_sftp", one Settings form) stays identical across environments
+// while a self-hosted sftpgo instance can stand in for Triumph. In
+// production (or when APP_ENV is unset) the env vars are ignored and the
+// real Triumph endpoint is always used.
 func NewTriumphSFTP(cred Credential) *TriumphSFTPProvider {
+	host := triumphSFTPHost
+	port := triumphSFTPPort
+	inboundDir := triumphSFTPInboundDir
+
+	if isNonProdAppEnv() {
+		if h := strings.TrimSpace(os.Getenv(envTestSFTPHost)); h != "" {
+			host = h
+		}
+		if raw := strings.TrimSpace(os.Getenv(envTestSFTPPort)); raw != "" {
+			if n, err := strconv.Atoi(raw); err == nil && n > 0 {
+				port = n
+			}
+		}
+		if d := strings.TrimSpace(os.Getenv(envTestSFTPInboundDir)); d != "" {
+			inboundDir = d
+		}
+	}
+
 	return &TriumphSFTPProvider{
-		username: cred.Username,
-		password: cred.Password,
-		dialFn:   defaultSFTPDial,
+		username:     cred.Username,
+		password:     cred.Password,
+		host:         host,
+		port:         port,
+		inboundDir:   inboundDir,
+		providerType: ProviderTriumphSFTP,
+		dialFn:       defaultSFTPDial,
+	}
+}
+
+// isNonProdAppEnv reports whether the current deployment may honour the
+// TEST_SFTP_* overrides. Implemented as an allowlist (NOT a deny-list against
+// "prod") so an empty / typo'd APP_ENV is treated as production — overrides
+// are ignored and real Triumph is used. Match is case-insensitive.
+func isNonProdAppEnv() bool {
+	switch strings.ToLower(strings.TrimSpace(os.Getenv("APP_ENV"))) {
+	case "dev", "stage", "staging", "local":
+		return true
+	default:
+		return false
 	}
 }
 
@@ -90,17 +146,18 @@ func (p *TriumphSFTPProvider) SubmitBatch(ctx context.Context, batch Batch) (Sub
 		dial = defaultSFTPDial
 	}
 	client, err := dial(ctx, sftpDialer{
-		Host:     triumphSFTPHost,
-		Port:     triumphSFTPPort,
-		Username: p.username,
-		Password: p.password,
+		Host:         p.host,
+		Port:         p.port,
+		Username:     p.username,
+		Password:     p.password,
+		ProviderType: p.providerType,
 	})
 	if err != nil {
 		return SubmitResult{}, err
 	}
 	defer client.Close()
 
-	if err := client.EnsureDir(triumphSFTPInboundDir); err != nil {
+	if err := client.EnsureDir(p.inboundDir); err != nil {
 		return SubmitResult{}, err
 	}
 
@@ -110,7 +167,7 @@ func (p *TriumphSFTPProvider) SubmitBatch(ctx context.Context, batch Batch) (Sub
 			return SubmitResult{CSVFileName: csvFileName, Uploaded: uploaded}, err
 		}
 		fileName := sanitizePDFName(pdf.InvoiceNumber)
-		remote, uerr := client.Upload(triumphSFTPInboundDir, fileName, pdf.Bytes)
+		remote, uerr := client.Upload(p.inboundDir, fileName, pdf.Bytes)
 		if uerr != nil {
 			return SubmitResult{CSVFileName: csvFileName, Uploaded: uploaded},
 				fmt.Errorf("upload pdf[%d] %s: %w", i, pdf.InvoiceNumber, uerr)
@@ -118,7 +175,7 @@ func (p *TriumphSFTPProvider) SubmitBatch(ctx context.Context, batch Batch) (Sub
 		uploaded = append(uploaded, remote)
 	}
 
-	csvPath, err := client.Upload(triumphSFTPInboundDir, csvFileName, csvBytes)
+	csvPath, err := client.Upload(p.inboundDir, csvFileName, csvBytes)
 	if err != nil {
 		return SubmitResult{CSVFileName: csvFileName, Uploaded: uploaded},
 			fmt.Errorf("upload csv manifest: %w", err)

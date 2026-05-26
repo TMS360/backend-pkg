@@ -10,8 +10,9 @@ import (
 )
 
 // Triumph SFTP transport constants. The per-carrier inbound directory is
-// `.` because Triumph drops every carrier into a chrooted home — uploads at
-// the root of the SSH user's home folder are picked up by their poller.
+// `TMS_INPUT` — Triumph chroots each carrier to their own home and expects
+// the manifest + PDFs in the TMS_INPUT subfolder (their poller scans only
+// that path).
 //
 // NewTriumphSFTP transparently swaps these defaults for TEST_SFTP_* env vars
 // when APP_ENV is dev / stage / local, so a self-hosted sftpgo instance can
@@ -21,7 +22,7 @@ import (
 const (
 	triumphSFTPHost       = "files.triumphbcap.com"
 	triumphSFTPPort       = 22
-	triumphSFTPInboundDir = "."
+	triumphSFTPInboundDir = "TMS_INPUT"
 
 	envTestSFTPHost       = "TEST_SFTP_HOST"
 	envTestSFTPPort       = "TEST_SFTP_PORT"

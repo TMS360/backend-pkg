@@ -5,11 +5,14 @@ package observability
 
 import (
 	"context"
+	"errors"
 	"log/slog"
+	"net/http"
 	"os"
 	"time"
 
 	"github.com/TMS360/backend-pkg/middleware"
+	"github.com/TMS360/backend-pkg/response"
 	sentrygin "github.com/getsentry/sentry-go/gin"
 	"github.com/gin-gonic/gin"
 
@@ -102,4 +105,24 @@ func GinMiddleware() gin.HandlerFunc {
 		return func(c *gin.Context) { c.Next() }
 	}
 	return sentrygin.New(sentrygin.Options{Repanic: true})
+}
+
+// CaptureRestError reports err to Sentry when the effective HTTP status is
+// 5xx, mirroring the GraphQL ErrorPresenter behavior. The effective status is
+// PublicError.ErrorStatus() when err implements it; otherwise the passed code.
+// 4xx are user errors — noisy and rarely actionable for ops, so they're
+// dropped. Safe to call when Sentry is disabled.
+func CaptureRestError(c *gin.Context, code int, err error) {
+	if err == nil {
+		return
+	}
+	status := code
+	var pe response.PublicError
+	if errors.As(err, &pe) {
+		status = pe.ErrorStatus()
+	}
+	if status < http.StatusInternalServerError {
+		return
+	}
+	CaptureWithCtx(c.Request.Context(), err)
 }

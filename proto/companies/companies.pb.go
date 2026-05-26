@@ -122,6 +122,289 @@ func (x *CompanyFilter) GetSearch() string {
 	return ""
 }
 
+type GetCompaniesByIDsRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	CompanyIds    []string               `protobuf:"bytes,1,rep,name=company_ids,json=companyIds,proto3" json:"company_ids,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetCompaniesByIDsRequest) Reset() {
+	*x = GetCompaniesByIDsRequest{}
+	mi := &file_companies_companies_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetCompaniesByIDsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetCompaniesByIDsRequest) ProtoMessage() {}
+
+func (x *GetCompaniesByIDsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_companies_companies_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetCompaniesByIDsRequest.ProtoReflect.Descriptor instead.
+func (*GetCompaniesByIDsRequest) Descriptor() ([]byte, []int) {
+	return file_companies_companies_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *GetCompaniesByIDsRequest) GetCompanyIds() []string {
+	if x != nil {
+		return x.CompanyIds
+	}
+	return nil
+}
+
+type GetCompaniesByIDsResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Companies     []*Company             `protobuf:"bytes,1,rep,name=companies,proto3" json:"companies,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetCompaniesByIDsResponse) Reset() {
+	*x = GetCompaniesByIDsResponse{}
+	mi := &file_companies_companies_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetCompaniesByIDsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetCompaniesByIDsResponse) ProtoMessage() {}
+
+func (x *GetCompaniesByIDsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_companies_companies_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetCompaniesByIDsResponse.ProtoReflect.Descriptor instead.
+func (*GetCompaniesByIDsResponse) Descriptor() ([]byte, []int) {
+	return file_companies_companies_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *GetCompaniesByIDsResponse) GetCompanies() []*Company {
+	if x != nil {
+		return x.Companies
+	}
+	return nil
+}
+
+// Company — projection used by external services (backend-accounting PDF
+// header). Only the fields actually needed downstream; if more callers
+// appear we can add more without breaking compatibility (proto3 default).
+type Company struct {
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	Id              string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Name            string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	Email           string                 `protobuf:"bytes,3,opt,name=email,proto3" json:"email,omitempty"`
+	McNumber        string                 `protobuf:"bytes,4,opt,name=mc_number,json=mcNumber,proto3" json:"mc_number,omitempty"`
+	Phone           string                 `protobuf:"bytes,5,opt,name=phone,proto3" json:"phone,omitempty"`
+	LegalName       string                 `protobuf:"bytes,6,opt,name=legal_name,json=legalName,proto3" json:"legal_name,omitempty"`
+	DbaName         string                 `protobuf:"bytes,7,opt,name=dba_name,json=dbaName,proto3" json:"dba_name,omitempty"`
+	Usdot           string                 `protobuf:"bytes,8,opt,name=usdot,proto3" json:"usdot,omitempty"`
+	PhysicalAddress string                 `protobuf:"bytes,9,opt,name=physical_address,json=physicalAddress,proto3" json:"physical_address,omitempty"` // street line (e.g. "4135 CHELSEA MANOR CIR")
+	PhyCity         string                 `protobuf:"bytes,10,opt,name=phy_city,json=phyCity,proto3" json:"phy_city,omitempty"`
+	PhyState        string                 `protobuf:"bytes,11,opt,name=phy_state,json=phyState,proto3" json:"phy_state,omitempty"`
+	PhyZip          string                 `protobuf:"bytes,12,opt,name=phy_zip,json=phyZip,proto3" json:"phy_zip,omitempty"`
+	PhyCountry      string                 `protobuf:"bytes,13,opt,name=phy_country,json=phyCountry,proto3" json:"phy_country,omitempty"`
+	MailingAddress  string                 `protobuf:"bytes,14,opt,name=mailing_address,json=mailingAddress,proto3" json:"mailing_address,omitempty"`
+	MailCity        string                 `protobuf:"bytes,15,opt,name=mail_city,json=mailCity,proto3" json:"mail_city,omitempty"`
+	MailState       string                 `protobuf:"bytes,16,opt,name=mail_state,json=mailState,proto3" json:"mail_state,omitempty"`
+	MailZip         string                 `protobuf:"bytes,17,opt,name=mail_zip,json=mailZip,proto3" json:"mail_zip,omitempty"`
+	MailCountry     string                 `protobuf:"bytes,18,opt,name=mail_country,json=mailCountry,proto3" json:"mail_country,omitempty"`
+	// billing_address — full freeform billing address string used as carrier
+	// header on Invoice PDFs (e.g. "4135 CHELSEA MANOR CIR, AURORA, IL,
+	// 60504"). City / state / zip components reuse phy_* / mail_* columns
+	// when needed for filtering — this field is the rendered one-liner.
+	BillingAddress string `protobuf:"bytes,19,opt,name=billing_address,json=billingAddress,proto3" json:"billing_address,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *Company) Reset() {
+	*x = Company{}
+	mi := &file_companies_companies_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Company) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Company) ProtoMessage() {}
+
+func (x *Company) ProtoReflect() protoreflect.Message {
+	mi := &file_companies_companies_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Company.ProtoReflect.Descriptor instead.
+func (*Company) Descriptor() ([]byte, []int) {
+	return file_companies_companies_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *Company) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *Company) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *Company) GetEmail() string {
+	if x != nil {
+		return x.Email
+	}
+	return ""
+}
+
+func (x *Company) GetMcNumber() string {
+	if x != nil {
+		return x.McNumber
+	}
+	return ""
+}
+
+func (x *Company) GetPhone() string {
+	if x != nil {
+		return x.Phone
+	}
+	return ""
+}
+
+func (x *Company) GetLegalName() string {
+	if x != nil {
+		return x.LegalName
+	}
+	return ""
+}
+
+func (x *Company) GetDbaName() string {
+	if x != nil {
+		return x.DbaName
+	}
+	return ""
+}
+
+func (x *Company) GetUsdot() string {
+	if x != nil {
+		return x.Usdot
+	}
+	return ""
+}
+
+func (x *Company) GetPhysicalAddress() string {
+	if x != nil {
+		return x.PhysicalAddress
+	}
+	return ""
+}
+
+func (x *Company) GetPhyCity() string {
+	if x != nil {
+		return x.PhyCity
+	}
+	return ""
+}
+
+func (x *Company) GetPhyState() string {
+	if x != nil {
+		return x.PhyState
+	}
+	return ""
+}
+
+func (x *Company) GetPhyZip() string {
+	if x != nil {
+		return x.PhyZip
+	}
+	return ""
+}
+
+func (x *Company) GetPhyCountry() string {
+	if x != nil {
+		return x.PhyCountry
+	}
+	return ""
+}
+
+func (x *Company) GetMailingAddress() string {
+	if x != nil {
+		return x.MailingAddress
+	}
+	return ""
+}
+
+func (x *Company) GetMailCity() string {
+	if x != nil {
+		return x.MailCity
+	}
+	return ""
+}
+
+func (x *Company) GetMailState() string {
+	if x != nil {
+		return x.MailState
+	}
+	return ""
+}
+
+func (x *Company) GetMailZip() string {
+	if x != nil {
+		return x.MailZip
+	}
+	return ""
+}
+
+func (x *Company) GetMailCountry() string {
+	if x != nil {
+		return x.MailCountry
+	}
+	return ""
+}
+
+func (x *Company) GetBillingAddress() string {
+	if x != nil {
+		return x.BillingAddress
+	}
+	return ""
+}
+
 var File_companies_companies_proto protoreflect.FileDescriptor
 
 const file_companies_companies_proto_rawDesc = "" +
@@ -137,10 +420,40 @@ const file_companies_companies_proto_rawDesc = "" +
 	"\x05usdot\x18\x06 \x01(\v2\x15.filters.StringFilterR\x05usdot\x12@\n" +
 	"\x10operating_status\x18\a \x01(\v2\x15.filters.StringFilterR\x0foperatingStatus\x12\x1b\n" +
 	"\x06search\x18\b \x01(\tH\x00R\x06search\x88\x01\x01B\t\n" +
-	"\a_search2N\n" +
+	"\a_search\";\n" +
+	"\x18GetCompaniesByIDsRequest\x12\x1f\n" +
+	"\vcompany_ids\x18\x01 \x03(\tR\n" +
+	"companyIds\"M\n" +
+	"\x19GetCompaniesByIDsResponse\x120\n" +
+	"\tcompanies\x18\x01 \x03(\v2\x12.companies.CompanyR\tcompanies\"\xaf\x04\n" +
+	"\aCompany\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
+	"\x04name\x18\x02 \x01(\tR\x04name\x12\x14\n" +
+	"\x05email\x18\x03 \x01(\tR\x05email\x12\x1b\n" +
+	"\tmc_number\x18\x04 \x01(\tR\bmcNumber\x12\x14\n" +
+	"\x05phone\x18\x05 \x01(\tR\x05phone\x12\x1d\n" +
+	"\n" +
+	"legal_name\x18\x06 \x01(\tR\tlegalName\x12\x19\n" +
+	"\bdba_name\x18\a \x01(\tR\adbaName\x12\x14\n" +
+	"\x05usdot\x18\b \x01(\tR\x05usdot\x12)\n" +
+	"\x10physical_address\x18\t \x01(\tR\x0fphysicalAddress\x12\x19\n" +
+	"\bphy_city\x18\n" +
+	" \x01(\tR\aphyCity\x12\x1b\n" +
+	"\tphy_state\x18\v \x01(\tR\bphyState\x12\x17\n" +
+	"\aphy_zip\x18\f \x01(\tR\x06phyZip\x12\x1f\n" +
+	"\vphy_country\x18\r \x01(\tR\n" +
+	"phyCountry\x12'\n" +
+	"\x0fmailing_address\x18\x0e \x01(\tR\x0emailingAddress\x12\x1b\n" +
+	"\tmail_city\x18\x0f \x01(\tR\bmailCity\x12\x1d\n" +
+	"\n" +
+	"mail_state\x18\x10 \x01(\tR\tmailState\x12\x19\n" +
+	"\bmail_zip\x18\x11 \x01(\tR\amailZip\x12!\n" +
+	"\fmail_country\x18\x12 \x01(\tR\vmailCountry\x12'\n" +
+	"\x0fbilling_address\x18\x13 \x01(\tR\x0ebillingAddress2\xae\x01\n" +
 	"\x0eCompanyService\x12<\n" +
 	"\n" +
-	"ResolveIDs\x12\x18.companies.CompanyFilter\x1a\x14.filters.IDsResponseB/Z-github.com/TMS360/backend-pkg/proto/companiesb\x06proto3"
+	"ResolveIDs\x12\x18.companies.CompanyFilter\x1a\x14.filters.IDsResponse\x12^\n" +
+	"\x11GetCompaniesByIDs\x12#.companies.GetCompaniesByIDsRequest\x1a$.companies.GetCompaniesByIDsResponseB/Z-github.com/TMS360/backend-pkg/proto/companiesb\x06proto3"
 
 var (
 	file_companies_companies_proto_rawDescOnce sync.Once
@@ -154,27 +467,33 @@ func file_companies_companies_proto_rawDescGZIP() []byte {
 	return file_companies_companies_proto_rawDescData
 }
 
-var file_companies_companies_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
+var file_companies_companies_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
 var file_companies_companies_proto_goTypes = []any{
-	(*CompanyFilter)(nil),        // 0: companies.CompanyFilter
-	(*filters.StringFilter)(nil), // 1: filters.StringFilter
-	(*filters.IDsResponse)(nil),  // 2: filters.IDsResponse
+	(*CompanyFilter)(nil),             // 0: companies.CompanyFilter
+	(*GetCompaniesByIDsRequest)(nil),  // 1: companies.GetCompaniesByIDsRequest
+	(*GetCompaniesByIDsResponse)(nil), // 2: companies.GetCompaniesByIDsResponse
+	(*Company)(nil),                   // 3: companies.Company
+	(*filters.StringFilter)(nil),      // 4: filters.StringFilter
+	(*filters.IDsResponse)(nil),       // 5: filters.IDsResponse
 }
 var file_companies_companies_proto_depIdxs = []int32{
-	1, // 0: companies.CompanyFilter.name:type_name -> filters.StringFilter
-	1, // 1: companies.CompanyFilter.mc_number:type_name -> filters.StringFilter
-	1, // 2: companies.CompanyFilter.email:type_name -> filters.StringFilter
-	1, // 3: companies.CompanyFilter.legal_name:type_name -> filters.StringFilter
-	1, // 4: companies.CompanyFilter.dba_name:type_name -> filters.StringFilter
-	1, // 5: companies.CompanyFilter.usdot:type_name -> filters.StringFilter
-	1, // 6: companies.CompanyFilter.operating_status:type_name -> filters.StringFilter
-	0, // 7: companies.CompanyService.ResolveIDs:input_type -> companies.CompanyFilter
-	2, // 8: companies.CompanyService.ResolveIDs:output_type -> filters.IDsResponse
-	8, // [8:9] is the sub-list for method output_type
-	7, // [7:8] is the sub-list for method input_type
-	7, // [7:7] is the sub-list for extension type_name
-	7, // [7:7] is the sub-list for extension extendee
-	0, // [0:7] is the sub-list for field type_name
+	4,  // 0: companies.CompanyFilter.name:type_name -> filters.StringFilter
+	4,  // 1: companies.CompanyFilter.mc_number:type_name -> filters.StringFilter
+	4,  // 2: companies.CompanyFilter.email:type_name -> filters.StringFilter
+	4,  // 3: companies.CompanyFilter.legal_name:type_name -> filters.StringFilter
+	4,  // 4: companies.CompanyFilter.dba_name:type_name -> filters.StringFilter
+	4,  // 5: companies.CompanyFilter.usdot:type_name -> filters.StringFilter
+	4,  // 6: companies.CompanyFilter.operating_status:type_name -> filters.StringFilter
+	3,  // 7: companies.GetCompaniesByIDsResponse.companies:type_name -> companies.Company
+	0,  // 8: companies.CompanyService.ResolveIDs:input_type -> companies.CompanyFilter
+	1,  // 9: companies.CompanyService.GetCompaniesByIDs:input_type -> companies.GetCompaniesByIDsRequest
+	5,  // 10: companies.CompanyService.ResolveIDs:output_type -> filters.IDsResponse
+	2,  // 11: companies.CompanyService.GetCompaniesByIDs:output_type -> companies.GetCompaniesByIDsResponse
+	10, // [10:12] is the sub-list for method output_type
+	8,  // [8:10] is the sub-list for method input_type
+	8,  // [8:8] is the sub-list for extension type_name
+	8,  // [8:8] is the sub-list for extension extendee
+	0,  // [0:8] is the sub-list for field type_name
 }
 
 func init() { file_companies_companies_proto_init() }
@@ -189,7 +508,7 @@ func file_companies_companies_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_companies_companies_proto_rawDesc), len(file_companies_companies_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   1,
+			NumMessages:   4,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

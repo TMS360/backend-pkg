@@ -107,6 +107,13 @@ service LoadsService {
   // POD + RC into the invoice PDF, or attach them to a factoring batch).
   rpc GetShipmentFiles(GetShipmentFilesRequest)
       returns (GetShipmentFilesResponse);
+
+  // Returns the trip IDs belonging to a single shipment (1 shipment → N trips
+  // через split-сценарии). Used by backend-accounting Financial Summary
+  // (Shipment.accountsPayable) to aggregate driver pay по trip-set.
+  // Reuses filters.IDsResponse — payload is just a list of UUID strings.
+  rpc GetTripIDsByShipment(GetTripIDsByShipmentRequest)
+      returns (filters.IDsResponse);
 }
 
 message ShipmentFilterRequest {
@@ -621,6 +628,14 @@ message ShipmentFile {
 
 message GetShipmentFilesResponse {
   repeated ShipmentFile files = 1;
+}
+
+// Request for GetTripIDsByShipment. company_id is passed explicitly because
+// backend-load currently runs without an AuthServerInterceptor; backend-load
+// validates that shipment_id belongs to the tenant before returning trip IDs.
+message GetTripIDsByShipmentRequest {
+  string company_id  = 1;
+  string shipment_id = 2;
 }
 
 // Детали trip-а, нужные backend-accounting чтобы создать pay_batch

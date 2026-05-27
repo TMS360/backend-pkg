@@ -112,8 +112,8 @@ func TestSubmitBatch_UsesHardcodedInboundDir(t *testing.T) {
 	})
 	require.NoError(t, err)
 	require.NotEmpty(t, fake.uploads)
-	// Triumph drops to the SSH user's home; the package constant is ".".
-	assert.Equal(t, ".", fake.uploads[0].dir)
+	// Triumph drops to TMS_INPUT inside the SSH user's chrooted home.
+	assert.Equal(t, "TMS_INPUT", fake.uploads[0].dir)
 }
 
 func TestSubmitBatch_SanitizesPDFFilename(t *testing.T) {

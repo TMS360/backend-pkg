@@ -29,6 +29,15 @@ func NewGormTransactionManager(db *gorm.DB, sourceService string) TransactionMan
 
 // WithTransaction implement interface service.TransactionManager
 func (m *GormTransactionManager) WithTransaction(ctx context.Context, fn func(ctx context.Context) error) error {
+	// Re-entrant: if a transaction is already active on the context, run inside
+	// it instead of opening a second connection. A nested WithTransaction on a
+	// fresh connection self-deadlocks against the outer tx's row locks — the
+	// inner UPDATE waits on a lock the outer holds, while the outer waits in Go
+	// for the inner call to return. Postgres can't detect it (outer is
+	// idle-in-transaction), so the request hangs to a gateway 504. See DEV-703.
+	if _, ok := ctx.Value(ctxTransactionKey{}).(*gorm.DB); ok {
+		return fn(ctx)
+	}
 	return m.db.Transaction(func(tx *gorm.DB) error {
 		txCtx := context.WithValue(ctx, ctxTransactionKey{}, tx)
 		return fn(txCtx)

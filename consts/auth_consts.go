@@ -52,11 +52,10 @@ func (actor *Actor) GetCompanyID() *uuid.UUID {
 }
 
 type UserClaims struct {
-	UserID      uuid.UUID  `json:"sub"`
-	CompanyID   *uuid.UUID `json:"company_id"`
-	ActorType   ActorType  `json:"actor_type"`
-	Roles       []string   `json:"roles"`
-	Permissions []string   `json:"perms"`
+	UserID    uuid.UUID  `json:"sub"`
+	CompanyID *uuid.UUID `json:"company_id"`
+	ActorType ActorType  `json:"actor_type"`
+	Roles     []string   `json:"roles"`
 
 	// --- Guest/Share Fields ---
 	Resource   string    `json:"res,omitempty"`
@@ -76,10 +75,5 @@ func (c *UserClaims) PopulateMaps() {
 	c.RolesMap = make(map[string]struct{}, len(c.Roles))
 	for _, r := range c.Roles {
 		c.RolesMap[r] = struct{}{}
-	}
-
-	c.PermissionsMap = make(map[string]struct{}, len(c.Permissions))
-	for _, p := range c.Permissions {
-		c.PermissionsMap[p] = struct{}{}
 	}
 }

@@ -151,3 +151,18 @@ func AllUserPermissions() []string {
 	}
 	return out
 }
+
+// ModulePermissionCodes returns just the top-level module codes from the
+// catalog (entries with no ParentCode) in declaration order. These are the
+// codes the auth service grants to every role on company signup so the
+// tenant has working defaults; hierarchical prefix matching covers every
+// entity/action below each module.
+func ModulePermissionCodes() []string {
+	out := make([]string, 0, 8)
+	for _, e := range PermissionCatalog {
+		if e.ParentCode == "" {
+			out = append(out, e.Code)
+		}
+	}
+	return out
+}

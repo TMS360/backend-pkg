@@ -1,6 +1,9 @@
 package auth
 
-import "strings"
+import (
+	"sort"
+	"strings"
+)
 
 // HasPermission reports whether userPerms grants required via hierarchical
 // prefix matching. A perm grants itself and every descendant — "accounting"
@@ -61,6 +64,7 @@ func CompactHierarchy(perms []string) []string {
 		}
 		out = append(out, p)
 	}
+	sort.Strings(out)
 	return out
 }
 

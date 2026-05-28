@@ -22,11 +22,12 @@ const (
 
 // PermissionCatalogEntry describes one row written to the permissions table.
 // Modules carry no actions; entities carry the CRUD verbs they support.
+// `Code` and `ParentCode` map to the `code` / `parent_code` columns.
 type PermissionCatalogEntry struct {
-	Key       string
-	ParentKey string
-	Label     string
-	Actions   []string
+	Code       string
+	ParentCode string
+	Label      string
+	Actions    []string
 }
 
 // PermissionCatalog is the full source of truth for grantable permission
@@ -39,76 +40,76 @@ type PermissionCatalogEntry struct {
 // /endpoints-permissions.json at the workspace root).
 var PermissionCatalog = []PermissionCatalogEntry{
 	// === Modules (top-level grants) ===
-	{Key: "dashboard", Label: "Dashboard"},
-	{Key: "shipments", Label: "Shipments"},
-	{Key: "drivers", Label: "Drivers"},
-	{Key: "teams", Label: "Teams"},
-	{Key: "fleet", Label: "Fleet"},
-	{Key: "accounting", Label: "Accounting"},
-	{Key: "customers", Label: "Customers"},
-	{Key: "settings", Label: "Settings"},
+	{Code: "dashboard", Label: "Dashboard"},
+	{Code: "shipments", Label: "Shipments"},
+	{Code: "drivers", Label: "Drivers"},
+	{Code: "teams", Label: "Teams"},
+	{Code: "fleet", Label: "Fleet"},
+	{Code: "accounting", Label: "Accounting"},
+	{Code: "customers", Label: "Customers"},
+	{Code: "settings", Label: "Settings"},
 
 	// === dashboard entities ===
-	{Key: "dashboard.stats", ParentKey: "dashboard", Label: "Stats", Actions: []string{"view"}},
-	{Key: "dashboard.hierarchy", ParentKey: "dashboard", Label: "Company hierarchy", Actions: []string{"view"}},
+	{Code: "dashboard.stats", ParentCode: "dashboard", Label: "Stats", Actions: []string{"view"}},
+	{Code: "dashboard.hierarchy", ParentCode: "dashboard", Label: "Company hierarchy", Actions: []string{"view"}},
 
 	// === shipments entities ===
-	{Key: "shipments.shipments", ParentKey: "shipments", Label: "Shipments", Actions: []string{"view", "create", "edit", "delete"}},
-	{Key: "shipments.legs", ParentKey: "shipments", Label: "Shipment legs", Actions: []string{"view", "create", "edit", "delete"}},
-	{Key: "shipments.trips", ParentKey: "shipments", Label: "Trips", Actions: []string{"view", "edit"}},
-	{Key: "shipments.trip_stops", ParentKey: "shipments", Label: "Trip stops", Actions: []string{"view", "edit"}},
-	{Key: "shipments.trip_files", ParentKey: "shipments", Label: "Trip files", Actions: []string{"view", "create", "edit"}},
-	{Key: "shipments.other_pay", ParentKey: "shipments", Label: "Other pay", Actions: []string{"create", "edit", "delete"}},
-	{Key: "shipments.driver_expense", ParentKey: "shipments", Label: "Driver expense", Actions: []string{"create", "edit", "delete"}},
-	{Key: "shipments.rc_files", ParentKey: "shipments", Label: "RC files", Actions: []string{"view", "create"}},
-	{Key: "shipments.share", ParentKey: "shipments", Label: "Share links", Actions: []string{"view", "create", "delete"}},
-	{Key: "shipments.audit", ParentKey: "shipments", Label: "Shipment audit", Actions: []string{"view", "edit"}},
+	{Code: "shipments.shipments", ParentCode: "shipments", Label: "Shipments", Actions: []string{"view", "create", "edit", "delete"}},
+	{Code: "shipments.legs", ParentCode: "shipments", Label: "Shipment legs", Actions: []string{"view", "create", "edit", "delete"}},
+	{Code: "shipments.trips", ParentCode: "shipments", Label: "Trips", Actions: []string{"view", "edit"}},
+	{Code: "shipments.trip_stops", ParentCode: "shipments", Label: "Trip stops", Actions: []string{"view", "edit"}},
+	{Code: "shipments.trip_files", ParentCode: "shipments", Label: "Trip files", Actions: []string{"view", "create", "edit"}},
+	{Code: "shipments.other_pay", ParentCode: "shipments", Label: "Other pay", Actions: []string{"create", "edit", "delete"}},
+	{Code: "shipments.driver_expense", ParentCode: "shipments", Label: "Driver expense", Actions: []string{"create", "edit", "delete"}},
+	{Code: "shipments.rc_files", ParentCode: "shipments", Label: "RC files", Actions: []string{"view", "create"}},
+	{Code: "shipments.share", ParentCode: "shipments", Label: "Share links", Actions: []string{"view", "create", "delete"}},
+	{Code: "shipments.audit", ParentCode: "shipments", Label: "Shipment audit", Actions: []string{"view", "edit"}},
 
 	// === drivers entities ===
-	{Key: "drivers.drivers", ParentKey: "drivers", Label: "Drivers", Actions: []string{"view", "create", "edit"}},
-	{Key: "drivers.tariff_assignment", ParentKey: "drivers", Label: "Tariff assignment", Actions: []string{"view", "edit"}},
-	{Key: "drivers.balance", ParentKey: "drivers", Label: "Driver balance", Actions: []string{"view", "create", "edit", "delete"}},
-	{Key: "drivers.scheduled_payments", ParentKey: "drivers", Label: "Scheduled payments", Actions: []string{"view", "create", "edit", "delete"}},
-	{Key: "drivers.one_time_charges", ParentKey: "drivers", Label: "One-time charges", Actions: []string{"view", "create", "edit", "delete"}},
-	{Key: "drivers.weekly_deductions", ParentKey: "drivers", Label: "Weekly deductions", Actions: []string{"view", "create", "edit", "delete"}},
+	{Code: "drivers.drivers", ParentCode: "drivers", Label: "Drivers", Actions: []string{"view", "create", "edit"}},
+	{Code: "drivers.tariff_assignment", ParentCode: "drivers", Label: "Tariff assignment", Actions: []string{"view", "edit"}},
+	{Code: "drivers.balance", ParentCode: "drivers", Label: "Driver balance", Actions: []string{"view", "create", "edit", "delete"}},
+	{Code: "drivers.scheduled_payments", ParentCode: "drivers", Label: "Scheduled payments", Actions: []string{"view", "create", "edit", "delete"}},
+	{Code: "drivers.one_time_charges", ParentCode: "drivers", Label: "One-time charges", Actions: []string{"view", "create", "edit", "delete"}},
+	{Code: "drivers.weekly_deductions", ParentCode: "drivers", Label: "Weekly deductions", Actions: []string{"view", "create", "edit", "delete"}},
 
 	// === teams entities ===
-	{Key: "teams.teams", ParentKey: "teams", Label: "Teams", Actions: []string{"view", "edit"}},
-	{Key: "teams.crews", ParentKey: "teams", Label: "Crews", Actions: []string{"view", "create", "edit", "delete"}},
-	{Key: "teams.dispatchers", ParentKey: "teams", Label: "Dispatchers", Actions: []string{"view", "create", "delete"}},
+	{Code: "teams.teams", ParentCode: "teams", Label: "Teams", Actions: []string{"view", "edit"}},
+	{Code: "teams.crews", ParentCode: "teams", Label: "Crews", Actions: []string{"view", "create", "edit", "delete"}},
+	{Code: "teams.dispatchers", ParentCode: "teams", Label: "Dispatchers", Actions: []string{"view", "create", "delete"}},
 
 	// === fleet entities ===
-	{Key: "fleet.trucks", ParentKey: "fleet", Label: "Trucks", Actions: []string{"view", "create", "edit", "delete"}},
-	{Key: "fleet.trailers", ParentKey: "fleet", Label: "Trailers", Actions: []string{"view", "create", "edit"}},
+	{Code: "fleet.trucks", ParentCode: "fleet", Label: "Trucks", Actions: []string{"view", "create", "edit", "delete"}},
+	{Code: "fleet.trailers", ParentCode: "fleet", Label: "Trailers", Actions: []string{"view", "create", "edit"}},
 
 	// === accounting entities ===
-	{Key: "accounting.invoices", ParentKey: "accounting", Label: "Invoices", Actions: []string{"view", "create", "edit"}},
-	{Key: "accounting.invoice_batches", ParentKey: "accounting", Label: "Invoice batches", Actions: []string{"view", "create", "edit"}},
-	{Key: "accounting.credit_memos", ParentKey: "accounting", Label: "Credit memos", Actions: []string{"view", "create"}},
-	{Key: "accounting.billing", ParentKey: "accounting", Label: "Billing", Actions: []string{"view"}},
-	{Key: "accounting.pay_batches", ParentKey: "accounting", Label: "Pay batches", Actions: []string{"view", "create"}},
-	{Key: "accounting.pay_statements", ParentKey: "accounting", Label: "Pay statements", Actions: []string{"view", "edit"}},
-	{Key: "accounting.statement_trips", ParentKey: "accounting", Label: "Statement trips", Actions: []string{"view", "create", "edit", "delete"}},
-	{Key: "accounting.statement_deductions", ParentKey: "accounting", Label: "Statement deductions", Actions: []string{"create", "edit", "delete"}},
-	{Key: "accounting.statement_other_pay", ParentKey: "accounting", Label: "Statement other pay", Actions: []string{"create", "edit", "delete"}},
-	{Key: "accounting.statement_balance_entries", ParentKey: "accounting", Label: "Statement balance entries", Actions: []string{"create", "edit", "delete"}},
-	{Key: "accounting.comments", ParentKey: "accounting", Label: "Statement comments", Actions: []string{"view", "create"}},
+	{Code: "accounting.invoices", ParentCode: "accounting", Label: "Invoices", Actions: []string{"view", "create", "edit"}},
+	{Code: "accounting.invoice_batches", ParentCode: "accounting", Label: "Invoice batches", Actions: []string{"view", "create", "edit"}},
+	{Code: "accounting.credit_memos", ParentCode: "accounting", Label: "Credit memos", Actions: []string{"view", "create"}},
+	{Code: "accounting.billing", ParentCode: "accounting", Label: "Billing", Actions: []string{"view"}},
+	{Code: "accounting.pay_batches", ParentCode: "accounting", Label: "Pay batches", Actions: []string{"view", "create"}},
+	{Code: "accounting.pay_statements", ParentCode: "accounting", Label: "Pay statements", Actions: []string{"view", "edit"}},
+	{Code: "accounting.statement_trips", ParentCode: "accounting", Label: "Statement trips", Actions: []string{"view", "create", "edit", "delete"}},
+	{Code: "accounting.statement_deductions", ParentCode: "accounting", Label: "Statement deductions", Actions: []string{"create", "edit", "delete"}},
+	{Code: "accounting.statement_other_pay", ParentCode: "accounting", Label: "Statement other pay", Actions: []string{"create", "edit", "delete"}},
+	{Code: "accounting.statement_balance_entries", ParentCode: "accounting", Label: "Statement balance entries", Actions: []string{"create", "edit", "delete"}},
+	{Code: "accounting.comments", ParentCode: "accounting", Label: "Statement comments", Actions: []string{"view", "create"}},
 
 	// === customers entities ===
-	{Key: "customers.brokers", ParentKey: "customers", Label: "Brokers", Actions: []string{"view", "create"}},
+	{Code: "customers.brokers", ParentCode: "customers", Label: "Brokers", Actions: []string{"view", "create"}},
 
 	// === settings entities ===
-	{Key: "settings.company", ParentKey: "settings", Label: "Company settings", Actions: []string{"view", "edit"}},
-	{Key: "settings.doc_types", ParentKey: "settings", Label: "Document types", Actions: []string{"view", "create", "edit"}},
-	{Key: "settings.driver_app", ParentKey: "settings", Label: "Driver app config", Actions: []string{"view", "edit"}},
-	{Key: "settings.driver_tariffs", ParentKey: "settings", Label: "Driver tariffs", Actions: []string{"view", "create", "edit", "delete"}},
-	{Key: "settings.integration", ParentKey: "settings", Label: "Integrations", Actions: []string{"view", "edit"}},
-	{Key: "settings.reassignment", ParentKey: "settings", Label: "Reassignment", Actions: []string{"view", "delete"}},
-	{Key: "settings.reward_plans", ParentKey: "settings", Label: "Reward plans", Actions: []string{"view", "edit"}},
-	{Key: "settings.accounting_types", ParentKey: "settings", Label: "Accounting types", Actions: []string{"view", "create", "edit"}},
-	{Key: "settings.office_users", ParentKey: "settings", Label: "Office users", Actions: []string{"view", "create", "edit"}},
-	{Key: "settings.office_roles", ParentKey: "settings", Label: "Office roles", Actions: []string{"view"}},
-	{Key: "settings.me", ParentKey: "settings", Label: "Current user", Actions: []string{"view"}},
+	{Code: "settings.company", ParentCode: "settings", Label: "Company settings", Actions: []string{"view", "edit"}},
+	{Code: "settings.doc_types", ParentCode: "settings", Label: "Document types", Actions: []string{"view", "create", "edit"}},
+	{Code: "settings.driver_app", ParentCode: "settings", Label: "Driver app config", Actions: []string{"view", "edit"}},
+	{Code: "settings.driver_tariffs", ParentCode: "settings", Label: "Driver tariffs", Actions: []string{"view", "create", "edit", "delete"}},
+	{Code: "settings.integration", ParentCode: "settings", Label: "Integrations", Actions: []string{"view", "edit"}},
+	{Code: "settings.reassignment", ParentCode: "settings", Label: "Reassignment", Actions: []string{"view", "delete"}},
+	{Code: "settings.reward_plans", ParentCode: "settings", Label: "Reward plans", Actions: []string{"view", "edit"}},
+	{Code: "settings.accounting_types", ParentCode: "settings", Label: "Accounting types", Actions: []string{"view", "create", "edit"}},
+	{Code: "settings.office_users", ParentCode: "settings", Label: "Office users", Actions: []string{"view", "create", "edit"}},
+	{Code: "settings.office_roles", ParentCode: "settings", Label: "Office roles", Actions: []string{"view", "edit"}},
+	{Code: "settings.me", ParentCode: "settings", Label: "Current user", Actions: []string{"view"}},
 }
 
 // validPermissionCodes indexes every grantable key (modules, entities, and
@@ -118,9 +119,9 @@ var validPermissionCodes = buildValidPermissionCodes()
 func buildValidPermissionCodes() map[string]struct{} {
 	m := make(map[string]struct{}, len(PermissionCatalog)*5)
 	for _, e := range PermissionCatalog {
-		m[e.Key] = struct{}{}
+		m[e.Code] = struct{}{}
 		for _, a := range e.Actions {
-			m[e.Key+"."+a] = struct{}{}
+			m[e.Code+"."+a] = struct{}{}
 		}
 	}
 	return m

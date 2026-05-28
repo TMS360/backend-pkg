@@ -67,12 +67,19 @@ func HasRoleDirective(ctx context.Context, obj interface{}, next graphql.Resolve
 // Guests bypass the perm check. Guest access is granted per-field by
 // `@authGuest`, which verifies the share-link token's resource scope; a guest
 // reaching a field without `@authGuest` still fails closed at that directive.
+//
+// Super-admins also bypass. A wiped or mid-migration role_permissions table
+// would otherwise lock super-admins out of every gated endpoint — this gives
+// ops a permanent recovery path that doesn't depend on the catalog state.
 func HasPermDirective(ctx context.Context, obj interface{}, next graphql.Resolver, perms []string) (interface{}, error) {
 	actor, err := middleware.GetActor(ctx)
 	if err != nil {
 		return nil, consts.ErrUnauthorized
 	}
 	if actor.IsGuest {
+		return next(ctx)
+	}
+	if actor.IsSuperAdmin() {
 		return next(ctx)
 	}
 

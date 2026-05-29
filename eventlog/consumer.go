@@ -95,6 +95,8 @@ func (c *Consumer) Start(ctx context.Context) {
 func (c *Consumer) dispatch(ctx context.Context, event events.EventPayload) error {
 	handlerKey := fmt.Sprintf("%s.%s", event.EntityType, event.Action)
 
+	log.Printf("📥 received event: %s (id=%s)", handlerKey, event.EventID)
+
 	// Default to Nil UUID if it's a system event without a specific actor
 	actorID := uuid.Nil
 	if event.ActorID != nil {

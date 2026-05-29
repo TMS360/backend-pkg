@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"time"
 
@@ -57,6 +58,7 @@ func (c *HTTPAuthClient) ResolveUserPerms(ctx context.Context, userID uuid.UUID)
 	}
 	req.Header.Set("Authorization", "Bearer "+*actor.Token)
 
+	slog.Info("resolving perms", "baseURL", c.baseURL, "fullURL", url)
 	resp, err := c.client.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("call tms-auth: %w", err)

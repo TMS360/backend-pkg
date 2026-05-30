@@ -36,6 +36,9 @@ const (
 	SystemDocBOL     SystemDocTypeCode = "bol"
 	SystemDocPOD     SystemDocTypeCode = "pod"
 	SystemDocInvoice SystemDocTypeCode = "invoice"
+
+	// ACCOUNTING
+	SystemPayStatement SystemDocTypeCode = "pay_statement"
 )
 
 func (c SystemDocTypeCode) String() string { return string(c) }

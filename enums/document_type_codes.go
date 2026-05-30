@@ -8,37 +8,37 @@ type SystemDocTypeCode string
 
 const (
 	// GENERAL
-	SystemDocCertificateOfLiabilityInsurance          SystemDocTypeCode = "certificate_of_liability_insurance"
-	SystemDocCarbCertificate                          SystemDocTypeCode = "carb_certificate"
-	SystemDocCTPermit                                 SystemDocTypeCode = "ct_permit"
-	SystemDocDriverPolicyAndSafetyManual              SystemDocTypeCode = "driver_policy_and_safety_manual"
-	SystemDocELDManual                                SystemDocTypeCode = "eld_manual"
-	SystemDocIFTALicense                              SystemDocTypeCode = "ifta_license"
-	SystemDocKYPermit                                 SystemDocTypeCode = "ky_permit"
-	SystemDocMCAuthority                              SystemDocTypeCode = "mc_authority"
-	SystemDocPSSpottedLanternflyPermit                SystemDocTypeCode = "ps_spotted_lanternfly_permit"
-	SystemDocPSSpottedLanternflyQuarantineRegulations SystemDocTypeCode = "ps_spotted_lanternfly_quarantine_regulations"
+	SystemDocCertificateOfLiabilityInsurance          SystemDocTypeCode = "CERTIFICATE_OF_LIABILITY_INSURANCE"
+	SystemDocCarbCertificate                          SystemDocTypeCode = "CARB_CERTIFICATE"
+	SystemDocCTPermit                                 SystemDocTypeCode = "CT_PERMIT"
+	SystemDocDriverPolicyAndSafetyManual              SystemDocTypeCode = "DRIVER_POLICY_AND_SAFETY_MANUAL"
+	SystemDocELDManual                                SystemDocTypeCode = "ELD_MANUAL"
+	SystemDocIFTALicense                              SystemDocTypeCode = "IFTA_LICENSE"
+	SystemDocKYPermit                                 SystemDocTypeCode = "KY_PERMIT"
+	SystemDocMCAuthority                              SystemDocTypeCode = "MC_AUTHORITY"
+	SystemDocPSSpottedLanternflyPermit                SystemDocTypeCode = "PS_SPOTTED_LANTERNFLY_PERMIT"
+	SystemDocPSSpottedLanternflyQuarantineRegulations SystemDocTypeCode = "PS_SPOTTED_LANTERNFLY_QUARANTINE_REGULATIONS"
 
 	// TRUCK
-	SystemDocNMPermit              SystemDocTypeCode = "nm_permit"
-	SystemDocNYPermit              SystemDocTypeCode = "ny_permit"
-	SystemDocORPermit              SystemDocTypeCode = "or_permit"
-	SystemDocTruckAnnualInspection SystemDocTypeCode = "truck_annual_inspection"
-	SystemDocTruckRegistration     SystemDocTypeCode = "truck_registration"
-	SystemDocVehicleLeaseAgreement SystemDocTypeCode = "vehicle_lease_agreement"
+	SystemDocNMPermit              SystemDocTypeCode = "NM_PERMIT"
+	SystemDocNYPermit              SystemDocTypeCode = "NY_PERMIT"
+	SystemDocORPermit              SystemDocTypeCode = "OR_PERMIT"
+	SystemDocTruckAnnualInspection SystemDocTypeCode = "TRUCK_ANNUAL_INSPECTION"
+	SystemDocTruckRegistration     SystemDocTypeCode = "TRUCK_REGISTRATION"
+	SystemDocVehicleLeaseAgreement SystemDocTypeCode = "VEHICLE_LEASE_AGREEMENT"
 
 	// TRAILER
-	SystemDocTrailerAnnualInspection SystemDocTypeCode = "trailer_annual_inspection"
-	SystemDocTrailerRegistration     SystemDocTypeCode = "trailer_registration"
+	SystemDocTrailerAnnualInspection SystemDocTypeCode = "TRAILER_ANNUAL_INSPECTION"
+	SystemDocTrailerRegistration     SystemDocTypeCode = "TRAILER_REGISTRATION"
 
 	// SHIPMENT
-	SystemDocRC      SystemDocTypeCode = "rc"
-	SystemDocBOL     SystemDocTypeCode = "bol"
-	SystemDocPOD     SystemDocTypeCode = "pod"
-	SystemDocInvoice SystemDocTypeCode = "invoice"
+	SystemDocRC      SystemDocTypeCode = "RC"
+	SystemDocBOL     SystemDocTypeCode = "BOL"
+	SystemDocPOD     SystemDocTypeCode = "POD"
+	SystemDocInvoice SystemDocTypeCode = "INVOICE"
 
 	// ACCOUNTING
-	SystemPayStatement SystemDocTypeCode = "pay_statement"
+	SystemPayStatement SystemDocTypeCode = "PAY_STATEMENT"
 )
 
 func (c SystemDocTypeCode) String() string { return string(c) }

@@ -121,8 +121,23 @@ func (s *service) LookupByID(ctx context.Context, hereID string) (*AddressData, 
 		return nil, fmt.Errorf("no result found for HERE ID: %s", hereID)
 	}
 
+	data := NewAddressDataFromItem(item)
+	// Prefer the requested id over the item's (they normally match).
+	data.HereID = hereID
+	return data, nil
+}
+
+// NewAddressDataFromItem maps a HERE geocoding/lookup item to the reusable
+// AddressData shape. Shared by LookupByID and by the geocode cache fan-out
+// (each search result is effectively a lookup-by-id payload), so the two never
+// drift apart. Returns nil for a nil item.
+func NewAddressDataFromItem(item *GeocodeItem) *AddressData {
+	if item == nil {
+		return nil
+	}
+
 	data := &AddressData{
-		HereID:   hereID,
+		HereID:   item.ID,
 		Location: item.Title,
 	}
 
@@ -167,7 +182,7 @@ func (s *service) LookupByID(ctx context.Context, hereID string) (*AddressData, 
 		}
 	}
 
-	return data, nil
+	return data
 }
 
 // CalculateRoute calculates route between origin and destination

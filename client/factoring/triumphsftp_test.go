@@ -81,7 +81,7 @@ func TestSubmitBatch_UploadOrder_PDFsBeforeCSV(t *testing.T) {
 			{InvoiceNumber: "IN-000000", Bytes: []byte("pdf1")},
 			{InvoiceNumber: "IN-000001", Bytes: []byte("pdf2")},
 		},
-	})
+	}, nil)
 	require.NoError(t, err)
 
 	require.Len(t, fake.uploads, 3, "expected 2 PDFs + 1 CSV")
@@ -94,6 +94,35 @@ func TestSubmitBatch_UploadOrder_PDFsBeforeCSV(t *testing.T) {
 	assert.Equal(t, "invoices_20260111_143052.csv", res.CSVFileName)
 	assert.Len(t, res.Uploaded, 3)
 	assert.True(t, fake.closed, "client should be closed on success")
+}
+
+func TestSubmitBatch_ReportsPerFileProgress(t *testing.T) {
+	fake := &fakeUploader{}
+	p := newProvider(t, fake)
+
+	var ticks []Progress
+	res, err := p.SubmitBatch(context.Background(), Batch{
+		SubmittedAt: time.Date(2026, 1, 11, 14, 30, 52, 0, time.UTC),
+		Invoices: []InvoiceLine{
+			{DebtorName: "A", InvoiceNumber: "IN-1", InvoiceDate: time.Now(), AmountUSD: 1},
+			{DebtorName: "B", InvoiceNumber: "IN-2", InvoiceDate: time.Now(), AmountUSD: 2},
+		},
+		PDFs: []InvoicePDF{
+			{InvoiceNumber: "IN-1", Bytes: []byte("pdf1")},
+			{InvoiceNumber: "IN-2", Bytes: []byte("pdf2")},
+		},
+	}, func(pr Progress) { ticks = append(ticks, pr) })
+	require.NoError(t, err)
+
+	// 2 PDFs + 1 CSV = 3 ticks, Done strictly increasing, Total constant.
+	require.Len(t, ticks, 3)
+	for i, tk := range ticks {
+		assert.Equal(t, "uploading", tk.Phase)
+		assert.Equal(t, 3, tk.Total)
+		assert.Equal(t, i+1, tk.Done, "Done must equal upload index")
+	}
+	assert.Equal(t, "IN-1.pdf", ticks[0].Detail)
+	assert.Equal(t, res.CSVFileName, ticks[2].Detail, "last tick details the CSV manifest")
 }
 
 func TestSubmitBatch_UsesHardcodedInboundDir(t *testing.T) {
@@ -109,7 +138,7 @@ func TestSubmitBatch_UsesHardcodedInboundDir(t *testing.T) {
 	_, err := p.SubmitBatch(context.Background(), Batch{
 		Invoices: []InvoiceLine{{DebtorName: "X", InvoiceNumber: "INV-1", InvoiceDate: time.Now(), PONumber: "p", AmountUSD: 1}},
 		PDFs:     []InvoicePDF{{InvoiceNumber: "INV-1", Bytes: []byte("x")}},
-	})
+	}, nil)
 	require.NoError(t, err)
 	require.NotEmpty(t, fake.uploads)
 	// Triumph drops to TMS_INPUT inside the SSH user's chrooted home.
@@ -124,7 +153,7 @@ func TestSubmitBatch_SanitizesPDFFilename(t *testing.T) {
 		SubmittedAt: time.Now(),
 		Invoices:    []InvoiceLine{{DebtorName: "X", InvoiceNumber: "INV/1 #A", InvoiceDate: time.Now(), PONumber: "p", AmountUSD: 1}},
 		PDFs:        []InvoicePDF{{InvoiceNumber: "INV/1 #A", Bytes: []byte("x")}},
-	})
+	}, nil)
 	require.NoError(t, err)
 	assert.Equal(t, "INV_1__A.pdf", fake.uploads[0].filename)
 }
@@ -135,7 +164,7 @@ func TestSubmitBatch_ValidatesMismatchedCounts(t *testing.T) {
 	_, err := p.SubmitBatch(context.Background(), Batch{
 		Invoices: []InvoiceLine{{DebtorName: "X", InvoiceNumber: "INV-1", InvoiceDate: time.Now(), AmountUSD: 1}},
 		PDFs:     nil,
-	})
+	}, nil)
 	require.Error(t, err)
 	assert.Empty(t, fake.uploads, "no uploads should happen on validation failure")
 }
@@ -143,7 +172,7 @@ func TestSubmitBatch_ValidatesMismatchedCounts(t *testing.T) {
 func TestSubmitBatch_ValidatesEmptyBatch(t *testing.T) {
 	fake := &fakeUploader{}
 	p := newProvider(t, fake)
-	_, err := p.SubmitBatch(context.Background(), Batch{})
+	_, err := p.SubmitBatch(context.Background(), Batch{}, nil)
 	require.Error(t, err)
 }
 
@@ -154,7 +183,7 @@ func TestSubmitBatch_PropagatesUploadError(t *testing.T) {
 		SubmittedAt: time.Now(),
 		Invoices:    []InvoiceLine{{DebtorName: "X", InvoiceNumber: "INV-1", InvoiceDate: time.Now(), AmountUSD: 1}},
 		PDFs:        []InvoicePDF{{InvoiceNumber: "INV-1", Bytes: []byte("x")}},
-	})
+	}, nil)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "disk full")
 }

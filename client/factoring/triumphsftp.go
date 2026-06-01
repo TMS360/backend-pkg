@@ -126,7 +126,7 @@ func defaultSFTPDial(ctx context.Context, d sftpDialer) (sftpUploader, error) {
 // File naming:
 //   - PDFs: <INVOICE#>.pdf (InvoiceNumber sanitized for filesystem safety)
 //   - CSV:  invoices_YYYYMMDD_HHMMSS.csv (UTC timestamp from batch.SubmittedAt)
-func (p *TriumphSFTPProvider) SubmitBatch(ctx context.Context, batch Batch) (SubmitResult, error) {
+func (p *TriumphSFTPProvider) SubmitBatch(ctx context.Context, batch Batch, onProgress ProgressFunc) (SubmitResult, error) {
 	if err := batch.validate(); err != nil {
 		return SubmitResult{}, err
 	}
@@ -162,7 +162,9 @@ func (p *TriumphSFTPProvider) SubmitBatch(ctx context.Context, batch Batch) (Sub
 		return SubmitResult{}, err
 	}
 
-	uploaded := make([]string, 0, len(batch.PDFs)+1)
+	// total = every PDF plus the CSV manifest (uploaded last).
+	total := len(batch.PDFs) + 1
+	uploaded := make([]string, 0, total)
 	for i, pdf := range batch.PDFs {
 		if err := ctx.Err(); err != nil {
 			return SubmitResult{CSVFileName: csvFileName, Uploaded: uploaded}, err
@@ -174,6 +176,9 @@ func (p *TriumphSFTPProvider) SubmitBatch(ctx context.Context, batch Batch) (Sub
 				fmt.Errorf("upload pdf[%d] %s: %w", i, pdf.InvoiceNumber, uerr)
 		}
 		uploaded = append(uploaded, remote)
+		if onProgress != nil {
+			onProgress(Progress{Phase: "uploading", Done: i + 1, Total: total, Detail: fileName})
+		}
 	}
 
 	csvPath, err := client.Upload(p.inboundDir, csvFileName, csvBytes)
@@ -182,6 +187,9 @@ func (p *TriumphSFTPProvider) SubmitBatch(ctx context.Context, batch Batch) (Sub
 			fmt.Errorf("upload csv manifest: %w", err)
 	}
 	uploaded = append(uploaded, csvPath)
+	if onProgress != nil {
+		onProgress(Progress{Phase: "uploading", Done: total, Total: total, Detail: csvFileName})
+	}
 
 	return SubmitResult{CSVFileName: csvFileName, Uploaded: uploaded}, nil
 }

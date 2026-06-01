@@ -102,6 +102,22 @@ type Credential struct {
 }
 
 
+// Progress is one upload-progress tick reported by a Provider during
+// SubmitBatch. Provider-neutral: SFTP, API, or any future factor reports the
+// same shape so backend-accounting can surface a live progress bar regardless
+// of transport.
+type Progress struct {
+	Phase  string // provider-defined phase label, e.g. "uploading"
+	Done   int    // files completed so far in this phase
+	Total  int    // total files in this phase
+	Detail string // current file name / human-readable note
+}
+
+// ProgressFunc receives upload-progress ticks. It is nil-safe by contract:
+// every Provider MUST tolerate a nil reporter (simply not reporting). Called
+// after each file is shipped so callers see monotonically increasing Done.
+type ProgressFunc func(Progress)
+
 // Provider sends a Batch to one factoring company. Implementations are
 // stateless except for connection bookkeeping inside SubmitBatch.
 type Provider interface {
@@ -109,7 +125,11 @@ type Provider interface {
 	// implementation MUST upload supporting files first and the manifest last
 	// — many factors (Triumph in particular) poll the inbound folder and will
 	// pick up a CSV the moment it appears, so a half-uploaded batch fails.
-	SubmitBatch(ctx context.Context, batch Batch) (SubmitResult, error)
+	//
+	// onProgress, when non-nil, is invoked after each file is uploaded so the
+	// caller can surface live per-file progress. Implementations MUST treat a
+	// nil onProgress as "do not report".
+	SubmitBatch(ctx context.Context, batch Batch, onProgress ProgressFunc) (SubmitResult, error)
 }
 
 // Batch is the unit of submission: one InvoiceBatch from backend-accounting

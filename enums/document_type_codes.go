@@ -37,7 +37,7 @@ const (
 	SystemDocPOD     SystemDocTypeCode = "POD"
 	SystemDocInvoice SystemDocTypeCode = "INVOICE"
 
-	// ACCOUNTING
+	// DRIVER
 	SystemPayStatement SystemDocTypeCode = "PAY_STATEMENT"
 )
 
@@ -66,7 +66,8 @@ func (c SystemDocTypeCode) IsValid() bool {
 		SystemDocRC,
 		SystemDocBOL,
 		SystemDocPOD,
-		SystemDocInvoice:
+		SystemDocInvoice,
+		SystemPayStatement:
 		return true
 	default:
 		return false

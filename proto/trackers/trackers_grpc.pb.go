@@ -260,6 +260,7 @@ const (
 	VehiclePositionService_GetVehicleRoute_FullMethodName    = "/trackers.VehiclePositionService/GetVehicleRoute"
 	VehiclePositionService_SaveEstimatedRoute_FullMethodName = "/trackers.VehiclePositionService/SaveEstimatedRoute"
 	VehiclePositionService_GetEstimatedRoute_FullMethodName  = "/trackers.VehiclePositionService/GetEstimatedRoute"
+	VehiclePositionService_LookupGeocodeCache_FullMethodName = "/trackers.VehiclePositionService/LookupGeocodeCache"
 )
 
 // VehiclePositionServiceClient is the client API for VehiclePositionService service.
@@ -274,6 +275,10 @@ type VehiclePositionServiceClient interface {
 	SaveEstimatedRoute(ctx context.Context, in *SaveEstimatedRouteRequest, opts ...grpc.CallOption) (*SaveEstimatedRouteResponse, error)
 	// GetEstimatedRoute retrieves estimated route polylines for a trip
 	GetEstimatedRoute(ctx context.Context, in *GetEstimatedRouteRequest, opts ...grpc.CallOption) (*GetEstimatedRouteResponse, error)
+	// LookupGeocodeCache returns a previously cached HERE geocoding result so the
+	// caller can avoid a paid HERE API call. The result is the same JSON payload
+	// the caller would have built from the live HERE response.
+	LookupGeocodeCache(ctx context.Context, in *LookupGeocodeCacheRequest, opts ...grpc.CallOption) (*LookupGeocodeCacheResponse, error)
 }
 
 type vehiclePositionServiceClient struct {
@@ -314,6 +319,16 @@ func (c *vehiclePositionServiceClient) GetEstimatedRoute(ctx context.Context, in
 	return out, nil
 }
 
+func (c *vehiclePositionServiceClient) LookupGeocodeCache(ctx context.Context, in *LookupGeocodeCacheRequest, opts ...grpc.CallOption) (*LookupGeocodeCacheResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(LookupGeocodeCacheResponse)
+	err := c.cc.Invoke(ctx, VehiclePositionService_LookupGeocodeCache_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // VehiclePositionServiceServer is the server API for VehiclePositionService service.
 // All implementations must embed UnimplementedVehiclePositionServiceServer
 // for forward compatibility.
@@ -326,6 +341,10 @@ type VehiclePositionServiceServer interface {
 	SaveEstimatedRoute(context.Context, *SaveEstimatedRouteRequest) (*SaveEstimatedRouteResponse, error)
 	// GetEstimatedRoute retrieves estimated route polylines for a trip
 	GetEstimatedRoute(context.Context, *GetEstimatedRouteRequest) (*GetEstimatedRouteResponse, error)
+	// LookupGeocodeCache returns a previously cached HERE geocoding result so the
+	// caller can avoid a paid HERE API call. The result is the same JSON payload
+	// the caller would have built from the live HERE response.
+	LookupGeocodeCache(context.Context, *LookupGeocodeCacheRequest) (*LookupGeocodeCacheResponse, error)
 	mustEmbedUnimplementedVehiclePositionServiceServer()
 }
 
@@ -344,6 +363,9 @@ func (UnimplementedVehiclePositionServiceServer) SaveEstimatedRoute(context.Cont
 }
 func (UnimplementedVehiclePositionServiceServer) GetEstimatedRoute(context.Context, *GetEstimatedRouteRequest) (*GetEstimatedRouteResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetEstimatedRoute not implemented")
+}
+func (UnimplementedVehiclePositionServiceServer) LookupGeocodeCache(context.Context, *LookupGeocodeCacheRequest) (*LookupGeocodeCacheResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method LookupGeocodeCache not implemented")
 }
 func (UnimplementedVehiclePositionServiceServer) mustEmbedUnimplementedVehiclePositionServiceServer() {
 }
@@ -421,6 +443,24 @@ func _VehiclePositionService_GetEstimatedRoute_Handler(srv interface{}, ctx cont
 	return interceptor(ctx, in, info, handler)
 }
 
+func _VehiclePositionService_LookupGeocodeCache_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(LookupGeocodeCacheRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(VehiclePositionServiceServer).LookupGeocodeCache(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: VehiclePositionService_LookupGeocodeCache_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(VehiclePositionServiceServer).LookupGeocodeCache(ctx, req.(*LookupGeocodeCacheRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // VehiclePositionService_ServiceDesc is the grpc.ServiceDesc for VehiclePositionService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -439,6 +479,10 @@ var VehiclePositionService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetEstimatedRoute",
 			Handler:    _VehiclePositionService_GetEstimatedRoute_Handler,
+		},
+		{
+			MethodName: "LookupGeocodeCache",
+			Handler:    _VehiclePositionService_LookupGeocodeCache_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

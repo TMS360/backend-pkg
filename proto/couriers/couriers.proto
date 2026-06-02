@@ -50,6 +50,7 @@ message UserInfo {
   string name = 2;
   string email = 3;
   int32 driver_ownership = 4;   // 0 = unset; 1..6 = enums.DriverOwnership
+  string phone = 5;             // primary phone (User.phone); "" = unset
 }
 
 message ListOfficeUsersRequest {

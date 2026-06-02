@@ -49,6 +49,7 @@ message UserInfo {
   string id = 1;
   string name = 2;
   string email = 3;
+  int32 driver_ownership = 4;   // 0 = unset; 1..6 = enums.DriverOwnership
 }
 
 message ListOfficeUsersRequest {

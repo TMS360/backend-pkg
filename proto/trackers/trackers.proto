@@ -76,6 +76,8 @@ service VehiclePositionService {
   // GetVehicleRoute returns GPS route points for a truck within a time range
   rpc GetVehicleRoute(GetVehicleRouteRequest) returns (GetVehicleRouteResponse);
 
+  rpc GetVehicleRoutes(GetVehicleRoutesRequest) returns (GetVehicleRoutesResponse);
+
   // SaveEstimatedRoute stores estimated route polylines from HERE Maps
   rpc SaveEstimatedRoute(SaveEstimatedRouteRequest) returns (SaveEstimatedRouteResponse);
 
@@ -86,6 +88,20 @@ service VehiclePositionService {
   // caller can avoid a paid HERE API call. The result is the same JSON payload
   // the caller would have built from the live HERE response.
   rpc LookupGeocodeCache(LookupGeocodeCacheRequest) returns (LookupGeocodeCacheResponse);
+}
+
+message GetVehicleRoutesRequest {
+  repeated GetVehicleRouteRequest queries = 1;
+}
+
+message GetVehicleRoutesResponse {
+  repeated VehicleRoute routes = 1;
+}
+
+message VehicleRoute {
+  string truck_id = 1;
+  repeated RoutePoint points = 2;
+  string error_message = 3;  // optional, empty on success
 }
 
 message GetVehicleRouteRequest {

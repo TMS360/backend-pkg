@@ -76,6 +76,14 @@ func NewErrorPresenter(isDebug bool) graphql.ErrorPresenterFunc {
 	}
 }
 
+// BatchError wraps a batch-wide failure so dataloadgen propagates it to every
+// caller. The library only treats a single-element errors slice as a global
+// error; returning N errors alongside nil results trips its length check and
+// masks the real cause with "bug in fetch function: 0 values returned for N keys".
+func BatchError(err error) []error {
+	return []error{err}
+}
+
 // FillErrors is a helper function to create a slice of errors with the same error repeated n times. This can be useful for batch operations where you want to return the same error for multiple items.
 func FillErrors(n int, err error) []error {
 	errs := make([]error, n)

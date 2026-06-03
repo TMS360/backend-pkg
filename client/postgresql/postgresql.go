@@ -66,14 +66,18 @@ func NewClient(cfg config.PostgresSQLConfig) (*gorm.DB, error) {
 	}
 
 	if sqlDB, err := db.DB(); err == nil {
-		sqlDB.SetMaxIdleConns(10)
-		sqlDB.SetMaxOpenConns(100)
-		sqlDB.SetConnMaxLifetime(30 * time.Minute)
-		sqlDB.SetConnMaxIdleTime(5 * time.Minute)
-		//sqlDB.SetMaxIdleConns(5)
-		//sqlDB.SetMaxOpenConns(20)
+		//sqlDB.SetMaxIdleConns(10)
+		//sqlDB.SetMaxOpenConns(100)
 		//sqlDB.SetConnMaxLifetime(30 * time.Minute)
 		//sqlDB.SetConnMaxIdleTime(5 * time.Minute)
+		sqlDB.SetMaxIdleConns(25)
+		sqlDB.SetMaxOpenConns(25)
+		sqlDB.SetConnMaxIdleTime(5 * time.Minute)
+		sqlDB.SetConnMaxLifetime(30 * time.Minute)
+
+		start := time.Now()
+		db.Exec("SELECT 1")
+		log.Printf("SELECT 1 took %s", time.Since(start))
 	}
 
 	return db, nil

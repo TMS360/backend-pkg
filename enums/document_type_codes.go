@@ -32,11 +32,11 @@ const (
 	SystemDocTrailerRegistration     SystemDocTypeCode = "TRAILER_REGISTRATION"
 
 	// SHIPMENT
-	SystemDocRC      SystemDocTypeCode = "RC"
-	SystemDocBOL     SystemDocTypeCode = "BOL"
-	SystemDocPOD     SystemDocTypeCode = "POD"
-	SystemDocInvoice SystemDocTypeCode = "INVOICE"
-	SystemDocOther   SystemDocTypeCode = "SHIPMENT_OTHER"
+	SystemDocRC            SystemDocTypeCode = "RC"
+	SystemDocBOL           SystemDocTypeCode = "BOL"
+	SystemDocPOD           SystemDocTypeCode = "POD"
+	SystemDocInvoice       SystemDocTypeCode = "INVOICE"
+	SystemDocShipmentOther SystemDocTypeCode = "SHIPMENT_OTHER"
 
 	// DRIVER
 	SystemPayStatement SystemDocTypeCode = "PAY_STATEMENT"

@@ -595,6 +595,10 @@ message ShipmentBillingItem {
   google.protobuf.Timestamp pickup_date     = 13;
   string delivery_address   = 14;
   google.protobuf.Timestamp delivery_date   = 15;
+  // Facility names (first/last leg); "" when unset. Field numbers appended
+  // (21/22) for wire-compat; logically part of the stops block above.
+  string pickup_facility_name   = 21;
+  string delivery_facility_name = 22;
 
   // Money.
   double total_amount       = 16;         // shipment.total_pay

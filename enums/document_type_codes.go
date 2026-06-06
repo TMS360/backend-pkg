@@ -36,6 +36,7 @@ const (
 	SystemDocBOL     SystemDocTypeCode = "BOL"
 	SystemDocPOD     SystemDocTypeCode = "POD"
 	SystemDocInvoice SystemDocTypeCode = "INVOICE"
+	SystemDocOther   SystemDocTypeCode = "SHIPMENT_OTHER"
 
 	// DRIVER
 	SystemPayStatement SystemDocTypeCode = "PAY_STATEMENT"

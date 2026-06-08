@@ -71,22 +71,25 @@ func (e CompanySettingsGeneralKey) MarshalJSON() ([]byte, error) {
 type CompanySettingsIntegrationKey string
 
 const (
-	CompanySettingsIntegrationKeyHereAPIKey    CompanySettingsIntegrationKey = "here_api_key"
-	CompanySettingsIntegrationKeySamsaraAPIKey CompanySettingsIntegrationKey = "samsara_api_key"
-	CompanySettingsIntegrationKeyRelayAPIKey   CompanySettingsIntegrationKey = "relay_api_key"
+	CompanySettingsIntegrationKeyHereAPIKey      CompanySettingsIntegrationKey = "here_api_key"
+	CompanySettingsIntegrationKeySamsaraAPIKey   CompanySettingsIntegrationKey = "samsara_api_key"
+	CompanySettingsIntegrationKeyRelayAPIKey     CompanySettingsIntegrationKey = "relay_api_key"
+	CompanySettingsIntegrationKeyUSPSCredentials CompanySettingsIntegrationKey = "usps_credentials"
 )
 
 var AllCompanySettingsIntegrationKey = []CompanySettingsIntegrationKey{
 	CompanySettingsIntegrationKeyHereAPIKey,
 	CompanySettingsIntegrationKeySamsaraAPIKey,
 	CompanySettingsIntegrationKeyRelayAPIKey,
+	CompanySettingsIntegrationKeyUSPSCredentials,
 }
 
 func (e CompanySettingsIntegrationKey) IsValid() bool {
 	switch e {
 	case CompanySettingsIntegrationKeyHereAPIKey,
 		CompanySettingsIntegrationKeySamsaraAPIKey,
-		CompanySettingsIntegrationKeyRelayAPIKey:
+		CompanySettingsIntegrationKeyRelayAPIKey,
+		CompanySettingsIntegrationKeyUSPSCredentials:
 		return true
 	}
 	return false

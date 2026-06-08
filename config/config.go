@@ -27,6 +27,7 @@ type Config struct {
 	SamsaraConfig     `mapstructure:"SAMSARA"`
 	HereConfig        `mapstructure:"HERE"`
 	RelayConfig       `mapstructure:"RELAY"`
+	UspsConfig        `mapstructure:"USPS"`
 	FactoringConfig   `mapstructure:"FACTORING"`
 	ClickHouseConfig  `mapstructure:"CLICKHOUSE"`
 	AwsConfig         `mapstructure:"AWS"`
@@ -120,6 +121,16 @@ type RelayConfig struct {
 	Host string `mapstructure:"HOST"`
 }
 
+// UspsConfig holds non-secret USPS API hosts. The OAuth2 Consumer Key/Secret
+// are NOT stored here — they live per-company in Redis at
+// {company_id}:setting:usps_credentials as a JSON object, set by tms360-backend.
+// Hosts default in the client (apis.usps.com); override via USPS_BASE_URL /
+// USPS_OAUTH_HOST (e.g. the CAT/TEM sandbox apis-tem.usps.com).
+type UspsConfig struct {
+	BaseURL   string `mapstructure:"BASE_URL"`
+	OAuthHost string `mapstructure:"OAUTH_HOST"`
+}
+
 // FactoringConfig holds per-provider defaults that callers can override via env.
 // Credentials are NOT stored here — they live per-company in Redis at
 // {company_id}:setting:{provider_type}_credentials as a JSON blob, set by
@@ -145,7 +156,7 @@ type AwsConfig struct {
 	EndpointURL     string `mapstructure:"ENDPOINT_URL"`
 }
 
-var Prefixes = []string{"http", "db", "kafka", "redis", "jwt", "redis", "mail", "samsara", "here", "relay", "factoring", "clickhouse", "aws", "services"}
+var Prefixes = []string{"http", "db", "kafka", "redis", "jwt", "redis", "mail", "samsara", "here", "relay", "usps", "factoring", "clickhouse", "aws", "services"}
 
 func MapConfig() {
 	for _, key := range viper.AllKeys() {

@@ -6,9 +6,12 @@ package observability
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"os"
+	"runtime/debug"
+	"strings"
 	"time"
 
 	"github.com/TMS360/backend-pkg/middleware"
@@ -32,25 +35,34 @@ type Config struct {
 
 var enabled bool
 
-// LoadConfigFromEnv reads SENTRY_DSN / SENTRY_ENV / SENTRY_RELEASE directly
-// from the process environment. Convenience for services that don't want to
-// thread Sentry through their typed config struct — the values are operational
-// rather than application config.
+// LoadConfigFromEnv reads SENTRY_DSN / SENTRY_ENVIRONMENT / SENTRY_RELEASE
+// from the process environment. SENTRY_ENV is accepted as a legacy fallback
+// when SENTRY_ENVIRONMENT is unset.
 func LoadConfigFromEnv(service string) Config {
+	env := os.Getenv("SENTRY_ENVIRONMENT")
+	if env == "" {
+		env = os.Getenv("SENTRY_ENV")
+	}
 	return Config{
 		DSN:     os.Getenv("SENTRY_DSN"),
-		Env:     os.Getenv("SENTRY_ENV"),
+		Env:     env,
 		Release: os.Getenv("SENTRY_RELEASE"),
 		Service: service,
 	}
 }
 
 // Init configures the global Sentry hub. Safe to call once at service boot.
-// Returns false (and logs at INFO) when DSN is empty so callers can branch on
-// whether to install Sentry middleware.
+// Returns false when DSN is empty so callers can branch on whether to install
+// Sentry middleware. Missing DSN is logged at WARN (ERROR when Env looks
+// production-like) so the silent-disable failure mode is loud.
 func Init(cfg Config) bool {
 	if cfg.DSN == "" {
-		slog.Info("Sentry disabled: empty DSN", "service", cfg.Service)
+		msg := "Sentry disabled: SENTRY_DSN is empty — errors will NOT be reported"
+		if isProdEnv(cfg.Env) {
+			slog.Error(msg, "service", cfg.Service, "env", cfg.Env)
+		} else {
+			slog.Warn(msg, "service", cfg.Service, "env", cfg.Env)
+		}
 		return false
 	}
 	if err := sentry.Init(sentry.ClientOptions{
@@ -125,4 +137,47 @@ func CaptureRestError(c *gin.Context, code int, err error) {
 		return
 	}
 	CaptureWithCtx(c.Request.Context(), err)
+}
+
+// RecoverGoroutine is the non-gin equivalent of sentrygin's panic recovery —
+// use as `defer observability.RecoverGoroutine(ctx)` at the top of a spawned
+// goroutine. Captures the panic to Sentry (when enabled), logs it with a
+// stack, and DOES NOT repanic so the parent process keeps running. Workers
+// want to survive a bad message, not die on it.
+func RecoverGoroutine(ctx context.Context) {
+	r := recover()
+	if r == nil {
+		return
+	}
+	stack := debug.Stack()
+	slog.Error("goroutine recovered from panic", "panic", r, "stack", string(stack))
+	if !enabled {
+		return
+	}
+	hub := sentry.GetHubFromContext(ctx)
+	if hub == nil {
+		hub = sentry.CurrentHub().Clone()
+	}
+	hub.WithScope(func(scope *sentry.Scope) {
+		scope.SetTag("source", "background")
+		if rid := middleware.GetRequestID(ctx); rid != "" {
+			scope.SetTag("request_id", rid)
+		}
+		// Prefer an error value so Sentry indexes a useful message rather
+		// than the interface{} stringification.
+		if err, ok := r.(error); ok {
+			hub.CaptureException(err)
+		} else {
+			hub.CaptureException(fmt.Errorf("goroutine panic: %v", r))
+		}
+	})
+	sentry.Flush(2 * time.Second)
+}
+
+func isProdEnv(env string) bool {
+	switch strings.ToLower(strings.TrimSpace(env)) {
+	case "prod", "production":
+		return true
+	}
+	return false
 }

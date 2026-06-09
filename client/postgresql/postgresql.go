@@ -75,19 +75,13 @@ func NewClient(cfg config.PostgresSQLConfig) (*gorm.DB, error) {
 
 	if sqlDB, err := db.DB(); err == nil {
 		maxOpen := cfg.MaxOpenConns
-		fmt.Print("maxOpen: ", maxOpen)
 		if maxOpen <= 0 {
 			maxOpen = defaultPostgresMaxOpenConns
 		}
 		maxIdle := cfg.MaxIdleConns
-		fmt.Print("maxOpen: ", maxOpen)
 		if maxIdle <= 0 {
 			maxIdle = defaultPostgresMaxIdleConns
 		}
-
-		fmt.Print("maxIdle: ", maxIdle, "maxOpen: ", maxOpen)
-		// Idle > Open is non-sensical and database/sql silently clamps; clamp
-		// here too so the log line reflects what's actually applied.
 		if maxIdle > maxOpen {
 			maxIdle = maxOpen
 		}

@@ -26,6 +26,9 @@ type Config struct {
 	MailConfig        `mapstructure:"MAIL"`
 	SamsaraConfig     `mapstructure:"SAMSARA"`
 	HereConfig        `mapstructure:"HERE"`
+	RelayConfig       `mapstructure:"RELAY"`
+	UspsConfig        `mapstructure:"USPS"`
+	FactoringConfig   `mapstructure:"FACTORING"`
 	ClickHouseConfig  `mapstructure:"CLICKHOUSE"`
 	AwsConfig         `mapstructure:"AWS"`
 	ServiceURLs       `mapstructure:"SERVICES"`
@@ -93,6 +96,10 @@ type JWTConfig struct {
 }
 
 type MailConfig struct {
+	// Provider selects the delivery backend: "smtp" (default) or "resend".
+	Provider string `mapstructure:"PROVIDER"`
+	// APIKey is used by HTTP-based providers (e.g. Resend).
+	APIKey   string `mapstructure:"API_KEY"`
 	Host     string `mapstructure:"HOST"`
 	Port     string `mapstructure:"PORT"`
 	Username string `mapstructure:"USERNAME"`
@@ -108,6 +115,29 @@ type HereConfig struct {
 	RouterHost  string `mapstructure:"ROUTER_HOST"`
 	GeocodeHost string `mapstructure:"GEOCODE_HOST"`
 	LookupHost  string `mapstructure:"LOOKUP_HOST"`
+}
+
+type RelayConfig struct {
+	Host string `mapstructure:"HOST"`
+}
+
+// UspsConfig holds non-secret USPS API hosts. The OAuth2 Consumer Key/Secret
+// are NOT stored here — they live per-company in Redis at
+// {company_id}:setting:usps_credentials as a JSON object, set by tms360-backend.
+// Hosts default in the client (apis.usps.com); override via USPS_BASE_URL /
+// USPS_OAUTH_HOST (e.g. the CAT/TEM sandbox apis-tem.usps.com).
+type UspsConfig struct {
+	BaseURL   string `mapstructure:"BASE_URL"`
+	OAuthHost string `mapstructure:"OAUTH_HOST"`
+}
+
+// FactoringConfig holds per-provider defaults that callers can override via env.
+// Credentials are NOT stored here — they live per-company in Redis at
+// {company_id}:setting:{provider_type}_credentials as a JSON blob, set by
+// tms360-backend.
+type FactoringConfig struct {
+	TriumphSFTPHost string `mapstructure:"TRIUMPH_SFTP_HOST"`
+	TriumphSFTPPort int    `mapstructure:"TRIUMPH_SFTP_PORT"`
 }
 
 type ClickHouseConfig struct {
@@ -126,7 +156,7 @@ type AwsConfig struct {
 	EndpointURL     string `mapstructure:"ENDPOINT_URL"`
 }
 
-var Prefixes = []string{"http", "db", "kafka", "redis", "jwt", "redis", "mail", "samsara", "here", "clickhouse", "aws", "services"}
+var Prefixes = []string{"http", "db", "kafka", "redis", "jwt", "redis", "mail", "samsara", "here", "relay", "usps", "factoring", "clickhouse", "aws", "services"}
 
 func MapConfig() {
 	for _, key := range viper.AllKeys() {

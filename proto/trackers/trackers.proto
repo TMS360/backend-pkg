@@ -76,11 +76,32 @@ service VehiclePositionService {
   // GetVehicleRoute returns GPS route points for a truck within a time range
   rpc GetVehicleRoute(GetVehicleRouteRequest) returns (GetVehicleRouteResponse);
 
+  rpc GetVehicleRoutes(GetVehicleRoutesRequest) returns (GetVehicleRoutesResponse);
+
   // SaveEstimatedRoute stores estimated route polylines from HERE Maps
   rpc SaveEstimatedRoute(SaveEstimatedRouteRequest) returns (SaveEstimatedRouteResponse);
 
   // GetEstimatedRoute retrieves estimated route polylines for a trip
   rpc GetEstimatedRoute(GetEstimatedRouteRequest) returns (GetEstimatedRouteResponse);
+
+  // LookupGeocodeCache returns a previously cached HERE geocoding result so the
+  // caller can avoid a paid HERE API call. The result is the same JSON payload
+  // the caller would have built from the live HERE response.
+  rpc LookupGeocodeCache(LookupGeocodeCacheRequest) returns (LookupGeocodeCacheResponse);
+}
+
+message GetVehicleRoutesRequest {
+  repeated GetVehicleRouteRequest queries = 1;
+}
+
+message GetVehicleRoutesResponse {
+  repeated VehicleRoute routes = 1;
+}
+
+message VehicleRoute {
+  string truck_id = 1;
+  repeated RoutePoint points = 2;
+  string error_message = 3;  // optional, empty on success
 }
 
 message GetVehicleRouteRequest {
@@ -141,6 +162,22 @@ message GetEstimatedRouteResponse {
   repeated EstimatedRouteLeg legs = 2;
   int32 total_distance_meters = 3;
   int32 total_duration_seconds = 4;
+}
+
+// Geocode cache messages — a cross-company cache of HERE geocoding results
+// (geocode-by-query, lookup-by-id, geocode-by-address, reverse-geocode) so
+// backend-load can serve repeat lookups from ClickHouse instead of paying HERE.
+
+message LookupGeocodeCacheRequest {
+  string kind = 1;       // geocode_query | lookup_id | geocode_address | revgeocode
+  string cache_key = 2;  // normalized key (see backend-load geocodecache.normalize*)
+  uint32 limit = 3;      // only meaningful for geocode_query
+}
+
+message LookupGeocodeCacheResponse {
+  bool found = 1;
+  string result = 2;     // JSON payload, identical shape to what HERE would yield
+  uint32 item_count = 3;
 }
 
 // Active trip stops for route calculation

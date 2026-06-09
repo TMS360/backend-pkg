@@ -99,6 +99,21 @@ service LoadsService {
   // to invoice.
   rpc GetShipmentsByIDs(GetShipmentsByIDsRequest)
       returns (GetShipmentsByIDsResponse);
+
+  // Returns every order_file attached to a shipment — files on the shipment
+  // itself, on its trips, and on the trip stops — in one flat list. Each
+  // row carries document_type (POD / RATE_CON / BOL / INVOICE / OTHER) so
+  // the caller (backend-accounting) can pick the kinds it needs (e.g. merge
+  // POD + RC into the invoice PDF, or attach them to a factoring batch).
+  rpc GetShipmentFiles(GetShipmentFilesRequest)
+      returns (GetShipmentFilesResponse);
+
+  // Returns the trip IDs belonging to a single shipment (1 shipment → N trips
+  // через split-сценарии). Used by backend-accounting Financial Summary
+  // (Shipment.accountsPayable) to aggregate driver pay по trip-set.
+  // Reuses filters.IDsResponse — payload is just a list of UUID strings.
+  rpc GetTripIDsByShipment(GetTripIDsByShipmentRequest)
+      returns (filters.IDsResponse);
 }
 
 message ShipmentFilterRequest {
@@ -580,6 +595,10 @@ message ShipmentBillingItem {
   google.protobuf.Timestamp pickup_date     = 13;
   string delivery_address   = 14;
   google.protobuf.Timestamp delivery_date   = 15;
+  // Facility names (first/last leg); "" when unset. Field numbers appended
+  // (21/22) for wire-compat; logically part of the stops block above.
+  string pickup_facility_name   = 21;
+  string delivery_facility_name = 22;
 
   // Money.
   double total_amount       = 16;         // shipment.total_pay
@@ -591,6 +610,36 @@ message ShipmentBillingItem {
   string mc_number              = 18;
   string factoring_company_name = 19;
   string factoring_remit_to     = 20;
+}
+
+// ── Shipment Files (backend-accounting) ─────────────────────────────
+// Used to fetch all documents (POD / RATE_CON / BOL / INVOICE / OTHER) tied
+// to a shipment — the same flat list that backend-load aggregates over
+// shipment-level + trip-level + trip-stop-level order_files. Accounting
+// filters by document_type to merge attachments into invoice / factoring
+// PDFs.
+
+message GetShipmentFilesRequest {
+  string shipment_id = 1;
+}
+
+message ShipmentFile {
+  string file_id       = 1;  // UUID in backend-files
+  string document_type = 2;  // "POD" | "RATE_CON" | "BOL" | "INVOICE" | "OTHER"
+  string entity_type   = 3;  // "SHIPMENT" | "TRIP" | "TRIP_STOP"
+  string entity_id     = 4;  // UUID of the parent entity (for diagnostics)
+}
+
+message GetShipmentFilesResponse {
+  repeated ShipmentFile files = 1;
+}
+
+// Request for GetTripIDsByShipment. company_id is passed explicitly because
+// backend-load currently runs without an AuthServerInterceptor; backend-load
+// validates that shipment_id belongs to the tenant before returning trip IDs.
+message GetTripIDsByShipmentRequest {
+  string company_id  = 1;
+  string shipment_id = 2;
 }
 
 // Детали trip-а, нужные backend-accounting чтобы создать pay_batch

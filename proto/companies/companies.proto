@@ -10,6 +10,12 @@ service CompanyService {
   // ResolveIDs returns company IDs matching the given filter.
   // Used for cross-service filtering (e.g. backend-load filters shipments by company name).
   rpc ResolveIDs(CompanyFilter) returns (filters.IDsResponse);
+
+  // GetCompaniesByIDs returns company details (name, phone, address, MC,
+  // USDOT, etc.) for a set of company IDs. Used by backend-accounting to
+  // populate the carrier block on Invoice PDF and the company header on
+  // Driver Pay Statement / Report PDFs — i.e. "who is invoicing / paying".
+  rpc GetCompaniesByIDs(GetCompaniesByIDsRequest) returns (GetCompaniesByIDsResponse);
 }
 
 message CompanyFilter {
@@ -21,4 +27,41 @@ message CompanyFilter {
   filters.StringFilter usdot = 6;
   filters.StringFilter operating_status = 7;
   optional string search = 8; // full-text search across name, mc_number, legal_name, usdot
+}
+
+message GetCompaniesByIDsRequest {
+  repeated string company_ids = 1;
+}
+
+message GetCompaniesByIDsResponse {
+  repeated Company companies = 1;
+}
+
+// Company — projection used by external services (backend-accounting PDF
+// header). Only the fields actually needed downstream; if more callers
+// appear we can add more without breaking compatibility (proto3 default).
+message Company {
+  string id                = 1;
+  string name              = 2;
+  string email             = 3;
+  string mc_number         = 4;
+  string phone             = 5;
+  string legal_name        = 6;
+  string dba_name          = 7;
+  string usdot             = 8;
+  string physical_address  = 9;   // street line (e.g. "4135 CHELSEA MANOR CIR")
+  string phy_city          = 10;
+  string phy_state         = 11;
+  string phy_zip           = 12;
+  string phy_country       = 13;
+  string mailing_address   = 14;
+  string mail_city         = 15;
+  string mail_state        = 16;
+  string mail_zip          = 17;
+  string mail_country      = 18;
+  // billing_address — full freeform billing address string used as carrier
+  // header on Invoice PDFs (e.g. "4135 CHELSEA MANOR CIR, AURORA, IL,
+  // 60504"). City / state / zip components reuse phy_* / mail_* columns
+  // when needed for filtering — this field is the rendered one-liner.
+  string billing_address   = 19;
 }

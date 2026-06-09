@@ -29,6 +29,15 @@ func NewGormTransactionManager(db *gorm.DB, sourceService string) TransactionMan
 
 // WithTransaction implement interface service.TransactionManager
 func (m *GormTransactionManager) WithTransaction(ctx context.Context, fn func(ctx context.Context) error) error {
+	// Re-entrant: if a transaction is already active on the context, run inside
+	// it instead of opening a second connection. A nested WithTransaction on a
+	// fresh connection self-deadlocks against the outer tx's row locks — the
+	// inner UPDATE waits on a lock the outer holds, while the outer waits in Go
+	// for the inner call to return. Postgres can't detect it (outer is
+	// idle-in-transaction), so the request hangs to a gateway 504. See DEV-703.
+	if _, ok := ctx.Value(ctxTransactionKey{}).(*gorm.DB); ok {
+		return fn(ctx)
+	}
 	return m.db.Transaction(func(tx *gorm.DB) error {
 		txCtx := context.WithValue(ctx, ctxTransactionKey{}, tx)
 		return fn(txCtx)
@@ -111,12 +120,13 @@ func (m *GormTransactionManager) writeEvent(ctx context.Context, b *EventBuilder
 	}
 
 	event := &model.OutboxEvent{
-		AggregateID:   b.aggID,
-		AggregateType: b.aggType,
-		EventType:     b.evtType,
-		Payload:       payloadBytes,
-		Status:        "PENDING",
-		CreatedAt:     time.Now(),
+		EntityID:   b.aggID,
+		EntityType: b.aggType,
+		EventType:  b.evtType,
+		Payload:    payloadBytes,
+		Status:     "PENDING",
+		Topic:      b.topic,
+		CreatedAt:  time.Now(),
 	}
 
 	// Uses the active transaction from context automatically
@@ -137,8 +147,8 @@ func CalculateChanges(oldVal, newVal interface{}) []events.Change {
 	}
 
 	// 2. Use reflect.Indirect to safely handle both pointers and direct values
-	vOld := reflect.ValueOf(oldVal).Elem()
-	vNew := reflect.ValueOf(newVal).Elem()
+	vOld := reflect.Indirect(reflect.ValueOf(oldVal))
+	vNew := reflect.Indirect(reflect.ValueOf(newVal))
 
 	// 3. Ensure both are actually structs and of the same type
 	if vOld.Kind() != reflect.Struct || vNew.Kind() != reflect.Struct || vOld.Type() != vNew.Type() {

@@ -20,7 +20,8 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	CompanyService_ResolveIDs_FullMethodName = "/companies.CompanyService/ResolveIDs"
+	CompanyService_ResolveIDs_FullMethodName        = "/companies.CompanyService/ResolveIDs"
+	CompanyService_GetCompaniesByIDs_FullMethodName = "/companies.CompanyService/GetCompaniesByIDs"
 )
 
 // CompanyServiceClient is the client API for CompanyService service.
@@ -30,6 +31,11 @@ type CompanyServiceClient interface {
 	// ResolveIDs returns company IDs matching the given filter.
 	// Used for cross-service filtering (e.g. backend-load filters shipments by company name).
 	ResolveIDs(ctx context.Context, in *CompanyFilter, opts ...grpc.CallOption) (*filters.IDsResponse, error)
+	// GetCompaniesByIDs returns company details (name, phone, address, MC,
+	// USDOT, etc.) for a set of company IDs. Used by backend-accounting to
+	// populate the carrier block on Invoice PDF and the company header on
+	// Driver Pay Statement / Report PDFs — i.e. "who is invoicing / paying".
+	GetCompaniesByIDs(ctx context.Context, in *GetCompaniesByIDsRequest, opts ...grpc.CallOption) (*GetCompaniesByIDsResponse, error)
 }
 
 type companyServiceClient struct {
@@ -50,6 +56,16 @@ func (c *companyServiceClient) ResolveIDs(ctx context.Context, in *CompanyFilter
 	return out, nil
 }
 
+func (c *companyServiceClient) GetCompaniesByIDs(ctx context.Context, in *GetCompaniesByIDsRequest, opts ...grpc.CallOption) (*GetCompaniesByIDsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetCompaniesByIDsResponse)
+	err := c.cc.Invoke(ctx, CompanyService_GetCompaniesByIDs_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // CompanyServiceServer is the server API for CompanyService service.
 // All implementations must embed UnimplementedCompanyServiceServer
 // for forward compatibility.
@@ -57,6 +73,11 @@ type CompanyServiceServer interface {
 	// ResolveIDs returns company IDs matching the given filter.
 	// Used for cross-service filtering (e.g. backend-load filters shipments by company name).
 	ResolveIDs(context.Context, *CompanyFilter) (*filters.IDsResponse, error)
+	// GetCompaniesByIDs returns company details (name, phone, address, MC,
+	// USDOT, etc.) for a set of company IDs. Used by backend-accounting to
+	// populate the carrier block on Invoice PDF and the company header on
+	// Driver Pay Statement / Report PDFs — i.e. "who is invoicing / paying".
+	GetCompaniesByIDs(context.Context, *GetCompaniesByIDsRequest) (*GetCompaniesByIDsResponse, error)
 	mustEmbedUnimplementedCompanyServiceServer()
 }
 
@@ -69,6 +90,9 @@ type UnimplementedCompanyServiceServer struct{}
 
 func (UnimplementedCompanyServiceServer) ResolveIDs(context.Context, *CompanyFilter) (*filters.IDsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ResolveIDs not implemented")
+}
+func (UnimplementedCompanyServiceServer) GetCompaniesByIDs(context.Context, *GetCompaniesByIDsRequest) (*GetCompaniesByIDsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetCompaniesByIDs not implemented")
 }
 func (UnimplementedCompanyServiceServer) mustEmbedUnimplementedCompanyServiceServer() {}
 func (UnimplementedCompanyServiceServer) testEmbeddedByValue()                        {}
@@ -109,6 +133,24 @@ func _CompanyService_ResolveIDs_Handler(srv interface{}, ctx context.Context, de
 	return interceptor(ctx, in, info, handler)
 }
 
+func _CompanyService_GetCompaniesByIDs_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetCompaniesByIDsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CompanyServiceServer).GetCompaniesByIDs(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: CompanyService_GetCompaniesByIDs_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CompanyServiceServer).GetCompaniesByIDs(ctx, req.(*GetCompaniesByIDsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // CompanyService_ServiceDesc is the grpc.ServiceDesc for CompanyService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -119,6 +161,10 @@ var CompanyService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ResolveIDs",
 			Handler:    _CompanyService_ResolveIDs_Handler,
+		},
+		{
+			MethodName: "GetCompaniesByIDs",
+			Handler:    _CompanyService_GetCompaniesByIDs_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

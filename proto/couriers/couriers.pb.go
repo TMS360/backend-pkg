@@ -234,12 +234,14 @@ func (x *GetUsersByIdsResponse) GetUsers() []*UserInfo {
 }
 
 type UserInfo struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	Name          string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
-	Email         string                 `protobuf:"bytes,3,opt,name=email,proto3" json:"email,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	Id              string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Name            string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	Email           string                 `protobuf:"bytes,3,opt,name=email,proto3" json:"email,omitempty"`
+	DriverOwnership int32                  `protobuf:"varint,4,opt,name=driver_ownership,json=driverOwnership,proto3" json:"driver_ownership,omitempty"` // 0 = unset; 1..6 = enums.DriverOwnership
+	Phone           string                 `protobuf:"bytes,5,opt,name=phone,proto3" json:"phone,omitempty"`                                             // primary phone (User.phone); "" = unset
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *UserInfo) Reset() {
@@ -289,6 +291,20 @@ func (x *UserInfo) GetName() string {
 func (x *UserInfo) GetEmail() string {
 	if x != nil {
 		return x.Email
+	}
+	return ""
+}
+
+func (x *UserInfo) GetDriverOwnership() int32 {
+	if x != nil {
+		return x.DriverOwnership
+	}
+	return 0
+}
+
+func (x *UserInfo) GetPhone() string {
+	if x != nil {
+		return x.Phone
 	}
 	return ""
 }
@@ -621,11 +637,13 @@ const file_couriers_couriers_proto_rawDesc = "" +
 	"\x14GetUsersByIdsRequest\x12\x19\n" +
 	"\buser_ids\x18\x01 \x03(\tR\auserIds\"A\n" +
 	"\x15GetUsersByIdsResponse\x12(\n" +
-	"\x05users\x18\x01 \x03(\v2\x12.couriers.UserInfoR\x05users\"D\n" +
+	"\x05users\x18\x01 \x03(\v2\x12.couriers.UserInfoR\x05users\"\x85\x01\n" +
 	"\bUserInfo\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x14\n" +
-	"\x05email\x18\x03 \x01(\tR\x05email\"7\n" +
+	"\x05email\x18\x03 \x01(\tR\x05email\x12)\n" +
+	"\x10driver_ownership\x18\x04 \x01(\x05R\x0fdriverOwnership\x12\x14\n" +
+	"\x05phone\x18\x05 \x01(\tR\x05phone\"7\n" +
 	"\x16ListOfficeUsersRequest\x12\x1d\n" +
 	"\n" +
 	"company_id\x18\x01 \x01(\tR\tcompanyId\"4\n" +

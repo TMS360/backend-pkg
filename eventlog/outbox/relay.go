@@ -2,9 +2,10 @@ package outbox
 
 import (
 	"context"
-	"log"
+	"log/slog"
 	"time"
 
+	"github.com/TMS360/backend-pkg/observability"
 	"github.com/TMS360/backend-pkg/tmsdb"
 	kafkaGo "github.com/segmentio/kafka-go"
 )
@@ -26,6 +27,8 @@ func NewRelay(tm tmsdb.TransactionManager, kafkaWriter *kafkaGo.Writer) *Relay {
 
 // Start polls the DB and publishes to Kafka
 func (r *Relay) Start(ctx context.Context) {
+	defer observability.RecoverGoroutine(ctx)
+
 	ticker := time.NewTicker(500 * time.Millisecond)
 	defer ticker.Stop()
 
@@ -36,7 +39,8 @@ func (r *Relay) Start(ctx context.Context) {
 		case <-ticker.C:
 			batchCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
 			if err := r.ProcessBatch(batchCtx, batchSize); err != nil {
-				log.Printf("⚠️ Batch failed: %v", err)
+				slog.Error("outbox batch failed", "error", err)
+				observability.CaptureWithCtx(batchCtx, err)
 			}
 			cancel() // Always clean up context
 		case <-ctx.Done():
@@ -63,9 +67,16 @@ func (r *Relay) ProcessBatch(ctx context.Context, limit int) error {
 		var idsToDelete []string
 
 		for _, event := range eventsList {
+			// Producers can route a child entity onto a parent's topic via
+			// EventBuilder.WithTopic. Empty Topic means "no override" — the
+			// relay falls back to EntityType (the legacy behaviour).
+			topic := event.Topic
+			if topic == "" {
+				topic = event.EntityType
+			}
 			kafkaMessages = append(kafkaMessages, kafkaGo.Message{
-				Topic: event.AggregateType,
-				Key:   []byte(event.AggregateID.String()), // Order by EntityID
+				Topic: topic,
+				Key:   []byte(event.EntityID.String()), // Order by EntityID
 				Value: event.Payload,
 				Time:  event.CreatedAt,
 			})
@@ -76,7 +87,7 @@ func (r *Relay) ProcessBatch(ctx context.Context, limit int) error {
 		if err := r.kafkaWriter.WriteMessages(ctx, kafkaMessages...); err != nil {
 			return err
 		}
-		log.Printf("Sent %d events to Kafka", len(kafkaMessages))
+		slog.Debug("outbox events published", "count", len(kafkaMessages))
 
 		// 4. Delete processed events
 		if err := r.repository.DeleteBatch(ctx, idsToDelete); err != nil {

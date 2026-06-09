@@ -6,6 +6,7 @@ import (
 	"slices"
 
 	"github.com/99designs/gqlgen/graphql"
+	"github.com/TMS360/backend-pkg/auth"
 	"github.com/TMS360/backend-pkg/consts"
 	"github.com/TMS360/backend-pkg/middleware"
 )
@@ -55,17 +56,36 @@ func HasRoleDirective(ctx context.Context, obj interface{}, next graphql.Resolve
 	return nil, fmt.Errorf("access denied: missing role")
 }
 
+// HasPermDirective backs `@hasPerm(perms: [...])`. Effective perms are read
+// from the request context (stashed by auth.IdentifyUserPerms middleware on
+// every service); the JWT no longer carries perms.
+//
+// Matching is hierarchical: holding "accounting" grants every key under it.
+// Any one of `perms` being granted is sufficient (OR semantics, preserving
+// the prior directive's contract).
+//
+// Guests bypass the perm check. Guest access is granted per-field by
+// `@authGuest`, which verifies the share-link token's resource scope; a guest
+// reaching a field without `@authGuest` still fails closed at that directive.
+//
+// Super-admins also bypass. A wiped or mid-migration role_permissions table
+// would otherwise lock super-admins out of every gated endpoint — this gives
+// ops a permanent recovery path that doesn't depend on the catalog state.
 func HasPermDirective(ctx context.Context, obj interface{}, next graphql.Resolver, perms []string) (interface{}, error) {
 	actor, err := middleware.GetActor(ctx)
 	if err != nil {
 		return nil, consts.ErrUnauthorized
 	}
-	if actor.Claims == nil {
-		return nil, consts.ErrUnauthorized
+	if actor.IsGuest {
+		return next(ctx)
+	}
+	if actor.IsSuperAdmin() {
+		return next(ctx)
 	}
 
-	for _, perm := range perms {
-		if slices.Contains(actor.Claims.Permissions, perm) {
+	userPerms := auth.GetUserPermsFromContext(ctx)
+	for _, required := range perms {
+		if auth.HasPermission(userPerms, required) {
 			return next(ctx)
 		}
 	}

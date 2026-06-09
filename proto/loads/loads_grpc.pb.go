@@ -44,6 +44,8 @@ const (
 	LoadsService_GetUnbilledDriverTrips_FullMethodName      = "/loads.LoadsService/GetUnbilledDriverTrips"
 	LoadsService_GetShipmentsReadyForBilling_FullMethodName = "/loads.LoadsService/GetShipmentsReadyForBilling"
 	LoadsService_GetShipmentsByIDs_FullMethodName           = "/loads.LoadsService/GetShipmentsByIDs"
+	LoadsService_GetShipmentFiles_FullMethodName            = "/loads.LoadsService/GetShipmentFiles"
+	LoadsService_GetTripIDsByShipment_FullMethodName        = "/loads.LoadsService/GetTripIDsByShipment"
 )
 
 // LoadsServiceClient is the client API for LoadsService service.
@@ -118,6 +120,17 @@ type LoadsServiceClient interface {
 	// (createInvoiceBatch) — after the operator has confirmed which shipments
 	// to invoice.
 	GetShipmentsByIDs(ctx context.Context, in *GetShipmentsByIDsRequest, opts ...grpc.CallOption) (*GetShipmentsByIDsResponse, error)
+	// Returns every order_file attached to a shipment — files on the shipment
+	// itself, on its trips, and on the trip stops — in one flat list. Each
+	// row carries document_type (POD / RATE_CON / BOL / INVOICE / OTHER) so
+	// the caller (backend-accounting) can pick the kinds it needs (e.g. merge
+	// POD + RC into the invoice PDF, or attach them to a factoring batch).
+	GetShipmentFiles(ctx context.Context, in *GetShipmentFilesRequest, opts ...grpc.CallOption) (*GetShipmentFilesResponse, error)
+	// Returns the trip IDs belonging to a single shipment (1 shipment → N trips
+	// через split-сценарии). Used by backend-accounting Financial Summary
+	// (Shipment.accountsPayable) to aggregate driver pay по trip-set.
+	// Reuses filters.IDsResponse — payload is just a list of UUID strings.
+	GetTripIDsByShipment(ctx context.Context, in *GetTripIDsByShipmentRequest, opts ...grpc.CallOption) (*filters.IDsResponse, error)
 }
 
 type loadsServiceClient struct {
@@ -347,6 +360,26 @@ func (c *loadsServiceClient) GetShipmentsByIDs(ctx context.Context, in *GetShipm
 	return out, nil
 }
 
+func (c *loadsServiceClient) GetShipmentFiles(ctx context.Context, in *GetShipmentFilesRequest, opts ...grpc.CallOption) (*GetShipmentFilesResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetShipmentFilesResponse)
+	err := c.cc.Invoke(ctx, LoadsService_GetShipmentFiles_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *loadsServiceClient) GetTripIDsByShipment(ctx context.Context, in *GetTripIDsByShipmentRequest, opts ...grpc.CallOption) (*filters.IDsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(filters.IDsResponse)
+	err := c.cc.Invoke(ctx, LoadsService_GetTripIDsByShipment_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // LoadsServiceServer is the server API for LoadsService service.
 // All implementations must embed UnimplementedLoadsServiceServer
 // for forward compatibility.
@@ -419,6 +452,17 @@ type LoadsServiceServer interface {
 	// (createInvoiceBatch) — after the operator has confirmed which shipments
 	// to invoice.
 	GetShipmentsByIDs(context.Context, *GetShipmentsByIDsRequest) (*GetShipmentsByIDsResponse, error)
+	// Returns every order_file attached to a shipment — files on the shipment
+	// itself, on its trips, and on the trip stops — in one flat list. Each
+	// row carries document_type (POD / RATE_CON / BOL / INVOICE / OTHER) so
+	// the caller (backend-accounting) can pick the kinds it needs (e.g. merge
+	// POD + RC into the invoice PDF, or attach them to a factoring batch).
+	GetShipmentFiles(context.Context, *GetShipmentFilesRequest) (*GetShipmentFilesResponse, error)
+	// Returns the trip IDs belonging to a single shipment (1 shipment → N trips
+	// через split-сценарии). Used by backend-accounting Financial Summary
+	// (Shipment.accountsPayable) to aggregate driver pay по trip-set.
+	// Reuses filters.IDsResponse — payload is just a list of UUID strings.
+	GetTripIDsByShipment(context.Context, *GetTripIDsByShipmentRequest) (*filters.IDsResponse, error)
 	mustEmbedUnimplementedLoadsServiceServer()
 }
 
@@ -491,6 +535,12 @@ func (UnimplementedLoadsServiceServer) GetShipmentsReadyForBilling(context.Conte
 }
 func (UnimplementedLoadsServiceServer) GetShipmentsByIDs(context.Context, *GetShipmentsByIDsRequest) (*GetShipmentsByIDsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetShipmentsByIDs not implemented")
+}
+func (UnimplementedLoadsServiceServer) GetShipmentFiles(context.Context, *GetShipmentFilesRequest) (*GetShipmentFilesResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetShipmentFiles not implemented")
+}
+func (UnimplementedLoadsServiceServer) GetTripIDsByShipment(context.Context, *GetTripIDsByShipmentRequest) (*filters.IDsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetTripIDsByShipment not implemented")
 }
 func (UnimplementedLoadsServiceServer) mustEmbedUnimplementedLoadsServiceServer() {}
 func (UnimplementedLoadsServiceServer) testEmbeddedByValue()                      {}
@@ -884,6 +934,42 @@ func _LoadsService_GetShipmentsByIDs_Handler(srv interface{}, ctx context.Contex
 	return interceptor(ctx, in, info, handler)
 }
 
+func _LoadsService_GetShipmentFiles_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetShipmentFilesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(LoadsServiceServer).GetShipmentFiles(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: LoadsService_GetShipmentFiles_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(LoadsServiceServer).GetShipmentFiles(ctx, req.(*GetShipmentFilesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _LoadsService_GetTripIDsByShipment_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetTripIDsByShipmentRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(LoadsServiceServer).GetTripIDsByShipment(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: LoadsService_GetTripIDsByShipment_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(LoadsServiceServer).GetTripIDsByShipment(ctx, req.(*GetTripIDsByShipmentRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // LoadsService_ServiceDesc is the grpc.ServiceDesc for LoadsService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -970,6 +1056,14 @@ var LoadsService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetShipmentsByIDs",
 			Handler:    _LoadsService_GetShipmentsByIDs_Handler,
+		},
+		{
+			MethodName: "GetShipmentFiles",
+			Handler:    _LoadsService_GetShipmentFiles_Handler,
+		},
+		{
+			MethodName: "GetTripIDsByShipment",
+			Handler:    _LoadsService_GetTripIDsByShipment_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{

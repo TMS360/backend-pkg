@@ -17,26 +17,38 @@ import (
 type Client struct {
 }
 
-func NewClient(cfg config.PostgresSQLConfig) (*gorm.DB, error) {
+func EnsureDatabase(cfg config.PostgresSQLConfig) error {
 	initialDSN := fmt.Sprintf("host=%s user=%s password=%s dbname=postgres port=%s sslmode=%s TimeZone=%s",
 		cfg.Host, cfg.User, cfg.Password, cfg.Port, cfg.SSLMode, cfg.TimeZone)
 
 	db, err := gorm.Open(postgres.Open(initialDSN), &gorm.Config{})
 	if err != nil {
-		log.Fatalf("failed to connect to postgres database: %v", err)
+		return fmt.Errorf("failed to connect to postgres database: %w", err)
 	}
 
 	var exists bool
-	db.Raw("SELECT EXISTS (SELECT 1 FROM pg_database WHERE datname = ?)", cfg.DBName).Scan(&exists)
+	if err := db.Raw("SELECT EXISTS (SELECT 1 FROM pg_database WHERE datname = ?)", cfg.DBName).Scan(&exists).Error; err != nil {
+		return fmt.Errorf("failed to check database %s existence: %w", cfg.DBName, err)
+	}
 
 	if !exists {
-		err = db.Exec(fmt.Sprintf("CREATE DATABASE \"%s\"", cfg.DBName)).Error
-		if err != nil {
-			log.Fatalf("failed to create database %s: %v", cfg.DBName, err)
+		if err := db.Exec(fmt.Sprintf("CREATE DATABASE \"%s\"", cfg.DBName)).Error; err != nil {
+			return fmt.Errorf("failed to create database %s: %w", cfg.DBName, err)
 		}
 		log.Printf("Database %s created successfully", cfg.DBName)
 	} else {
 		log.Printf("Database %s already exists", cfg.DBName)
+	}
+
+	if sqlDB, err := db.DB(); err == nil {
+		_ = sqlDB.Close()
+	}
+	return nil
+}
+
+func NewClient(cfg config.PostgresSQLConfig) (*gorm.DB, error) {
+	if err := EnsureDatabase(cfg); err != nil {
+		log.Fatalf("%v", err)
 	}
 
 	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%s sslmode=%s TimeZone=%s",
@@ -44,7 +56,7 @@ func NewClient(cfg config.PostgresSQLConfig) (*gorm.DB, error) {
 
 	fmt.Println("dsn: ", dsn)
 
-	db, err = gorm.Open(postgres.Open(dsn), &gorm.Config{})
+	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
 	if err != nil {
 		log.Fatalf("failed to connect database: %v", err)
 	}
@@ -54,9 +66,22 @@ func NewClient(cfg config.PostgresSQLConfig) (*gorm.DB, error) {
 	}
 
 	if sqlDB, err := db.DB(); err == nil {
-		sqlDB.SetMaxIdleConns(10)
-		sqlDB.SetMaxOpenConns(100)
-		sqlDB.SetConnMaxLifetime(time.Hour)
+		//sqlDB.SetMaxIdleConns(10)
+		//sqlDB.SetMaxOpenConns(100)
+		//sqlDB.SetConnMaxLifetime(30 * time.Minute)
+		//sqlDB.SetConnMaxIdleTime(5 * time.Minute)
+		sqlDB.SetMaxIdleConns(2)
+		sqlDB.SetMaxOpenConns(8)
+		sqlDB.SetConnMaxIdleTime(5 * time.Minute)
+		sqlDB.SetConnMaxLifetime(30 * time.Minute)
+
+		//for i := 0; i < 3; i++ {
+		//	start := time.Now()
+		//	if err := db.Exec("SELECT 1").Error; err != nil {
+		//		log.Printf("SELECT 1 error: %v", err)
+		//	}
+		//	log.Printf("SELECT 1 #%d took %s", i+1, time.Since(start))
+		//}
 	}
 
 	return db, nil

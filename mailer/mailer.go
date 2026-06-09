@@ -34,6 +34,25 @@ type Sender interface {
 	SendEmailWithAttachments(to []string, subject string, templateFile string, data interface{}, attachments []Attachment) error
 }
 
+// Provider names accepted by NewSender / MailConfig.Provider.
+const (
+	ProviderSMTP   = "smtp"
+	ProviderResend = "resend"
+)
+
+// NewSender builds a Sender based on cfg.Provider. Defaults to SMTP when
+// Provider is empty so existing deployments keep working unchanged.
+func NewSender(cfg config.MailConfig, templates embed.FS) (Sender, error) {
+	switch cfg.Provider {
+	case ProviderResend:
+		return NewResendSender(cfg, templates)
+	case "", ProviderSMTP:
+		return NewSMTPSender(cfg, templates)
+	default:
+		return nil, fmt.Errorf("unknown mail provider %q", cfg.Provider)
+	}
+}
+
 // --- 3. Implementation ---
 
 type SMTPSender struct {
@@ -111,7 +130,13 @@ func (s *SMTPSender) SendEmailWithAttachments(to []string, subject string, templ
 
 // Helper to parse templates from the embedded FS
 func (s *SMTPSender) parseTemplate(templateName string, data interface{}) (string, error) {
-	t, err := template.ParseFS(s.templates, "templates/"+templateName)
+	return renderTemplate(s.templates, templateName, data)
+}
+
+// renderTemplate parses an HTML template from an embedded FS and renders it.
+// Shared by all Sender implementations.
+func renderTemplate(templates embed.FS, templateName string, data interface{}) (string, error) {
+	t, err := template.ParseFS(templates, "templates/"+templateName)
 	if err != nil {
 		return "", err
 	}

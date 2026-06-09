@@ -11,6 +11,7 @@ import (
 	"github.com/TMS360/backend-pkg/eventlog/events"
 	"github.com/TMS360/backend-pkg/eventlog/rules"
 	"github.com/TMS360/backend-pkg/middleware"
+	"github.com/TMS360/backend-pkg/observability"
 	"github.com/google/uuid"
 	"github.com/segmentio/kafka-go"
 )
@@ -57,6 +58,7 @@ func NewConsumer(
 
 func (c *Consumer) Start(ctx context.Context) {
 	defer c.reader.Close()
+	defer observability.RecoverGoroutine(ctx)
 	log.Printf("Dynamic Dispatcher started for topics: %v", c.reader.Config().GroupTopics)
 
 	for {
@@ -66,6 +68,7 @@ func (c *Consumer) Start(ctx context.Context) {
 				return
 			} // Context cancelled
 			log.Printf("Consumer fetch error: %v", err)
+			observability.CaptureWithCtx(ctx, err)
 			time.Sleep(3 * time.Second)
 			continue
 		}
@@ -74,6 +77,7 @@ func (c *Consumer) Start(ctx context.Context) {
 		var payload events.EventPayload
 		if err := json.Unmarshal(m.Value, &payload); err != nil {
 			log.Printf("Skipping malformed event: %v", err)
+			observability.CaptureWithCtx(ctx, err)
 			_ = c.reader.CommitMessages(ctx, m)
 			continue
 		}
@@ -81,6 +85,7 @@ func (c *Consumer) Start(ctx context.Context) {
 		// 2. Dispatch Logic
 		if err := c.dispatch(ctx, payload); err != nil {
 			log.Printf("Error dispatching event %s: %v", payload.EventID, err)
+			observability.CaptureWithCtx(ctx, err)
 			// Decide here: Commit anyway? Or retry?
 			// Usually safe to commit if it's just a rule failure.
 		}
@@ -88,12 +93,15 @@ func (c *Consumer) Start(ctx context.Context) {
 		// 3. Commit Offset
 		if err := c.reader.CommitMessages(ctx, m); err != nil {
 			log.Printf("Failed to commit offset: %v", err)
+			observability.CaptureWithCtx(ctx, err)
 		}
 	}
 }
 
 func (c *Consumer) dispatch(ctx context.Context, event events.EventPayload) error {
 	handlerKey := fmt.Sprintf("%s.%s", event.EntityType, event.Action)
+
+	log.Printf("📥 received event: %s (id=%s)", handlerKey, event.EventID)
 
 	// Default to Nil UUID if it's a system event without a specific actor
 	actorID := uuid.Nil
@@ -145,7 +153,7 @@ func (c *Consumer) dispatch(ctx context.Context, event events.EventPayload) erro
 	}
 
 	if !handlerFound {
-		log.Printf("⚠️ No handlers matched for event: %s", handlerKey)
+		log.Printf("ignored event: %s", handlerKey)
 	}
 
 	return nil

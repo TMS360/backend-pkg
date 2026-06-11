@@ -99,17 +99,19 @@ var PermissionCatalog = []PermissionCatalogEntry{
 	{Code: "customers.brokers", ParentCode: "customers", Label: "Brokers", Actions: []string{"view", "create"}},
 
 	// === settings entities ===
+	{Code: "settings.files", ParentCode: "settings", Label: "Company files", Actions: []string{"view"}},
 	{Code: "settings.company", ParentCode: "settings", Label: "Company settings", Actions: []string{"view", "edit"}},
 	{Code: "settings.doc_types", ParentCode: "settings", Label: "Document types", Actions: []string{"view", "create", "edit"}},
+	{Code: "settings.team_settings", ParentCode: "settings", Label: "Team settings", Actions: []string{"view", "edit"}},
 	{Code: "settings.driver_app", ParentCode: "settings", Label: "Driver app config", Actions: []string{"view", "edit"}},
 	{Code: "settings.driver_tariffs", ParentCode: "settings", Label: "Driver tariffs", Actions: []string{"view", "create", "edit", "delete"}},
+	{Code: "settings.load_status", ParentCode: "settings", Label: "Load status settings", Actions: []string{"view", "create", "edit", "delete"}},
 	{Code: "settings.integration", ParentCode: "settings", Label: "Integrations", Actions: []string{"view", "edit"}},
 	{Code: "settings.reassignment", ParentCode: "settings", Label: "Reassignment", Actions: []string{"view", "delete"}},
 	{Code: "settings.reward_plans", ParentCode: "settings", Label: "Reward plans", Actions: []string{"view", "edit"}},
 	{Code: "settings.accounting_types", ParentCode: "settings", Label: "Accounting types", Actions: []string{"view", "create", "edit"}},
 	{Code: "settings.office_users", ParentCode: "settings", Label: "Office users", Actions: []string{"view", "create", "edit"}},
 	{Code: "settings.office_roles", ParentCode: "settings", Label: "Office roles", Actions: []string{"view", "edit"}},
-	{Code: "settings.me", ParentCode: "settings", Label: "Current user", Actions: []string{"view"}},
 }
 
 // validPermissionCodes indexes every grantable key (modules, entities, and

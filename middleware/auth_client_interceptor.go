@@ -41,3 +41,29 @@ func AuthClientInterceptor(internalToken string) grpc.UnaryClientInterceptor {
 		return invoker(ctx, method, req, reply, cc, opts...)
 	}
 }
+
+func AuthStreamClientInterceptor(internalToken string) grpc.StreamClientInterceptor {
+	return func(
+		ctx context.Context,
+		desc *grpc.StreamDesc,
+		cc *grpc.ClientConn,
+		method string,
+		streamer grpc.Streamer,
+		opts ...grpc.CallOption,
+	) (grpc.ClientStream, error) {
+		actor, _ := GetActor(ctx)
+		switch {
+		case actor != nil && actor.Token != nil && *actor.Token != "":
+			ctx = metadata.AppendToOutgoingContext(ctx, "authorization", "Bearer "+*actor.Token)
+		case actor != nil && actor.IsSystem && internalToken != "":
+			ctx = metadata.AppendToOutgoingContext(ctx,
+				"x-internal-token", internalToken,
+				"x-actor-id", actor.ID.String(),
+			)
+			if cid := actor.GetCompanyID(); cid != nil {
+				ctx = metadata.AppendToOutgoingContext(ctx, "x-company-id", cid.String())
+			}
+		}
+		return streamer(ctx, desc, cc, method, opts...)
+	}
+}

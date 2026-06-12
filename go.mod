@@ -17,6 +17,7 @@ require (
 	github.com/jackc/pgx/v5 v5.7.6
 	github.com/k0kubun/pp v3.0.1+incompatible
 	github.com/nikunjy/rules v1.5.0
+	github.com/pkg/sftp v1.13.6
 	github.com/segmentio/kafka-go v0.4.49
 	github.com/spf13/viper v1.21.0
 	github.com/stretchr/testify v1.11.1
@@ -71,7 +72,6 @@ require (
 	github.com/paulmach/orb v0.12.0 // indirect
 	github.com/pelletier/go-toml/v2 v2.2.4 // indirect
 	github.com/pierrec/lz4/v4 v4.1.22 // indirect
-	github.com/pkg/sftp v1.13.6 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/quic-go/qpack v0.6.0 // indirect
 	github.com/quic-go/quic-go v0.57.1 // indirect

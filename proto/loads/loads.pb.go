@@ -4025,10 +4025,11 @@ type PayBatchTrip struct {
 	LoadedMiles    float64                `protobuf:"fixed64,14,opt,name=loaded_miles,json=loadedMiles,proto3" json:"loaded_miles,omitempty"`
 	EmptyMiles     float64                `protobuf:"fixed64,15,opt,name=empty_miles,json=emptyMiles,proto3" json:"empty_miles,omitempty"`
 	TotalMiles     float64                `protobuf:"fixed64,16,opt,name=total_miles,json=totalMiles,proto3" json:"total_miles,omitempty"`
-	TotalPay       float64                `protobuf:"fixed64,17,opt,name=total_pay,json=totalPay,proto3" json:"total_pay,omitempty"`          // shipment.total_pay
-	DriverGross    float64                `protobuf:"fixed64,18,opt,name=driver_gross,json=driverGross,proto3" json:"driver_gross,omitempty"` // расчётная зарплата водителя (если известна)
-	Rate           float64                `protobuf:"fixed64,19,opt,name=rate,proto3" json:"rate,omitempty"`                                  // shipment.rpm
-	TruckUnit      string                 `protobuf:"bytes,20,opt,name=truck_unit,json=truckUnit,proto3" json:"truck_unit,omitempty"`         // truck.license / number, "" если нет
+	TotalPay       float64                `protobuf:"fixed64,17,opt,name=total_pay,json=totalPay,proto3" json:"total_pay,omitempty"`           // shipment.total_pay
+	DriverGross    float64                `protobuf:"fixed64,18,opt,name=driver_gross,json=driverGross,proto3" json:"driver_gross,omitempty"`  // расчётная зарплата водителя (если известна)
+	Rate           float64                `protobuf:"fixed64,19,opt,name=rate,proto3" json:"rate,omitempty"`                                   // shipment.rpm
+	TruckUnit      string                 `protobuf:"bytes,20,opt,name=truck_unit,json=truckUnit,proto3" json:"truck_unit,omitempty"`          // truck.license / number, "" если нет
+	ShipmentId     *string                `protobuf:"bytes,21,opt,name=shipment_id,json=shipmentId,proto3,oneof" json:"shipment_id,omitempty"` // trip.shipment_id (UUID), для backend-accounting trip→shipment маппинга
 	unknownFields  protoimpl.UnknownFields
 	sizeCache      protoimpl.SizeCache
 }
@@ -4199,6 +4200,13 @@ func (x *PayBatchTrip) GetRate() float64 {
 func (x *PayBatchTrip) GetTruckUnit() string {
 	if x != nil {
 		return x.TruckUnit
+	}
+	return ""
+}
+
+func (x *PayBatchTrip) GetShipmentId() string {
+	if x != nil && x.ShipmentId != nil {
+		return *x.ShipmentId
 	}
 	return ""
 }
@@ -4534,7 +4542,7 @@ const file_loads_loads_proto_rawDesc = "" +
 	"\n" +
 	"company_id\x18\x01 \x01(\tR\tcompanyId\x12\x1f\n" +
 	"\vshipment_id\x18\x02 \x01(\tR\n" +
-	"shipmentId\"\xf3\x05\n" +
+	"shipmentId\"\xa9\x06\n" +
 	"\fPayBatchTrip\x12\x17\n" +
 	"\atrip_id\x18\x01 \x01(\tR\x06tripId\x12\x1f\n" +
 	"\vtrip_number\x18\x02 \x01(\tR\n" +
@@ -4564,11 +4572,14 @@ const file_loads_loads_proto_rawDesc = "" +
 	"\fdriver_gross\x18\x12 \x01(\x01R\vdriverGross\x12\x12\n" +
 	"\x04rate\x18\x13 \x01(\x01R\x04rate\x12\x1d\n" +
 	"\n" +
-	"truck_unit\x18\x14 \x01(\tR\ttruckUnitB\n" +
+	"truck_unit\x18\x14 \x01(\tR\ttruckUnit\x12$\n" +
+	"\vshipment_id\x18\x15 \x01(\tH\x02R\n" +
+	"shipmentId\x88\x01\x01B\n" +
 	"\n" +
 	"\b_load_idB\f\n" +
 	"\n" +
-	"_driver_id*\x83\x03\n" +
+	"_driver_idB\x0e\n" +
+	"\f_shipment_id*\x83\x03\n" +
 	"\x0eShipmentStatus\x12\x1f\n" +
 	"\x1bSHIPMENT_STATUS_UNSPECIFIED\x10\x00\x12\x1b\n" +
 	"\x17SHIPMENT_STATUS_PENDING\x10\x01\x12\x1d\n" +

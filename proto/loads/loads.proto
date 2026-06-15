@@ -670,5 +670,7 @@ message PayBatchTrip {
   double driver_gross = 18;  // расчётная зарплата водителя (если известна)
   double rate         = 19;  // shipment.rpm
   string truck_unit   = 20;  // truck.license / number, "" если нет
+
+  optional string shipment_id = 21;  // trip.shipment_id (UUID), для backend-accounting trip→shipment маппинга
 }
 

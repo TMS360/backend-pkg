@@ -24,6 +24,7 @@ const _ = grpc.SupportPackageIsVersion9
 
 const (
 	LoadsService_GetDriverTripDetails_FullMethodName        = "/loads.LoadsService/GetDriverTripDetails"
+	LoadsService_DriverHasActiveTrip_FullMethodName         = "/loads.LoadsService/DriverHasActiveTrip"
 	LoadsService_GetRecentBrokerIDs_FullMethodName          = "/loads.LoadsService/GetRecentBrokerIDs"
 	LoadsService_GetShipment_FullMethodName                 = "/loads.LoadsService/GetShipment"
 	LoadsService_ListShipments_FullMethodName               = "/loads.LoadsService/ListShipments"
@@ -56,6 +57,8 @@ const (
 type LoadsServiceClient interface {
 	// Get driver performance metrics
 	GetDriverTripDetails(ctx context.Context, in *GetDriverTripDetailsRequest, opts ...grpc.CallOption) (*GetDriverTripDetailsResponse, error)
+	// DriverHasActiveTrip
+	DriverHasActiveTrip(ctx context.Context, in *DriverHasActiveTripRequest, opts ...grpc.CallOption) (*DriverHasActiveTripResponse, error)
 	GetRecentBrokerIDs(ctx context.Context, in *GetRecentBrokerIDsRequest, opts ...grpc.CallOption) (*GetRecentBrokerIDsResponse, error)
 	// Get shipment by ID
 	GetShipment(ctx context.Context, in *GetShipmentRequest, opts ...grpc.CallOption) (*ShipmentResponse, error)
@@ -145,6 +148,16 @@ func (c *loadsServiceClient) GetDriverTripDetails(ctx context.Context, in *GetDr
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(GetDriverTripDetailsResponse)
 	err := c.cc.Invoke(ctx, LoadsService_GetDriverTripDetails_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *loadsServiceClient) DriverHasActiveTrip(ctx context.Context, in *DriverHasActiveTripRequest, opts ...grpc.CallOption) (*DriverHasActiveTripResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(DriverHasActiveTripResponse)
+	err := c.cc.Invoke(ctx, LoadsService_DriverHasActiveTrip_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -388,6 +401,8 @@ func (c *loadsServiceClient) GetTripIDsByShipment(ctx context.Context, in *GetTr
 type LoadsServiceServer interface {
 	// Get driver performance metrics
 	GetDriverTripDetails(context.Context, *GetDriverTripDetailsRequest) (*GetDriverTripDetailsResponse, error)
+	// DriverHasActiveTrip
+	DriverHasActiveTrip(context.Context, *DriverHasActiveTripRequest) (*DriverHasActiveTripResponse, error)
 	GetRecentBrokerIDs(context.Context, *GetRecentBrokerIDsRequest) (*GetRecentBrokerIDsResponse, error)
 	// Get shipment by ID
 	GetShipment(context.Context, *GetShipmentRequest) (*ShipmentResponse, error)
@@ -475,6 +490,9 @@ type UnimplementedLoadsServiceServer struct{}
 
 func (UnimplementedLoadsServiceServer) GetDriverTripDetails(context.Context, *GetDriverTripDetailsRequest) (*GetDriverTripDetailsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetDriverTripDetails not implemented")
+}
+func (UnimplementedLoadsServiceServer) DriverHasActiveTrip(context.Context, *DriverHasActiveTripRequest) (*DriverHasActiveTripResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method DriverHasActiveTrip not implemented")
 }
 func (UnimplementedLoadsServiceServer) GetRecentBrokerIDs(context.Context, *GetRecentBrokerIDsRequest) (*GetRecentBrokerIDsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetRecentBrokerIDs not implemented")
@@ -577,6 +595,24 @@ func _LoadsService_GetDriverTripDetails_Handler(srv interface{}, ctx context.Con
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(LoadsServiceServer).GetDriverTripDetails(ctx, req.(*GetDriverTripDetailsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _LoadsService_DriverHasActiveTrip_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DriverHasActiveTripRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(LoadsServiceServer).DriverHasActiveTrip(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: LoadsService_DriverHasActiveTrip_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(LoadsServiceServer).DriverHasActiveTrip(ctx, req.(*DriverHasActiveTripRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -980,6 +1016,10 @@ var LoadsService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetDriverTripDetails",
 			Handler:    _LoadsService_GetDriverTripDetails_Handler,
+		},
+		{
+			MethodName: "DriverHasActiveTrip",
+			Handler:    _LoadsService_DriverHasActiveTrip_Handler,
 		},
 		{
 			MethodName: "GetRecentBrokerIDs",

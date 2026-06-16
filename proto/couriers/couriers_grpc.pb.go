@@ -27,6 +27,7 @@ const (
 	CouriersService_GetUsersByIds_FullMethodName   = "/couriers.CouriersService/GetUsersByIds"
 	CouriersService_ResolveIDs_FullMethodName      = "/couriers.CouriersService/ResolveIDs"
 	CouriersService_ListOfficeUsers_FullMethodName = "/couriers.CouriersService/ListOfficeUsers"
+	CouriersService_ListDrivers_FullMethodName     = "/couriers.CouriersService/ListDrivers"
 	CouriersService_ListUserFiles_FullMethodName   = "/couriers.CouriersService/ListUserFiles"
 )
 
@@ -40,6 +41,10 @@ type CouriersServiceClient interface {
 	ResolveIDs(ctx context.Context, in *UserFilter, opts ...grpc.CallOption) (*filters.IDsResponse, error)
 	// Returns user_ids of all users in company with role ∉ {driver, super_admin}.
 	ListOfficeUsers(ctx context.Context, in *ListOfficeUsersRequest, opts ...grpc.CallOption) (*ListOfficeUsersResponse, error)
+	// Returns user_ids of ALL drivers (role = driver) in the company — no status
+	// filter (active + inactive). Used by backend-accounting's pay-batch
+	// "Add driver" picker (availableDriversForBatch).
+	ListDrivers(ctx context.Context, in *ListDriversRequest, opts ...grpc.CallOption) (*ListDriversResponse, error)
 	// ListUserFiles returns user_files attached to a (entity_type, entity_id) pair
 	// within the requesting actor's tenant. Used by the driver-app aggregator in
 	// tms-loads to surface a driver's personal documents (license, medical card, etc.).
@@ -94,6 +99,16 @@ func (c *couriersServiceClient) ListOfficeUsers(ctx context.Context, in *ListOff
 	return out, nil
 }
 
+func (c *couriersServiceClient) ListDrivers(ctx context.Context, in *ListDriversRequest, opts ...grpc.CallOption) (*ListDriversResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListDriversResponse)
+	err := c.cc.Invoke(ctx, CouriersService_ListDrivers_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *couriersServiceClient) ListUserFiles(ctx context.Context, in *ListUserFilesRequest, opts ...grpc.CallOption) (*ListUserFilesResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(ListUserFilesResponse)
@@ -114,6 +129,10 @@ type CouriersServiceServer interface {
 	ResolveIDs(context.Context, *UserFilter) (*filters.IDsResponse, error)
 	// Returns user_ids of all users in company with role ∉ {driver, super_admin}.
 	ListOfficeUsers(context.Context, *ListOfficeUsersRequest) (*ListOfficeUsersResponse, error)
+	// Returns user_ids of ALL drivers (role = driver) in the company — no status
+	// filter (active + inactive). Used by backend-accounting's pay-batch
+	// "Add driver" picker (availableDriversForBatch).
+	ListDrivers(context.Context, *ListDriversRequest) (*ListDriversResponse, error)
 	// ListUserFiles returns user_files attached to a (entity_type, entity_id) pair
 	// within the requesting actor's tenant. Used by the driver-app aggregator in
 	// tms-loads to surface a driver's personal documents (license, medical card, etc.).
@@ -139,6 +158,9 @@ func (UnimplementedCouriersServiceServer) ResolveIDs(context.Context, *UserFilte
 }
 func (UnimplementedCouriersServiceServer) ListOfficeUsers(context.Context, *ListOfficeUsersRequest) (*ListOfficeUsersResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListOfficeUsers not implemented")
+}
+func (UnimplementedCouriersServiceServer) ListDrivers(context.Context, *ListDriversRequest) (*ListDriversResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListDrivers not implemented")
 }
 func (UnimplementedCouriersServiceServer) ListUserFiles(context.Context, *ListUserFilesRequest) (*ListUserFilesResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListUserFiles not implemented")
@@ -236,6 +258,24 @@ func _CouriersService_ListOfficeUsers_Handler(srv interface{}, ctx context.Conte
 	return interceptor(ctx, in, info, handler)
 }
 
+func _CouriersService_ListDrivers_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListDriversRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CouriersServiceServer).ListDrivers(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: CouriersService_ListDrivers_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CouriersServiceServer).ListDrivers(ctx, req.(*ListDriversRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _CouriersService_ListUserFiles_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(ListUserFilesRequest)
 	if err := dec(in); err != nil {
@@ -276,6 +316,10 @@ var CouriersService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ListOfficeUsers",
 			Handler:    _CouriersService_ListOfficeUsers_Handler,
+		},
+		{
+			MethodName: "ListDrivers",
+			Handler:    _CouriersService_ListDrivers_Handler,
 		},
 		{
 			MethodName: "ListUserFiles",

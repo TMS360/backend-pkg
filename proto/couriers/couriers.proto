@@ -19,6 +19,11 @@ service CouriersService {
   // Returns user_ids of all users in company with role ∉ {driver, super_admin}.
   rpc ListOfficeUsers(ListOfficeUsersRequest) returns (ListOfficeUsersResponse);
 
+  // Returns user_ids of ALL drivers (role = driver) in the company — no status
+  // filter (active + inactive). Used by backend-accounting's pay-batch
+  // "Add driver" picker (availableDriversForBatch).
+  rpc ListDrivers(ListDriversRequest) returns (ListDriversResponse);
+
   // ListUserFiles returns user_files attached to a (entity_type, entity_id) pair
   // within the requesting actor's tenant. Used by the driver-app aggregator in
   // tms-loads to surface a driver's personal documents (license, medical card, etc.).
@@ -58,6 +63,14 @@ message ListOfficeUsersRequest {
 }
 
 message ListOfficeUsersResponse {
+  repeated string user_ids = 1;
+}
+
+message ListDriversRequest {
+  string company_id = 1;
+}
+
+message ListDriversResponse {
   repeated string user_ids = 1;
 }
 

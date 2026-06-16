@@ -4008,30 +4008,31 @@ func (x *GetTripIDsByShipmentRequest) GetShipmentId() string {
 // Детали trip-а, нужные backend-accounting чтобы создать pay_batch
 // из пре-выбранного списка trip-ов (createPayBatch(tripIds)).
 type PayBatchTrip struct {
-	state          protoimpl.MessageState `protogen:"open.v1"`
-	TripId         string                 `protobuf:"bytes,1,opt,name=trip_id,json=tripId,proto3" json:"trip_id,omitempty"`
-	TripNumber     string                 `protobuf:"bytes,2,opt,name=trip_number,json=tripNumber,proto3" json:"trip_number,omitempty"`
-	LoadId         *string                `protobuf:"bytes,3,opt,name=load_id,json=loadId,proto3,oneof" json:"load_id,omitempty"` // shipment.load_id (display number)
-	LoadNumber     string                 `protobuf:"bytes,4,opt,name=load_number,json=loadNumber,proto3" json:"load_number,omitempty"`
-	DriverId       *string                `protobuf:"bytes,5,opt,name=driver_id,json=driverId,proto3,oneof" json:"driver_id,omitempty"`             // main driver ID, если есть
-	DriverName     string                 `protobuf:"bytes,6,opt,name=driver_name,json=driverName,proto3" json:"driver_name,omitempty"`             // опционально; "" если backend-load не знает (лежит в teams)
-	ShipmentStatus string                 `protobuf:"bytes,7,opt,name=shipment_status,json=shipmentStatus,proto3" json:"shipment_status,omitempty"` // IN_TRANSIT / DELIVERED / COMPLETED / READY_FOR_BILLING
-	PickupDate     *timestamppb.Timestamp `protobuf:"bytes,8,opt,name=pickup_date,json=pickupDate,proto3" json:"pickup_date,omitempty"`             // COALESCE(first_stop.checked_in_at, first_leg.appointment_from)
-	DeliveryDate   *timestamppb.Timestamp `protobuf:"bytes,9,opt,name=delivery_date,json=deliveryDate,proto3" json:"delivery_date,omitempty"`       // COALESCE(last_stop.checked_in_at,  last_leg.appointment_from)
-	PickupCity     string                 `protobuf:"bytes,10,opt,name=pickup_city,json=pickupCity,proto3" json:"pickup_city,omitempty"`
-	PickupState    string                 `protobuf:"bytes,11,opt,name=pickup_state,json=pickupState,proto3" json:"pickup_state,omitempty"`
-	DeliveryCity   string                 `protobuf:"bytes,12,opt,name=delivery_city,json=deliveryCity,proto3" json:"delivery_city,omitempty"`
-	DeliveryState  string                 `protobuf:"bytes,13,opt,name=delivery_state,json=deliveryState,proto3" json:"delivery_state,omitempty"`
-	LoadedMiles    float64                `protobuf:"fixed64,14,opt,name=loaded_miles,json=loadedMiles,proto3" json:"loaded_miles,omitempty"`
-	EmptyMiles     float64                `protobuf:"fixed64,15,opt,name=empty_miles,json=emptyMiles,proto3" json:"empty_miles,omitempty"`
-	TotalMiles     float64                `protobuf:"fixed64,16,opt,name=total_miles,json=totalMiles,proto3" json:"total_miles,omitempty"`
-	TotalPay       float64                `protobuf:"fixed64,17,opt,name=total_pay,json=totalPay,proto3" json:"total_pay,omitempty"`           // shipment.total_pay
-	DriverGross    float64                `protobuf:"fixed64,18,opt,name=driver_gross,json=driverGross,proto3" json:"driver_gross,omitempty"`  // расчётная зарплата водителя (если известна)
-	Rate           float64                `protobuf:"fixed64,19,opt,name=rate,proto3" json:"rate,omitempty"`                                   // shipment.rpm
-	TruckUnit      string                 `protobuf:"bytes,20,opt,name=truck_unit,json=truckUnit,proto3" json:"truck_unit,omitempty"`          // truck.license / number, "" если нет
-	ShipmentId     *string                `protobuf:"bytes,21,opt,name=shipment_id,json=shipmentId,proto3,oneof" json:"shipment_id,omitempty"` // trip.shipment_id (UUID), для backend-accounting trip→shipment маппинга
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	state             protoimpl.MessageState `protogen:"open.v1"`
+	TripId            string                 `protobuf:"bytes,1,opt,name=trip_id,json=tripId,proto3" json:"trip_id,omitempty"`
+	TripNumber        string                 `protobuf:"bytes,2,opt,name=trip_number,json=tripNumber,proto3" json:"trip_number,omitempty"`
+	LoadId            *string                `protobuf:"bytes,3,opt,name=load_id,json=loadId,proto3,oneof" json:"load_id,omitempty"` // shipment.load_id (display number)
+	LoadNumber        string                 `protobuf:"bytes,4,opt,name=load_number,json=loadNumber,proto3" json:"load_number,omitempty"`
+	DriverId          *string                `protobuf:"bytes,5,opt,name=driver_id,json=driverId,proto3,oneof" json:"driver_id,omitempty"`             // main driver ID, если есть
+	DriverName        string                 `protobuf:"bytes,6,opt,name=driver_name,json=driverName,proto3" json:"driver_name,omitempty"`             // опционально; "" если backend-load не знает (лежит в teams)
+	ShipmentStatus    string                 `protobuf:"bytes,7,opt,name=shipment_status,json=shipmentStatus,proto3" json:"shipment_status,omitempty"` // IN_TRANSIT / DELIVERED / COMPLETED / READY_FOR_BILLING
+	PickupDate        *timestamppb.Timestamp `protobuf:"bytes,8,opt,name=pickup_date,json=pickupDate,proto3" json:"pickup_date,omitempty"`             // COALESCE(first_stop.checked_in_at, first_leg.appointment_from)
+	DeliveryDate      *timestamppb.Timestamp `protobuf:"bytes,9,opt,name=delivery_date,json=deliveryDate,proto3" json:"delivery_date,omitempty"`       // COALESCE(last_stop.checked_in_at,  last_leg.appointment_from)
+	PickupCity        string                 `protobuf:"bytes,10,opt,name=pickup_city,json=pickupCity,proto3" json:"pickup_city,omitempty"`
+	PickupState       string                 `protobuf:"bytes,11,opt,name=pickup_state,json=pickupState,proto3" json:"pickup_state,omitempty"`
+	DeliveryCity      string                 `protobuf:"bytes,12,opt,name=delivery_city,json=deliveryCity,proto3" json:"delivery_city,omitempty"`
+	DeliveryState     string                 `protobuf:"bytes,13,opt,name=delivery_state,json=deliveryState,proto3" json:"delivery_state,omitempty"`
+	LoadedMiles       float64                `protobuf:"fixed64,14,opt,name=loaded_miles,json=loadedMiles,proto3" json:"loaded_miles,omitempty"`
+	EmptyMiles        float64                `protobuf:"fixed64,15,opt,name=empty_miles,json=emptyMiles,proto3" json:"empty_miles,omitempty"`
+	TotalMiles        float64                `protobuf:"fixed64,16,opt,name=total_miles,json=totalMiles,proto3" json:"total_miles,omitempty"`
+	TotalPay          float64                `protobuf:"fixed64,17,opt,name=total_pay,json=totalPay,proto3" json:"total_pay,omitempty"`                                  // shipment.total_pay
+	DriverGross       float64                `protobuf:"fixed64,18,opt,name=driver_gross,json=driverGross,proto3" json:"driver_gross,omitempty"`                         // расчётная зарплата водителя (если известна)
+	Rate              float64                `protobuf:"fixed64,19,opt,name=rate,proto3" json:"rate,omitempty"`                                                          // shipment.rpm
+	TruckUnit         string                 `protobuf:"bytes,20,opt,name=truck_unit,json=truckUnit,proto3" json:"truck_unit,omitempty"`                                 // truck.license / number, "" если нет
+	ShipmentId        *string                `protobuf:"bytes,21,opt,name=shipment_id,json=shipmentId,proto3,oneof" json:"shipment_id,omitempty"`                        // trip.shipment_id (UUID), для backend-accounting trip→shipment маппинга
+	SecondaryDriverId *string                `protobuf:"bytes,22,opt,name=secondary_driver_id,json=secondaryDriverId,proto3,oneof" json:"secondary_driver_id,omitempty"` // trip.secondary_driver_id (team driver), если есть
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
 }
 
 func (x *PayBatchTrip) Reset() {
@@ -4207,6 +4208,13 @@ func (x *PayBatchTrip) GetTruckUnit() string {
 func (x *PayBatchTrip) GetShipmentId() string {
 	if x != nil && x.ShipmentId != nil {
 		return *x.ShipmentId
+	}
+	return ""
+}
+
+func (x *PayBatchTrip) GetSecondaryDriverId() string {
+	if x != nil && x.SecondaryDriverId != nil {
+		return *x.SecondaryDriverId
 	}
 	return ""
 }
@@ -4542,7 +4550,7 @@ const file_loads_loads_proto_rawDesc = "" +
 	"\n" +
 	"company_id\x18\x01 \x01(\tR\tcompanyId\x12\x1f\n" +
 	"\vshipment_id\x18\x02 \x01(\tR\n" +
-	"shipmentId\"\xa9\x06\n" +
+	"shipmentId\"\xf6\x06\n" +
 	"\fPayBatchTrip\x12\x17\n" +
 	"\atrip_id\x18\x01 \x01(\tR\x06tripId\x12\x1f\n" +
 	"\vtrip_number\x18\x02 \x01(\tR\n" +
@@ -4574,12 +4582,14 @@ const file_loads_loads_proto_rawDesc = "" +
 	"\n" +
 	"truck_unit\x18\x14 \x01(\tR\ttruckUnit\x12$\n" +
 	"\vshipment_id\x18\x15 \x01(\tH\x02R\n" +
-	"shipmentId\x88\x01\x01B\n" +
+	"shipmentId\x88\x01\x01\x123\n" +
+	"\x13secondary_driver_id\x18\x16 \x01(\tH\x03R\x11secondaryDriverId\x88\x01\x01B\n" +
 	"\n" +
 	"\b_load_idB\f\n" +
 	"\n" +
 	"_driver_idB\x0e\n" +
-	"\f_shipment_id*\x83\x03\n" +
+	"\f_shipment_idB\x16\n" +
+	"\x14_secondary_driver_id*\x83\x03\n" +
 	"\x0eShipmentStatus\x12\x1f\n" +
 	"\x1bSHIPMENT_STATUS_UNSPECIFIED\x10\x00\x12\x1b\n" +
 	"\x17SHIPMENT_STATUS_PENDING\x10\x01\x12\x1d\n" +

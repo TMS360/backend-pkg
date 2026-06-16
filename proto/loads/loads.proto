@@ -14,6 +14,9 @@ service LoadsService {
   // Get driver performance metrics
   rpc GetDriverTripDetails (GetDriverTripDetailsRequest) returns (GetDriverTripDetailsResponse);
 
+  // DriverHasActiveTrip
+  rpc DriverHasActiveTrip (DriverHasActiveTripRequest) returns (DriverHasActiveTripResponse);
+
   rpc GetRecentBrokerIDs(GetRecentBrokerIDsRequest) returns (GetRecentBrokerIDsResponse);
 
   // Get shipment by ID
@@ -114,6 +117,15 @@ service LoadsService {
   // Reuses filters.IDsResponse — payload is just a list of UUID strings.
   rpc GetTripIDsByShipment(GetTripIDsByShipmentRequest)
       returns (filters.IDsResponse);
+}
+
+message DriverHasActiveTripRequest {
+  string driver_id  = 1;
+}
+
+message DriverHasActiveTripResponse {
+  bool        has_active_trip = 1;
+  TripDetails active_trip      = 2; // nil/unset если has_active_trip = false
 }
 
 message ShipmentFilterRequest {

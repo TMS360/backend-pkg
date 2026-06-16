@@ -124,7 +124,6 @@ func (gh *Handler) Middleware() gin.HandlerFunc {
 // Directive implements @authGuest(resource: "shipment")
 func (gh *Handler) Directive(ctx context.Context, obj interface{}, next graphql.Resolver, resource string) (interface{}, error) {
 	actor, err := middleware.GetActor(ctx)
-	fmt.Printf("Directive called for resource '%s', actor: %+v, err: %v\n", resource, actor, err)
 	if err != nil {
 		return nil, consts.ErrUnauthorized
 	}

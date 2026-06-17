@@ -440,7 +440,7 @@ func (PayBatchTimeType) EnumDescriptor() ([]byte, []int) {
 
 type DriverHasActiveTripRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	DriverId      string                 `protobuf:"bytes,1,opt,name=driver_id,json=driverId,proto3" json:"driver_id,omitempty"`
+	DriverCrewId  string                 `protobuf:"bytes,1,opt,name=driver_crew_id,json=driverCrewId,proto3" json:"driver_crew_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -475,9 +475,9 @@ func (*DriverHasActiveTripRequest) Descriptor() ([]byte, []int) {
 	return file_loads_loads_proto_rawDescGZIP(), []int{0}
 }
 
-func (x *DriverHasActiveTripRequest) GetDriverId() string {
+func (x *DriverHasActiveTripRequest) GetDriverCrewId() string {
 	if x != nil {
-		return x.DriverId
+		return x.DriverCrewId
 	}
 	return ""
 }
@@ -4319,9 +4319,9 @@ var File_loads_loads_proto protoreflect.FileDescriptor
 
 const file_loads_loads_proto_rawDesc = "" +
 	"\n" +
-	"\x11loads/loads.proto\x12\x05loads\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x15filters/filters.proto\"9\n" +
-	"\x1aDriverHasActiveTripRequest\x12\x1b\n" +
-	"\tdriver_id\x18\x01 \x01(\tR\bdriverId\"z\n" +
+	"\x11loads/loads.proto\x12\x05loads\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x15filters/filters.proto\"B\n" +
+	"\x1aDriverHasActiveTripRequest\x12$\n" +
+	"\x0edriver_crew_id\x18\x01 \x01(\tR\fdriverCrewId\"z\n" +
 	"\x1bDriverHasActiveTripResponse\x12&\n" +
 	"\x0fhas_active_trip\x18\x01 \x01(\bR\rhasActiveTrip\x123\n" +
 	"\vactive_trip\x18\x02 \x01(\v2\x12.loads.TripDetailsR\n" +

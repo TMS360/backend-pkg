@@ -120,7 +120,7 @@ service LoadsService {
 }
 
 message DriverHasActiveTripRequest {
-  string driver_id  = 1;
+  string driver_crew_id  = 1;
 }
 
 message DriverHasActiveTripResponse {

@@ -72,6 +72,7 @@ var PermissionCatalog = []PermissionCatalogEntry{
 	{Code: "drivers.scheduled_payments", ParentCode: "drivers", Label: "Scheduled payments", Actions: []string{"view", "create", "edit", "delete"}},
 	{Code: "drivers.one_time_charges", ParentCode: "drivers", Label: "One-time charges", Actions: []string{"view", "create", "edit", "delete"}},
 	{Code: "drivers.weekly_deductions", ParentCode: "drivers", Label: "Weekly deductions", Actions: []string{"view", "create", "edit", "delete"}},
+	{Code: "drivers.driver_absences", ParentCode: "drivers", Label: "Driver absences", Actions: []string{"view", "create", "edit", "delete"}},
 
 	// === teams entities ===
 	{Code: "teams.teams", ParentCode: "teams", Label: "Teams", Actions: []string{"view", "edit"}},

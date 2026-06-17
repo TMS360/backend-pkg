@@ -79,7 +79,7 @@ service LoadsService {
 
   // Returns trips eligible for MANUAL addition to a Driver Pay Statement:
   //   - trips.main_driver_id == driver_id
-  //   - shipment.status IN (DELIVERED, COMPLETED, READY_FOR_BILLING)
+  //   - shipment.status IN (DELIVERED, COMPLETED, READY_FOR_BILLING, INVOICED, PAID, TONU)
   // No period filter (unlike GetTripsForPayBatch). Caller (accounting) performs
   // busy-statement / busy-batch exclusion in-memory after the response, so the
   // request stays minimal.
@@ -535,7 +535,8 @@ message GetUnbilledDriverTripsRequest {
 
 message GetUnbilledDriverTripsResponse {
   // Trips of `driver_id` where shipment.status IN
-  // (DELIVERED, COMPLETED, READY_FOR_BILLING). No period filter applied.
+  // (DELIVERED, COMPLETED, READY_FOR_BILLING, INVOICED, PAID, TONU).
+  // No period filter applied.
   repeated PayBatchTrip trips = 1;
 }
 

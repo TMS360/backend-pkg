@@ -104,7 +104,7 @@ type LoadsServiceClient interface {
 	GetTripsByIDs(ctx context.Context, in *GetTripsByIDsRequest, opts ...grpc.CallOption) (*GetTripsByIDsResponse, error)
 	// Returns trips eligible for MANUAL addition to a Driver Pay Statement:
 	//   - trips.main_driver_id == driver_id
-	//   - shipment.status IN (DELIVERED, COMPLETED, READY_FOR_BILLING)
+	//   - shipment.status IN (DELIVERED, COMPLETED, READY_FOR_BILLING, INVOICED, PAID, TONU)
 	//
 	// No period filter (unlike GetTripsForPayBatch). Caller (accounting) performs
 	// busy-statement / busy-batch exclusion in-memory after the response, so the
@@ -448,7 +448,7 @@ type LoadsServiceServer interface {
 	GetTripsByIDs(context.Context, *GetTripsByIDsRequest) (*GetTripsByIDsResponse, error)
 	// Returns trips eligible for MANUAL addition to a Driver Pay Statement:
 	//   - trips.main_driver_id == driver_id
-	//   - shipment.status IN (DELIVERED, COMPLETED, READY_FOR_BILLING)
+	//   - shipment.status IN (DELIVERED, COMPLETED, READY_FOR_BILLING, INVOICED, PAID, TONU)
 	//
 	// No period filter (unlike GetTripsForPayBatch). Caller (accounting) performs
 	// busy-statement / busy-batch exclusion in-memory after the response, so the

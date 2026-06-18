@@ -42,6 +42,10 @@ message Customer {
   // emails the invoice PDF for direct-pay (non-factored) customers. Empty
   // string when not configured (send is blocked, mark-sent-manually allowed).
   string billing_email = 7;
+  // Payment terms in net days from CustomerBilling.terms_day (Net 30 → 30).
+  // Absent when not configured — accounting then leaves the invoice's existing
+  // terms / due date untouched.
+  optional int32 terms_day = 8;
 }
 
 message Factoring {

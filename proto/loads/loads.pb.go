@@ -3376,7 +3376,8 @@ func (x *GetUnbilledDriverTripsRequest) GetDriverId() string {
 type GetUnbilledDriverTripsResponse struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Trips of `driver_id` where shipment.status IN
-	// (DELIVERED, COMPLETED, READY_FOR_BILLING). No period filter applied.
+	// (DELIVERED, COMPLETED, READY_FOR_BILLING, INVOICED, PAID, TONU).
+	// No period filter applied.
 	Trips         []*PayBatchTrip `protobuf:"bytes,1,rep,name=trips,proto3" json:"trips,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache

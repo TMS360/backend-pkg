@@ -133,7 +133,11 @@ type Customer struct {
 	// Billing email from CustomerBilling.billing_email — where backend-accounting
 	// emails the invoice PDF for direct-pay (non-factored) customers. Empty
 	// string when not configured (send is blocked, mark-sent-manually allowed).
-	BillingEmail  string `protobuf:"bytes,7,opt,name=billing_email,json=billingEmail,proto3" json:"billing_email,omitempty"`
+	BillingEmail string `protobuf:"bytes,7,opt,name=billing_email,json=billingEmail,proto3" json:"billing_email,omitempty"`
+	// Payment terms in net days from CustomerBilling.terms_day (Net 30 → 30).
+	// Absent when not configured — accounting then leaves the invoice's existing
+	// terms / due date untouched.
+	TermsDay      *int32 `protobuf:"varint,8,opt,name=terms_day,json=termsDay,proto3,oneof" json:"terms_day,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -217,6 +221,13 @@ func (x *Customer) GetBillingEmail() string {
 	return ""
 }
 
+func (x *Customer) GetTermsDay() int32 {
+	if x != nil && x.TermsDay != nil {
+		return *x.TermsDay
+	}
+	return 0
+}
+
 type Factoring struct {
 	state       protoimpl.MessageState `protogen:"open.v1"`
 	CompanyName string                 `protobuf:"bytes,1,opt,name=company_name,json=companyName,proto3" json:"company_name,omitempty"`
@@ -279,7 +290,7 @@ const file_customers_customers_proto_rawDesc = "" +
 	"\x13GetCustomersRequest\x12!\n" +
 	"\fcustomer_ids\x18\x01 \x03(\tR\vcustomerIds\"I\n" +
 	"\x14GetCustomersResponse\x121\n" +
-	"\tcustomers\x18\x01 \x03(\v2\x13.customers.CustomerR\tcustomers\"\x85\x02\n" +
+	"\tcustomers\x18\x01 \x03(\v2\x13.customers.CustomerR\tcustomers\"\xb5\x02\n" +
 	"\bCustomer\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12!\n" +
 	"\fcompany_name\x18\x02 \x01(\tR\vcompanyName\x12\x1b\n" +
@@ -287,9 +298,12 @@ const file_customers_customers_proto_rawDesc = "" +
 	"\x0fbilling_address\x18\x04 \x01(\tR\x0ebillingAddress\x127\n" +
 	"\tfactoring\x18\x05 \x01(\v2\x14.customers.FactoringH\x00R\tfactoring\x88\x01\x01\x12\x14\n" +
 	"\x05usdot\x18\x06 \x01(\tR\x05usdot\x12#\n" +
-	"\rbilling_email\x18\a \x01(\tR\fbillingEmailB\f\n" +
+	"\rbilling_email\x18\a \x01(\tR\fbillingEmail\x12 \n" +
+	"\tterms_day\x18\b \x01(\x05H\x01R\btermsDay\x88\x01\x01B\f\n" +
 	"\n" +
-	"_factoring\"I\n" +
+	"_factoringB\f\n" +
+	"\n" +
+	"_terms_day\"I\n" +
 	"\tFactoring\x12!\n" +
 	"\fcompany_name\x18\x01 \x01(\tR\vcompanyName\x12\x19\n" +
 	"\bremit_to\x18\x02 \x01(\tR\aremitTo2b\n" +

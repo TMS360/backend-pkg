@@ -1,5 +1,10 @@
 package response
 
+import (
+	"fmt"
+	"log/slog"
+)
+
 type PublicError interface {
 	Error() string
 	UserMessage() string
@@ -31,5 +36,6 @@ func (e *publicError) ErrorCode() int {
 }
 
 func NewError(tech, user string, status int) PublicError {
+	slog.Error(fmt.Sprintf("[tech=%s,user=%s]", tech, user))
 	return &publicError{Technical: tech, User: user, Status: status}
 }

@@ -1,0 +1,81 @@
+# .github/workflows/require-dev-key.yml
+#
+# Server-side enforcement: every commit in every PR (and every push to
+# protected branches) must have a Jira ticket key (DEV-N) in its subject.
+#
+# Drop this file at .github/workflows/require-dev-key.yml in each TMS360
+# repo. Once added to branch protection as a required status check, it
+# blocks merging PRs that contain non-compliant commits.
+#
+# Pairs with the local commit-msg hook (scripts/git-hooks/commit-msg)
+# in the TMS_documentation repo — the local hook catches the mistake at
+# `git commit` time (fast feedback); this Action catches anyone who
+# bypassed the local hook with --no-verify or who didn't install it.
+
+name: Require Jira key in commit messages
+
+on:
+  pull_request:
+    branches: [main, develop]
+  push:
+    branches: [main, develop]
+
+jobs:
+  commit-message-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v4
+        with:
+          # Need the full PR commit range, not just the merge commit.
+          fetch-depth: 0
+
+      - name: Validate commit subjects contain DEV-N
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          # Determine commit range.
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            BASE="${{ github.event.pull_request.base.sha }}"
+            HEAD="${{ github.event.pull_request.head.sha }}"
+          else
+            # Push to protected branch — check only the pushed range.
+            BASE="${{ github.event.before }}"
+            HEAD="${{ github.event.after }}"
+            # On first push of a new branch, `before` is all zeros; fall back to the merge base with default branch.
+            if [[ "$BASE" =~ ^0+$ ]]; then
+              BASE="$(git merge-base origin/main "$HEAD" || echo "$HEAD~10")"
+            fi
+          fi
+
+          echo "Checking commits in range $BASE..$HEAD"
+
+          BAD=0
+          while IFS= read -r line; do
+            sha="${line%% *}"
+            subj="${line#* }"
+            # Skip merge / revert / fixup commits — they're allowed.
+            case "$subj" in
+              "Merge "*|"Revert "*|"fixup! "*|"squash! "*|"amend! "*) continue ;;
+            esac
+            if ! echo "$subj" | grep -qE '\bDEV-[0-9]+\b'; then
+              echo "::error::Commit $sha missing DEV-N key:"
+              echo "    $subj"
+              BAD=$((BAD + 1))
+            fi
+          done < <(git log --no-merges --format='%H %s' "$BASE..$HEAD")
+
+          if [ "$BAD" -gt 0 ]; then
+            echo ""
+            echo "❌ $BAD commit(s) missing DEV-N in subject."
+            echo ""
+            echo "Fix examples (interactive rebase to amend):"
+            echo "    git rebase -i $BASE"
+            echo "    # change 'pick' to 'reword' on offending commits, save, edit message"
+            echo ""
+            echo "To bypass for a one-off urgent merge, an admin can override branch protection."
+            exit 1
+          fi
+
+          echo "✅ All commits have DEV-N key."

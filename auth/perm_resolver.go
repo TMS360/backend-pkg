@@ -57,8 +57,11 @@ func (pr *PermResolver) GetUserPerms(ctx context.Context, userID uuid.UUID) ([]s
 	if perms == nil {
 		perms = []string{}
 	}
-	if cacheErr := cache.Set(ctx, key, perms, PermsCacheTTL); cacheErr != nil {
-		slog.Warn("failed to cache user perms", "userID", userID, "err", cacheErr)
+
+	if len(perms) > 0 {
+		if cacheErr := cache.Set(ctx, key, perms, PermsCacheTTL); cacheErr != nil {
+			slog.Warn("failed to cache user perms", "userID", userID, "err", cacheErr)
+		}
 	}
 
 	return perms, nil

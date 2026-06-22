@@ -9,6 +9,7 @@ import (
 	"github.com/TMS360/backend-pkg/auth"
 	"github.com/TMS360/backend-pkg/consts"
 	"github.com/TMS360/backend-pkg/middleware"
+	"github.com/TMS360/backend-pkg/response"
 )
 
 func AuthDirective(ctx context.Context, obj interface{}, next graphql.Resolver, actorTypes []string) (interface{}, error) {
@@ -90,5 +91,5 @@ func HasPermDirective(ctx context.Context, obj interface{}, next graphql.Resolve
 		}
 	}
 
-	return nil, fmt.Errorf("access denied: missing permission")
+	return nil, response.NewForbidden("access denied: missing permission", "access denied: missing permission")
 }

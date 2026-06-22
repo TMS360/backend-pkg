@@ -238,8 +238,13 @@ type Company struct {
 	// 60504"). City / state / zip components reuse phy_* / mail_* columns
 	// when needed for filtering — this field is the rendered one-liner.
 	BillingAddress string `protobuf:"bytes,19,opt,name=billing_address,json=billingAddress,proto3" json:"billing_address,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// billing_email — dedicated billing contact email rendered in the
+	// "Questions?" line of the Driver Pay Settlement PDF footer. Distinct from
+	// the general `email` (contact). Empty when not configured: the footer line
+	// is omitted.
+	BillingEmail  string `protobuf:"bytes,20,opt,name=billing_email,json=billingEmail,proto3" json:"billing_email,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *Company) Reset() {
@@ -405,6 +410,13 @@ func (x *Company) GetBillingAddress() string {
 	return ""
 }
 
+func (x *Company) GetBillingEmail() string {
+	if x != nil {
+		return x.BillingEmail
+	}
+	return ""
+}
+
 var File_companies_companies_proto protoreflect.FileDescriptor
 
 const file_companies_companies_proto_rawDesc = "" +
@@ -425,7 +437,7 @@ const file_companies_companies_proto_rawDesc = "" +
 	"\vcompany_ids\x18\x01 \x03(\tR\n" +
 	"companyIds\"M\n" +
 	"\x19GetCompaniesByIDsResponse\x120\n" +
-	"\tcompanies\x18\x01 \x03(\v2\x12.companies.CompanyR\tcompanies\"\xaf\x04\n" +
+	"\tcompanies\x18\x01 \x03(\v2\x12.companies.CompanyR\tcompanies\"\xd4\x04\n" +
 	"\aCompany\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x14\n" +
@@ -449,7 +461,8 @@ const file_companies_companies_proto_rawDesc = "" +
 	"mail_state\x18\x10 \x01(\tR\tmailState\x12\x19\n" +
 	"\bmail_zip\x18\x11 \x01(\tR\amailZip\x12!\n" +
 	"\fmail_country\x18\x12 \x01(\tR\vmailCountry\x12'\n" +
-	"\x0fbilling_address\x18\x13 \x01(\tR\x0ebillingAddress2\xae\x01\n" +
+	"\x0fbilling_address\x18\x13 \x01(\tR\x0ebillingAddress\x12#\n" +
+	"\rbilling_email\x18\x14 \x01(\tR\fbillingEmail2\xae\x01\n" +
 	"\x0eCompanyService\x12<\n" +
 	"\n" +
 	"ResolveIDs\x12\x18.companies.CompanyFilter\x1a\x14.filters.IDsResponse\x12^\n" +

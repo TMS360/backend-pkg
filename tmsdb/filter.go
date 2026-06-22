@@ -234,7 +234,7 @@ func (fb *FilterBuilder) String(col string, f *StringFilter) *FilterBuilder {
 		fb.db = fb.db.Where(col+" NOT IN ?", f.NotIn)
 	}
 	if f.Contains != nil {
-		fb.db = fb.db.Where(col+" "+like+" ?", "%"+*f.Contains+"%")
+		fb.db = fb.db.Where(col+" ILIKE ?", "%"+*f.Contains+"%")
 	}
 	if f.StartsWith != nil {
 		fb.db = fb.db.Where(col+" "+like+" ?", *f.StartsWith+"%")

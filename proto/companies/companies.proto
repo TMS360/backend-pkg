@@ -64,4 +64,9 @@ message Company {
   // 60504"). City / state / zip components reuse phy_* / mail_* columns
   // when needed for filtering — this field is the rendered one-liner.
   string billing_address   = 19;
+  // billing_email — dedicated billing contact email rendered in the
+  // "Questions?" line of the Driver Pay Settlement PDF footer. Distinct from
+  // the general `email` (contact). Empty when not configured: the footer line
+  // is omitted.
+  string billing_email     = 20;
 }

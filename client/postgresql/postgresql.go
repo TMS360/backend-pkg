@@ -29,7 +29,13 @@ func EnsureDatabase(cfg config.PostgresSQLConfig) error {
 	initialDSN := fmt.Sprintf("host=%s user=%s password=%s dbname=postgres port=%s sslmode=%s TimeZone=%s",
 		cfg.Host, cfg.User, cfg.Password, cfg.Port, cfg.SSLMode, cfg.TimeZone)
 
-	db, err := gorm.Open(postgres.Open(initialDSN), &gorm.Config{})
+	db, err := gorm.Open(
+		postgres.New(postgres.Config{
+			DSN:                  initialDSN,
+			PreferSimpleProtocol: true,
+		}),
+		&gorm.Config{},
+	)
 	if err != nil {
 		return fmt.Errorf("failed to connect to postgres database: %w", err)
 	}

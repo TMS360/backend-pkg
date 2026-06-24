@@ -70,7 +70,13 @@ func NewClient(cfg config.PostgresSQLConfig) (*gorm.DB, error) {
 
 	fmt.Println("dsn: ", dsn)
 
-	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
+	db, err := gorm.Open(
+		postgres.New(postgres.Config{
+			DSN:                  dsn,
+			PreferSimpleProtocol: true,
+		}),
+		&gorm.Config{},
+	)
 	if err != nil {
 		log.Fatalf("failed to connect database: %v", err)
 	}

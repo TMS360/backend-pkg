@@ -195,3 +195,69 @@ func (e CompanySettingsScoringKey) MarshalJSON() ([]byte, error) {
 	e.MarshalGQL(&buf)
 	return buf.Bytes(), nil
 }
+
+type CompanySettingsSplitTripKey string
+
+const (
+	// CompanySettingsSplitTripKeyMaxRecoveryRadiusMiles is the soft radius (miles)
+	// used to score drivers when searching for a recovery driver during a split.
+	// Default 250 when unset.
+	CompanySettingsSplitTripKeyMaxRecoveryRadiusMiles CompanySettingsSplitTripKey = "max_recovery_radius_miles"
+	// CompanySettingsSplitTripKeySplitMarginWarningThreshold warns when the total
+	// driver pay exceeds load pay by more than this margin. Default 0 when unset.
+	CompanySettingsSplitTripKeySplitMarginWarningThreshold CompanySettingsSplitTripKey = "split_margin_warning_threshold"
+	// CompanySettingsSplitTripKeyDeadheadRatePerMile overrides the per-mile deadhead
+	// rate. Unset (null) means use the driver's own rate.
+	CompanySettingsSplitTripKeyDeadheadRatePerMile CompanySettingsSplitTripKey = "deadhead_rate_per_mile"
+)
+
+var AllCompanySettingsSplitTripKey = []CompanySettingsSplitTripKey{
+	CompanySettingsSplitTripKeyMaxRecoveryRadiusMiles,
+	CompanySettingsSplitTripKeySplitMarginWarningThreshold,
+	CompanySettingsSplitTripKeyDeadheadRatePerMile,
+}
+
+func (e CompanySettingsSplitTripKey) IsValid() bool {
+	switch e {
+	case CompanySettingsSplitTripKeyMaxRecoveryRadiusMiles,
+		CompanySettingsSplitTripKeySplitMarginWarningThreshold,
+		CompanySettingsSplitTripKeyDeadheadRatePerMile:
+		return true
+	}
+	return false
+}
+
+func (e CompanySettingsSplitTripKey) String() string {
+	return string(e)
+}
+
+func (e *CompanySettingsSplitTripKey) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = CompanySettingsSplitTripKey(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid CompanySettingsSplitTripKey", str)
+	}
+	return nil
+}
+
+func (e CompanySettingsSplitTripKey) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *CompanySettingsSplitTripKey) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e CompanySettingsSplitTripKey) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
+}

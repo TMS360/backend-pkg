@@ -170,7 +170,7 @@ func CalculateChanges(oldVal, newVal interface{}) []events.Change {
 
 		// Get the JSON tag (e.g., `json:"first_name,omitempty"`)
 		jsonTag := field.Tag.Get("json")
-		if jsonTag == "-" {
+		if jsonTag == "-" || isAssociationField(field.Type) {
 			continue // Skip explicitly ignored fields
 		}
 
@@ -194,4 +194,32 @@ func CalculateChanges(oldVal, newVal interface{}) []events.Change {
 	}
 
 	return changes
+}
+
+var timeType = reflect.TypeOf(time.Time{})
+
+// associations (pointer-to-struct, struct, slice/map of structs) не являются
+// колонками — они утекают в changes как "object -> null", когда old/new
+// загружены с разными preload'ами. Трекаем только скаляры.
+func isAssociationField(t reflect.Type) bool {
+	for t.Kind() == reflect.Ptr {
+		t = t.Elem()
+	}
+	switch t.Kind() {
+	case reflect.Struct:
+		return t != timeType // time.Time оставляем как скаляр
+	case reflect.Slice, reflect.Array:
+		elem := t.Elem()
+		for elem.Kind() == reflect.Ptr {
+			elem = elem.Elem()
+		}
+		if elem.Kind() == reflect.Uint8 {
+			return false // []byte и uuid.UUID([16]byte) — это скаляры
+		}
+		return elem.Kind() == reflect.Struct
+	case reflect.Map:
+		return true
+	default:
+		return false
+	}
 }

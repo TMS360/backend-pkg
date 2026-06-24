@@ -686,5 +686,6 @@ message PayBatchTrip {
 
   optional string shipment_id = 21;  // trip.shipment_id (UUID), для backend-accounting trip→shipment маппинга
   optional string secondary_driver_id = 22;  // trip.secondary_driver_id (team driver), если есть
+  optional string truck_id = 23;  // trip.truck_id (UUID), для backend-accounting truck-фильтра стейтментов
 }
 

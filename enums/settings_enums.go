@@ -19,6 +19,11 @@ const (
 	// mileage comes from: Samsara GPS actual when on (default), HERE road-distance
 	// estimate when off. Default-on preserves current behaviour for existing tenants.
 	CompanySettingsGeneralKeySamsaraAssetTrackingEnabled CompanySettingsGeneralKey = "samsara_asset_tracking_enabled"
+	// CompanySettingsGeneralKeyUseHereInRisk decides whether the trip risk worker
+	// may make the automatic (paid) HERE routing call when a trip looks high-risk.
+	// Default OFF: risk scoring still works off the free required-speed estimate and
+	// the ETA stays a placeholder until an admin opts in. Per-company.
+	CompanySettingsGeneralKeyUseHereInRisk CompanySettingsGeneralKey = "use_here_in_risk"
 )
 
 var AllCompanySettingsGeneralKey = []CompanySettingsGeneralKey{
@@ -28,11 +33,12 @@ var AllCompanySettingsGeneralKey = []CompanySettingsGeneralKey{
 	CompanySettingsGeneralKeyBrokerHasVerifyShipments,
 	CompanySettingsGeneralKeyTripAssignmentBufferHours,
 	CompanySettingsGeneralKeySamsaraAssetTrackingEnabled,
+	CompanySettingsGeneralKeyUseHereInRisk,
 }
 
 func (e CompanySettingsGeneralKey) IsValid() bool {
 	switch e {
-	case CompanySettingsGeneralKeyLogo, CompanySettingsGeneralKeyHazmatEnabled, CompanySettingsGeneralKeyReeferEnabled, CompanySettingsGeneralKeyBrokerHasVerifyShipments, CompanySettingsGeneralKeyTripAssignmentBufferHours, CompanySettingsGeneralKeySamsaraAssetTrackingEnabled:
+	case CompanySettingsGeneralKeyLogo, CompanySettingsGeneralKeyHazmatEnabled, CompanySettingsGeneralKeyReeferEnabled, CompanySettingsGeneralKeyBrokerHasVerifyShipments, CompanySettingsGeneralKeyTripAssignmentBufferHours, CompanySettingsGeneralKeySamsaraAssetTrackingEnabled, CompanySettingsGeneralKeyUseHereInRisk:
 		return true
 	}
 	return false

@@ -3,6 +3,7 @@ package tmsdb
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"reflect"
 	"strings"
 	"time"
@@ -129,6 +130,8 @@ func (m *GormTransactionManager) writeEvent(ctx context.Context, b *EventBuilder
 		CreatedAt:  time.Now(),
 	}
 
+	// прямо перед outbox-инсёртом, в Publish
+	fmt.Println("payload valid:", json.Valid(payloadBytes), string(payloadBytes))
 	// Uses the active transaction from context automatically
 	return m.GetDB(ctx).Create(event).Error
 }

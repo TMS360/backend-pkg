@@ -28,6 +28,7 @@ const (
 	TeamsService_GetCurrentDriversByTruckIds_FullMethodName   = "/teams.TeamsService/GetCurrentDriversByTruckIds"
 	TeamsService_GetCurrentDriversByTrailerIds_FullMethodName = "/teams.TeamsService/GetCurrentDriversByTrailerIds"
 	TeamsService_GetActiveCrewByDriver_FullMethodName         = "/teams.TeamsService/GetActiveCrewByDriver"
+	TeamsService_IsDriverCrewAvailable_FullMethodName         = "/teams.TeamsService/IsDriverCrewAvailable"
 	TeamsService_ResolveDriverCrewIDs_FullMethodName          = "/teams.TeamsService/ResolveDriverCrewIDs"
 	TeamsService_ResolveTruckIDs_FullMethodName               = "/teams.TeamsService/ResolveTruckIDs"
 	TeamsService_ResolveTrailerIDs_FullMethodName             = "/teams.TeamsService/ResolveTrailerIDs"
@@ -49,6 +50,11 @@ type TeamsServiceClient interface {
 	// Get the driver's currently-active crew snapshot (truck/trailer/plan from the open DriverCrewItem).
 	// Used by the driver-app documents endpoint to resolve which truck/trailer files to surface.
 	GetActiveCrewByDriver(ctx context.Context, in *GetActiveCrewByDriverRequest, opts ...grpc.CallOption) (*GetActiveCrewByDriverResponse, error)
+	// DEV-972: availability guard read. Answers "are the crew's drivers available
+	// to take a load over the supplied day(s)/time window?" by reusing the
+	// DEV-971 resolved availability read (audit_days + driver_absences). The rule
+	// stays with the data owner (teams); backend-load calls this from updateTrip.
+	IsDriverCrewAvailable(ctx context.Context, in *IsDriverCrewAvailableRequest, opts ...grpc.CallOption) (*IsDriverCrewAvailableResponse, error)
 	// Cross-service filtering: returns driver crew IDs matching the filter
 	ResolveDriverCrewIDs(ctx context.Context, in *DriverCrewFilter, opts ...grpc.CallOption) (*filters.IDsResponse, error)
 	// Cross-service filtering: returns truck IDs matching the filter
@@ -127,6 +133,16 @@ func (c *teamsServiceClient) GetActiveCrewByDriver(ctx context.Context, in *GetA
 	return out, nil
 }
 
+func (c *teamsServiceClient) IsDriverCrewAvailable(ctx context.Context, in *IsDriverCrewAvailableRequest, opts ...grpc.CallOption) (*IsDriverCrewAvailableResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(IsDriverCrewAvailableResponse)
+	err := c.cc.Invoke(ctx, TeamsService_IsDriverCrewAvailable_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *teamsServiceClient) ResolveDriverCrewIDs(ctx context.Context, in *DriverCrewFilter, opts ...grpc.CallOption) (*filters.IDsResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(filters.IDsResponse)
@@ -182,6 +198,11 @@ type TeamsServiceServer interface {
 	// Get the driver's currently-active crew snapshot (truck/trailer/plan from the open DriverCrewItem).
 	// Used by the driver-app documents endpoint to resolve which truck/trailer files to surface.
 	GetActiveCrewByDriver(context.Context, *GetActiveCrewByDriverRequest) (*GetActiveCrewByDriverResponse, error)
+	// DEV-972: availability guard read. Answers "are the crew's drivers available
+	// to take a load over the supplied day(s)/time window?" by reusing the
+	// DEV-971 resolved availability read (audit_days + driver_absences). The rule
+	// stays with the data owner (teams); backend-load calls this from updateTrip.
+	IsDriverCrewAvailable(context.Context, *IsDriverCrewAvailableRequest) (*IsDriverCrewAvailableResponse, error)
 	// Cross-service filtering: returns driver crew IDs matching the filter
 	ResolveDriverCrewIDs(context.Context, *DriverCrewFilter) (*filters.IDsResponse, error)
 	// Cross-service filtering: returns truck IDs matching the filter
@@ -217,6 +238,9 @@ func (UnimplementedTeamsServiceServer) GetCurrentDriversByTrailerIds(context.Con
 }
 func (UnimplementedTeamsServiceServer) GetActiveCrewByDriver(context.Context, *GetActiveCrewByDriverRequest) (*GetActiveCrewByDriverResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetActiveCrewByDriver not implemented")
+}
+func (UnimplementedTeamsServiceServer) IsDriverCrewAvailable(context.Context, *IsDriverCrewAvailableRequest) (*IsDriverCrewAvailableResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method IsDriverCrewAvailable not implemented")
 }
 func (UnimplementedTeamsServiceServer) ResolveDriverCrewIDs(context.Context, *DriverCrewFilter) (*filters.IDsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ResolveDriverCrewIDs not implemented")
@@ -359,6 +383,24 @@ func _TeamsService_GetActiveCrewByDriver_Handler(srv interface{}, ctx context.Co
 	return interceptor(ctx, in, info, handler)
 }
 
+func _TeamsService_IsDriverCrewAvailable_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(IsDriverCrewAvailableRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(TeamsServiceServer).IsDriverCrewAvailable(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: TeamsService_IsDriverCrewAvailable_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(TeamsServiceServer).IsDriverCrewAvailable(ctx, req.(*IsDriverCrewAvailableRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _TeamsService_ResolveDriverCrewIDs_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(DriverCrewFilter)
 	if err := dec(in); err != nil {
@@ -461,6 +503,10 @@ var TeamsService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetActiveCrewByDriver",
 			Handler:    _TeamsService_GetActiveCrewByDriver_Handler,
+		},
+		{
+			MethodName: "IsDriverCrewAvailable",
+			Handler:    _TeamsService_IsDriverCrewAvailable_Handler,
 		},
 		{
 			MethodName: "ResolveDriverCrewIDs",

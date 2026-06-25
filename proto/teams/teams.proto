@@ -25,6 +25,12 @@ service TeamsService {
   // Used by the driver-app documents endpoint to resolve which truck/trailer files to surface.
   rpc GetActiveCrewByDriver(GetActiveCrewByDriverRequest) returns (GetActiveCrewByDriverResponse);
 
+  // DEV-972: availability guard read. Answers "are the crew's drivers available
+  // to take a load over the supplied day(s)/time window?" by reusing the
+  // DEV-971 resolved availability read (audit_days + driver_absences). The rule
+  // stays with the data owner (teams); backend-load calls this from updateTrip.
+  rpc IsDriverCrewAvailable(IsDriverCrewAvailableRequest) returns (IsDriverCrewAvailableResponse);
+
   // Cross-service filtering: returns driver crew IDs matching the filter
   rpc ResolveDriverCrewIDs(DriverCrewFilter) returns (filters.IDsResponse);
 
@@ -128,6 +134,28 @@ message DriverCrewInfo {
 
 message TrailerInfo {
   string truck_id = 1;
+}
+
+// DEV-972: window to check a crew's drivers against.
+//   - start_date == end_date + from_time/to_time set  → timed pickup, single day,
+//     part-day overlap rule applies on the teams side.
+//   - start_date..end_date span, from_time/to_time empty → whole-day check per day.
+// Dates are YYYY-MM-DD; times are HH:MM (24h clock, time-of-day only).
+message IsDriverCrewAvailableRequest {
+  string driver_crew_id = 1;
+  string start_date = 2;          // YYYY-MM-DD, first day to check
+  string end_date = 3;            // YYYY-MM-DD, last day to check (== start_date for timed checks)
+  optional string from_time = 4;  // HH:MM clock window start; empty = whole-day
+  optional string to_time = 5;    // HH:MM clock window end
+}
+
+// available=false populates the remaining fields with the FIRST block found.
+message IsDriverCrewAvailableResponse {
+  bool available = 1;
+  string unavailable_date = 2; // YYYY-MM-DD the block was found on
+  string reason = 3;           // human reason: daily-status name or absence reason
+  string source = 4;           // "DAILY_STATUS" | "ABSENCE"
+  string driver_id = 5;        // which driver of the crew triggered the block
 }
 
 message GetActiveCrewByDriverRequest {

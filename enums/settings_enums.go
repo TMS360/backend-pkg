@@ -11,6 +11,7 @@ type CompanySettingsGeneralKey string
 
 const (
 	CompanySettingsGeneralKeyLogo                      CompanySettingsGeneralKey = "logo"
+	CompanySettingsGeneralKeyTimezone                  CompanySettingsGeneralKey = "timezone"
 	CompanySettingsGeneralKeyHazmatEnabled             CompanySettingsGeneralKey = "hazmat_enabled"
 	CompanySettingsGeneralKeyReeferEnabled             CompanySettingsGeneralKey = "reefer_enabled"
 	CompanySettingsGeneralKeyBrokerHasVerifyShipments  CompanySettingsGeneralKey = "broker_has_verify_shipments"
@@ -28,6 +29,7 @@ const (
 
 var AllCompanySettingsGeneralKey = []CompanySettingsGeneralKey{
 	CompanySettingsGeneralKeyLogo,
+	CompanySettingsGeneralKeyTimezone,
 	CompanySettingsGeneralKeyHazmatEnabled,
 	CompanySettingsGeneralKeyReeferEnabled,
 	CompanySettingsGeneralKeyBrokerHasVerifyShipments,
@@ -38,7 +40,7 @@ var AllCompanySettingsGeneralKey = []CompanySettingsGeneralKey{
 
 func (e CompanySettingsGeneralKey) IsValid() bool {
 	switch e {
-	case CompanySettingsGeneralKeyLogo, CompanySettingsGeneralKeyHazmatEnabled, CompanySettingsGeneralKeyReeferEnabled, CompanySettingsGeneralKeyBrokerHasVerifyShipments, CompanySettingsGeneralKeyTripAssignmentBufferHours, CompanySettingsGeneralKeySamsaraAssetTrackingEnabled, CompanySettingsGeneralKeyUseHereInRisk:
+	case CompanySettingsGeneralKeyLogo, CompanySettingsGeneralKeyTimezone, CompanySettingsGeneralKeyHazmatEnabled, CompanySettingsGeneralKeyReeferEnabled, CompanySettingsGeneralKeyBrokerHasVerifyShipments, CompanySettingsGeneralKeyTripAssignmentBufferHours, CompanySettingsGeneralKeySamsaraAssetTrackingEnabled, CompanySettingsGeneralKeyUseHereInRisk:
 		return true
 	}
 	return false

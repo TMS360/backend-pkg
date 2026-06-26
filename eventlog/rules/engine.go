@@ -46,7 +46,7 @@ func (e *Engine) GetMatchingRules(ctx context.Context, topic, eventType string, 
 }
 
 // matchesCondition is a placeholder for your JSON logic evaluator.
-func (e *Engine) matchesCondition(conditions json.RawMessage, data interface{}) bool {
+func (e *Engine) matchesCondition(conditions []byte, data interface{}) bool {
 	// A. Empty conditions always match (Default behavior)
 	if len(conditions) == 0 || string(conditions) == "{}" || string(conditions) == "null" {
 		return true

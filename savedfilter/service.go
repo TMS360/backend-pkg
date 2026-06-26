@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/TMS360/backend-pkg/middleware"
+	"github.com/TMS360/backend-pkg/tmsdb/model"
 	"github.com/google/uuid"
 )
 
@@ -83,8 +84,8 @@ func (s *Service) Create(ctx context.Context, input CreateInput) (*SavedFilter, 
 		UserID: actor.Claims.UserID,
 		Entity: input.Entity,
 		Name:   input.Name,
-		Filter: input.Filter,
-		View:   input.View,
+		Filter: model.JSONRaw(input.Filter),
+		View:   model.JSONRaw(input.View),
 		Pinned: true,
 	}
 
@@ -108,10 +109,10 @@ func (s *Service) Update(ctx context.Context, id uuid.UUID, input UpdateInput) (
 		filter.Name = *input.Name
 	}
 	if input.Filter != nil {
-		filter.Filter = *input.Filter
+		filter.Filter = model.JSONRaw(*input.Filter)
 	}
 	if input.View != nil {
-		filter.View = *input.View
+		filter.View = model.JSONRaw(*input.View)
 	}
 	if input.Pinned != nil {
 		filter.Pinned = *input.Pinned
@@ -178,7 +179,7 @@ func (s *Service) List(ctx context.Context, entityType string) ([]*SavedFilterWi
 	for i, f := range filters {
 		var count int64
 		if countFn != nil {
-			count, err = countFn(ctx, f.Filter)
+			count, err = countFn(ctx, json.RawMessage(f.Filter))
 			if err != nil {
 				return nil, err
 			}
@@ -204,7 +205,7 @@ func (s *Service) GetByID(ctx context.Context, id uuid.UUID) (*SavedFilterWithCo
 
 	var count int64
 	if countFn := s.getCountFunc(filter.Entity); countFn != nil {
-		count, err = countFn(ctx, filter.Filter)
+		count, err = countFn(ctx, json.RawMessage(filter.Filter))
 		if err != nil {
 			return nil, err
 		}

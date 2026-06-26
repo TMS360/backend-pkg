@@ -147,7 +147,7 @@ func (c *Consumer) dispatch(ctx context.Context, event events.EventPayload) erro
 		}
 
 		log.Printf("Executing Rule %s -> Action %s", rule.ID, rule.ActionType)
-		if err := handler(ctxWithActor, event, rule.ActionConfig); err != nil {
+		if err := handler(ctxWithActor, event, json.RawMessage(rule.ActionConfig)); err != nil {
 			log.Printf("Action execution failed: %v", err)
 		}
 	}

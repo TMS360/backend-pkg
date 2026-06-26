@@ -18,6 +18,12 @@ const (
 	PermSettingsCompanyEdit     UserPermissionEnum = "settings.company.edit"
 	PermDriversDriversView      UserPermissionEnum = "drivers.drivers.view"
 	PermDriversDriversEdit      UserPermissionEnum = "drivers.drivers.edit"
+
+	// DEV-1017 compliance documents. Mutations (upload/renew) gate on
+	// PermComplianceUpload; reads gate on PermComplianceView.
+	PermComplianceView   UserPermissionEnum = "compliance.view"
+	PermComplianceUpload UserPermissionEnum = "compliance.upload"
+	PermComplianceRenew  UserPermissionEnum = "compliance.renew"
 )
 
 // PermissionCatalogEntry describes one row written to the permissions table.
@@ -48,6 +54,11 @@ var PermissionCatalog = []PermissionCatalogEntry{
 	{Code: "accounting", Label: "Accounting"},
 	{Code: "customers", Label: "Customers"},
 	{Code: "settings", Label: "Settings"},
+	// DEV-1017: compliance is a top-level module that also carries actions so the
+	// grantable codes are exactly `compliance.view` / `compliance.upload` /
+	// `compliance.renew` (consumed by backend-files @hasPerm). Granting the
+	// `compliance` module covers all three via hierarchical prefix matching.
+	{Code: "compliance", Label: "Compliance", Actions: []string{"view", "upload", "renew"}},
 
 	// === dashboard entities ===
 	{Code: "dashboard.stats", ParentCode: "dashboard", Label: "Stats", Actions: []string{"view"}},

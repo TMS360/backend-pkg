@@ -23,6 +23,14 @@ func Pointer[T any](v T) *T {
 	return &v
 }
 
+func Int32Ptr(v *int) *int32 {
+	if v == nil {
+		return nil
+	}
+	x := int32(*v)
+	return &x
+}
+
 // Deref safely dereferences a pointer.
 // If the pointer is nil, it returns the zero value of type T (e.g. "" for string, 0 for int).
 // If the pointer is not nil, it returns the value.

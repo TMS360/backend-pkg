@@ -34,6 +34,22 @@ type Sender interface {
 	SendEmailWithAttachments(to []string, subject string, templateFile string, data interface{}, attachments []Attachment) error
 }
 
+// SenderWithTracking is the OPTIONAL capability a Sender may also implement to
+// surface the provider's message id (and accept provider tags) so callers can
+// persist the id for delivery-status tracking. ResendSender implements it;
+// SMTPSender does not. Consumers should treat it as opt-in — type-assert the
+// injected Sender to this interface and fall back to the plain Sender path when
+// the assertion fails — so swapping providers (or pinning an older release of
+// this package) never breaks the send.
+type SenderWithTracking interface {
+	Sender
+	// SendEmailWithTags sends like SendEmailWithAttachments but attaches Resend
+	// tags (echoed on webhook events) and returns the provider email id parsed
+	// from the response. An empty id with nil error means "sent, but no id was
+	// returned" — never treat that as a failure.
+	SendEmailWithTags(to []string, subject string, templateFile string, data interface{}, attachments []Attachment, tags map[string]string) (string, error)
+}
+
 // Provider names accepted by NewSender / MailConfig.Provider.
 const (
 	ProviderSMTP   = "smtp"

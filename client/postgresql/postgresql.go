@@ -29,13 +29,7 @@ func EnsureDatabase(cfg config.PostgresSQLConfig) error {
 	initialDSN := fmt.Sprintf("host=%s user=%s password=%s dbname=postgres port=%s sslmode=%s TimeZone=%s",
 		cfg.Host, cfg.User, cfg.Password, cfg.Port, cfg.SSLMode, cfg.TimeZone)
 
-	db, err := gorm.Open(
-		postgres.New(postgres.Config{
-			DSN:                  initialDSN,
-			PreferSimpleProtocol: true,
-		}),
-		&gorm.Config{},
-	)
+	db, err := openGorm(initialDSN)
 	if err != nil {
 		return fmt.Errorf("failed to connect to postgres database: %w", err)
 	}
@@ -68,15 +62,7 @@ func NewClient(cfg config.PostgresSQLConfig) (*gorm.DB, error) {
 	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%s sslmode=%s TimeZone=%s",
 		cfg.Host, cfg.User, cfg.Password, cfg.DBName, cfg.Port, cfg.SSLMode, cfg.TimeZone)
 
-	fmt.Println("dsn: ", dsn)
-
-	db, err := gorm.Open(
-		postgres.New(postgres.Config{
-			DSN:                  dsn,
-			PreferSimpleProtocol: true,
-		}),
-		&gorm.Config{},
-	)
+	db, err := openGorm(dsn)
 	if err != nil {
 		log.Fatalf("failed to connect database: %v", err)
 	}
@@ -105,6 +91,22 @@ func NewClient(cfg config.PostgresSQLConfig) (*gorm.DB, error) {
 	}
 
 	return db, nil
+}
+
+// openGorm — единственная точка, где задаётся протокол pgx, используется и в
+// EnsureDatabase, и в NewClient. PreferSimpleProtocol отключает неявный кэш
+// prepared statements pgx, поэтому ALTER TABLE во время деплоя не вернёт 0A000
+// из протухшего плана на дренящемся поде. Держим это здесь, чтобы контракт был
+// тестируемым (см. postgresql_test.go).
+func openGorm(dsn string) (*gorm.DB, error) {
+	fmt.Println("dsn: ", dsn)
+	return gorm.Open(
+		postgres.New(postgres.Config{
+			DSN:                  dsn,
+			PreferSimpleProtocol: true,
+		}),
+		&gorm.Config{},
+	)
 }
 
 const (

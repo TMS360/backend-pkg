@@ -54,11 +54,6 @@ var PermissionCatalog = []PermissionCatalogEntry{
 	{Code: "accounting", Label: "Accounting"},
 	{Code: "customers", Label: "Customers"},
 	{Code: "settings", Label: "Settings"},
-	// DEV-1017: compliance is a top-level module that also carries actions so the
-	// grantable codes are exactly `compliance.view` / `compliance.upload` /
-	// `compliance.renew` (consumed by backend-files @hasPerm). Granting the
-	// `compliance` module covers all three via hierarchical prefix matching.
-	{Code: "compliance", Label: "Compliance", Actions: []string{"view", "upload", "renew"}},
 
 	// === dashboard entities ===
 	{Code: "dashboard.stats", ParentCode: "dashboard", Label: "Stats", Actions: []string{"view"}},
@@ -125,6 +120,7 @@ var PermissionCatalog = []PermissionCatalogEntry{
 	{Code: "settings.office_users", ParentCode: "settings", Label: "Office users", Actions: []string{"view", "create", "edit"}},
 	{Code: "settings.office_roles", ParentCode: "settings", Label: "Office roles", Actions: []string{"view", "edit"}},
 	{Code: "settings.pdf_layouts", ParentCode: "settings", Label: "Office roles", Actions: []string{"view", "edit"}},
+	{Code: "settings.compliance", ParentCode: "settings", Label: "Compliance", Actions: []string{"view", "edit"}},
 }
 
 // validPermissionCodes indexes every grantable key (modules, entities, and

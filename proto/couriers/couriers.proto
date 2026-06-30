@@ -28,6 +28,36 @@ service CouriersService {
   // within the requesting actor's tenant. Used by the driver-app aggregator in
   // tms-loads to surface a driver's personal documents (license, medical card, etc.).
   rpc ListUserFiles(ListUserFilesRequest) returns (ListUserFilesResponse);
+
+  // GetUsersByPermission resolves the user_ids in a tenant that should receive
+  // alerts gated by a permission code, with a fallback chain (named holders →
+  // tenant admins). Used by DEV-1018 (tms-files compliance reminder cron) to
+  // route document-expiry reminders to the right recipients.
+  rpc GetUsersByPermission(GetUsersByPermissionRequest) returns (GetUsersByPermissionResponse);
+}
+
+// ResolutionSource reports which fallback tier produced the recipient list.
+// Values are fully prefixed per this repo's enum convention (and to avoid the
+// generic NONE/etc. colliding in the package-level enum-value namespace).
+enum ResolutionSource {
+  RESOLUTION_SOURCE_UNSPECIFIED  = 0;
+  RESOLUTION_SOURCE_NAMED_USERS  = 1; // users effectively holding the permission code
+  RESOLUTION_SOURCE_ROLE_DEFAULT = 2; // reserved: tms-auth has no notification-default-role concept yet
+  RESOLUTION_SOURCE_TENANT_ADMIN = 3; // fallback to the tenant's admin role
+  RESOLUTION_SOURCE_NONE         = 4; // nothing resolved (anomaly — caller logs/alerts)
+}
+
+message GetUsersByPermissionRequest {
+  string company_id      = 1; // tenant UUID (required)
+  string permission_code = 2; // e.g. "compliance.receive-alerts" (required)
+  // document_type_id is RESERVED for future per-doc-type permission granularity.
+  // tms-auth RBAC is tenant-wide (not doc-type scoped), so it is currently ignored.
+  optional string document_type_id = 3;
+}
+
+message GetUsersByPermissionResponse {
+  repeated string user_ids = 1; // resolved recipients (UUID strings)
+  ResolutionSource source  = 2; // which tier produced user_ids
 }
 
 message UserFilter {

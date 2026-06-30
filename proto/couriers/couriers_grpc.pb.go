@@ -23,12 +23,13 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	CouriersService_UpdateCache_FullMethodName     = "/couriers.CouriersService/UpdateCache"
-	CouriersService_GetUsersByIds_FullMethodName   = "/couriers.CouriersService/GetUsersByIds"
-	CouriersService_ResolveIDs_FullMethodName      = "/couriers.CouriersService/ResolveIDs"
-	CouriersService_ListOfficeUsers_FullMethodName = "/couriers.CouriersService/ListOfficeUsers"
-	CouriersService_ListDrivers_FullMethodName     = "/couriers.CouriersService/ListDrivers"
-	CouriersService_ListUserFiles_FullMethodName   = "/couriers.CouriersService/ListUserFiles"
+	CouriersService_UpdateCache_FullMethodName          = "/couriers.CouriersService/UpdateCache"
+	CouriersService_GetUsersByIds_FullMethodName        = "/couriers.CouriersService/GetUsersByIds"
+	CouriersService_ResolveIDs_FullMethodName           = "/couriers.CouriersService/ResolveIDs"
+	CouriersService_ListOfficeUsers_FullMethodName      = "/couriers.CouriersService/ListOfficeUsers"
+	CouriersService_ListDrivers_FullMethodName          = "/couriers.CouriersService/ListDrivers"
+	CouriersService_ListUserFiles_FullMethodName        = "/couriers.CouriersService/ListUserFiles"
+	CouriersService_GetUsersByPermission_FullMethodName = "/couriers.CouriersService/GetUsersByPermission"
 )
 
 // CouriersServiceClient is the client API for CouriersService service.
@@ -49,6 +50,11 @@ type CouriersServiceClient interface {
 	// within the requesting actor's tenant. Used by the driver-app aggregator in
 	// tms-loads to surface a driver's personal documents (license, medical card, etc.).
 	ListUserFiles(ctx context.Context, in *ListUserFilesRequest, opts ...grpc.CallOption) (*ListUserFilesResponse, error)
+	// GetUsersByPermission resolves the user_ids in a tenant that should receive
+	// alerts gated by a permission code, with a fallback chain (named holders →
+	// tenant admins). Used by DEV-1018 (tms-files compliance reminder cron) to
+	// route document-expiry reminders to the right recipients.
+	GetUsersByPermission(ctx context.Context, in *GetUsersByPermissionRequest, opts ...grpc.CallOption) (*GetUsersByPermissionResponse, error)
 }
 
 type couriersServiceClient struct {
@@ -119,6 +125,16 @@ func (c *couriersServiceClient) ListUserFiles(ctx context.Context, in *ListUserF
 	return out, nil
 }
 
+func (c *couriersServiceClient) GetUsersByPermission(ctx context.Context, in *GetUsersByPermissionRequest, opts ...grpc.CallOption) (*GetUsersByPermissionResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetUsersByPermissionResponse)
+	err := c.cc.Invoke(ctx, CouriersService_GetUsersByPermission_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // CouriersServiceServer is the server API for CouriersService service.
 // All implementations must embed UnimplementedCouriersServiceServer
 // for forward compatibility.
@@ -137,6 +153,11 @@ type CouriersServiceServer interface {
 	// within the requesting actor's tenant. Used by the driver-app aggregator in
 	// tms-loads to surface a driver's personal documents (license, medical card, etc.).
 	ListUserFiles(context.Context, *ListUserFilesRequest) (*ListUserFilesResponse, error)
+	// GetUsersByPermission resolves the user_ids in a tenant that should receive
+	// alerts gated by a permission code, with a fallback chain (named holders →
+	// tenant admins). Used by DEV-1018 (tms-files compliance reminder cron) to
+	// route document-expiry reminders to the right recipients.
+	GetUsersByPermission(context.Context, *GetUsersByPermissionRequest) (*GetUsersByPermissionResponse, error)
 	mustEmbedUnimplementedCouriersServiceServer()
 }
 
@@ -164,6 +185,9 @@ func (UnimplementedCouriersServiceServer) ListDrivers(context.Context, *ListDriv
 }
 func (UnimplementedCouriersServiceServer) ListUserFiles(context.Context, *ListUserFilesRequest) (*ListUserFilesResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListUserFiles not implemented")
+}
+func (UnimplementedCouriersServiceServer) GetUsersByPermission(context.Context, *GetUsersByPermissionRequest) (*GetUsersByPermissionResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetUsersByPermission not implemented")
 }
 func (UnimplementedCouriersServiceServer) mustEmbedUnimplementedCouriersServiceServer() {}
 func (UnimplementedCouriersServiceServer) testEmbeddedByValue()                         {}
@@ -294,6 +318,24 @@ func _CouriersService_ListUserFiles_Handler(srv interface{}, ctx context.Context
 	return interceptor(ctx, in, info, handler)
 }
 
+func _CouriersService_GetUsersByPermission_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetUsersByPermissionRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CouriersServiceServer).GetUsersByPermission(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: CouriersService_GetUsersByPermission_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CouriersServiceServer).GetUsersByPermission(ctx, req.(*GetUsersByPermissionRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // CouriersService_ServiceDesc is the grpc.ServiceDesc for CouriersService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -324,6 +366,10 @@ var CouriersService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ListUserFiles",
 			Handler:    _CouriersService_ListUserFiles_Handler,
+		},
+		{
+			MethodName: "GetUsersByPermission",
+			Handler:    _CouriersService_GetUsersByPermission_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

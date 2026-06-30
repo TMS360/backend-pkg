@@ -24,6 +24,16 @@ const (
 	PermComplianceView   UserPermissionEnum = "compliance.view"
 	PermComplianceUpload UserPermissionEnum = "compliance.upload"
 	PermComplianceRenew  UserPermissionEnum = "compliance.renew"
+
+	// Projects/Task-Management module (backend-tasks). The Task work-item
+	// domain is a self-contained page, so its grants hang directly off the
+	// `tasks` module rather than a sub-entity: the leaf codes are tasks.view,
+	// tasks.create, tasks.assign, tasks.transition, tasks.reopen.
+	PermTasksView       UserPermissionEnum = "tasks.view"
+	PermTasksCreate     UserPermissionEnum = "tasks.create"
+	PermTasksAssign     UserPermissionEnum = "tasks.assign"
+	PermTasksTransition UserPermissionEnum = "tasks.transition"
+	PermTasksReopen     UserPermissionEnum = "tasks.reopen"
 )
 
 // PermissionCatalogEntry describes one row written to the permissions table.
@@ -54,6 +64,10 @@ var PermissionCatalog = []PermissionCatalogEntry{
 	{Code: "accounting", Label: "Accounting"},
 	{Code: "customers", Label: "Customers"},
 	{Code: "settings", Label: "Settings"},
+	// Tasks is a self-contained module: its action verbs hang directly off the
+	// module code (tasks.view, tasks.create, …) rather than a sub-entity, which
+	// is why this module — unlike the others above — carries Actions.
+	{Code: "tasks", Label: "Tasks", Actions: []string{"view", "create", "assign", "transition", "reopen"}},
 
 	// === dashboard entities ===
 	{Code: "dashboard.stats", ParentCode: "dashboard", Label: "Stats", Actions: []string{"view"}},

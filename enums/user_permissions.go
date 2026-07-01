@@ -64,10 +64,10 @@ var PermissionCatalog = []PermissionCatalogEntry{
 	{Code: "accounting", Label: "Accounting"},
 	{Code: "customers", Label: "Customers"},
 	{Code: "settings", Label: "Settings"},
-	// Tasks is a self-contained module: its action verbs hang directly off the
-	// module code (tasks.view, tasks.create, …) rather than a sub-entity, which
-	// is why this module — unlike the others above — carries Actions.
-	{Code: "tasks", Label: "Tasks", Actions: []string{"view", "create", "assign", "transition", "reopen"}},
+	{Code: "tasks", Label: "Tasks"},
+
+	// === tasks entities ===
+	{Code: "tasks.teams", ParentCode: "tasks", Label: "Task teams", Actions: []string{"view", "create", "edit", "delete"}},
 
 	// === dashboard entities ===
 	{Code: "dashboard.stats", ParentCode: "dashboard", Label: "Stats", Actions: []string{"view"}},

@@ -18,7 +18,9 @@ func (c *Client) ListTransactions(ctx context.Context, dtstart, dtend time.Time)
 	q.Set("dtstart", dtstart.UTC().Format(time.RFC3339))
 	q.Set("dtend", dtend.UTC().Format(time.RFC3339))
 
-	resp, err := c.doRequest(ctx, http.MethodGet, "/fuel/transactions/", q, nil)
+	// /fuel/transactions/ lives under a servers: override at ".../api" (no
+	// "/integrations") per Relay's OpenAPI spec — use transactionsHost, not host.
+	resp, err := c.doRequestTo(ctx, c.transactionsHost, http.MethodGet, "/fuel/transactions/", q, nil)
 	if err != nil {
 		return nil, err
 	}

@@ -50,15 +50,25 @@ func IsAuthError(err error) bool {
 }
 
 // Client is a thin HTTP client for the Relay Payments integrations API.
+//
+// Most endpoints (drivers, fuel codes, fuel policies) live under the default
+// "/api/integrations" host. The single exception is GET /fuel/transactions/,
+// which Relay's OpenAPI spec places under an operation-level servers: override
+// at "/api" (no "/integrations"). transactionsHost carries that base so the
+// reconciliation poll hits the right URL — see ListTransactions.
 type Client struct {
-	httpClient *http.Client
-	host       string
-	apiKey     string
+	httpClient       *http.Client
+	host             string
+	transactionsHost string
+	apiKey           string
 }
 
 // NewClient builds a Relay Payments client. cfg.Host overrides the default
 // production base URL ("https://app.relaypayments.com/api/integrations"); set
 // it to "https://staging.relaypayments.com/api/integrations" for QA.
+//
+// transactionsHost is derived by stripping the "/integrations" suffix so
+// ListTransactions targets ".../api/fuel/transactions/" as Relay requires.
 func NewClient(cfg config.RelayConfig, apiKey string) (*Client, error) {
 	if apiKey == "" {
 		return nil, errors.New("relaypayments: apiKey is empty")
@@ -68,9 +78,10 @@ func NewClient(cfg config.RelayConfig, apiKey string) (*Client, error) {
 		host = defaultProductionHost
 	}
 	return &Client{
-		httpClient: &http.Client{Timeout: 30 * time.Second},
-		host:       host,
-		apiKey:     apiKey,
+		httpClient:       &http.Client{Timeout: 30 * time.Second},
+		host:             host,
+		transactionsHost: strings.TrimSuffix(host, "/integrations"),
+		apiKey:           apiKey,
 	}, nil
 }
 
@@ -97,9 +108,17 @@ func (c *Client) TestConnection(ctx context.Context) error {
 	return nil
 }
 
-// doRequest performs an HTTP request with Relay's ApiKeyAuth scheme.
-// The Relay OpenAPI defines auth as `Authorization: <api_key>` (no Bearer prefix).
+// doRequest performs an HTTP request against the default host (c.host, the
+// "/integrations"-suffixed base). All endpoints except /fuel/transactions/ use
+// this. See doRequestTo for the host-override variant.
 func (c *Client) doRequest(ctx context.Context, method, path string, query url.Values, body any) (*http.Response, error) {
+	return c.doRequestTo(ctx, c.host, method, path, query, body)
+}
+
+// doRequestTo performs an HTTP request against an explicit host with Relay's
+// ApiKeyAuth scheme. The Relay OpenAPI defines auth as `Authorization: <api_key>`
+// (no Bearer prefix). Used by ListTransactions to hit c.transactionsHost.
+func (c *Client) doRequestTo(ctx context.Context, host, method, path string, query url.Values, body any) (*http.Response, error) {
 	var reader io.Reader
 	if body != nil {
 		buf, err := json.Marshal(body)
@@ -109,7 +128,7 @@ func (c *Client) doRequest(ctx context.Context, method, path string, query url.V
 		reader = bytes.NewReader(buf)
 	}
 
-	endpoint := c.host + path
+	endpoint := host + path
 	if len(query) > 0 {
 		endpoint += "?" + query.Encode()
 	}

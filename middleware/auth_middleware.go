@@ -9,12 +9,15 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/TMS360/backend-pkg/auth"
 	"github.com/TMS360/backend-pkg/consts"
 	"github.com/TMS360/backend-pkg/utils"
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 )
+
+type PermsCtxKey struct{}
 
 // IdentifyUser извлекает и проверяет JWT из заголовка Authorization и устанавливает информацию о пользователе в контекст
 func IdentifyUser(rsaPubKey *rsa.PublicKey) gin.HandlerFunc {
@@ -52,6 +55,47 @@ func RequireAuth() gin.HandlerFunc {
 
 		ctx.Next()
 	}
+}
+
+// RequirePerms is the REST mirror of the GraphQL @hasPerm directive. Both read
+// the perms IdentifyUserPerms stashed in ctx and check them with the same
+// hierarchical auth.HasPermission — so a route and a resolver gated on the same
+// code behave identically. Holding ANY of perms passes (OR semantics, like the
+// directive).
+func RequirePerms(perms ...string) gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		actor, err := GetActor(ctx.Request.Context())
+		if err != nil || actor == nil {
+			ctx.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+			return
+		}
+
+		// Mirror the directive's early-outs exactly.
+		if actor.IsGuest || actor.IsSuperAdmin() {
+			ctx.Next()
+			return
+		}
+
+		userPerms := GetUserPermsFromContext(ctx.Request.Context())
+		for _, required := range perms {
+			if auth.HasPermission(userPerms, required) {
+				ctx.Next()
+				return
+			}
+		}
+
+		ctx.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "Forbidden: missing permission"})
+	}
+}
+
+// GetUserPermsFromContext returns the perms stashed by IdentifyUserPerms.
+// Missing context entry → empty slice, which means deny-all under
+// HasPermission's matching rules.
+func GetUserPermsFromContext(ctx context.Context) []string {
+	if perms, ok := ctx.Value(PermsCtxKey{}).([]string); ok {
+		return perms
+	}
+	return []string{}
 }
 
 // RequireAdmin guards routes that require an admin or super_admin role.

@@ -8,8 +8,6 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-type permsCtxKey struct{}
-
 // IdentifyUserPerms fetches the caller's effective perms once per request
 // and stashes them on the request context. Every @hasPerms check downstream
 // reads from this context — never from JWT, never from Redis directly — so
@@ -31,7 +29,7 @@ func IdentifyUserPerms(pr *PermResolver) gin.HandlerFunc {
 			perms = []string{}
 		}
 
-		newCtx := context.WithValue(ctx.Request.Context(), permsCtxKey{}, perms)
+		newCtx := context.WithValue(ctx.Request.Context(), middleware.PermsCtxKey{}, perms)
 		ctx.Request = ctx.Request.WithContext(newCtx)
 		ctx.Next()
 	}
@@ -44,15 +42,5 @@ func WithUserPerms(ctx context.Context, perms []string) context.Context {
 	if perms == nil {
 		perms = []string{}
 	}
-	return context.WithValue(ctx, permsCtxKey{}, perms)
-}
-
-// GetUserPermsFromContext returns the perms stashed by IdentifyUserPerms.
-// Missing context entry → empty slice, which means deny-all under
-// HasPermission's matching rules.
-func GetUserPermsFromContext(ctx context.Context) []string {
-	if perms, ok := ctx.Value(permsCtxKey{}).([]string); ok {
-		return perms
-	}
-	return []string{}
+	return context.WithValue(ctx, middleware.PermsCtxKey{}, perms)
 }

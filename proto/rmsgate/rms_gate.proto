@@ -1,0 +1,31 @@
+// КОПИЯ КАНОНА — не редактировать вручную.
+// Источник: rms/internal/grpcserver/proto/rms_gate.proto (сервер RmsGate живёт в RMS).
+// proto-package обязан оставаться rms.gate.v1: он входит в full method name gRPC
+// (/rms.gate.v1.RmsGate/Evaluate) — иначе клиент не совпадёт с сервером.
+syntax = "proto3";
+
+package rms.gate.v1;
+
+import "google/protobuf/struct.proto";
+
+option go_package = "github.com/TMS360/backend-pkg/proto/rmsgate";
+
+// RmsGate — синхронный policy-шлюз. Доменный сервис спрашивает RMS, можно ли
+// совершить переход, и какие проверки/шаги требует тенант. Внутри RMS прогоняет
+// REQUEST-флоу /gate/<process>/<transition> с оверлеем тенанта и возвращает решение.
+service RmsGate {
+  rpc Evaluate(EvaluateRequest) returns (Decision);
+}
+
+message EvaluateRequest {
+  string process = 1;                  // напр. "shipment"
+  string transition = 2;               // напр. "NEW->DISPATCHED"
+  string tenant = 3;                   // company_id
+  google.protobuf.Struct facts = 4;    // снапшот сущности (JSON-объект)
+}
+
+message Decision {
+  bool allow = 1;
+  repeated string reasons = 2;
+  repeated string required_steps = 3;
+}

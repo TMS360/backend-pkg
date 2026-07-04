@@ -4,7 +4,7 @@ import (
 	"context"
 	"log/slog"
 
-	"github.com/TMS360/backend-pkg/middleware"
+	"github.com/TMS360/backend-pkg/consts"
 	"github.com/gin-gonic/gin"
 )
 
@@ -17,7 +17,7 @@ import (
 // are skipped (their resolver call would be pointless).
 func IdentifyUserPerms(pr *PermResolver) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
-		actor, err := middleware.GetActor(ctx.Request.Context())
+		actor, err := consts.GetActor(ctx.Request.Context())
 		if err != nil || actor == nil || actor.IsGuest || actor.IsSystem {
 			ctx.Next()
 			return
@@ -29,7 +29,7 @@ func IdentifyUserPerms(pr *PermResolver) gin.HandlerFunc {
 			perms = []string{}
 		}
 
-		newCtx := context.WithValue(ctx.Request.Context(), middleware.PermsCtxKey{}, perms)
+		newCtx := context.WithValue(ctx.Request.Context(), consts.PermsCtx, perms)
 		ctx.Request = ctx.Request.WithContext(newCtx)
 		ctx.Next()
 	}
@@ -42,5 +42,5 @@ func WithUserPerms(ctx context.Context, perms []string) context.Context {
 	if perms == nil {
 		perms = []string{}
 	}
-	return context.WithValue(ctx, middleware.PermsCtxKey{}, perms)
+	return context.WithValue(ctx, consts.PermsCtx, perms)
 }

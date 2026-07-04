@@ -9,7 +9,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/TMS360/backend-pkg/middleware"
+	"github.com/TMS360/backend-pkg/consts"
 	"github.com/google/uuid"
 )
 
@@ -38,7 +38,7 @@ func NewHTTPAuthClient(baseURL string) *HTTPAuthClient {
 // interface so callers don't need to know transport details; we still
 // double-check that the JWT we forward belongs to the userID asked.
 func (c *HTTPAuthClient) ResolveUserPerms(ctx context.Context, userID uuid.UUID) ([]string, error) {
-	actor, err := middleware.GetActor(ctx)
+	actor, err := consts.GetActor(ctx)
 	if err != nil || actor == nil {
 		return nil, errors.New("no actor in context — cannot forward token to tms-auth")
 	}

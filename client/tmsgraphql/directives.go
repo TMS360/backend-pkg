@@ -6,7 +6,6 @@ import (
 	"slices"
 
 	"github.com/99designs/gqlgen/graphql"
-	"github.com/TMS360/backend-pkg/auth"
 	"github.com/TMS360/backend-pkg/consts"
 	"github.com/TMS360/backend-pkg/middleware"
 	"github.com/TMS360/backend-pkg/response"
@@ -84,9 +83,9 @@ func HasPermDirective(ctx context.Context, obj interface{}, next graphql.Resolve
 		return next(ctx)
 	}
 
-	userPerms := auth.GetUserPermsFromContext(ctx)
+	userPerms := middleware.GetUserPermsFromContext(ctx)
 	for _, required := range perms {
-		if auth.HasPermission(userPerms, required) {
+		if middleware.HasPermission(userPerms, required) {
 			return next(ctx)
 		}
 	}

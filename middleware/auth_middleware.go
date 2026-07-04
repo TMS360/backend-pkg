@@ -9,15 +9,12 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/TMS360/backend-pkg/auth"
 	"github.com/TMS360/backend-pkg/consts"
 	"github.com/TMS360/backend-pkg/utils"
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 )
-
-type PermsCtxKey struct{}
 
 // IdentifyUser извлекает и проверяет JWT из заголовка Authorization и устанавливает информацию о пользователе в контекст
 func IdentifyUser(rsaPubKey *rsa.PublicKey) gin.HandlerFunc {
@@ -78,7 +75,7 @@ func RequirePerms(perms ...string) gin.HandlerFunc {
 
 		userPerms := GetUserPermsFromContext(ctx.Request.Context())
 		for _, required := range perms {
-			if auth.HasPermission(userPerms, required) {
+			if HasPermission(userPerms, required) {
 				ctx.Next()
 				return
 			}
@@ -90,9 +87,10 @@ func RequirePerms(perms ...string) gin.HandlerFunc {
 
 // GetUserPermsFromContext returns the perms stashed by IdentifyUserPerms.
 // Missing context entry → empty slice, which means deny-all under
-// HasPermission's matching rules.
+// HasPermission's matching rules. The key and reader live in consts so auth
+// (which stashes the perms) does not have to import middleware.
 func GetUserPermsFromContext(ctx context.Context) []string {
-	if perms, ok := ctx.Value(PermsCtxKey{}).([]string); ok {
+	if perms, ok := ctx.Value(consts.PermsCtx).([]string); ok {
 		return perms
 	}
 	return []string{}

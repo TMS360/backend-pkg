@@ -3,6 +3,7 @@ package model
 import (
 	"database/sql/driver"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 
@@ -27,6 +28,15 @@ type OutboxEvent struct {
 	ProcessedAt *time.Time
 }
 
+// JSONRaw is a raw JSON value stored in a Postgres jsonb column. It is a
+// drop-in for encoding/json.RawMessage that also survives GORM writes under
+// pgx's simple protocol (PreferSimpleProtocol): Value returns a string, so
+// Postgres parses it as JSON text instead of rejecting a []byte with 22P02.
+//
+// Because a defined type does NOT inherit json.RawMessage's marshaler methods,
+// JSONRaw implements MarshalJSON/UnmarshalJSON itself — otherwise json.Marshal
+// would base64-encode the underlying []byte in API responses. With them, JSONRaw
+// round-trips as raw JSON both to the DB and over the wire.
 type JSONRaw json.RawMessage
 
 func (j JSONRaw) Value() (driver.Value, error) {
@@ -46,5 +56,23 @@ func (j *JSONRaw) Scan(src any) error {
 	default:
 		return fmt.Errorf("unsupported scan type %T for JSONRaw", src)
 	}
+	return nil
+}
+
+// MarshalJSON emits the stored bytes verbatim (raw JSON), mirroring
+// json.RawMessage. An empty/nil value serializes to JSON null.
+func (j JSONRaw) MarshalJSON() ([]byte, error) {
+	if len(j) == 0 {
+		return []byte("null"), nil
+	}
+	return j, nil
+}
+
+// UnmarshalJSON captures the raw JSON bytes verbatim, mirroring json.RawMessage.
+func (j *JSONRaw) UnmarshalJSON(data []byte) error {
+	if j == nil {
+		return errors.New("model.JSONRaw: UnmarshalJSON on nil pointer")
+	}
+	*j = append((*j)[:0], data...)
 	return nil
 }

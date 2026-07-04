@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/TMS360/backend-pkg/middleware"
+	"github.com/TMS360/backend-pkg/consts"
 	"github.com/go-redis/redis/v8"
 )
 
@@ -21,7 +21,10 @@ func Client() *redis.Client {
 }
 
 func buildKey(ctx context.Context, key string) string {
-	actor, _ := middleware.GetActor(ctx)
+	// Read the actor straight from the context key (which lives in consts) rather
+	// than via middleware.GetActor. Importing middleware here would form an import
+	// cycle: middleware -> auth -> cache -> middleware. Behavior is identical.
+	actor, _ := ctx.Value(consts.ActorCtx).(*consts.Actor)
 	if actor == nil {
 		return key
 	}

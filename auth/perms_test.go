@@ -3,6 +3,8 @@ package auth
 import (
 	"sort"
 	"testing"
+
+	"github.com/TMS360/backend-pkg/middleware"
 )
 
 func TestHasPermission(t *testing.T) {
@@ -28,7 +30,7 @@ func TestHasPermission(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			got := HasPermission(tc.userPerm, tc.required)
+			got := middleware.HasPermission(tc.userPerm, tc.required)
 			if got != tc.want {
 				t.Fatalf("HasPermission(%v, %q) = %v, want %v",
 					tc.userPerm, tc.required, got, tc.want)
@@ -39,20 +41,20 @@ func TestHasPermission(t *testing.T) {
 
 func TestHasAllPermissions(t *testing.T) {
 	user := []string{"accounting", "drivers.balance.view"}
-	if !HasAllPermissions(user, []string{"accounting.invoices.view", "drivers.balance.view"}) {
+	if !middleware.HasAllPermissions(user, []string{"accounting.invoices.view", "drivers.balance.view"}) {
 		t.Fatal("expected all-permissions to pass for granted parent + leaf")
 	}
-	if HasAllPermissions(user, []string{"accounting.invoices.view", "drivers.scheduled_payments.view"}) {
+	if middleware.HasAllPermissions(user, []string{"accounting.invoices.view", "drivers.scheduled_payments.view"}) {
 		t.Fatal("expected all-permissions to fail when one required perm is missing")
 	}
 }
 
 func TestHasAnyPermission(t *testing.T) {
 	user := []string{"drivers.balance.view"}
-	if !HasAnyPermission(user, []string{"accounting", "drivers.balance.view"}) {
+	if !middleware.HasAnyPermission(user, []string{"accounting", "drivers.balance.view"}) {
 		t.Fatal("expected any-permission to pass on a single grant")
 	}
-	if HasAnyPermission(user, []string{"accounting", "fleet"}) {
+	if middleware.HasAnyPermission(user, []string{"accounting", "fleet"}) {
 		t.Fatal("expected any-permission to fail when none granted")
 	}
 }
@@ -66,7 +68,7 @@ func TestCompactHierarchy(t *testing.T) {
 		"drivers.balance.view", // dupe
 		"",                     // empty filtered
 	}
-	got := CompactHierarchy(in)
+	got := middleware.CompactHierarchy(in)
 	sort.Strings(got)
 	want := []string{"accounting", "drivers.balance.view"}
 	if len(got) != len(want) {

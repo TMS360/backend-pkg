@@ -34,10 +34,6 @@ const (
 	PermTasksAssign     UserPermissionEnum = "tasks.assign"
 	PermTasksTransition UserPermissionEnum = "tasks.transition"
 	PermTasksReopen     UserPermissionEnum = "tasks.reopen"
-
-	// Product changelog (backend-changelog). Reads are open to any
-	// authenticated user; only holders of `changelog.manage` can write.
-	PermChangelogManage UserPermissionEnum = "changelog.manage"
 )
 
 // PermissionCatalogEntry describes one row written to the permissions table.
@@ -69,14 +65,6 @@ var PermissionCatalog = []PermissionCatalogEntry{
 	{Code: "customers", Label: "Customers"},
 	{Code: "settings", Label: "Settings"},
 	{Code: "tasks", Label: "Tasks"},
-
-	// === changelog entities ===
-	// NOTE: no top-level "changelog" module. Changelog is an
-	// internal-staff feature that must NEVER be auto-granted to tenant
-	// roles at signup (ModulePermissionCodes seeds every module to every
-	// role, and prefix-matching would then imply changelog.manage).
-	// ParentCode intentionally references a module that is NOT registered.
-	{Code: "changelog.manage", ParentCode: "changelog", Label: "Manage changelog entries"},
 
 	// === tasks entities ===
 	{Code: "tasks.teams", ParentCode: "tasks", Label: "Task teams", Actions: []string{"view", "create", "edit", "delete"}},

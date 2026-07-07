@@ -25,6 +25,7 @@ const _ = grpc.SupportPackageIsVersion9
 const (
 	LoadsService_GetDriverTripDetails_FullMethodName        = "/loads.LoadsService/GetDriverTripDetails"
 	LoadsService_DriverHasActiveTrip_FullMethodName         = "/loads.LoadsService/DriverHasActiveTrip"
+	LoadsService_GetTripsOverlappingWindow_FullMethodName   = "/loads.LoadsService/GetTripsOverlappingWindow"
 	LoadsService_GetRecentBrokerIDs_FullMethodName          = "/loads.LoadsService/GetRecentBrokerIDs"
 	LoadsService_GetShipment_FullMethodName                 = "/loads.LoadsService/GetShipment"
 	LoadsService_ListShipments_FullMethodName               = "/loads.LoadsService/ListShipments"
@@ -59,6 +60,12 @@ type LoadsServiceClient interface {
 	GetDriverTripDetails(ctx context.Context, in *GetDriverTripDetailsRequest, opts ...grpc.CallOption) (*GetDriverTripDetailsResponse, error)
 	// DriverHasActiveTrip
 	DriverHasActiveTrip(ctx context.Context, in *DriverHasActiveTripRequest, opts ...grpc.CallOption) (*DriverHasActiveTripResponse, error)
+	// DEV-896: absence-side advisory check. Returns slim summaries of
+	// active-dispatch trips assigned to the driver (as main OR secondary
+	// driver) whose pickup→delivery calendar window overlaps
+	// [start_date, end_date] inclusive. Read-only; callers surface warnings
+	// and must never block the absence write on this.
+	GetTripsOverlappingWindow(ctx context.Context, in *GetTripsOverlappingWindowRequest, opts ...grpc.CallOption) (*GetTripsOverlappingWindowResponse, error)
 	GetRecentBrokerIDs(ctx context.Context, in *GetRecentBrokerIDsRequest, opts ...grpc.CallOption) (*GetRecentBrokerIDsResponse, error)
 	// Get shipment by ID
 	GetShipment(ctx context.Context, in *GetShipmentRequest, opts ...grpc.CallOption) (*ShipmentResponse, error)
@@ -158,6 +165,16 @@ func (c *loadsServiceClient) DriverHasActiveTrip(ctx context.Context, in *Driver
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(DriverHasActiveTripResponse)
 	err := c.cc.Invoke(ctx, LoadsService_DriverHasActiveTrip_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *loadsServiceClient) GetTripsOverlappingWindow(ctx context.Context, in *GetTripsOverlappingWindowRequest, opts ...grpc.CallOption) (*GetTripsOverlappingWindowResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetTripsOverlappingWindowResponse)
+	err := c.cc.Invoke(ctx, LoadsService_GetTripsOverlappingWindow_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -403,6 +420,12 @@ type LoadsServiceServer interface {
 	GetDriverTripDetails(context.Context, *GetDriverTripDetailsRequest) (*GetDriverTripDetailsResponse, error)
 	// DriverHasActiveTrip
 	DriverHasActiveTrip(context.Context, *DriverHasActiveTripRequest) (*DriverHasActiveTripResponse, error)
+	// DEV-896: absence-side advisory check. Returns slim summaries of
+	// active-dispatch trips assigned to the driver (as main OR secondary
+	// driver) whose pickup→delivery calendar window overlaps
+	// [start_date, end_date] inclusive. Read-only; callers surface warnings
+	// and must never block the absence write on this.
+	GetTripsOverlappingWindow(context.Context, *GetTripsOverlappingWindowRequest) (*GetTripsOverlappingWindowResponse, error)
 	GetRecentBrokerIDs(context.Context, *GetRecentBrokerIDsRequest) (*GetRecentBrokerIDsResponse, error)
 	// Get shipment by ID
 	GetShipment(context.Context, *GetShipmentRequest) (*ShipmentResponse, error)
@@ -493,6 +516,9 @@ func (UnimplementedLoadsServiceServer) GetDriverTripDetails(context.Context, *Ge
 }
 func (UnimplementedLoadsServiceServer) DriverHasActiveTrip(context.Context, *DriverHasActiveTripRequest) (*DriverHasActiveTripResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method DriverHasActiveTrip not implemented")
+}
+func (UnimplementedLoadsServiceServer) GetTripsOverlappingWindow(context.Context, *GetTripsOverlappingWindowRequest) (*GetTripsOverlappingWindowResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetTripsOverlappingWindow not implemented")
 }
 func (UnimplementedLoadsServiceServer) GetRecentBrokerIDs(context.Context, *GetRecentBrokerIDsRequest) (*GetRecentBrokerIDsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetRecentBrokerIDs not implemented")
@@ -613,6 +639,24 @@ func _LoadsService_DriverHasActiveTrip_Handler(srv interface{}, ctx context.Cont
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(LoadsServiceServer).DriverHasActiveTrip(ctx, req.(*DriverHasActiveTripRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _LoadsService_GetTripsOverlappingWindow_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetTripsOverlappingWindowRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(LoadsServiceServer).GetTripsOverlappingWindow(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: LoadsService_GetTripsOverlappingWindow_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(LoadsServiceServer).GetTripsOverlappingWindow(ctx, req.(*GetTripsOverlappingWindowRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1020,6 +1064,10 @@ var LoadsService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "DriverHasActiveTrip",
 			Handler:    _LoadsService_DriverHasActiveTrip_Handler,
+		},
+		{
+			MethodName: "GetTripsOverlappingWindow",
+			Handler:    _LoadsService_GetTripsOverlappingWindow_Handler,
 		},
 		{
 			MethodName: "GetRecentBrokerIDs",

@@ -17,6 +17,13 @@ service LoadsService {
   // DriverHasActiveTrip
   rpc DriverHasActiveTrip (DriverHasActiveTripRequest) returns (DriverHasActiveTripResponse);
 
+  // DEV-896: absence-side advisory check. Returns slim summaries of
+  // active-dispatch trips assigned to the driver (as main OR secondary
+  // driver) whose pickup→delivery calendar window overlaps
+  // [start_date, end_date] inclusive. Read-only; callers surface warnings
+  // and must never block the absence write on this.
+  rpc GetTripsOverlappingWindow (GetTripsOverlappingWindowRequest) returns (GetTripsOverlappingWindowResponse);
+
   rpc GetRecentBrokerIDs(GetRecentBrokerIDsRequest) returns (GetRecentBrokerIDsResponse);
 
   // Get shipment by ID
@@ -126,6 +133,32 @@ message DriverHasActiveTripRequest {
 message DriverHasActiveTripResponse {
   bool        has_active_trip = 1;
   TripDetails active_trip      = 2; // nil/unset если has_active_trip = false
+}
+
+// ── Absence/trip overlap advisory (DEV-896) ────────────────────────────
+
+message GetTripsOverlappingWindowRequest {
+  string driver_id  = 1; // matches trips.main_driver_id OR trips.secondary_driver_id
+  string start_date = 2; // YYYY-MM-DD, inclusive
+  string end_date   = 3; // YYYY-MM-DD, inclusive
+}
+
+// Slim trip summary for absence-overlap warnings. Dates are the trip's
+// calendar window (pickup day .. delivery day); status is the backend-load
+// trip status string (ASSIGNED..LEAVING_STOP).
+message TripOverlapSummary {
+  string trip_id        = 1;
+  string shipment_id    = 2;
+  string load_number    = 3; // shipment.load_id, "" if unset
+  string trip_number    = 4; // display number, "" if unset
+  string status         = 5;
+  string pickup_date    = 6; // YYYY-MM-DD — trip window start
+  string delivery_date  = 7; // YYYY-MM-DD — trip window end
+  string driver_crew_id = 8; // "" if the trip somehow has no crew
+}
+
+message GetTripsOverlappingWindowResponse {
+  repeated TripOverlapSummary trips = 1;
 }
 
 message ShipmentFilterRequest {

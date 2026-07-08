@@ -3,6 +3,8 @@ package tmsdb
 import (
 	"context"
 	"encoding/json"
+	"fmt"
+	"log"
 	"reflect"
 	"strings"
 	"time"
@@ -81,7 +83,7 @@ func (m *GormTransactionManager) writeEvent(ctx context.Context, b *EventBuilder
 
 	dataBytes, err := json.Marshal(b.data)
 	if err != nil {
-		return err
+		return err // marshal-ошибка = реальный баг, до БД, txn не трогает — surface it
 	}
 
 	var changes []events.Change
@@ -92,9 +94,6 @@ func (m *GormTransactionManager) writeEvent(ctx context.Context, b *EventBuilder
 	rootType := b.rootType
 	rootID := b.rootID
 	if rootType == "" {
-		// Default: an event roots to itself. Aggregate-root queries will still find
-		// "self-rooted" leaves (shipments, users, …) via this default; nested leaves
-		// that omit WithRoot remain invisible to aggregate queries by design.
 		rootType = b.aggType
 		rootID = b.aggID
 	}
@@ -129,7 +128,48 @@ func (m *GormTransactionManager) writeEvent(ctx context.Context, b *EventBuilder
 		CreatedAt:  time.Now(),
 	}
 
-	return m.GetDB(ctx).Create(event).Error
+	db := m.GetDB(ctx)
+
+	// Savepoint возможен только внутри explicit-транзакции. Если publish вызван
+	// вне txn (auto-commit), сохраняем прежнее поведение — просто INSERT.
+	// Это же закрывает edge-кейс с вложенными транзакциями: savepoint'ы в PG
+	// стекаются на любую глубину, нам достаточно факта "мы в txn".
+	inTx := false
+	if db.Statement != nil {
+		_, inTx = db.Statement.ConnPool.(gorm.TxCommitter)
+	}
+	if !inTx {
+		return db.Create(event).Error
+	}
+
+	const sp = "publish_sp"
+	if err := db.Exec("SAVEPOINT " + sp).Error; err != nil {
+		return fmt.Errorf("outbox: savepoint: %w", err)
+	}
+
+	if createErr := db.Create(event).Error; createErr != nil {
+		// ROLLBACK TO SAVEPOINT снимает aborted-состояние, оставленное упавшим
+		// INSERT'ом, и возвращает txn к точке savepoint. Работа каллера до этого — жива.
+		if rbErr := db.Exec("ROLLBACK TO SAVEPOINT " + sp).Error; rbErr != nil {
+			// Провал rollback-to — единственный по-настоящему невосстановимый случай:
+			// txn застряла в abort. Пробрасываем, чтобы каллер откатился чисто.
+			return fmt.Errorf("outbox: rollback to savepoint (insert err: %v): %w", createErr, rbErr)
+		}
+		_ = db.Exec("RELEASE SAVEPOINT " + sp).Error // чистим, чтобы имя не шэдоуило при след. publish в этой же txn
+
+		// Non-fatal by design: лог + nil, каллер коммитит бизнес-данные.
+		// Trade-off: этот domain-event теряется.
+		log.Printf("outbox publish skipped (non-fatal) entity=%s/%s action=%s: %v",
+			event.EntityType, event.EntityID, event.EventType, createErr)
+		return nil
+	}
+
+	if err := db.Exec("RELEASE SAVEPOINT " + sp).Error; err != nil {
+		// INSERT уже прошёл; невыпущенный savepoint просто доживёт до COMMIT. Не валим каллера.
+		log.Printf("outbox: release savepoint after successful insert: %v", err)
+	}
+
+	return nil
 }
 
 func (m *GormTransactionManager) Filter(ctx context.Context, model interface{}) *FilterBuilder {

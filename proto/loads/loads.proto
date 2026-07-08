@@ -198,6 +198,8 @@ message TripDetails {
   double distance = 6;
   string started_at = 7;   // ISO Timestamp
   string finished_at = 8;  // ISO Timestamp (nullable/empty if active)
+  string status = 9;                  // trip status; needed so the audit upsert's status_rank guard admits a resync
+  string pickup_appointment_at = 10;  // ISO Timestamp of the pickup leg appointment; the audit board's bucketing key (empty if none)
 }
 
 message GetRecentBrokerIDsRequest {

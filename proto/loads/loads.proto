@@ -722,5 +722,13 @@ message PayBatchTrip {
   optional string shipment_id = 21;  // trip.shipment_id (UUID), для backend-accounting trip→shipment маппинга
   optional string secondary_driver_id = 22;  // trip.secondary_driver_id (team driver), если есть
   optional string truck_id = 23;  // trip.truck_id (UUID), для backend-accounting truck-фильтра стейтментов
+
+  // Order Split (DEV-881/882). Признаки и величины сплит-груза (один shipment,
+  // разделённый между несколькими водителями через recovery-трип).
+  string trip_status           = 24;  // статус самого трипа (вкл. COMPLETED_WITH_ISSUES — split-трип первого водителя)
+  double shipment_total_miles  = 25;  // исходные общие (loaded) мили груза = знаменатель доли водителя
+  double shipment_load_rate    = 26;  // ставка груза целиком (load_pay) = база percentage-доли и сверки
+  bool   shipment_has_issues   = 27;  // груз вёлся с проблемами (split/recovery)
+  optional string parent_trip_id = 28;  // trip.parent_trip_id (UUID) у recovery-трипа сплита
 }
 

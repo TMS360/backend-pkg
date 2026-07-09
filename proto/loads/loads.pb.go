@@ -4352,8 +4352,15 @@ type PayBatchTrip struct {
 	ShipmentId        *string                `protobuf:"bytes,21,opt,name=shipment_id,json=shipmentId,proto3,oneof" json:"shipment_id,omitempty"`                        // trip.shipment_id (UUID), для backend-accounting trip→shipment маппинга
 	SecondaryDriverId *string                `protobuf:"bytes,22,opt,name=secondary_driver_id,json=secondaryDriverId,proto3,oneof" json:"secondary_driver_id,omitempty"` // trip.secondary_driver_id (team driver), если есть
 	TruckId           *string                `protobuf:"bytes,23,opt,name=truck_id,json=truckId,proto3,oneof" json:"truck_id,omitempty"`                                 // trip.truck_id (UUID), для backend-accounting truck-фильтра стейтментов
-	unknownFields     protoimpl.UnknownFields
-	sizeCache         protoimpl.SizeCache
+	// Order Split (DEV-881/882). Признаки и величины сплит-груза (один shipment,
+	// разделённый между несколькими водителями через recovery-трип).
+	TripStatus         string  `protobuf:"bytes,24,opt,name=trip_status,json=tripStatus,proto3" json:"trip_status,omitempty"`                             // статус самого трипа (вкл. COMPLETED_WITH_ISSUES — split-трип первого водителя)
+	ShipmentTotalMiles float64 `protobuf:"fixed64,25,opt,name=shipment_total_miles,json=shipmentTotalMiles,proto3" json:"shipment_total_miles,omitempty"` // исходные общие (loaded) мили груза = знаменатель доли водителя
+	ShipmentLoadRate   float64 `protobuf:"fixed64,26,opt,name=shipment_load_rate,json=shipmentLoadRate,proto3" json:"shipment_load_rate,omitempty"`       // ставка груза целиком (load_pay) = база percentage-доли и сверки
+	ShipmentHasIssues  bool    `protobuf:"varint,27,opt,name=shipment_has_issues,json=shipmentHasIssues,proto3" json:"shipment_has_issues,omitempty"`     // груз вёлся с проблемами (split/recovery)
+	ParentTripId       *string `protobuf:"bytes,28,opt,name=parent_trip_id,json=parentTripId,proto3,oneof" json:"parent_trip_id,omitempty"`               // trip.parent_trip_id (UUID) у recovery-трипа сплита
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
 }
 
 func (x *PayBatchTrip) Reset() {
@@ -4543,6 +4550,41 @@ func (x *PayBatchTrip) GetSecondaryDriverId() string {
 func (x *PayBatchTrip) GetTruckId() string {
 	if x != nil && x.TruckId != nil {
 		return *x.TruckId
+	}
+	return ""
+}
+
+func (x *PayBatchTrip) GetTripStatus() string {
+	if x != nil {
+		return x.TripStatus
+	}
+	return ""
+}
+
+func (x *PayBatchTrip) GetShipmentTotalMiles() float64 {
+	if x != nil {
+		return x.ShipmentTotalMiles
+	}
+	return 0
+}
+
+func (x *PayBatchTrip) GetShipmentLoadRate() float64 {
+	if x != nil {
+		return x.ShipmentLoadRate
+	}
+	return 0
+}
+
+func (x *PayBatchTrip) GetShipmentHasIssues() bool {
+	if x != nil {
+		return x.ShipmentHasIssues
+	}
+	return false
+}
+
+func (x *PayBatchTrip) GetParentTripId() string {
+	if x != nil && x.ParentTripId != nil {
+		return *x.ParentTripId
 	}
 	return ""
 }
@@ -4907,7 +4949,7 @@ const file_loads_loads_proto_rawDesc = "" +
 	"\n" +
 	"company_id\x18\x01 \x01(\tR\tcompanyId\x12\x1f\n" +
 	"\vshipment_id\x18\x02 \x01(\tR\n" +
-	"shipmentId\"\xa3\a\n" +
+	"shipmentId\"\x92\t\n" +
 	"\fPayBatchTrip\x12\x17\n" +
 	"\atrip_id\x18\x01 \x01(\tR\x06tripId\x12\x1f\n" +
 	"\vtrip_number\x18\x02 \x01(\tR\n" +
@@ -4941,14 +4983,21 @@ const file_loads_loads_proto_rawDesc = "" +
 	"\vshipment_id\x18\x15 \x01(\tH\x02R\n" +
 	"shipmentId\x88\x01\x01\x123\n" +
 	"\x13secondary_driver_id\x18\x16 \x01(\tH\x03R\x11secondaryDriverId\x88\x01\x01\x12\x1e\n" +
-	"\btruck_id\x18\x17 \x01(\tH\x04R\atruckId\x88\x01\x01B\n" +
+	"\btruck_id\x18\x17 \x01(\tH\x04R\atruckId\x88\x01\x01\x12\x1f\n" +
+	"\vtrip_status\x18\x18 \x01(\tR\n" +
+	"tripStatus\x120\n" +
+	"\x14shipment_total_miles\x18\x19 \x01(\x01R\x12shipmentTotalMiles\x12,\n" +
+	"\x12shipment_load_rate\x18\x1a \x01(\x01R\x10shipmentLoadRate\x12.\n" +
+	"\x13shipment_has_issues\x18\x1b \x01(\bR\x11shipmentHasIssues\x12)\n" +
+	"\x0eparent_trip_id\x18\x1c \x01(\tH\x05R\fparentTripId\x88\x01\x01B\n" +
 	"\n" +
 	"\b_load_idB\f\n" +
 	"\n" +
 	"_driver_idB\x0e\n" +
 	"\f_shipment_idB\x16\n" +
 	"\x14_secondary_driver_idB\v\n" +
-	"\t_truck_id*\x83\x03\n" +
+	"\t_truck_idB\x11\n" +
+	"\x0f_parent_trip_id*\x83\x03\n" +
 	"\x0eShipmentStatus\x12\x1f\n" +
 	"\x1bSHIPMENT_STATUS_UNSPECIFIED\x10\x00\x12\x1b\n" +
 	"\x17SHIPMENT_STATUS_PENDING\x10\x01\x12\x1d\n" +

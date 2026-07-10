@@ -7,12 +7,18 @@ import (
 	"net/http"
 
 	"github.com/99designs/gqlgen/graphql"
+	"github.com/TMS360/backend-pkg/client/postgresql"
 	"github.com/TMS360/backend-pkg/middleware"
 	"github.com/TMS360/backend-pkg/observability"
 	"github.com/TMS360/backend-pkg/response"
 	"github.com/TMS360/backend-pkg/validate"
 	"github.com/vektah/gqlparser/v2/gqlerror"
 )
+
+// captureFunc reports an error to Sentry. Indirected through a package var so
+// tests can assert which paths capture (server faults) and which don't (user
+// errors mapped to 4xx).
+var captureFunc = observability.CaptureWithCtx
 
 // NewErrorPresenter creates a consistent error formatter for all services.
 // Every emitted error carries `code` and `requestId` in extensions so clients
@@ -37,7 +43,18 @@ func NewErrorPresenter(isDebug bool) graphql.ErrorPresenterFunc {
 
 		// 2. Check for your custom "PublicError"
 		var customErr response.PublicError
-		if errors.As(err, &customErr) {
+		if !errors.As(err, &customErr) {
+			// Backstop: a raw Postgres constraint violation (FK/unique/check/
+			// not-null/exclusion) is a routine user-input error, not a server
+			// fault. Map it to a public 4xx so a service that forgot to
+			// translate still returns a clean message — and route it through the
+			// same handling below so it stays out of Sentry.
+			if pub, ok := postgresql.AsPublicError(err); ok {
+				customErr = pub
+			}
+		}
+
+		if customErr != nil {
 			gqlErr.Message = customErr.UserMessage()
 			gqlErr.Extensions = map[string]any{
 				"code":   customErr.ErrorCode(),
@@ -46,12 +63,12 @@ func NewErrorPresenter(isDebug bool) graphql.ErrorPresenterFunc {
 			// Capture server-side errors (5xx) to Sentry. 4xx are user errors —
 			// noisy and rarely actionable for ops.
 			if customErr.ErrorStatus() >= http.StatusInternalServerError {
-				observability.CaptureWithCtx(ctx, err)
+				captureFunc(ctx, err)
 			}
 		} else {
 			// 3. Unexpected errors — always treat as 500-class.
 			slog.Error("GraphQL Internal Error", "err", err, "path", gqlErr.Path, "request_id", requestID)
-			observability.CaptureWithCtx(ctx, err)
+			captureFunc(ctx, err)
 
 			if !isDebug {
 				gqlErr.Message = "Internal Server Error"

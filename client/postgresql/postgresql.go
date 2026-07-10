@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/TMS360/backend-pkg/config"
+	"github.com/TMS360/backend-pkg/response"
 	"github.com/TMS360/backend-pkg/tmsdb"
 	"github.com/jackc/pgx/v5/pgconn"
 
@@ -112,6 +113,14 @@ func openGorm(dsn string) (*gorm.DB, error) {
 const (
 	// PgUniqueViolationCode is the PostgreSQL error code for unique constraint violation.
 	PgUniqueViolationCode = "23505"
+	// PgForeignKeyViolationCode is the PostgreSQL error code for foreign key violation.
+	PgForeignKeyViolationCode = "23503"
+	// PgNotNullViolationCode is the PostgreSQL error code for not-null violation.
+	PgNotNullViolationCode = "23502"
+	// PgCheckViolationCode is the PostgreSQL error code for check constraint violation.
+	PgCheckViolationCode = "23514"
+	// PgExclusionViolationCode is the PostgreSQL error code for exclusion constraint violation.
+	PgExclusionViolationCode = "23P01"
 )
 
 // IsUniqueConstraintError checks if the error is a PostgreSQL unique constraint violation.
@@ -125,4 +134,45 @@ func IsUniqueConstraintError(err error) bool {
 	}
 
 	return false
+}
+
+// AsPublicError translates a raw *pgconn.PgError for a client-facing constraint
+// violation into a response.PublicError with a clean 4xx user message. It lets
+// the GraphQL/REST layer degrade a routine user-input error (FK/unique/check/
+// not-null/exclusion) into a proper 400/409 even when a service forgets to
+// translate it, instead of leaking a generic 500.
+//
+// The constraint name is placed ONLY in the technical (first) argument and must
+// never reach the user. Returns (nil, false) for anything that is not a
+// recognized *pgconn.PgError so callers can fall back to their default handling.
+func AsPublicError(err error) (response.PublicError, bool) {
+	var pgErr *pgconn.PgError
+	if !errors.As(err, &pgErr) {
+		return nil, false
+	}
+
+	switch pgErr.Code {
+	case PgForeignKeyViolationCode:
+		return response.NewBadRequest(
+			"foreign key violation: "+pgErr.ConstraintName,
+			"A referenced record was not found.",
+		), true
+	case PgUniqueViolationCode:
+		return response.NewConflict(
+			"unique violation: "+pgErr.ConstraintName,
+			"This record already exists.",
+		), true
+	case PgExclusionViolationCode:
+		return response.NewConflict(
+			"exclusion violation: "+pgErr.ConstraintName,
+			"This conflicts with an existing record.",
+		), true
+	case PgCheckViolationCode, PgNotNullViolationCode:
+		return response.NewBadRequest(
+			"constraint violation: "+pgErr.ConstraintName,
+			"Some required information is missing or invalid.",
+		), true
+	default:
+		return nil, false
+	}
 }

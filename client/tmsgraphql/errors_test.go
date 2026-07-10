@@ -7,24 +7,32 @@ import (
 	"testing"
 
 	"github.com/TMS360/backend-pkg/client/postgresql"
+	"github.com/TMS360/backend-pkg/response"
 	"github.com/jackc/pgx/v5/pgconn"
 )
 
-// withCaptureSpy swaps the Sentry capture seam for a counter and restores it
-// after the test.
-func withCaptureSpy(t *testing.T) *int {
+// captureSpy counts how many errors hit each Sentry severity path.
+type captureSpy struct {
+	errors   int
+	warnings int
+}
+
+// withCaptureSpy swaps both Sentry seams for counters and restores them after
+// the test.
+func withCaptureSpy(t *testing.T) *captureSpy {
 	t.Helper()
-	prev := captureFunc
-	var calls int
-	captureFunc = func(context.Context, error) { calls++ }
-	t.Cleanup(func() { captureFunc = prev })
-	return &calls
+	prevErr, prevWarn := captureFunc, captureWarningFunc
+	spy := &captureSpy{}
+	captureFunc = func(context.Context, error) { spy.errors++ }
+	captureWarningFunc = func(context.Context, error) { spy.warnings++ }
+	t.Cleanup(func() { captureFunc, captureWarningFunc = prevErr, prevWarn })
+	return spy
 }
 
 // A bare Postgres constraint violation must degrade to a clean 4xx public
-// message and must NOT be captured to Sentry.
+// message and be surfaced as a Sentry WARNING, never an error.
 func TestErrorPresenter_BackstopsRawPgError(t *testing.T) {
-	calls := withCaptureSpy(t)
+	spy := withCaptureSpy(t)
 
 	present := NewErrorPresenter(false)
 	err := &pgconn.PgError{
@@ -39,14 +47,48 @@ func TestErrorPresenter_BackstopsRawPgError(t *testing.T) {
 	if got := gqlErr.Extensions["status"]; got != http.StatusBadRequest {
 		t.Errorf("Extensions[status] = %v, want %d", got, http.StatusBadRequest)
 	}
-	if *calls != 0 {
-		t.Errorf("capture called %d times for a mapped user error, want 0", *calls)
+	if spy.errors != 0 {
+		t.Errorf("error capture called %d times for a 4xx, want 0", spy.errors)
+	}
+	if spy.warnings != 1 {
+		t.Errorf("warning capture called %d times for a 4xx, want 1", spy.warnings)
 	}
 }
 
-// A genuinely unexpected error must stay a 500 and MUST be captured.
+// A 4xx PublicError (e.g. a permission wall) must be a Sentry warning, not an error.
+func TestErrorPresenter_PublicError4xxWarns(t *testing.T) {
+	spy := withCaptureSpy(t)
+
+	present := NewErrorPresenter(false)
+	gqlErr := present(context.Background(), response.NewForbidden("no perm", "You cannot do that."))
+
+	if got := gqlErr.Extensions["status"]; got != http.StatusForbidden {
+		t.Errorf("Extensions[status] = %v, want %d", got, http.StatusForbidden)
+	}
+	if spy.warnings != 1 || spy.errors != 0 {
+		t.Errorf("captures = (err:%d, warn:%d), want (0, 1)", spy.errors, spy.warnings)
+	}
+}
+
+// A 5xx PublicError must be captured as a Sentry error (it alerts), not a warning.
+func TestErrorPresenter_PublicError5xxCaptures(t *testing.T) {
+	spy := withCaptureSpy(t)
+
+	present := NewErrorPresenter(false)
+	gqlErr := present(context.Background(), response.NewInternalError("boom"))
+
+	if got := gqlErr.Extensions["status"]; got != http.StatusInternalServerError {
+		t.Errorf("Extensions[status] = %v, want %d", got, http.StatusInternalServerError)
+	}
+	if spy.errors != 1 || spy.warnings != 0 {
+		t.Errorf("captures = (err:%d, warn:%d), want (1, 0)", spy.errors, spy.warnings)
+	}
+}
+
+// A genuinely unexpected (non-Public) error must stay a 500 and be captured as
+// an error, never a warning.
 func TestErrorPresenter_UnknownErrorCaptures(t *testing.T) {
-	calls := withCaptureSpy(t)
+	spy := withCaptureSpy(t)
 
 	present := NewErrorPresenter(false)
 	gqlErr := present(context.Background(), errors.New("boom"))
@@ -57,7 +99,7 @@ func TestErrorPresenter_UnknownErrorCaptures(t *testing.T) {
 	if got := gqlErr.Extensions["code"]; got != "INTERNAL_SERVER_ERROR" {
 		t.Errorf("Extensions[code] = %v, want INTERNAL_SERVER_ERROR", got)
 	}
-	if *calls != 1 {
-		t.Errorf("capture called %d times for an unknown error, want 1", *calls)
+	if spy.errors != 1 || spy.warnings != 0 {
+		t.Errorf("captures = (err:%d, warn:%d), want (1, 0)", spy.errors, spy.warnings)
 	}
 }

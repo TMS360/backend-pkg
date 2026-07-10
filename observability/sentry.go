@@ -18,6 +18,7 @@ import (
 	"github.com/TMS360/backend-pkg/response"
 	sentrygin "github.com/getsentry/sentry-go/gin"
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 
 	"github.com/getsentry/sentry-go"
 )
@@ -91,10 +92,28 @@ func Flush(timeout time.Duration) {
 	sentry.Flush(timeout)
 }
 
-// CaptureWithCtx tags an error with the request_id (and any future
-// per-request fields) and sends it to Sentry. Safe to call when Sentry is
-// disabled — it becomes a no-op.
+// CaptureWithCtx sends err to Sentry at Error level, enriched with the
+// request_id and actor tags (see captureWithLevel). Use for server faults
+// (5xx) and genuinely unexpected errors — these fire alerts. Safe to call when
+// Sentry is disabled — it becomes a no-op.
 func CaptureWithCtx(ctx context.Context, err error) {
+	captureWithLevel(ctx, err, sentry.LevelError)
+}
+
+// CaptureWarningWithCtx sends err to Sentry at Warning level, enriched the same
+// way as CaptureWithCtx. Use for expected user-facing rejections (4xx) — wrong
+// input, permission walls, etc. Warnings appear in the Sentry issues list so
+// the team can query user friction on demand, but they don't fire alerts or
+// page anyone. Safe to call when Sentry is disabled — it becomes a no-op.
+func CaptureWarningWithCtx(ctx context.Context, err error) {
+	captureWithLevel(ctx, err, sentry.LevelWarning)
+}
+
+// captureWithLevel is the shared capture path: it tags the event with the
+// request_id and actor identity, sets the given severity level, and sends it.
+// Keeping both public helpers on one path guarantees warnings and errors carry
+// identical enrichment.
+func captureWithLevel(ctx context.Context, err error, level sentry.Level) {
 	if !enabled || err == nil {
 		return
 	}
@@ -103,11 +122,37 @@ func CaptureWithCtx(ctx context.Context, err error) {
 		hub = sentry.CurrentHub().Clone()
 	}
 	hub.WithScope(func(scope *sentry.Scope) {
+		scope.SetLevel(level)
 		if rid := middleware.GetRequestID(ctx); rid != "" {
 			scope.SetTag("request_id", rid)
 		}
+		enrichWithActor(ctx, scope)
 		hub.CaptureException(err)
 	})
+}
+
+// enrichWithActor tags the scope with who triggered the event so user-friction
+// warnings (and errors) can be filtered by user/company in Sentry. No-op when
+// there is no actor on the context (e.g. background jobs).
+func enrichWithActor(ctx context.Context, scope *sentry.Scope) {
+	actor, err := middleware.GetActor(ctx)
+	if err != nil || actor == nil {
+		return
+	}
+	switch {
+	case actor.IsSystem:
+		scope.SetTag("actor_type", "system")
+	case actor.IsGuest:
+		scope.SetTag("actor_type", "guest")
+	default:
+		scope.SetTag("actor_type", "user")
+	}
+	if actor.ID != uuid.Nil {
+		scope.SetUser(sentry.User{ID: actor.ID.String()})
+	}
+	if cid := actor.GetCompanyID(); cid != nil {
+		scope.SetTag("company_id", cid.String())
+	}
 }
 
 // GinMiddleware installs Sentry's request-scoped hub + panic recovery on the

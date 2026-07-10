@@ -15,15 +15,21 @@ import (
 	"github.com/vektah/gqlparser/v2/gqlerror"
 )
 
-// captureFunc reports an error to Sentry. Indirected through a package var so
-// tests can assert which paths capture (server faults) and which don't (user
-// errors mapped to 4xx).
-var captureFunc = observability.CaptureWithCtx
+// captureFunc / captureWarningFunc report to Sentry at Error / Warning level.
+// Indirected through package vars so tests can assert which severity each path
+// uses: server faults (5xx) capture as errors, user rejections (4xx) as
+// warnings.
+var (
+	captureFunc        = observability.CaptureWithCtx
+	captureWarningFunc = observability.CaptureWarningWithCtx
+)
 
 // NewErrorPresenter creates a consistent error formatter for all services.
 // Every emitted error carries `code` and `requestId` in extensions so clients
 // can branch on the code (never the message) and quote the request ID for
-// support. 5xx errors are also captured to Sentry via observability.
+// support. 5xx errors are captured to Sentry as errors (they alert); 4xx
+// PublicErrors are captured as warnings so user friction is queryable without
+// paging anyone.
 func NewErrorPresenter(isDebug bool) graphql.ErrorPresenterFunc {
 	return func(ctx context.Context, err error) *gqlerror.Error {
 		requestID := middleware.GetRequestID(ctx)
@@ -48,7 +54,7 @@ func NewErrorPresenter(isDebug bool) graphql.ErrorPresenterFunc {
 			// not-null/exclusion) is a routine user-input error, not a server
 			// fault. Map it to a public 4xx so a service that forgot to
 			// translate still returns a clean message — and route it through the
-			// same handling below so it stays out of Sentry.
+			// same handling below (surfaced as a Sentry warning, not an error).
 			if pub, ok := postgresql.AsPublicError(err); ok {
 				customErr = pub
 			}
@@ -60,10 +66,13 @@ func NewErrorPresenter(isDebug bool) graphql.ErrorPresenterFunc {
 				"code":   customErr.ErrorCode(),
 				"status": customErr.ErrorStatus(),
 			}
-			// Capture server-side errors (5xx) to Sentry. 4xx are user errors —
-			// noisy and rarely actionable for ops.
+			// 5xx are server faults — capture as errors (they alert). 4xx are
+			// user-facing rejections — capture as warnings so friction is
+			// queryable in Sentry without paging anyone.
 			if customErr.ErrorStatus() >= http.StatusInternalServerError {
 				captureFunc(ctx, err)
+			} else {
+				captureWarningFunc(ctx, err)
 			}
 		} else {
 			// 3. Unexpected errors — always treat as 500-class.

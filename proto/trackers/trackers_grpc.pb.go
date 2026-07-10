@@ -25,6 +25,7 @@ const (
 	TrackersService_GetActiveTripStops_FullMethodName = "/trackers.TrackersService/GetActiveTripStops"
 	TrackersService_GetTripStops_FullMethodName       = "/trackers.TrackersService/GetTripStops"
 	TrackersService_ApplyRouteETAs_FullMethodName     = "/trackers.TrackersService/ApplyRouteETAs"
+	TrackersService_GetDeadheadOrigin_FullMethodName  = "/trackers.TrackersService/GetDeadheadOrigin"
 )
 
 // TrackersServiceClient is the client API for TrackersService service.
@@ -43,6 +44,11 @@ type TrackersServiceClient interface {
 	// ApplyRouteETAs writes planned_arrival in batch for a list of stops, called
 	// by asset-tracking after the initial route build (replaces UpdateStopETA).
 	ApplyRouteETAs(ctx context.Context, in *ApplyRouteETAsRequest, opts ...grpc.CallOption) (*ApplyRouteETAsResponse, error)
+	// GetDeadheadOrigin resolves the deadhead-origin fallback for a trip whose
+	// seq=0 origin stop has no coordinates yet (Samsara asset-tracking OFF flow):
+	// reports the company's Samsara setting and, when OFF, the truck's previous
+	// delivered trip's final drop-off coordinates (DEV-1196).
+	GetDeadheadOrigin(ctx context.Context, in *GetDeadheadOriginRequest, opts ...grpc.CallOption) (*GetDeadheadOriginResponse, error)
 }
 
 type trackersServiceClient struct {
@@ -102,6 +108,16 @@ func (c *trackersServiceClient) ApplyRouteETAs(ctx context.Context, in *ApplyRou
 	return out, nil
 }
 
+func (c *trackersServiceClient) GetDeadheadOrigin(ctx context.Context, in *GetDeadheadOriginRequest, opts ...grpc.CallOption) (*GetDeadheadOriginResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetDeadheadOriginResponse)
+	err := c.cc.Invoke(ctx, TrackersService_GetDeadheadOrigin_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // TrackersServiceServer is the server API for TrackersService service.
 // All implementations must embed UnimplementedTrackersServiceServer
 // for forward compatibility.
@@ -118,6 +134,11 @@ type TrackersServiceServer interface {
 	// ApplyRouteETAs writes planned_arrival in batch for a list of stops, called
 	// by asset-tracking after the initial route build (replaces UpdateStopETA).
 	ApplyRouteETAs(context.Context, *ApplyRouteETAsRequest) (*ApplyRouteETAsResponse, error)
+	// GetDeadheadOrigin resolves the deadhead-origin fallback for a trip whose
+	// seq=0 origin stop has no coordinates yet (Samsara asset-tracking OFF flow):
+	// reports the company's Samsara setting and, when OFF, the truck's previous
+	// delivered trip's final drop-off coordinates (DEV-1196).
+	GetDeadheadOrigin(context.Context, *GetDeadheadOriginRequest) (*GetDeadheadOriginResponse, error)
 	mustEmbedUnimplementedTrackersServiceServer()
 }
 
@@ -139,6 +160,9 @@ func (UnimplementedTrackersServiceServer) GetTripStops(context.Context, *GetTrip
 }
 func (UnimplementedTrackersServiceServer) ApplyRouteETAs(context.Context, *ApplyRouteETAsRequest) (*ApplyRouteETAsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ApplyRouteETAs not implemented")
+}
+func (UnimplementedTrackersServiceServer) GetDeadheadOrigin(context.Context, *GetDeadheadOriginRequest) (*GetDeadheadOriginResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetDeadheadOrigin not implemented")
 }
 func (UnimplementedTrackersServiceServer) mustEmbedUnimplementedTrackersServiceServer() {}
 func (UnimplementedTrackersServiceServer) testEmbeddedByValue()                         {}
@@ -226,6 +250,24 @@ func _TrackersService_ApplyRouteETAs_Handler(srv interface{}, ctx context.Contex
 	return interceptor(ctx, in, info, handler)
 }
 
+func _TrackersService_GetDeadheadOrigin_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetDeadheadOriginRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(TrackersServiceServer).GetDeadheadOrigin(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: TrackersService_GetDeadheadOrigin_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(TrackersServiceServer).GetDeadheadOrigin(ctx, req.(*GetDeadheadOriginRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // TrackersService_ServiceDesc is the grpc.ServiceDesc for TrackersService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -244,6 +286,10 @@ var TrackersService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ApplyRouteETAs",
 			Handler:    _TrackersService_ApplyRouteETAs_Handler,
+		},
+		{
+			MethodName: "GetDeadheadOrigin",
+			Handler:    _TrackersService_GetDeadheadOrigin_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{

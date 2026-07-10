@@ -1687,6 +1687,118 @@ func (x *ApplyRouteETAsResponse) GetSuccess() bool {
 	return false
 }
 
+type GetDeadheadOriginRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	TripId        string                 `protobuf:"bytes,1,opt,name=trip_id,json=tripId,proto3" json:"trip_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetDeadheadOriginRequest) Reset() {
+	*x = GetDeadheadOriginRequest{}
+	mi := &file_trackers_trackers_proto_msgTypes[25]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetDeadheadOriginRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetDeadheadOriginRequest) ProtoMessage() {}
+
+func (x *GetDeadheadOriginRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_trackers_trackers_proto_msgTypes[25]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetDeadheadOriginRequest.ProtoReflect.Descriptor instead.
+func (*GetDeadheadOriginRequest) Descriptor() ([]byte, []int) {
+	return file_trackers_trackers_proto_rawDescGZIP(), []int{25}
+}
+
+func (x *GetDeadheadOriginRequest) GetTripId() string {
+	if x != nil {
+		return x.TripId
+	}
+	return ""
+}
+
+type GetDeadheadOriginResponse struct {
+	state             protoimpl.MessageState `protogen:"open.v1"`
+	SamsaraTrackingOn bool                   `protobuf:"varint,1,opt,name=samsara_tracking_on,json=samsaraTrackingOn,proto3" json:"samsara_tracking_on,omitempty"` // company setting; when true the caller keeps live-GPS behavior
+	HasFallback       bool                   `protobuf:"varint,2,opt,name=has_fallback,json=hasFallback,proto3" json:"has_fallback,omitempty"`                     // previous delivered trip with drop-off coordinates exists
+	Lat               float64                `protobuf:"fixed64,3,opt,name=lat,proto3" json:"lat,omitempty"`
+	Lng               float64                `protobuf:"fixed64,4,opt,name=lng,proto3" json:"lng,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
+}
+
+func (x *GetDeadheadOriginResponse) Reset() {
+	*x = GetDeadheadOriginResponse{}
+	mi := &file_trackers_trackers_proto_msgTypes[26]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetDeadheadOriginResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetDeadheadOriginResponse) ProtoMessage() {}
+
+func (x *GetDeadheadOriginResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_trackers_trackers_proto_msgTypes[26]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetDeadheadOriginResponse.ProtoReflect.Descriptor instead.
+func (*GetDeadheadOriginResponse) Descriptor() ([]byte, []int) {
+	return file_trackers_trackers_proto_rawDescGZIP(), []int{26}
+}
+
+func (x *GetDeadheadOriginResponse) GetSamsaraTrackingOn() bool {
+	if x != nil {
+		return x.SamsaraTrackingOn
+	}
+	return false
+}
+
+func (x *GetDeadheadOriginResponse) GetHasFallback() bool {
+	if x != nil {
+		return x.HasFallback
+	}
+	return false
+}
+
+func (x *GetDeadheadOriginResponse) GetLat() float64 {
+	if x != nil {
+		return x.Lat
+	}
+	return 0
+}
+
+func (x *GetDeadheadOriginResponse) GetLng() float64 {
+	if x != nil {
+		return x.Lng
+	}
+	return 0
+}
+
 var File_trackers_trackers_proto protoreflect.FileDescriptor
 
 const file_trackers_trackers_proto_rawDesc = "" +
@@ -1820,16 +1932,24 @@ const file_trackers_trackers_proto_rawDesc = "" +
 	"\atrip_id\x18\x01 \x01(\tR\x06tripId\x12%\n" +
 	"\x04etas\x18\x02 \x03(\v2\x11.trackers.StopETAR\x04etas\"2\n" +
 	"\x16ApplyRouteETAsResponse\x12\x18\n" +
-	"\asuccess\x18\x01 \x01(\bR\asuccess*]\n" +
+	"\asuccess\x18\x01 \x01(\bR\asuccess\"3\n" +
+	"\x18GetDeadheadOriginRequest\x12\x17\n" +
+	"\atrip_id\x18\x01 \x01(\tR\x06tripId\"\x92\x01\n" +
+	"\x19GetDeadheadOriginResponse\x12.\n" +
+	"\x13samsara_tracking_on\x18\x01 \x01(\bR\x11samsaraTrackingOn\x12!\n" +
+	"\fhas_fallback\x18\x02 \x01(\bR\vhasFallback\x12\x10\n" +
+	"\x03lat\x18\x03 \x01(\x01R\x03lat\x12\x10\n" +
+	"\x03lng\x18\x04 \x01(\x01R\x03lng*]\n" +
 	"\vVehicleType\x12\x1c\n" +
 	"\x18VEHICLE_TYPE_UNSPECIFIED\x10\x00\x12\x16\n" +
 	"\x12VEHICLE_TYPE_TRUCK\x10\x01\x12\x18\n" +
-	"\x14VEHICLE_TYPE_TRAILER\x10\x022\xe7\x02\n" +
+	"\x14VEHICLE_TYPE_TRAILER\x10\x022\xc5\x03\n" +
 	"\x0fTrackersService\x12O\n" +
 	"\x11StreamVehicleVINs\x12\".trackers.StreamVehicleVINsRequest\x1a\x14.trackers.VehicleVIN0\x01\x12_\n" +
 	"\x12GetActiveTripStops\x12#.trackers.GetActiveTripStopsRequest\x1a$.trackers.GetActiveTripStopsResponse\x12M\n" +
 	"\fGetTripStops\x12\x1d.trackers.GetTripStopsRequest\x1a\x1e.trackers.GetTripStopsResponse\x12S\n" +
-	"\x0eApplyRouteETAs\x12\x1f.trackers.ApplyRouteETAsRequest\x1a .trackers.ApplyRouteETAsResponse2\xeb\x03\n" +
+	"\x0eApplyRouteETAs\x12\x1f.trackers.ApplyRouteETAsRequest\x1a .trackers.ApplyRouteETAsResponse\x12\\\n" +
+	"\x11GetDeadheadOrigin\x12\".trackers.GetDeadheadOriginRequest\x1a#.trackers.GetDeadheadOriginResponse2\xeb\x03\n" +
 	"\x16VehiclePositionService\x12V\n" +
 	"\x0fGetVehicleRoute\x12 .trackers.GetVehicleRouteRequest\x1a!.trackers.GetVehicleRouteResponse\x12Y\n" +
 	"\x10GetVehicleRoutes\x12!.trackers.GetVehicleRoutesRequest\x1a\".trackers.GetVehicleRoutesResponse\x12_\n" +
@@ -1850,7 +1970,7 @@ func file_trackers_trackers_proto_rawDescGZIP() []byte {
 }
 
 var file_trackers_trackers_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_trackers_trackers_proto_msgTypes = make([]protoimpl.MessageInfo, 25)
+var file_trackers_trackers_proto_msgTypes = make([]protoimpl.MessageInfo, 27)
 var file_trackers_trackers_proto_goTypes = []any{
 	(VehicleType)(0),                   // 0: trackers.VehicleType
 	(*StreamVehicleVINsRequest)(nil),   // 1: trackers.StreamVehicleVINsRequest
@@ -1878,49 +1998,53 @@ var file_trackers_trackers_proto_goTypes = []any{
 	(*StopETA)(nil),                    // 23: trackers.StopETA
 	(*ApplyRouteETAsRequest)(nil),      // 24: trackers.ApplyRouteETAsRequest
 	(*ApplyRouteETAsResponse)(nil),     // 25: trackers.ApplyRouteETAsResponse
-	(*timestamppb.Timestamp)(nil),      // 26: google.protobuf.Timestamp
+	(*GetDeadheadOriginRequest)(nil),   // 26: trackers.GetDeadheadOriginRequest
+	(*GetDeadheadOriginResponse)(nil),  // 27: trackers.GetDeadheadOriginResponse
+	(*timestamppb.Timestamp)(nil),      // 28: google.protobuf.Timestamp
 }
 var file_trackers_trackers_proto_depIdxs = []int32{
-	26, // 0: trackers.StreamVehicleVINsRequest.last_sync:type_name -> google.protobuf.Timestamp
+	28, // 0: trackers.StreamVehicleVINsRequest.last_sync:type_name -> google.protobuf.Timestamp
 	0,  // 1: trackers.VehicleVIN.type:type_name -> trackers.VehicleType
-	26, // 2: trackers.VehicleVIN.updated_at:type_name -> google.protobuf.Timestamp
+	28, // 2: trackers.VehicleVIN.updated_at:type_name -> google.protobuf.Timestamp
 	0,  // 3: trackers.VehicleLocationUpdate.type:type_name -> trackers.VehicleType
-	26, // 4: trackers.VehicleLocationUpdate.gps_time:type_name -> google.protobuf.Timestamp
+	28, // 4: trackers.VehicleLocationUpdate.gps_time:type_name -> google.protobuf.Timestamp
 	3,  // 5: trackers.VehicleLocationUpdateBatch.updates:type_name -> trackers.VehicleLocationUpdate
-	26, // 6: trackers.VehicleLocationUpdateBatch.batch_time:type_name -> google.protobuf.Timestamp
+	28, // 6: trackers.VehicleLocationUpdateBatch.batch_time:type_name -> google.protobuf.Timestamp
 	8,  // 7: trackers.GetVehicleRoutesRequest.queries:type_name -> trackers.GetVehicleRouteRequest
 	7,  // 8: trackers.GetVehicleRoutesResponse.routes:type_name -> trackers.VehicleRoute
 	9,  // 9: trackers.VehicleRoute.points:type_name -> trackers.RoutePoint
-	26, // 10: trackers.GetVehicleRouteRequest.from:type_name -> google.protobuf.Timestamp
-	26, // 11: trackers.GetVehicleRouteRequest.to:type_name -> google.protobuf.Timestamp
-	26, // 12: trackers.RoutePoint.gps_time:type_name -> google.protobuf.Timestamp
+	28, // 10: trackers.GetVehicleRouteRequest.from:type_name -> google.protobuf.Timestamp
+	28, // 11: trackers.GetVehicleRouteRequest.to:type_name -> google.protobuf.Timestamp
+	28, // 12: trackers.RoutePoint.gps_time:type_name -> google.protobuf.Timestamp
 	9,  // 13: trackers.GetVehicleRouteResponse.points:type_name -> trackers.RoutePoint
 	11, // 14: trackers.SaveEstimatedRouteRequest.legs:type_name -> trackers.EstimatedRouteLeg
 	11, // 15: trackers.GetEstimatedRouteResponse.legs:type_name -> trackers.EstimatedRouteLeg
 	19, // 16: trackers.GetActiveTripStopsResponse.stops:type_name -> trackers.TripStopInfo
 	19, // 17: trackers.GetTripStopsResponse.stops:type_name -> trackers.TripStopInfo
-	26, // 18: trackers.StopETA.planned_arrival:type_name -> google.protobuf.Timestamp
+	28, // 18: trackers.StopETA.planned_arrival:type_name -> google.protobuf.Timestamp
 	23, // 19: trackers.ApplyRouteETAsRequest.etas:type_name -> trackers.StopETA
 	1,  // 20: trackers.TrackersService.StreamVehicleVINs:input_type -> trackers.StreamVehicleVINsRequest
 	18, // 21: trackers.TrackersService.GetActiveTripStops:input_type -> trackers.GetActiveTripStopsRequest
 	21, // 22: trackers.TrackersService.GetTripStops:input_type -> trackers.GetTripStopsRequest
 	24, // 23: trackers.TrackersService.ApplyRouteETAs:input_type -> trackers.ApplyRouteETAsRequest
-	8,  // 24: trackers.VehiclePositionService.GetVehicleRoute:input_type -> trackers.GetVehicleRouteRequest
-	5,  // 25: trackers.VehiclePositionService.GetVehicleRoutes:input_type -> trackers.GetVehicleRoutesRequest
-	12, // 26: trackers.VehiclePositionService.SaveEstimatedRoute:input_type -> trackers.SaveEstimatedRouteRequest
-	14, // 27: trackers.VehiclePositionService.GetEstimatedRoute:input_type -> trackers.GetEstimatedRouteRequest
-	16, // 28: trackers.VehiclePositionService.LookupGeocodeCache:input_type -> trackers.LookupGeocodeCacheRequest
-	2,  // 29: trackers.TrackersService.StreamVehicleVINs:output_type -> trackers.VehicleVIN
-	20, // 30: trackers.TrackersService.GetActiveTripStops:output_type -> trackers.GetActiveTripStopsResponse
-	22, // 31: trackers.TrackersService.GetTripStops:output_type -> trackers.GetTripStopsResponse
-	25, // 32: trackers.TrackersService.ApplyRouteETAs:output_type -> trackers.ApplyRouteETAsResponse
-	10, // 33: trackers.VehiclePositionService.GetVehicleRoute:output_type -> trackers.GetVehicleRouteResponse
-	6,  // 34: trackers.VehiclePositionService.GetVehicleRoutes:output_type -> trackers.GetVehicleRoutesResponse
-	13, // 35: trackers.VehiclePositionService.SaveEstimatedRoute:output_type -> trackers.SaveEstimatedRouteResponse
-	15, // 36: trackers.VehiclePositionService.GetEstimatedRoute:output_type -> trackers.GetEstimatedRouteResponse
-	17, // 37: trackers.VehiclePositionService.LookupGeocodeCache:output_type -> trackers.LookupGeocodeCacheResponse
-	29, // [29:38] is the sub-list for method output_type
-	20, // [20:29] is the sub-list for method input_type
+	26, // 24: trackers.TrackersService.GetDeadheadOrigin:input_type -> trackers.GetDeadheadOriginRequest
+	8,  // 25: trackers.VehiclePositionService.GetVehicleRoute:input_type -> trackers.GetVehicleRouteRequest
+	5,  // 26: trackers.VehiclePositionService.GetVehicleRoutes:input_type -> trackers.GetVehicleRoutesRequest
+	12, // 27: trackers.VehiclePositionService.SaveEstimatedRoute:input_type -> trackers.SaveEstimatedRouteRequest
+	14, // 28: trackers.VehiclePositionService.GetEstimatedRoute:input_type -> trackers.GetEstimatedRouteRequest
+	16, // 29: trackers.VehiclePositionService.LookupGeocodeCache:input_type -> trackers.LookupGeocodeCacheRequest
+	2,  // 30: trackers.TrackersService.StreamVehicleVINs:output_type -> trackers.VehicleVIN
+	20, // 31: trackers.TrackersService.GetActiveTripStops:output_type -> trackers.GetActiveTripStopsResponse
+	22, // 32: trackers.TrackersService.GetTripStops:output_type -> trackers.GetTripStopsResponse
+	25, // 33: trackers.TrackersService.ApplyRouteETAs:output_type -> trackers.ApplyRouteETAsResponse
+	27, // 34: trackers.TrackersService.GetDeadheadOrigin:output_type -> trackers.GetDeadheadOriginResponse
+	10, // 35: trackers.VehiclePositionService.GetVehicleRoute:output_type -> trackers.GetVehicleRouteResponse
+	6,  // 36: trackers.VehiclePositionService.GetVehicleRoutes:output_type -> trackers.GetVehicleRoutesResponse
+	13, // 37: trackers.VehiclePositionService.SaveEstimatedRoute:output_type -> trackers.SaveEstimatedRouteResponse
+	15, // 38: trackers.VehiclePositionService.GetEstimatedRoute:output_type -> trackers.GetEstimatedRouteResponse
+	17, // 39: trackers.VehiclePositionService.LookupGeocodeCache:output_type -> trackers.LookupGeocodeCacheResponse
+	30, // [30:40] is the sub-list for method output_type
+	20, // [20:30] is the sub-list for method input_type
 	20, // [20:20] is the sub-list for extension type_name
 	20, // [20:20] is the sub-list for extension extendee
 	0,  // [0:20] is the sub-list for field type_name
@@ -1937,7 +2061,7 @@ func file_trackers_trackers_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_trackers_trackers_proto_rawDesc), len(file_trackers_trackers_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   25,
+			NumMessages:   27,
 			NumExtensions: 0,
 			NumServices:   2,
 		},

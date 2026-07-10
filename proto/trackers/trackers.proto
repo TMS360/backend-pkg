@@ -22,6 +22,12 @@ service TrackersService {
   // ApplyRouteETAs writes planned_arrival in batch for a list of stops, called
   // by asset-tracking after the initial route build (replaces UpdateStopETA).
   rpc ApplyRouteETAs(ApplyRouteETAsRequest) returns (ApplyRouteETAsResponse);
+
+  // GetDeadheadOrigin resolves the deadhead-origin fallback for a trip whose
+  // seq=0 origin stop has no coordinates yet (Samsara asset-tracking OFF flow):
+  // reports the company's Samsara setting and, when OFF, the truck's previous
+  // delivered trip's final drop-off coordinates (DEV-1196).
+  rpc GetDeadheadOrigin(GetDeadheadOriginRequest) returns (GetDeadheadOriginResponse);
 }
 
 // Request to stream vehicle VINs
@@ -234,4 +240,18 @@ message ApplyRouteETAsRequest {
 
 message ApplyRouteETAsResponse {
   bool success = 1;
+}
+
+// Deadhead-origin fallback (used by asset-tracking when the trip's own origin
+// stop has no coordinates)
+
+message GetDeadheadOriginRequest {
+  string trip_id = 1;
+}
+
+message GetDeadheadOriginResponse {
+  bool samsara_tracking_on = 1;  // company setting; when true the caller keeps live-GPS behavior
+  bool has_fallback = 2;         // previous delivered trip with drop-off coordinates exists
+  double lat = 3;
+  double lng = 4;
 }

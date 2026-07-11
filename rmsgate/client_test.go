@@ -3,12 +3,14 @@ package rmsgate
 import (
 	"context"
 	"net"
+	"sync/atomic"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/connectivity"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/test/bufconn"
 
@@ -20,11 +22,11 @@ type fakeGate struct {
 	pb.UnimplementedRmsGateServer
 	resp  *pb.Decision
 	delay time.Duration
-	calls int
+	calls atomic.Int64
 }
 
 func (f *fakeGate) Evaluate(ctx context.Context, req *pb.EvaluateRequest) (*pb.Decision, error) {
-	f.calls++
+	f.calls.Add(1)
 	if f.delay > 0 {
 		select {
 		case <-time.After(f.delay):
@@ -113,11 +115,34 @@ func TestDecideCircuitOpensAfterConsecutiveFailures(t *testing.T) {
 	for i := 0; i < circuitThreshold; i++ {
 		_ = c.Decide(context.Background(), "shipment", "A->B", "acme", nil)
 	}
-	callsBefore := fg.calls
+	callsBefore := fg.calls.Load()
 	start := time.Now()
 	dec := c.Decide(context.Background(), "shipment", "A->B", "acme", nil)
 	assert.True(t, dec.FailedOpen)
 	assert.Contains(t, dec.Reasons[0], "circuit open")
-	assert.Equal(t, callsBefore, fg.calls, "в открытом circuit RMS не вызывается")
+	assert.Equal(t, callsBefore, fg.calls.Load(), "в открытом circuit RMS не вызывается")
 	assert.Less(t, time.Since(start), 10*time.Millisecond, "ответ мгновенный")
+}
+
+func TestWarmupReachesReadyAndRespectsCancel(t *testing.T) {
+	// Прогрев доводит ленивое соединение до Ready (первый Decide не платит dial).
+	c := newBufClient(t, &fakeGate{})
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+	c.Warmup(ctx)
+	require.Equal(t, connectivity.Ready, c.conn.GetState())
+
+	// Отменённый контекст — прогрев выходит сразу, не зависая (shutdown-путь).
+	c2 := newBufClient(t, &fakeGate{})
+	done, cancelled := make(chan struct{}), func() context.Context {
+		cc, ccancel := context.WithCancel(context.Background())
+		ccancel()
+		return cc
+	}()
+	go func() { c2.Warmup(cancelled); close(done) }()
+	select {
+	case <-done:
+	case <-time.After(2 * time.Second):
+		t.Fatal("Warmup не вышел по отменённому контексту")
+	}
 }

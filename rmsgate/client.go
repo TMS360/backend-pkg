@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/connectivity"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/protobuf/types/known/structpb"
@@ -80,6 +81,29 @@ func Dial(addr string, opts ...Option) (*Client, error) {
 		return nil, err
 	}
 	return &Client{conn: conn, gate: pb.NewRmsGateClient(conn), opt: o}, nil
+}
+
+// Warmup форсирует установку gRPC-соединения В ФОНЕ старта сервиса, чтобы
+// ленивый dial (резолв + TCP + HTTP/2 handshake) не платился ПЕРВЫМ бизнес-
+// Decide. Критично для fail-closed процессов: на нагруженной машине первый
+// вызов не укладывается в per-process дедлайн (150–1500мс) и превращается в
+// ложный DENY (поймано вживую на демо-стенде: первый Evaluate биллинга —
+// statement/APPROVE — интермиттентно давал 409). Блокирует до Ready либо до
+// отмены ctx; ошибок не возвращает — прогрев best-effort, вызывать горутиной:
+//
+//	go gate.Warmup(ctx)
+func (c *Client) Warmup(ctx context.Context) {
+	c.conn.Connect()
+	for {
+		st := c.conn.GetState()
+		if st == connectivity.Ready {
+			c.opt.log.Info("rmsgate: соединение прогрето", "target", c.conn.Target())
+			return
+		}
+		if !c.conn.WaitForStateChange(ctx, st) {
+			return // ctx отменён — сервис останавливается
+		}
+	}
 }
 
 // NewFromConn — клиент поверх готового соединения (тесты/bufconn).

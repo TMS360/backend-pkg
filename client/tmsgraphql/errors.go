@@ -66,6 +66,16 @@ func NewErrorPresenter(isDebug bool) graphql.ErrorPresenterFunc {
 				"code":   customErr.ErrorCode(),
 				"status": customErr.ErrorStatus(),
 			}
+			// Merge the error's structured payload (if any) so callers can attach
+			// details like a blocking resource's id/number that the FE reads
+			// directly from extensions instead of parsing the human message.
+			// code/status are reserved keys — the payload cannot overwrite them.
+			for k, v := range customErr.Extensions() {
+				if k == "code" || k == "status" {
+					continue
+				}
+				gqlErr.Extensions[k] = v
+			}
 			// 5xx are server faults — capture as errors (they alert). 4xx are
 			// user-facing rejections — capture as warnings so friction is
 			// queryable in Sentry without paging anyone.

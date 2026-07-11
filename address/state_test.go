@@ -201,6 +201,15 @@ func TestClean_WriteHelperPreservesUnmappable(t *testing.T) {
 	assert.Equal(t, "Nuevo León", *preserved)
 }
 
+// CleanString (string write helper): mappable -> code, unmappable -> original.
+func TestCleanString_WriteHelperPreservesUnmappable(t *testing.T) {
+	assert.Equal(t, "CA", CleanString("California"))
+	assert.Equal(t, "CA", CleanString("ca"))
+	assert.Equal(t, "ON", CleanString("Ontario"))
+	assert.Equal(t, "Nuevo León", CleanString("Nuevo León")) // preserved
+	assert.Equal(t, "", CleanString(""))                     // empty stays empty
+}
+
 // All 50 states + DC are present and each maps to a distinct valid code.
 func TestMapIntegrity_FiftyStatesPlusDC(t *testing.T) {
 	fiftyPlusDC := []string{

@@ -128,3 +128,13 @@ func Clean(state *string) *string {
 	}
 	return state
 }
+
+// CleanString is the string-valued sibling of Clean, for models whose state
+// field is a plain string (e.g. FMCSA results, gRPC message fields): it returns
+// the 2-letter code when mappable and the original value otherwise.
+func CleanString(state string) string {
+	if code := StateCode(state); code != "" {
+		return code
+	}
+	return state
+}

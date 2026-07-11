@@ -85,6 +85,75 @@ func TestErrorPresenter_PublicError5xxCaptures(t *testing.T) {
 	}
 }
 
+// A PublicError with a structured payload must have its extensions merged into
+// gqlErr.Extensions on top of code/status — that is the contract the FE reads
+// to render, e.g. a link to the blocking resource without parsing the message.
+func TestErrorPresenter_MergesPublicErrorExtensions(t *testing.T) {
+	withCaptureSpy(t)
+
+	present := NewErrorPresenter(false)
+	gqlErr := present(context.Background(), response.NewConflictWithExtensions(
+		"tech",
+		"user",
+		map[string]any{
+			"blockingTripId":     "11111111-1111-1111-1111-111111111111",
+			"blockingTripNumber": 42,
+		},
+	))
+
+	if got := gqlErr.Extensions["status"]; got != http.StatusConflict {
+		t.Errorf("Extensions[status] = %v, want %d", got, http.StatusConflict)
+	}
+	if got := gqlErr.Extensions["blockingTripId"]; got != "11111111-1111-1111-1111-111111111111" {
+		t.Errorf("Extensions[blockingTripId] = %v, want the uuid string", got)
+	}
+	if got := gqlErr.Extensions["blockingTripNumber"]; got != 42 {
+		t.Errorf("Extensions[blockingTripNumber] = %v, want 42", got)
+	}
+}
+
+// A payload key of "code" or "status" must not shadow the presenter's own
+// values — those two keys are the shared contract every client reads first.
+func TestErrorPresenter_ExtensionsCannotOverwriteCodeOrStatus(t *testing.T) {
+	withCaptureSpy(t)
+
+	present := NewErrorPresenter(false)
+	gqlErr := present(context.Background(), response.NewConflictWithExtensions(
+		"tech",
+		"user",
+		map[string]any{
+			"code":   "HIJACKED",
+			"status": 200,
+			"detail": "ok",
+		},
+	))
+
+	if got := gqlErr.Extensions["status"]; got != http.StatusConflict {
+		t.Errorf("Extensions[status] = %v, want %d — payload must not overwrite", got, http.StatusConflict)
+	}
+	if got := gqlErr.Extensions["code"]; got == "HIJACKED" {
+		t.Errorf("Extensions[code] = %v, payload must not overwrite the reserved code key", got)
+	}
+	if got := gqlErr.Extensions["detail"]; got != "ok" {
+		t.Errorf("Extensions[detail] = %v, want ok — non-reserved keys still pass through", got)
+	}
+}
+
+// A PublicError constructed without a payload must not add any extra keys to
+// extensions — existing callers (NewConflict / NewBadRequest / ...) stay
+// wire-compatible.
+func TestErrorPresenter_PublicErrorWithoutExtensionsIsUnchanged(t *testing.T) {
+	withCaptureSpy(t)
+
+	present := NewErrorPresenter(false)
+	gqlErr := present(context.Background(), response.NewConflict("tech", "user"))
+
+	// Expect only the three keys the presenter always writes: code, status, requestId.
+	if got, want := len(gqlErr.Extensions), 3; got != want {
+		t.Errorf("Extensions has %d keys (%v), want %d", got, gqlErr.Extensions, want)
+	}
+}
+
 // A genuinely unexpected (non-Public) error must stay a 500 and be captured as
 // an error, never a warning.
 func TestErrorPresenter_UnknownErrorCaptures(t *testing.T) {

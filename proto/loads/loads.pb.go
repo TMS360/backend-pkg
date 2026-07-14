@@ -1014,19 +1014,20 @@ func (x *GetDriverTripDetailsResponse) GetTripDetails() []*TripDetails {
 }
 
 type TripDetails struct {
-	state               protoimpl.MessageState `protogen:"open.v1"`
-	ShipmentId          string                 `protobuf:"bytes,1,opt,name=shipment_id,json=shipmentId,proto3" json:"shipment_id,omitempty"`
-	TripId              string                 `protobuf:"bytes,2,opt,name=trip_id,json=tripId,proto3" json:"trip_id,omitempty"`
-	DriverCrewId        string                 `protobuf:"bytes,3,opt,name=driver_crew_id,json=driverCrewId,proto3" json:"driver_crew_id,omitempty"`
-	LoadNumber          string                 `protobuf:"bytes,4,opt,name=load_number,json=loadNumber,proto3" json:"load_number,omitempty"`
-	TotalPay            float64                `protobuf:"fixed64,5,opt,name=total_pay,json=totalPay,proto3" json:"total_pay,omitempty"`
-	Distance            float64                `protobuf:"fixed64,6,opt,name=distance,proto3" json:"distance,omitempty"`
-	StartedAt           string                 `protobuf:"bytes,7,opt,name=started_at,json=startedAt,proto3" json:"started_at,omitempty"`                                  // ISO Timestamp
-	FinishedAt          string                 `protobuf:"bytes,8,opt,name=finished_at,json=finishedAt,proto3" json:"finished_at,omitempty"`                               // ISO Timestamp (nullable/empty if active)
-	Status              string                 `protobuf:"bytes,9,opt,name=status,proto3" json:"status,omitempty"`                                                         // trip status; needed so the audit upsert's status_rank guard admits a resync
-	PickupAppointmentAt string                 `protobuf:"bytes,10,opt,name=pickup_appointment_at,json=pickupAppointmentAt,proto3" json:"pickup_appointment_at,omitempty"` // ISO Timestamp of the pickup leg appointment; the audit board's bucketing key (empty if none)
-	unknownFields       protoimpl.UnknownFields
-	sizeCache           protoimpl.SizeCache
+	state                 protoimpl.MessageState `protogen:"open.v1"`
+	ShipmentId            string                 `protobuf:"bytes,1,opt,name=shipment_id,json=shipmentId,proto3" json:"shipment_id,omitempty"`
+	TripId                string                 `protobuf:"bytes,2,opt,name=trip_id,json=tripId,proto3" json:"trip_id,omitempty"`
+	DriverCrewId          string                 `protobuf:"bytes,3,opt,name=driver_crew_id,json=driverCrewId,proto3" json:"driver_crew_id,omitempty"`
+	LoadNumber            string                 `protobuf:"bytes,4,opt,name=load_number,json=loadNumber,proto3" json:"load_number,omitempty"`
+	TotalPay              float64                `protobuf:"fixed64,5,opt,name=total_pay,json=totalPay,proto3" json:"total_pay,omitempty"`
+	Distance              float64                `protobuf:"fixed64,6,opt,name=distance,proto3" json:"distance,omitempty"`
+	StartedAt             string                 `protobuf:"bytes,7,opt,name=started_at,json=startedAt,proto3" json:"started_at,omitempty"`                                        // ISO Timestamp
+	FinishedAt            string                 `protobuf:"bytes,8,opt,name=finished_at,json=finishedAt,proto3" json:"finished_at,omitempty"`                                     // ISO Timestamp (nullable/empty if active)
+	Status                string                 `protobuf:"bytes,9,opt,name=status,proto3" json:"status,omitempty"`                                                               // trip status; needed so the audit upsert's status_rank guard admits a resync
+	PickupAppointmentAt   string                 `protobuf:"bytes,10,opt,name=pickup_appointment_at,json=pickupAppointmentAt,proto3" json:"pickup_appointment_at,omitempty"`       // ISO Timestamp of the first pickup leg appointment start; the audit board's bucketing key (empty if none)
+	DeliveryAppointmentTo string                 `protobuf:"bytes,11,opt,name=delivery_appointment_to,json=deliveryAppointmentTo,proto3" json:"delivery_appointment_to,omitempty"` // ISO Timestamp of the last delivery leg appointment end; the driver-timeline segment's planned to_time (empty if none)
+	unknownFields         protoimpl.UnknownFields
+	sizeCache             protoimpl.SizeCache
 }
 
 func (x *TripDetails) Reset() {
@@ -1125,6 +1126,13 @@ func (x *TripDetails) GetStatus() string {
 func (x *TripDetails) GetPickupAppointmentAt() string {
 	if x != nil {
 		return x.PickupAppointmentAt
+	}
+	return ""
+}
+
+func (x *TripDetails) GetDeliveryAppointmentTo() string {
+	if x != nil {
+		return x.DeliveryAppointmentTo
 	}
 	return ""
 }
@@ -4645,7 +4653,7 @@ const file_loads_loads_proto_rawDesc = "" +
 	"start_date\x18\x02 \x01(\tR\tstartDate\x12\x19\n" +
 	"\bend_date\x18\x03 \x01(\tR\aendDate\"U\n" +
 	"\x1cGetDriverTripDetailsResponse\x125\n" +
-	"\ftrip_details\x18\x01 \x03(\v2\x12.loads.TripDetailsR\vtripDetails\"\xd3\x02\n" +
+	"\ftrip_details\x18\x01 \x03(\v2\x12.loads.TripDetailsR\vtripDetails\"\x8b\x03\n" +
 	"\vTripDetails\x12\x1f\n" +
 	"\vshipment_id\x18\x01 \x01(\tR\n" +
 	"shipmentId\x12\x17\n" +
@@ -4661,7 +4669,8 @@ const file_loads_loads_proto_rawDesc = "" +
 	"finishedAt\x12\x16\n" +
 	"\x06status\x18\t \x01(\tR\x06status\x122\n" +
 	"\x15pickup_appointment_at\x18\n" +
-	" \x01(\tR\x13pickupAppointmentAt\"P\n" +
+	" \x01(\tR\x13pickupAppointmentAt\x126\n" +
+	"\x17delivery_appointment_to\x18\v \x01(\tR\x15deliveryAppointmentTo\"P\n" +
 	"\x19GetRecentBrokerIDsRequest\x12\x1d\n" +
 	"\n" +
 	"courier_id\x18\x01 \x01(\tR\tcourierId\x12\x14\n" +

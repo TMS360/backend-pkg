@@ -34,7 +34,20 @@ const (
 	PermTasksAssign     UserPermissionEnum = "tasks.assign"
 	PermTasksTransition UserPermissionEnum = "tasks.transition"
 	PermTasksReopen     UserPermissionEnum = "tasks.reopen"
+
+	// PermFinanceTripMilesOverride (DEV-1256) gates the hand-typed trip miles /
+	// gross-rate override (DEV-1257). It lives OUTSIDE the auto-granted module set
+	// (see ModulePermissionCodes / FinanceModuleCode), so only the Accounting role
+	// holds it by default (seeded by tms-auth); other roles receive it only via an
+	// explicit custom grant. Super-admin bypasses the check as usual.
+	PermFinanceTripMilesOverride UserPermissionEnum = "finance.trip_miles.override"
 )
+
+// FinanceModuleCode is the top-level catalog module that holds the DEV-1256
+// governed trip-financials permission. It is deliberately kept out of the
+// all-role default grant (ModulePermissionCodes) so nothing under finance.* is
+// swept in by a broad module-level default.
+const FinanceModuleCode = "finance"
 
 // PermissionCatalogEntry describes one row written to the permissions table.
 // Modules carry no actions; entities carry the CRUD verbs they support.
@@ -135,6 +148,15 @@ var PermissionCatalog = []PermissionCatalogEntry{
 	{Code: "settings.office_roles", ParentCode: "settings", Label: "Office roles", Actions: []string{"view", "edit"}},
 	{Code: "settings.pdf_layouts", ParentCode: "settings", Label: "Office roles", Actions: []string{"view", "edit"}},
 	{Code: "settings.compliance", ParentCode: "settings", Label: "Compliance", Actions: []string{"view", "edit"}},
+
+	// === finance (DEV-1256) — governs the hand-typed trip miles / gross-rate
+	// override (DEV-1257). Deliberately NOT auto-granted: ModulePermissionCodes
+	// excludes the finance module, so no role receives finance.* by the all-modules
+	// default. The tms-auth seeder grants finance.trip_miles.override to the
+	// Accounting role only; a company can grant/revoke it to others via custom
+	// roles like any other catalog code. ===
+	{Code: "finance", Label: "Finance"},
+	{Code: "finance.trip_miles", ParentCode: "finance", Label: "Trip miles / gross-rate override", Actions: []string{"override"}},
 }
 
 // validPermissionCodes indexes every grantable key (modules, entities, and
@@ -177,17 +199,22 @@ func AllUserPermissions() []string {
 	return out
 }
 
-// ModulePermissionCodes returns just the top-level module codes from the
-// catalog (entries with no ParentCode) in declaration order. These are the
-// codes the auth service grants to every role on company signup so the
+// ModulePermissionCodes returns the top-level module codes the auth service
+// grants to EVERY role on company signup (the all-modules default) so a fresh
 // tenant has working defaults; hierarchical prefix matching covers every
 // entity/action below each module.
+//
+// DEV-1256: the finance module (FinanceModuleCode) is deliberately excluded — a
+// governed permission (finance.trip_miles.override) must sit OUTSIDE the set
+// every role receives automatically, so nobody is swept in by this broad default.
+// It is granted to Accounting by the seeder and to others only via custom roles.
 func ModulePermissionCodes() []string {
 	out := make([]string, 0, 8)
 	for _, e := range PermissionCatalog {
-		if e.ParentCode == "" {
-			out = append(out, e.Code)
+		if e.ParentCode != "" || e.Code == FinanceModuleCode {
+			continue
 		}
+		out = append(out, e.Code)
 	}
 	return out
 }

@@ -35,19 +35,14 @@ const (
 	PermTasksTransition UserPermissionEnum = "tasks.transition"
 	PermTasksReopen     UserPermissionEnum = "tasks.reopen"
 
-	// PermFinanceTripMilesOverride (DEV-1256) gates the hand-typed trip miles /
+	// PermTripFinancialsEdit (DEV-1256) gates the hand-typed trip miles /
 	// gross-rate override (DEV-1257). It lives OUTSIDE the auto-granted module set
 	// (see ModulePermissionCodes / FinanceModuleCode), so only the Accounting role
 	// holds it by default (seeded by tms-auth); other roles receive it only via an
 	// explicit custom grant. Super-admin bypasses the check as usual.
-	PermFinanceTripMilesOverride UserPermissionEnum = "finance.trip_miles.override"
+	PermTripFinancialsEdit    UserPermissionEnum = "trip_financials_edit"
+	PermTripFinancialsApprove UserPermissionEnum = "trip_financials_approve"
 )
-
-// FinanceModuleCode is the top-level catalog module that holds the DEV-1256
-// governed trip-financials permission. It is deliberately kept out of the
-// all-role default grant (ModulePermissionCodes) so nothing under finance.* is
-// swept in by a broad module-level default.
-const FinanceModuleCode = "finance"
 
 // PermissionCatalogEntry describes one row written to the permissions table.
 // Modules carry no actions; entities carry the CRUD verbs they support.
@@ -148,15 +143,49 @@ var PermissionCatalog = []PermissionCatalogEntry{
 	{Code: "settings.office_roles", ParentCode: "settings", Label: "Office roles", Actions: []string{"view", "edit"}},
 	{Code: "settings.pdf_layouts", ParentCode: "settings", Label: "Office roles", Actions: []string{"view", "edit"}},
 	{Code: "settings.compliance", ParentCode: "settings", Label: "Compliance", Actions: []string{"view", "edit"}},
+}
 
-	// === finance (DEV-1256) — governs the hand-typed trip miles / gross-rate
-	// override (DEV-1257). Deliberately NOT auto-granted: ModulePermissionCodes
-	// excludes the finance module, so no role receives finance.* by the all-modules
-	// default. The tms-auth seeder grants finance.trip_miles.override to the
-	// Accounting role only; a company can grant/revoke it to others via custom
-	// roles like any other catalog code. ===
-	{Code: "finance", Label: "Finance"},
-	{Code: "finance.trip_miles", ParentCode: "finance", Label: "Trip miles / gross-rate override", Actions: []string{"override"}},
+// CustomPermissionEntry is a standalone, NON-hierarchical permission: a flat
+// code (no `module.entity.action` structure) that is resolved by exact match
+// only. Because it carries no dots, middleware.HasPermission reduces to an
+// exact-match for it — no module can imply it via prefix, and it implies
+// nothing. Custom permissions live OUTSIDE PermissionCatalog (so they are never
+// swept into ModulePermissionCodes → default-deny) yet are fully grantable:
+// they validate, they can be assigned to roles/users, and @hasPerm checks them
+// exactly like standard codes.
+type CustomPermissionEntry struct {
+	Code  string
+	Label string
+}
+
+// CustomPermissionCatalog is the source of truth for flat, governed permissions
+// that fall outside the standard module.entity.action grid. The admin UI renders
+// them as standalone checkboxes (see getPermissions), and they are
+// grantable/revocable per company via custom roles like any other code.
+var CustomPermissionCatalog = []CustomPermissionEntry{
+	{Code: string(PermTripFinancialsEdit), Label: "Edit trip miles & gross rate"},
+	{Code: string(PermTripFinancialsApprove), Label: "Approve trip financial changes"},
+}
+
+// CustomPermissionCodes returns just the flat custom permission codes, in
+// declaration order.
+func CustomPermissionCodes() []string {
+	out := make([]string, 0, len(CustomPermissionCatalog))
+	for _, c := range CustomPermissionCatalog {
+		out = append(out, c.Code)
+	}
+	return out
+}
+
+// IsCustomPermissionCode reports whether code is a registered flat custom
+// permission (as opposed to a standard hierarchical catalog code).
+func IsCustomPermissionCode(code string) bool {
+	for _, c := range CustomPermissionCatalog {
+		if c.Code == code {
+			return true
+		}
+	}
+	return false
 }
 
 // validPermissionCodes indexes every grantable key (modules, entities, and
@@ -170,6 +199,11 @@ func buildValidPermissionCodes() map[string]struct{} {
 		for _, a := range e.Actions {
 			m[e.Code+"."+a] = struct{}{}
 		}
+	}
+	// Flat custom permissions are grantable too, so they must validate for the
+	// assignPermissionsTo{User,Role} mutations.
+	for _, c := range CustomPermissionCatalog {
+		m[c.Code] = struct{}{}
 	}
 	return m
 }
@@ -211,10 +245,46 @@ func AllUserPermissions() []string {
 func ModulePermissionCodes() []string {
 	out := make([]string, 0, 8)
 	for _, e := range PermissionCatalog {
-		if e.ParentCode != "" || e.Code == FinanceModuleCode {
-			continue
+		if e.ParentCode == "" {
+			out = append(out, e.Code)
 		}
-		out = append(out, e.Code)
 	}
 	return out
+}
+
+// DefaultRolePermissions maps each built-in role to the exact permission codes
+// it receives by default at company signup (and, for existing tenants, via the
+// back-fill migration). It replaces the former "every role gets every module"
+// uniform grant: each role is listed explicitly, so a role's default set can
+// diverge from the others.
+//
+// Today every office role's baseline is still the full module set
+// (ModulePermissionCodes); on top of that, dispatcher and accounting receive
+// their governed flat custom permission (DEV-1256) — trip_financials_edit and
+// trip_financials_approve respectively. super_admin bypasses all permission
+// checks, so it is intentionally omitted; a role absent from the map receives
+// no default grant. Trim an individual role's slice here to narrow its defaults
+// without touching any other role.
+//
+// Each role gets its own copy of the slice, so a caller may mutate the returned
+// value without cross-contaminating other roles.
+func DefaultRolePermissions() map[UserRoleEnum][]string {
+	base := ModulePermissionCodes()
+	withExtra := func(extra ...string) []string {
+		out := make([]string, 0, len(base)+len(extra))
+		out = append(out, base...)
+		out = append(out, extra...)
+		return out
+	}
+	return map[UserRoleEnum][]string{
+		UserRoleAdmin:      withExtra(),
+		UserRoleManager:    withExtra(),
+		UserRoleAccounting: withExtra(string(PermTripFinancialsApprove)),
+		UserRoleFleet:      withExtra(),
+		UserRoleSafety:     withExtra(),
+		UserRoleHr:         withExtra(),
+		UserRoleDispatcher: withExtra(string(PermTripFinancialsEdit)),
+		UserRoleDriver:     withExtra(),
+		UserRoleOther:      withExtra(),
+	}
 }

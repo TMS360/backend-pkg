@@ -102,6 +102,25 @@ func TestDefaultRolePermissions_PerRoleCustomGrants(t *testing.T) {
 	assert.False(t, ok, "super_admin must not be seeded (it bypasses permission checks)")
 }
 
+// DEV-1226: trip_reassign_committed is a registered custom code held by manager
+// (dispatch manager) by default, but NOT by the regular dispatcher.
+func TestTripReassignCommitted_RegisteredAndManagerDefault(t *testing.T) {
+	code := string(enums.PermTripReassignCommitted)
+	assert.Equal(t, "trip_reassign_committed", code)
+	assert.True(t, enums.IsValidPermissionCode(code), "must validate so custom roles can grant it")
+	assert.True(t, enums.IsCustomPermissionCode(code))
+
+	defaults := enums.DefaultRolePermissions()
+	assert.Contains(t, defaults[enums.UserRoleManager], code, "manager holds it by default")
+	assert.NotContains(t, defaults[enums.UserRoleDispatcher], code, "dispatcher must NOT hold it")
+
+	// Flat code → exact match only: no module grant implies it.
+	for _, m := range enums.ModulePermissionCodes() {
+		assert.Falsef(t, middleware.HasPermission([]string{m}, code), "module %q must not imply %q", m, code)
+	}
+	assert.True(t, middleware.HasPermission([]string{code}, code))
+}
+
 // The returned slices must be independent copies — mutating one role's grant
 // must not leak into another's shared module baseline.
 func TestDefaultRolePermissions_SlicesAreIndependent(t *testing.T) {

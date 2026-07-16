@@ -42,6 +42,14 @@ const (
 	// explicit custom grant. Super-admin bypasses the check as usual.
 	PermTripFinancialsEdit    UserPermissionEnum = "trip_financials_edit"
 	PermTripFinancialsApprove UserPermissionEnum = "trip_financials_approve"
+
+	// PermTripReassignCommitted (DEV-1226) gates swapping/removing a trip's driver
+	// AFTER the driver has accepted the trip (DriversAccepted=true). A regular
+	// dispatcher can still edit other trip fields via shipments.trips.edit, but the
+	// late-stage driver change is limited to holders of this flat custom permission
+	// (dispatch managers, admins). Enforced inside the trip service layer, not via
+	// an @hasPerm on updateTrip, because it depends on runtime trip state.
+	PermTripReassignCommitted UserPermissionEnum = "trip_reassign_committed"
 )
 
 // PermissionCatalogEntry describes one row written to the permissions table.
@@ -165,6 +173,7 @@ type CustomPermissionEntry struct {
 var CustomPermissionCatalog = []CustomPermissionEntry{
 	{Code: string(PermTripFinancialsEdit), Label: "Edit trip miles & gross rate"},
 	{Code: string(PermTripFinancialsApprove), Label: "Approve trip financial changes"},
+	{Code: string(PermTripReassignCommitted), Label: "Reassign driver after trip accepted"},
 }
 
 // CustomPermissionCodes returns just the flat custom permission codes, in
@@ -278,7 +287,7 @@ func DefaultRolePermissions() map[UserRoleEnum][]string {
 	}
 	return map[UserRoleEnum][]string{
 		UserRoleAdmin:      withExtra(),
-		UserRoleManager:    withExtra(),
+		UserRoleManager:    withExtra(string(PermTripReassignCommitted)),
 		UserRoleAccounting: withExtra(string(PermTripFinancialsApprove)),
 		UserRoleFleet:      withExtra(),
 		UserRoleSafety:     withExtra(),

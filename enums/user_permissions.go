@@ -35,6 +35,23 @@ const (
 	PermTasksTransition UserPermissionEnum = "tasks.transition"
 	PermTasksReopen     UserPermissionEnum = "tasks.reopen"
 
+	// Workspaces & custom boards module (backend-workspaces). These grants gate
+	// the GraphQL surface only; board/workspace data visibility additionally
+	// requires workspace membership (workspace_members roles, enforced in the
+	// service layer). Entity data shown on boards is resolved through
+	// apollo-router as the acting user, so the owning services' own @hasPerm
+	// and tenancy still apply on top of these codes.
+	PermWorkspacesView         UserPermissionEnum = "workspaces.workspaces.view"
+	PermWorkspacesCreate       UserPermissionEnum = "workspaces.workspaces.create"
+	PermWorkspacesEdit         UserPermissionEnum = "workspaces.workspaces.edit"
+	PermWorkspacesDelete       UserPermissionEnum = "workspaces.workspaces.delete"
+	PermWorkspacesBoardsView   UserPermissionEnum = "workspaces.boards.view"
+	PermWorkspacesBoardsCreate UserPermissionEnum = "workspaces.boards.create"
+	PermWorkspacesBoardsEdit   UserPermissionEnum = "workspaces.boards.edit"
+	PermWorkspacesBoardsDelete UserPermissionEnum = "workspaces.boards.delete"
+	PermWorkspacesValuesView   UserPermissionEnum = "workspaces.values.view"
+	PermWorkspacesValuesEdit   UserPermissionEnum = "workspaces.values.edit"
+
 	// PermTripFinancialsEdit (DEV-1256) gates the hand-typed trip miles /
 	// gross-rate override (DEV-1257). It lives OUTSIDE the auto-granted module set
 	// (see ModulePermissionCodes / FinanceModuleCode), so only the Accounting role
@@ -81,9 +98,15 @@ var PermissionCatalog = []PermissionCatalogEntry{
 	{Code: "customers", Label: "Customers"},
 	{Code: "settings", Label: "Settings"},
 	{Code: "tasks", Label: "Tasks"},
+	{Code: "workspaces", Label: "Workspaces"},
 
 	// === tasks entities ===
 	{Code: "tasks.teams", ParentCode: "tasks", Label: "Task teams", Actions: []string{"view", "create", "edit", "delete"}},
+
+	// === workspaces entities (backend-workspaces custom boards) ===
+	{Code: "workspaces.workspaces", ParentCode: "workspaces", Label: "Workspaces", Actions: []string{"view", "create", "edit", "delete"}},
+	{Code: "workspaces.boards", ParentCode: "workspaces", Label: "Boards", Actions: []string{"view", "create", "edit", "delete"}},
+	{Code: "workspaces.values", ParentCode: "workspaces", Label: "Board values", Actions: []string{"view", "edit"}},
 
 	// === dashboard entities ===
 	{Code: "dashboard.stats", ParentCode: "dashboard", Label: "Stats", Actions: []string{"view"}},

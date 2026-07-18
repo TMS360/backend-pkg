@@ -21,6 +21,7 @@ const (
 	RootFile             RootEntity = "files"
 	RootRateConfirmation RootEntity = "rate_confirmations"
 	RootThread           RootEntity = "conversations"
+	RootWorkspace        RootEntity = "workspaces"
 )
 
 // LeafToRoot is consulted by the audit consumer when an inbound event lacks
@@ -75,4 +76,8 @@ var LeafToRoot = map[string]RootEntity{
 	"messages":               RootThread,
 	"mentions":               RootThread,
 	"thread_access":          RootThread,
+	"workspaces":             RootWorkspace,
+	"boards":                 RootWorkspace,
+	"board_columns":          RootWorkspace,
+	"board_values":           RootWorkspace,
 }

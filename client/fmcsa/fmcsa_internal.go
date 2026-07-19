@@ -77,6 +77,12 @@ func (c *client) VerifyCompany(ctx context.Context, dotNumber, entityType string
 	if err != nil || company == nil {
 		return nil, fmcsa_errors.NewCompanyCheckError(400, dotNumber, err)
 	}
+	// FMCSA live data was unavailable (e.g. QCMobile 5xx/timeout): operating
+	// authority is unknown, not invalid. Surface as retry-later so a degraded
+	// upstream never falsely rejects a legitimate, active broker.
+	if company.VerificationUnavailable() {
+		return nil, fmcsa_errors.NewCompanyVerificationUnavailableError(503)
+	}
 	if !company.IsValid() {
 		return nil, fmcsa_errors.NewCompanyNoAuthError(400)
 	}

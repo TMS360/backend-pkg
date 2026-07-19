@@ -13,7 +13,50 @@ import (
 	"github.com/TMS360/backend-pkg/response"
 	"github.com/TMS360/backend-pkg/validate"
 	"github.com/vektah/gqlparser/v2/gqlerror"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
+
+// grpcPublicError translates a gRPC status error from a downstream subservice
+// into a user-facing GraphQL error. A gRPC call that fails across the wire
+// arrives here as an opaque status error (often fmt.Errorf-wrapped by the
+// resolver), so without this it falls into the 500-class fallback and the
+// client sees INTERNAL_SERVER_ERROR for what is a plain user condition
+// (bad input, precondition, upstream temporarily down). Only codes a service
+// sets deliberately for the caller are mapped; server-fault codes
+// (Unknown/Internal/DataLoss/…) return ok=false and stay 500. Uses errors.As so
+// a wrapped status is still found. The status Message is surfaced as-is because
+// services set it intentionally for these caller-facing codes.
+func grpcPublicError(err error) (message, code string, httpStatus int, ok bool) {
+	type grpcStatuser interface{ GRPCStatus() *status.Status }
+	var gs grpcStatuser
+	if !errors.As(err, &gs) {
+		return "", "", 0, false
+	}
+	st := gs.GRPCStatus()
+	switch st.Code() {
+	case codes.InvalidArgument:
+		return st.Message(), "BAD_USER_INPUT", http.StatusBadRequest, true
+	case codes.FailedPrecondition:
+		return st.Message(), "FAILED_PRECONDITION", http.StatusUnprocessableEntity, true
+	case codes.Unavailable:
+		return st.Message(), "SERVICE_UNAVAILABLE", http.StatusServiceUnavailable, true
+	case codes.NotFound:
+		return st.Message(), "NOT_FOUND", http.StatusNotFound, true
+	case codes.AlreadyExists:
+		return st.Message(), "ALREADY_EXISTS", http.StatusConflict, true
+	case codes.PermissionDenied:
+		return st.Message(), "FORBIDDEN", http.StatusForbidden, true
+	case codes.Unauthenticated:
+		return st.Message(), "UNAUTHENTICATED", http.StatusUnauthorized, true
+	case codes.ResourceExhausted:
+		return st.Message(), "RESOURCE_EXHAUSTED", http.StatusTooManyRequests, true
+	default:
+		// Unknown, Internal, DataLoss, Unimplemented, Aborted, Canceled,
+		// DeadlineExceeded — server-fault class; keep the 500 handling.
+		return "", "", 0, false
+	}
+}
 
 // captureFunc / captureWarningFunc report to Sentry at Error / Warning level.
 // Indirected through package vars so tests can assert which severity each path
@@ -84,6 +127,14 @@ func NewErrorPresenter(isDebug bool) graphql.ErrorPresenterFunc {
 			} else {
 				captureWarningFunc(ctx, err)
 			}
+		} else if msg, code, httpStatus, ok := grpcPublicError(err); ok {
+			// A gRPC status from a downstream subservice carrying a caller-facing
+			// code (bad input / precondition / upstream unavailable). Present it as
+			// a clean user error instead of masking it as a 500. Capture as a
+			// warning — user friction, never page.
+			gqlErr.Message = msg
+			gqlErr.Extensions = map[string]any{"code": code, "status": httpStatus}
+			captureWarningFunc(ctx, err)
 		} else {
 			// 3. Unexpected errors — always treat as 500-class.
 			slog.Error("GraphQL Internal Error", "err", err, "path", gqlErr.Path, "request_id", requestID)

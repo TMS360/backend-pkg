@@ -195,6 +195,9 @@ type CustomPermissionEntry struct {
 // grantable/revocable per company via custom roles like any other code.
 var CustomPermissionCatalog = []CustomPermissionEntry{
 	{Code: string(PermTripFinancialsEdit), Label: "Edit trip miles & gross rate"},
+	// Registered and grantable via custom roles, but NOT default-seeded to any
+	// role yet — reserved for a future maker-checker approval flow (see
+	// DefaultRolePermissions).
 	{Code: string(PermTripFinancialsApprove), Label: "Approve trip financial changes"},
 	{Code: string(PermTripReassignCommitted), Label: "Reassign driver after trip accepted"},
 }
@@ -309,13 +312,20 @@ func DefaultRolePermissions() map[UserRoleEnum][]string {
 		return out
 	}
 	return map[UserRoleEnum][]string{
-		UserRoleAdmin:      withExtra(),
+		// DEV-1256 / BL §7.5: hand-editing trip miles & gross rate
+		// (trip_financials_edit) is held by default by admin and accounting only.
+		// A regular dispatcher does NOT get it (a custom role may add it later).
+		// trip_financials_approve is intentionally NOT seeded to any role — it stays
+		// registered/grantable for a future maker-checker flow, but seeding it now
+		// would leave accounting with approve-and-no-edit, the exact divergence this
+		// matrix fixes.
+		UserRoleAdmin:      withExtra(string(PermTripFinancialsEdit)),
 		UserRoleManager:    withExtra(string(PermTripReassignCommitted)),
-		UserRoleAccounting: withExtra(string(PermTripFinancialsApprove)),
+		UserRoleAccounting: withExtra(string(PermTripFinancialsEdit)),
 		UserRoleFleet:      withExtra(),
 		UserRoleSafety:     withExtra(),
 		UserRoleHr:         withExtra(),
-		UserRoleDispatcher: withExtra(string(PermTripFinancialsEdit)),
+		UserRoleDispatcher: withExtra(),
 		UserRoleDriver:     withExtra(),
 		UserRoleOther:      withExtra(),
 	}

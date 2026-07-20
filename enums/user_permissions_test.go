@@ -75,27 +75,30 @@ func TestAllUserPermissions_IncludesCustom(t *testing.T) {
 	}
 }
 
-// Per-role default grants: dispatcher and accounting each receive their own
-// governed custom permission on top of the module baseline; other roles get the
-// modules but neither custom code, and super_admin has no entry at all.
-func TestDefaultRolePermissions_PerRoleCustomGrants(t *testing.T) {
+// DEV-1256 / BL §7.5 grant matrix: trip_financials_edit is held by default by
+// admin and accounting; the regular dispatcher does NOT get it; and
+// trip_financials_approve is not seeded to anyone.
+func TestDefaultRolePermissions_TripFinancialsMatrix(t *testing.T) {
 	defaults := enums.DefaultRolePermissions()
 	modules := enums.ModulePermissionCodes()
+	edit := string(enums.PermTripFinancialsEdit)
+	approve := string(enums.PermTripFinancialsApprove)
 
-	// Dispatcher: modules + edit, not approve.
+	// admin + accounting: modules + edit.
+	for _, role := range []enums.UserRoleEnum{enums.UserRoleAdmin, enums.UserRoleAccounting} {
+		assert.Subset(t, defaults[role], modules, "%s keeps module defaults", role)
+		assert.Containsf(t, defaults[role], edit, "%s must hold trip_financials_edit", role)
+	}
+
+	// dispatcher: modules only, NO edit (the divergence being fixed).
 	assert.Subset(t, defaults[enums.UserRoleDispatcher], modules)
-	assert.Contains(t, defaults[enums.UserRoleDispatcher], string(enums.PermTripFinancialsEdit))
-	assert.NotContains(t, defaults[enums.UserRoleDispatcher], string(enums.PermTripFinancialsApprove))
+	assert.NotContains(t, defaults[enums.UserRoleDispatcher], edit,
+		"dispatcher must NOT hold trip_financials_edit by default")
 
-	// Accounting: modules + approve, not edit.
-	assert.Subset(t, defaults[enums.UserRoleAccounting], modules)
-	assert.Contains(t, defaults[enums.UserRoleAccounting], string(enums.PermTripFinancialsApprove))
-	assert.NotContains(t, defaults[enums.UserRoleAccounting], string(enums.PermTripFinancialsEdit))
-
-	// A role without a governed grant gets the modules but no custom code.
-	assert.Subset(t, defaults[enums.UserRoleFleet], modules)
-	assert.NotContains(t, defaults[enums.UserRoleFleet], string(enums.PermTripFinancialsEdit))
-	assert.NotContains(t, defaults[enums.UserRoleFleet], string(enums.PermTripFinancialsApprove))
+	// approve is not default-seeded to any role (kept grantable via custom roles).
+	for role, perms := range defaults {
+		assert.NotContainsf(t, perms, approve, "%s must not be default-seeded trip_financials_approve", role)
+	}
 
 	// super_admin bypasses checks → intentionally has no default grant.
 	_, ok := defaults[enums.UserRoleSuperAdmin]

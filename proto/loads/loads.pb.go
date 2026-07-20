@@ -4169,7 +4169,7 @@ func (x *GetShipmentFilesRequest) GetShipmentId() string {
 type ShipmentFile struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	FileId        string                 `protobuf:"bytes,1,opt,name=file_id,json=fileId,proto3" json:"file_id,omitempty"`                   // UUID in backend-files
-	DocumentType  string                 `protobuf:"bytes,2,opt,name=document_type,json=documentType,proto3" json:"document_type,omitempty"` // "POD" | "RATE_CON" | "BOL" | "INVOICE" | "OTHER"
+	DocumentType  string                 `protobuf:"bytes,2,opt,name=document_type,json=documentType,proto3" json:"document_type,omitempty"` // "POD" | "RC" | "BOL" | "INVOICE" | "OTHER" (canonical SystemDocTypeCode)
 	EntityType    string                 `protobuf:"bytes,3,opt,name=entity_type,json=entityType,proto3" json:"entity_type,omitempty"`       // "SHIPMENT" | "TRIP" | "TRIP_STOP"
 	EntityId      string                 `protobuf:"bytes,4,opt,name=entity_id,json=entityId,proto3" json:"entity_id,omitempty"`             // UUID of the parent entity (for diagnostics)
 	unknownFields protoimpl.UnknownFields
@@ -4288,7 +4288,7 @@ type AttachShipmentFileRequest struct {
 	ShipmentId     string                 `protobuf:"bytes,2,opt,name=shipment_id,json=shipmentId,proto3" json:"shipment_id,omitempty"`
 	FileId         string                 `protobuf:"bytes,3,opt,name=file_id,json=fileId,proto3" json:"file_id,omitempty"`                                 // UUID in backend-files
 	UploadedBy     string                 `protobuf:"bytes,4,opt,name=uploaded_by,json=uploadedBy,proto3" json:"uploaded_by,omitempty"`                     // acting user; becomes order_files.uploaded_by
-	DocumentType   *string                `protobuf:"bytes,5,opt,name=document_type,json=documentType,proto3,oneof" json:"document_type,omitempty"`         // e.g. "RATE_CON" / "RC" (doc-type name)
+	DocumentType   *string                `protobuf:"bytes,5,opt,name=document_type,json=documentType,proto3,oneof" json:"document_type,omitempty"`         // e.g. "RC" (doc-type name; legacy "RATE_CON" accepted)
 	DocumentTypeId *string                `protobuf:"bytes,6,opt,name=document_type_id,json=documentTypeId,proto3,oneof" json:"document_type_id,omitempty"` // backend-files document type UUID
 	// false → a file already attached to another load (or to this load under a
 	// different doc type) is rejected with ALREADY_EXISTS instead of silently

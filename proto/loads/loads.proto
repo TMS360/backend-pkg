@@ -112,7 +112,7 @@ service LoadsService {
 
   // Returns every order_file attached to a shipment — files on the shipment
   // itself, on its trips, and on the trip stops — in one flat list. Each
-  // row carries document_type (POD / RATE_CON / BOL / INVOICE / OTHER) so
+  // row carries document_type (POD / RC / BOL / INVOICE / OTHER) so
   // the caller (backend-accounting) can pick the kinds it needs (e.g. merge
   // POD + RC into the invoice PDF, or attach them to a factoring batch).
   rpc GetShipmentFiles(GetShipmentFilesRequest)
@@ -672,7 +672,7 @@ message ShipmentBillingItem {
 }
 
 // ── Shipment Files (backend-accounting) ─────────────────────────────
-// Used to fetch all documents (POD / RATE_CON / BOL / INVOICE / OTHER) tied
+// Used to fetch all documents (POD / RC / BOL / INVOICE / OTHER) tied
 // to a shipment — the same flat list that backend-load aggregates over
 // shipment-level + trip-level + trip-stop-level order_files. Accounting
 // filters by document_type to merge attachments into invoice / factoring
@@ -684,7 +684,7 @@ message GetShipmentFilesRequest {
 
 message ShipmentFile {
   string file_id       = 1;  // UUID in backend-files
-  string document_type = 2;  // "POD" | "RATE_CON" | "BOL" | "INVOICE" | "OTHER"
+  string document_type = 2;  // "POD" | "RC" | "BOL" | "INVOICE" | "OTHER" (canonical SystemDocTypeCode)
   string entity_type   = 3;  // "SHIPMENT" | "TRIP" | "TRIP_STOP"
   string entity_id     = 4;  // UUID of the parent entity (for diagnostics)
 }
@@ -702,7 +702,7 @@ message AttachShipmentFileRequest {
   string shipment_id = 2;
   string file_id     = 3;  // UUID in backend-files
   string uploaded_by = 4;  // acting user; becomes order_files.uploaded_by
-  optional string document_type    = 5;  // e.g. "RATE_CON" / "RC" (doc-type name)
+  optional string document_type    = 5;  // e.g. "RC" (doc-type name; legacy "RATE_CON" accepted)
   optional string document_type_id = 6;  // backend-files document type UUID
   // false → a file already attached to another load (or to this load under a
   // different doc type) is rejected with ALREADY_EXISTS instead of silently

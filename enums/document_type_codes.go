@@ -68,6 +68,7 @@ func (c SystemDocTypeCode) IsValid() bool {
 		SystemDocBOL,
 		SystemDocPOD,
 		SystemDocInvoice,
+		SystemDocShipmentOther,
 		SystemPayStatement:
 		return true
 	default:

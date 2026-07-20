@@ -18,6 +18,19 @@ import (
 // rejects the configured API key with a 401 or 403 status.
 var ErrInvalidCredentials = errors.New("here: invalid credentials")
 
+// Billed HERE endpoints, as reported in the "op" attribute of here_call.
+const (
+	opRoutes     = "routes"
+	opGeocode    = "geocode"
+	opRevgeocode = "revgeocode"
+	opLookup     = "lookup"
+	// opTestConn is the credential probe behind the Settings "Test connection"
+	// button. It bills like any other revgeocode, so it is counted separately
+	// rather than folded into opRevgeocode, which would misattribute it to
+	// trip geocoding.
+	opTestConn = "revgeocode_testconn"
+)
+
 // AuthError is returned by doRequest when HERE responds with 401 or 403.
 // Callers use IsAuthError to detect this case and stop polling the tenant.
 type AuthError struct {
@@ -228,8 +241,14 @@ func NewClientWithToken(apiKey string) (*Client, error) {
 	}, nil
 }
 
-// doRequest performs HTTP request
-func (c *Client) doRequest(ctx context.Context, method, fullURL string) (*http.Response, error) {
+// doRequest performs HTTP request.
+//
+// op names the HERE endpoint being billed (routes, geocode, revgeocode, lookup)
+// and is passed in rather than parsed back out of fullURL, which carries the
+// apiKey and must never be logged.
+func (c *Client) doRequest(ctx context.Context, method, op, fullURL string) (*http.Response, error) {
+	started := time.Now()
+
 	req, err := http.NewRequestWithContext(ctx, method, fullURL, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
@@ -239,24 +258,34 @@ func (c *Client) doRequest(ctx context.Context, method, fullURL string) (*http.R
 
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
+		// Never reached HERE, so nothing was billed — logged anyway so a
+		// network-level outage is visible in the same sample.
+		logCall(ctx, op, 0, started, err)
 		return nil, fmt.Errorf("failed to execute request: %w", err)
 	}
 
 	if resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden {
 		defer func() { _ = resp.Body.Close() }()
 		body, _ := io.ReadAll(resp.Body)
-		return nil, &AuthError{StatusCode: resp.StatusCode, Body: string(body)}
+		authErr := &AuthError{StatusCode: resp.StatusCode, Body: string(body)}
+		logCall(ctx, op, resp.StatusCode, started, authErr)
+		return nil, authErr
 	}
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		defer func() { _ = resp.Body.Close() }()
-		body, err := io.ReadAll(resp.Body)
-		if err != nil {
-			return nil, fmt.Errorf("received non-2xx status code: %d (failed to read response body: %w)", resp.StatusCode, err)
+		body, readErr := io.ReadAll(resp.Body)
+		if readErr != nil {
+			statusErr := fmt.Errorf("received non-2xx status code: %d (failed to read response body: %w)", resp.StatusCode, readErr)
+			logCall(ctx, op, resp.StatusCode, started, statusErr)
+			return nil, statusErr
 		}
-		return nil, fmt.Errorf("received non-2xx status code: %d, body: %s", resp.StatusCode, string(body))
+		statusErr := fmt.Errorf("received non-2xx status code: %d, body: %s", resp.StatusCode, string(body))
+		logCall(ctx, op, resp.StatusCode, started, statusErr)
+		return nil, statusErr
 	}
 
+	logCall(ctx, op, resp.StatusCode, started, nil)
 	return resp, nil
 }
 
@@ -326,7 +355,7 @@ func (c *Client) GetRoute(ctx context.Context, req RouteRequest) (*RouteResponse
 
 	fullURL := fmt.Sprintf("%s/v8/routes?%s", c.routerHost, params.Encode())
 
-	resp, err := c.doRequest(ctx, http.MethodGet, fullURL)
+	resp, err := c.doRequest(ctx, http.MethodGet, opRoutes, fullURL)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get route: %w", err)
 	}
@@ -383,7 +412,7 @@ func (c *Client) Geocode(ctx context.Context, req GeocodeRequest) (*GeocodeRespo
 
 	fullURL := fmt.Sprintf("%s/v1/geocode?%s", c.geocodeHost, params.Encode())
 
-	resp, err := c.doRequest(ctx, http.MethodGet, fullURL)
+	resp, err := c.doRequest(ctx, http.MethodGet, opGeocode, fullURL)
 	if err != nil {
 		return nil, fmt.Errorf("failed to geocode: %w", err)
 	}
@@ -425,7 +454,7 @@ func (c *Client) ReverseGeocode(ctx context.Context, lat, lng float64) (*Geocode
 
 	fullURL := fmt.Sprintf("%s/v1/revgeocode?%s", c.geocodeHost, params.Encode())
 
-	resp, err := c.doRequest(ctx, http.MethodGet, fullURL)
+	resp, err := c.doRequest(ctx, http.MethodGet, opRevgeocode, fullURL)
 	if err != nil {
 		return nil, fmt.Errorf("failed to reverse geocode: %w", err)
 	}
@@ -491,7 +520,7 @@ func (c *Client) Lookup(ctx context.Context, req LookupRequest) (*GeocodeItem, e
 
 	fullURL := fmt.Sprintf("%s/v1/lookup?%s", c.lookupHost, params.Encode())
 
-	resp, err := c.doRequest(ctx, http.MethodGet, fullURL)
+	resp, err := c.doRequest(ctx, http.MethodGet, opLookup, fullURL)
 	if err != nil {
 		return nil, fmt.Errorf("failed to lookup: %w", err)
 	}
@@ -513,7 +542,14 @@ func (c *Client) LookupByID(ctx context.Context, id string) (*GeocodeItem, error
 // TestConnection validates the API key by making a lightweight authenticated
 // request (GET /v1/revgeocode?at=0,0&limit=1). Returns nil on success,
 // ErrInvalidCredentials on 401/403, or a wrapped error otherwise.
+//
+// This deliberately does not route through doRequest: callers match on
+// ErrInvalidCredentials (tms360-backend's integration classify), whereas
+// doRequest reports 401/403 as *AuthError. It bills all the same, so it logs
+// here_call directly to keep the outbound count whole.
 func (c *Client) TestConnection(ctx context.Context) error {
+	started := time.Now()
+
 	params := url.Values{}
 	params.Set("at", "0,0")
 	params.Set("limit", "1")
@@ -527,16 +563,25 @@ func (c *Client) TestConnection(ctx context.Context) error {
 
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
-		return fmt.Errorf("here: network error: %w", err)
+		netErr := fmt.Errorf("here: network error: %w", err)
+		logCall(ctx, opTestConn, 0, started, netErr)
+		return netErr
 	}
 	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden {
+		// Logged as an auth outcome even though the sentinel is not an
+		// *AuthError, so the sample groups it with other credential failures.
+		logCall(ctx, opTestConn, resp.StatusCode, started, &AuthError{StatusCode: resp.StatusCode})
 		return ErrInvalidCredentials
 	}
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		body, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("here: status %d: %s", resp.StatusCode, string(body))
+		statusErr := fmt.Errorf("here: status %d: %s", resp.StatusCode, string(body))
+		logCall(ctx, opTestConn, resp.StatusCode, started, statusErr)
+		return statusErr
 	}
+
+	logCall(ctx, opTestConn, resp.StatusCode, started, nil)
 	return nil
 }

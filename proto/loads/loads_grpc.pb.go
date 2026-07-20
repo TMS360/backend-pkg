@@ -133,7 +133,7 @@ type LoadsServiceClient interface {
 	GetShipmentsByIDs(ctx context.Context, in *GetShipmentsByIDsRequest, opts ...grpc.CallOption) (*GetShipmentsByIDsResponse, error)
 	// Returns every order_file attached to a shipment — files on the shipment
 	// itself, on its trips, and on the trip stops — in one flat list. Each
-	// row carries document_type (POD / RATE_CON / BOL / INVOICE / OTHER) so
+	// row carries document_type (POD / RC / BOL / INVOICE / OTHER) so
 	// the caller (backend-accounting) can pick the kinds it needs (e.g. merge
 	// POD + RC into the invoice PDF, or attach them to a factoring batch).
 	GetShipmentFiles(ctx context.Context, in *GetShipmentFilesRequest, opts ...grpc.CallOption) (*GetShipmentFilesResponse, error)
@@ -511,7 +511,7 @@ type LoadsServiceServer interface {
 	GetShipmentsByIDs(context.Context, *GetShipmentsByIDsRequest) (*GetShipmentsByIDsResponse, error)
 	// Returns every order_file attached to a shipment — files on the shipment
 	// itself, on its trips, and on the trip stops — in one flat list. Each
-	// row carries document_type (POD / RATE_CON / BOL / INVOICE / OTHER) so
+	// row carries document_type (POD / RC / BOL / INVOICE / OTHER) so
 	// the caller (backend-accounting) can pick the kinds it needs (e.g. merge
 	// POD + RC into the invoice PDF, or attach them to a factoring batch).
 	GetShipmentFiles(context.Context, *GetShipmentFilesRequest) (*GetShipmentFilesResponse, error)

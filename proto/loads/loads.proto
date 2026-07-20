@@ -118,6 +118,16 @@ service LoadsService {
   rpc GetShipmentFiles(GetShipmentFilesRequest)
       returns (GetShipmentFilesResponse);
 
+  // Attaches an existing backend-files file to a shipment as an order_files
+  // row — the write twin of GetShipmentFiles. Called by backend-accounting
+  // (createRevisedInvoice) to auto-attach operator-supplied evidence files so
+  // the frontend does not need a separate attachOrderFile round-trip.
+  // company_id / uploaded_by are explicit because backend-load runs without an
+  // AuthServerInterceptor: the server validates shipment ownership against
+  // company_id and builds a synthetic actor from uploaded_by.
+  rpc AttachShipmentFile(AttachShipmentFileRequest)
+      returns (AttachShipmentFileResponse);
+
   // Returns the trip IDs belonging to a single shipment (1 shipment → N trips
   // через split-сценарии). Used by backend-accounting Financial Summary
   // (Shipment.accountsPayable) to aggregate driver pay по trip-set.
@@ -681,6 +691,27 @@ message ShipmentFile {
 
 message GetShipmentFilesResponse {
   repeated ShipmentFile files = 1;
+}
+
+// Request for AttachShipmentFile. document_type / document_type_id must be
+// supplied together (backend-load trusts the pair verbatim); when BOTH are
+// absent backend-load resolves them from backend-files by file_id. Supplying
+// only one of the two is an InvalidArgument.
+message AttachShipmentFileRequest {
+  string company_id  = 1;  // tenant; stamped into order_files.company_id
+  string shipment_id = 2;
+  string file_id     = 3;  // UUID in backend-files
+  string uploaded_by = 4;  // acting user; becomes order_files.uploaded_by
+  optional string document_type    = 5;  // e.g. "RATE_CON" / "RC" (doc-type name)
+  optional string document_type_id = 6;  // backend-files document type UUID
+  // false → a file already attached to another load (or to this load under a
+  // different doc type) is rejected with ALREADY_EXISTS instead of silently
+  // creating a second row; true bypasses that duplicate warning.
+  bool confirm_duplicate = 7;
+}
+
+message AttachShipmentFileResponse {
+  ShipmentFile file = 1;
 }
 
 // Request for GetTripIDsByShipment. company_id is passed explicitly because

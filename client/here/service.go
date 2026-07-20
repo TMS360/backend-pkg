@@ -3,6 +3,7 @@ package here
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"time"
 )
 
@@ -254,7 +255,18 @@ func (s *service) GetDistance(ctx context.Context, origin, destination Coordinat
 	return distanceMeters, nil
 }
 
-// CalculateMultiStopRoute calculates route through multiple waypoints
+// CalculateMultiStopRoute calculates route through multiple waypoints.
+//
+// The whole route is requested in a single billed call: intermediate waypoints
+// go to HERE as `via=` stopovers, which makes it split the response into one
+// section per leg. Requesting leg pairs separately would cost len(waypoints)-1
+// transactions for the same answer (DEV-653) — and callers retry, multiplying it
+// again.
+//
+// HERE also starts a new section whenever the transport mode changes (a ferry
+// crossing yields drive/ferry/drive), so a section count that does not match the
+// legs means sections cannot be mapped onto waypoint pairs by index; that case
+// falls back to the per-pair walk.
 func (s *service) CalculateMultiStopRoute(ctx context.Context, waypoints []Coordinates, departureTime *time.Time) (*MultiStopRouteInfo, error) {
 	if s.client == nil {
 		return nil, fmt.Errorf("HERE client is not configured")
@@ -264,15 +276,80 @@ func (s *service) CalculateMultiStopRoute(ctx context.Context, waypoints []Coord
 		return nil, fmt.Errorf("at least 2 waypoints required")
 	}
 
+	departure := departureTime
+	if departure == nil {
+		now := time.Now()
+		departure = &now
+	}
+
+	resp, err := s.client.GetRoute(ctx, RouteRequest{
+		Origin:      waypoints[0],
+		Destination: waypoints[len(waypoints)-1],
+		// `via` order is preserved by HERE; /v8/routes never resequences
+		// waypoints, so the caller's stop order stands.
+		Via:           waypoints[1 : len(waypoints)-1],
+		DepartureTime: departure,
+		TransportMode: "truck",
+		Currency:      "USD",
+		ReturnOptions: []string{"summary", "polyline"},
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to calculate multi-stop route: %w", err)
+	}
+
+	if len(resp.Routes) == 0 {
+		return nil, fmt.Errorf("no route found")
+	}
+
+	sections := resp.Routes[0].Sections
+	if len(sections) != len(waypoints)-1 {
+		slog.WarnContext(ctx, "here: multi-stop section count does not match legs; falling back to per-leg requests",
+			"sections", len(sections), "legs", len(waypoints)-1)
+		return s.calculateMultiStopPerLeg(ctx, waypoints, departure)
+	}
+
+	result := &MultiStopRouteInfo{
+		Legs: make([]RouteLegInfo, 0, len(sections)),
+	}
+
+	// Arrival chains through the route on traffic-aware duration, while the
+	// reported per-leg and total durations stay traffic-free — matching what the
+	// per-leg walk produced when each leg departed at the previous leg's arrival.
+	arrival := *departure
+	for i, section := range sections {
+		var distance, baseDuration, trafficDuration int
+		if section.Summary != nil {
+			distance = section.Summary.Length
+			baseDuration = section.Summary.BaseDuration
+			trafficDuration = section.Summary.Duration
+		}
+		arrival = arrival.Add(time.Duration(trafficDuration) * time.Second)
+
+		result.Legs = append(result.Legs, RouteLegInfo{
+			Index:            i,
+			Origin:           waypoints[i],
+			Destination:      waypoints[i+1],
+			DistanceMeters:   distance,
+			DurationSeconds:  baseDuration,
+			EstimatedArrival: arrival,
+			Polyline:         section.Polyline,
+		})
+		result.TotalDistanceMeters += distance
+		result.TotalDurationSeconds += baseDuration
+	}
+
+	return result, nil
+}
+
+// calculateMultiStopPerLeg requests each waypoint pair on its own. It costs one
+// billed call per leg and exists only for routes whose sections do not line up
+// with the legs.
+func (s *service) calculateMultiStopPerLeg(ctx context.Context, waypoints []Coordinates, departureTime *time.Time) (*MultiStopRouteInfo, error) {
 	result := &MultiStopRouteInfo{
 		Legs: make([]RouteLegInfo, 0, len(waypoints)-1),
 	}
 
 	currentDeparture := departureTime
-	if currentDeparture == nil {
-		now := time.Now()
-		currentDeparture = &now
-	}
 
 	for i := 0; i < len(waypoints)-1; i++ {
 		origin := waypoints[i]

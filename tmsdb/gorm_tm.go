@@ -108,6 +108,7 @@ func (m *GormTransactionManager) writeEvent(ctx context.Context, b *EventBuilder
 		Action:         b.evtType,
 		Data:           json.RawMessage(dataBytes),
 		Changes:        changes,
+		Reason:         b.reason,
 		Timestamp:      time.Now(),
 		RootEntityType: rootType,
 		RootEntityID:   rootID,

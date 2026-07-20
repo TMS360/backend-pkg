@@ -21,6 +21,12 @@ type EventPayload struct {
 	Data          json.RawMessage `json:"data,omitempty"`    // {id: 123, name: "John Doe", ...}
 	Changes       []Change        `json:"changes,omitempty"` // [{field: "name", old_value: "John", new_value: "John Doe"}, ...]
 
+	// Reason is an optional human-supplied justification for the action (e.g. why a
+	// dispatcher cleared a check-in). Most events omit it (nil); only actions that
+	// require an explanation set it via EventBuilder.WithReason. Surfaced by
+	// backend-audit as a nullable column so any entity can carry a reason.
+	Reason *string `json:"reason,omitempty"`
+
 	// Root entity context lets aggregate audit queries (e.g. "all activity for shipment X")
 	// fan in nested events without a cross-service lookup at read time. When unset on the
 	// wire, the consumer falls back to LeafToRoot[EntityType] / EntityID so legacy producers

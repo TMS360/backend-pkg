@@ -30,6 +30,7 @@ type EventBuilder struct {
 	topic    string
 	data     interface{}
 	oldData  interface{}
+	reason   *string
 }
 
 // WithRoot attaches aggregate-root context so the event is discoverable via
@@ -54,6 +55,14 @@ func (b *EventBuilder) WithTopic(topic string) *EventBuilder {
 // WithData sets the event payload.
 func (b *EventBuilder) WithData(data interface{}) *EventBuilder {
 	b.data = data
+	return b
+}
+
+// WithReason attaches an optional human-supplied justification for the action
+// (e.g. why a dispatcher cleared a check-in). Stored as a nullable column by
+// backend-audit and surfaced in the load's activity trail. Most events omit it.
+func (b *EventBuilder) WithReason(reason string) *EventBuilder {
+	b.reason = &reason
 	return b
 }
 

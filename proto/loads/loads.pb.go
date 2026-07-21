@@ -3925,6 +3925,11 @@ type ShipmentBillingItem struct {
 	// (21/22) for wire-compat; logically part of the stops block above.
 	PickupFacilityName   string `protobuf:"bytes,21,opt,name=pickup_facility_name,json=pickupFacilityName,proto3" json:"pickup_facility_name,omitempty"`
 	DeliveryFacilityName string `protobuf:"bytes,22,opt,name=delivery_facility_name,json=deliveryFacilityName,proto3" json:"delivery_facility_name,omitempty"`
+	// All stops (every leg by leg_sequence), for the full multi-stop invoice
+	// list. The renderer iterates these; the flat pickup_*/delivery_* fields
+	// above stay populated for wire-compat and paper-overlay of first/last.
+	// Empty on older backend-load payloads — accounting falls back to first/last.
+	Stops []*ShipmentBillingStop `protobuf:"bytes,23,rep,name=stops,proto3" json:"stops,omitempty"`
 	// Money.
 	TotalAmount float64 `protobuf:"fixed64,16,opt,name=total_amount,json=totalAmount,proto3" json:"total_amount,omitempty"` // shipment.total_pay
 	// Routing / factoring (placeholders for now — backend-load doesn't yet
@@ -4087,6 +4092,13 @@ func (x *ShipmentBillingItem) GetDeliveryFacilityName() string {
 	return ""
 }
 
+func (x *ShipmentBillingItem) GetStops() []*ShipmentBillingStop {
+	if x != nil {
+		return x.Stops
+	}
+	return nil
+}
+
 func (x *ShipmentBillingItem) GetTotalAmount() float64 {
 	if x != nil {
 		return x.TotalAmount
@@ -4122,6 +4134,76 @@ func (x *ShipmentBillingItem) GetFactoringRemitTo() string {
 	return ""
 }
 
+// One stop of a shipment's route (one leg), for the full multi-stop invoice
+// list. Ordered by leg_sequence in ShipmentBillingItem.stops.
+type ShipmentBillingStop struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Address       string                 `protobuf:"bytes,1,opt,name=address,proto3" json:"address,omitempty"`                               // leg.location
+	FacilityName  string                 `protobuf:"bytes,2,opt,name=facility_name,json=facilityName,proto3" json:"facility_name,omitempty"` // "" when unset
+	Date          *timestamppb.Timestamp `protobuf:"bytes,3,opt,name=date,proto3" json:"date,omitempty"`                                     // COALESCE(trip_stop.checked_in_at, leg.appointment_from)
+	StopType      string                 `protobuf:"bytes,4,opt,name=stop_type,json=stopType,proto3" json:"stop_type,omitempty"`             // "PICKUP" | "DELIVERY" (leg.stop_type)
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ShipmentBillingStop) Reset() {
+	*x = ShipmentBillingStop{}
+	mi := &file_loads_loads_proto_msgTypes[52]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ShipmentBillingStop) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ShipmentBillingStop) ProtoMessage() {}
+
+func (x *ShipmentBillingStop) ProtoReflect() protoreflect.Message {
+	mi := &file_loads_loads_proto_msgTypes[52]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ShipmentBillingStop.ProtoReflect.Descriptor instead.
+func (*ShipmentBillingStop) Descriptor() ([]byte, []int) {
+	return file_loads_loads_proto_rawDescGZIP(), []int{52}
+}
+
+func (x *ShipmentBillingStop) GetAddress() string {
+	if x != nil {
+		return x.Address
+	}
+	return ""
+}
+
+func (x *ShipmentBillingStop) GetFacilityName() string {
+	if x != nil {
+		return x.FacilityName
+	}
+	return ""
+}
+
+func (x *ShipmentBillingStop) GetDate() *timestamppb.Timestamp {
+	if x != nil {
+		return x.Date
+	}
+	return nil
+}
+
+func (x *ShipmentBillingStop) GetStopType() string {
+	if x != nil {
+		return x.StopType
+	}
+	return ""
+}
+
 type GetShipmentFilesRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	ShipmentId    string                 `protobuf:"bytes,1,opt,name=shipment_id,json=shipmentId,proto3" json:"shipment_id,omitempty"`
@@ -4131,7 +4213,7 @@ type GetShipmentFilesRequest struct {
 
 func (x *GetShipmentFilesRequest) Reset() {
 	*x = GetShipmentFilesRequest{}
-	mi := &file_loads_loads_proto_msgTypes[52]
+	mi := &file_loads_loads_proto_msgTypes[53]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4143,7 +4225,7 @@ func (x *GetShipmentFilesRequest) String() string {
 func (*GetShipmentFilesRequest) ProtoMessage() {}
 
 func (x *GetShipmentFilesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_loads_loads_proto_msgTypes[52]
+	mi := &file_loads_loads_proto_msgTypes[53]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4156,7 +4238,7 @@ func (x *GetShipmentFilesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetShipmentFilesRequest.ProtoReflect.Descriptor instead.
 func (*GetShipmentFilesRequest) Descriptor() ([]byte, []int) {
-	return file_loads_loads_proto_rawDescGZIP(), []int{52}
+	return file_loads_loads_proto_rawDescGZIP(), []int{53}
 }
 
 func (x *GetShipmentFilesRequest) GetShipmentId() string {
@@ -4178,7 +4260,7 @@ type ShipmentFile struct {
 
 func (x *ShipmentFile) Reset() {
 	*x = ShipmentFile{}
-	mi := &file_loads_loads_proto_msgTypes[53]
+	mi := &file_loads_loads_proto_msgTypes[54]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4190,7 +4272,7 @@ func (x *ShipmentFile) String() string {
 func (*ShipmentFile) ProtoMessage() {}
 
 func (x *ShipmentFile) ProtoReflect() protoreflect.Message {
-	mi := &file_loads_loads_proto_msgTypes[53]
+	mi := &file_loads_loads_proto_msgTypes[54]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4203,7 +4285,7 @@ func (x *ShipmentFile) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ShipmentFile.ProtoReflect.Descriptor instead.
 func (*ShipmentFile) Descriptor() ([]byte, []int) {
-	return file_loads_loads_proto_rawDescGZIP(), []int{53}
+	return file_loads_loads_proto_rawDescGZIP(), []int{54}
 }
 
 func (x *ShipmentFile) GetFileId() string {
@@ -4243,7 +4325,7 @@ type GetShipmentFilesResponse struct {
 
 func (x *GetShipmentFilesResponse) Reset() {
 	*x = GetShipmentFilesResponse{}
-	mi := &file_loads_loads_proto_msgTypes[54]
+	mi := &file_loads_loads_proto_msgTypes[55]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4255,7 +4337,7 @@ func (x *GetShipmentFilesResponse) String() string {
 func (*GetShipmentFilesResponse) ProtoMessage() {}
 
 func (x *GetShipmentFilesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_loads_loads_proto_msgTypes[54]
+	mi := &file_loads_loads_proto_msgTypes[55]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4268,7 +4350,7 @@ func (x *GetShipmentFilesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetShipmentFilesResponse.ProtoReflect.Descriptor instead.
 func (*GetShipmentFilesResponse) Descriptor() ([]byte, []int) {
-	return file_loads_loads_proto_rawDescGZIP(), []int{54}
+	return file_loads_loads_proto_rawDescGZIP(), []int{55}
 }
 
 func (x *GetShipmentFilesResponse) GetFiles() []*ShipmentFile {
@@ -4300,7 +4382,7 @@ type AttachShipmentFileRequest struct {
 
 func (x *AttachShipmentFileRequest) Reset() {
 	*x = AttachShipmentFileRequest{}
-	mi := &file_loads_loads_proto_msgTypes[55]
+	mi := &file_loads_loads_proto_msgTypes[56]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4312,7 +4394,7 @@ func (x *AttachShipmentFileRequest) String() string {
 func (*AttachShipmentFileRequest) ProtoMessage() {}
 
 func (x *AttachShipmentFileRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_loads_loads_proto_msgTypes[55]
+	mi := &file_loads_loads_proto_msgTypes[56]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4325,7 +4407,7 @@ func (x *AttachShipmentFileRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AttachShipmentFileRequest.ProtoReflect.Descriptor instead.
 func (*AttachShipmentFileRequest) Descriptor() ([]byte, []int) {
-	return file_loads_loads_proto_rawDescGZIP(), []int{55}
+	return file_loads_loads_proto_rawDescGZIP(), []int{56}
 }
 
 func (x *AttachShipmentFileRequest) GetCompanyId() string {
@@ -4386,7 +4468,7 @@ type AttachShipmentFileResponse struct {
 
 func (x *AttachShipmentFileResponse) Reset() {
 	*x = AttachShipmentFileResponse{}
-	mi := &file_loads_loads_proto_msgTypes[56]
+	mi := &file_loads_loads_proto_msgTypes[57]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4398,7 +4480,7 @@ func (x *AttachShipmentFileResponse) String() string {
 func (*AttachShipmentFileResponse) ProtoMessage() {}
 
 func (x *AttachShipmentFileResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_loads_loads_proto_msgTypes[56]
+	mi := &file_loads_loads_proto_msgTypes[57]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4411,7 +4493,7 @@ func (x *AttachShipmentFileResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AttachShipmentFileResponse.ProtoReflect.Descriptor instead.
 func (*AttachShipmentFileResponse) Descriptor() ([]byte, []int) {
-	return file_loads_loads_proto_rawDescGZIP(), []int{56}
+	return file_loads_loads_proto_rawDescGZIP(), []int{57}
 }
 
 func (x *AttachShipmentFileResponse) GetFile() *ShipmentFile {
@@ -4434,7 +4516,7 @@ type GetTripIDsByShipmentRequest struct {
 
 func (x *GetTripIDsByShipmentRequest) Reset() {
 	*x = GetTripIDsByShipmentRequest{}
-	mi := &file_loads_loads_proto_msgTypes[57]
+	mi := &file_loads_loads_proto_msgTypes[58]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4446,7 +4528,7 @@ func (x *GetTripIDsByShipmentRequest) String() string {
 func (*GetTripIDsByShipmentRequest) ProtoMessage() {}
 
 func (x *GetTripIDsByShipmentRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_loads_loads_proto_msgTypes[57]
+	mi := &file_loads_loads_proto_msgTypes[58]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4459,7 +4541,7 @@ func (x *GetTripIDsByShipmentRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetTripIDsByShipmentRequest.ProtoReflect.Descriptor instead.
 func (*GetTripIDsByShipmentRequest) Descriptor() ([]byte, []int) {
-	return file_loads_loads_proto_rawDescGZIP(), []int{57}
+	return file_loads_loads_proto_rawDescGZIP(), []int{58}
 }
 
 func (x *GetTripIDsByShipmentRequest) GetCompanyId() string {
@@ -4516,7 +4598,7 @@ type PayBatchTrip struct {
 
 func (x *PayBatchTrip) Reset() {
 	*x = PayBatchTrip{}
-	mi := &file_loads_loads_proto_msgTypes[58]
+	mi := &file_loads_loads_proto_msgTypes[59]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4528,7 +4610,7 @@ func (x *PayBatchTrip) String() string {
 func (*PayBatchTrip) ProtoMessage() {}
 
 func (x *PayBatchTrip) ProtoReflect() protoreflect.Message {
-	mi := &file_loads_loads_proto_msgTypes[58]
+	mi := &file_loads_loads_proto_msgTypes[59]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4541,7 +4623,7 @@ func (x *PayBatchTrip) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PayBatchTrip.ProtoReflect.Descriptor instead.
 func (*PayBatchTrip) Descriptor() ([]byte, []int) {
-	return file_loads_loads_proto_rawDescGZIP(), []int{58}
+	return file_loads_loads_proto_rawDescGZIP(), []int{59}
 }
 
 func (x *PayBatchTrip) GetTripId() string {
@@ -5052,7 +5134,7 @@ const file_loads_loads_proto_rawDesc = "" +
 	"company_id\x18\x01 \x01(\tR\tcompanyId\x12!\n" +
 	"\fshipment_ids\x18\x02 \x03(\tR\vshipmentIds\"U\n" +
 	"\x19GetShipmentsByIDsResponse\x128\n" +
-	"\tshipments\x18\x01 \x03(\v2\x1a.loads.ShipmentBillingItemR\tshipments\"\xb1\a\n" +
+	"\tshipments\x18\x01 \x03(\v2\x1a.loads.ShipmentBillingItemR\tshipments\"\xe3\a\n" +
 	"\x13ShipmentBillingItem\x12\x1f\n" +
 	"\vshipment_id\x18\x01 \x01(\tR\n" +
 	"shipmentId\x12\x1c\n" +
@@ -5076,7 +5158,8 @@ const file_loads_loads_proto_rawDesc = "" +
 	"\x10delivery_address\x18\x0e \x01(\tR\x0fdeliveryAddress\x12?\n" +
 	"\rdelivery_date\x18\x0f \x01(\v2\x1a.google.protobuf.TimestampR\fdeliveryDate\x120\n" +
 	"\x14pickup_facility_name\x18\x15 \x01(\tR\x12pickupFacilityName\x124\n" +
-	"\x16delivery_facility_name\x18\x16 \x01(\tR\x14deliveryFacilityName\x12!\n" +
+	"\x16delivery_facility_name\x18\x16 \x01(\tR\x14deliveryFacilityName\x120\n" +
+	"\x05stops\x18\x17 \x03(\v2\x1a.loads.ShipmentBillingStopR\x05stops\x12!\n" +
 	"\ftotal_amount\x18\x10 \x01(\x01R\vtotalAmount\x12!\n" +
 	"\fbilling_type\x18\x11 \x01(\tR\vbillingType\x12\x1b\n" +
 	"\tmc_number\x18\x12 \x01(\tR\bmcNumber\x124\n" +
@@ -5085,7 +5168,12 @@ const file_loads_loads_proto_rawDesc = "" +
 	"\n" +
 	"\b_load_idB\f\n" +
 	"\n" +
-	"_driver_id\":\n" +
+	"_driver_id\"\xa1\x01\n" +
+	"\x13ShipmentBillingStop\x12\x18\n" +
+	"\aaddress\x18\x01 \x01(\tR\aaddress\x12#\n" +
+	"\rfacility_name\x18\x02 \x01(\tR\ffacilityName\x12.\n" +
+	"\x04date\x18\x03 \x01(\v2\x1a.google.protobuf.TimestampR\x04date\x12\x1b\n" +
+	"\tstop_type\x18\x04 \x01(\tR\bstopType\":\n" +
 	"\x17GetShipmentFilesRequest\x12\x1f\n" +
 	"\vshipment_id\x18\x01 \x01(\tR\n" +
 	"shipmentId\"\x8a\x01\n" +
@@ -5255,7 +5343,7 @@ func file_loads_loads_proto_rawDescGZIP() []byte {
 }
 
 var file_loads_loads_proto_enumTypes = make([]protoimpl.EnumInfo, 7)
-var file_loads_loads_proto_msgTypes = make([]protoimpl.MessageInfo, 59)
+var file_loads_loads_proto_msgTypes = make([]protoimpl.MessageInfo, 60)
 var file_loads_loads_proto_goTypes = []any{
 	(ShipmentStatus)(0),                         // 0: loads.ShipmentStatus
 	(ShipmentType)(0),                           // 1: loads.ShipmentType
@@ -5316,155 +5404,158 @@ var file_loads_loads_proto_goTypes = []any{
 	(*GetShipmentsByIDsRequest)(nil),            // 56: loads.GetShipmentsByIDsRequest
 	(*GetShipmentsByIDsResponse)(nil),           // 57: loads.GetShipmentsByIDsResponse
 	(*ShipmentBillingItem)(nil),                 // 58: loads.ShipmentBillingItem
-	(*GetShipmentFilesRequest)(nil),             // 59: loads.GetShipmentFilesRequest
-	(*ShipmentFile)(nil),                        // 60: loads.ShipmentFile
-	(*GetShipmentFilesResponse)(nil),            // 61: loads.GetShipmentFilesResponse
-	(*AttachShipmentFileRequest)(nil),           // 62: loads.AttachShipmentFileRequest
-	(*AttachShipmentFileResponse)(nil),          // 63: loads.AttachShipmentFileResponse
-	(*GetTripIDsByShipmentRequest)(nil),         // 64: loads.GetTripIDsByShipmentRequest
-	(*PayBatchTrip)(nil),                        // 65: loads.PayBatchTrip
-	(*filters.StringFilter)(nil),                // 66: filters.StringFilter
-	(*filters.IntFilter)(nil),                   // 67: filters.IntFilter
-	(*filters.IDFilter)(nil),                    // 68: filters.IDFilter
-	(*filters.DateTimeFilter)(nil),              // 69: filters.DateTimeFilter
-	(*timestamppb.Timestamp)(nil),               // 70: google.protobuf.Timestamp
-	(*emptypb.Empty)(nil),                       // 71: google.protobuf.Empty
-	(*filters.IDsResponse)(nil),                 // 72: filters.IDsResponse
+	(*ShipmentBillingStop)(nil),                 // 59: loads.ShipmentBillingStop
+	(*GetShipmentFilesRequest)(nil),             // 60: loads.GetShipmentFilesRequest
+	(*ShipmentFile)(nil),                        // 61: loads.ShipmentFile
+	(*GetShipmentFilesResponse)(nil),            // 62: loads.GetShipmentFilesResponse
+	(*AttachShipmentFileRequest)(nil),           // 63: loads.AttachShipmentFileRequest
+	(*AttachShipmentFileResponse)(nil),          // 64: loads.AttachShipmentFileResponse
+	(*GetTripIDsByShipmentRequest)(nil),         // 65: loads.GetTripIDsByShipmentRequest
+	(*PayBatchTrip)(nil),                        // 66: loads.PayBatchTrip
+	(*filters.StringFilter)(nil),                // 67: filters.StringFilter
+	(*filters.IntFilter)(nil),                   // 68: filters.IntFilter
+	(*filters.IDFilter)(nil),                    // 69: filters.IDFilter
+	(*filters.DateTimeFilter)(nil),              // 70: filters.DateTimeFilter
+	(*timestamppb.Timestamp)(nil),               // 71: google.protobuf.Timestamp
+	(*emptypb.Empty)(nil),                       // 72: google.protobuf.Empty
+	(*filters.IDsResponse)(nil),                 // 73: filters.IDsResponse
 }
 var file_loads_loads_proto_depIdxs = []int32{
 	16,  // 0: loads.DriverHasActiveTripResponse.active_trip:type_name -> loads.TripDetails
 	10,  // 1: loads.GetTripsOverlappingWindowResponse.trips:type_name -> loads.TripOverlapSummary
-	66,  // 2: loads.ShipmentFilterRequest.load_id:type_name -> filters.StringFilter
-	66,  // 3: loads.ShipmentFilterRequest.status:type_name -> filters.StringFilter
-	67,  // 4: loads.ShipmentFilterRequest.shipment_number:type_name -> filters.IntFilter
-	68,  // 5: loads.ShipmentFilterRequest.broker_id:type_name -> filters.IDFilter
-	69,  // 6: loads.ShipmentFilterRequest.created_at:type_name -> filters.DateTimeFilter
-	66,  // 7: loads.TripFilterRequest.status:type_name -> filters.StringFilter
-	68,  // 8: loads.TripFilterRequest.truck_id:type_name -> filters.IDFilter
-	68,  // 9: loads.TripFilterRequest.trailer_id:type_name -> filters.IDFilter
-	68,  // 10: loads.TripFilterRequest.driver_id:type_name -> filters.IDFilter
-	69,  // 11: loads.TripFilterRequest.created_at:type_name -> filters.DateTimeFilter
+	67,  // 2: loads.ShipmentFilterRequest.load_id:type_name -> filters.StringFilter
+	67,  // 3: loads.ShipmentFilterRequest.status:type_name -> filters.StringFilter
+	68,  // 4: loads.ShipmentFilterRequest.shipment_number:type_name -> filters.IntFilter
+	69,  // 5: loads.ShipmentFilterRequest.broker_id:type_name -> filters.IDFilter
+	70,  // 6: loads.ShipmentFilterRequest.created_at:type_name -> filters.DateTimeFilter
+	67,  // 7: loads.TripFilterRequest.status:type_name -> filters.StringFilter
+	69,  // 8: loads.TripFilterRequest.truck_id:type_name -> filters.IDFilter
+	69,  // 9: loads.TripFilterRequest.trailer_id:type_name -> filters.IDFilter
+	69,  // 10: loads.TripFilterRequest.driver_id:type_name -> filters.IDFilter
+	70,  // 11: loads.TripFilterRequest.created_at:type_name -> filters.DateTimeFilter
 	16,  // 12: loads.GetDriverTripDetailsResponse.trip_details:type_name -> loads.TripDetails
 	31,  // 13: loads.ShipmentResponse.shipment:type_name -> loads.Shipment
 	0,   // 14: loads.ListShipmentsRequest.status:type_name -> loads.ShipmentStatus
-	70,  // 15: loads.ListShipmentsRequest.from_date:type_name -> google.protobuf.Timestamp
-	70,  // 16: loads.ListShipmentsRequest.to_date:type_name -> google.protobuf.Timestamp
+	71,  // 15: loads.ListShipmentsRequest.from_date:type_name -> google.protobuf.Timestamp
+	71,  // 16: loads.ListShipmentsRequest.to_date:type_name -> google.protobuf.Timestamp
 	31,  // 17: loads.ListShipmentsResponse.shipments:type_name -> loads.Shipment
 	33,  // 18: loads.TripResponse.trip:type_name -> loads.Trip
 	2,   // 19: loads.ListTripsRequest.status:type_name -> loads.TripStatus
-	70,  // 20: loads.ListTripsRequest.from_date:type_name -> google.protobuf.Timestamp
-	70,  // 21: loads.ListTripsRequest.to_date:type_name -> google.protobuf.Timestamp
+	71,  // 20: loads.ListTripsRequest.from_date:type_name -> google.protobuf.Timestamp
+	71,  // 21: loads.ListTripsRequest.to_date:type_name -> google.protobuf.Timestamp
 	33,  // 22: loads.ListTripsResponse.trips:type_name -> loads.Trip
-	70,  // 23: loads.GetVehicleAssignmentsRequest.from:type_name -> google.protobuf.Timestamp
-	70,  // 24: loads.GetVehicleAssignmentsRequest.to:type_name -> google.protobuf.Timestamp
+	71,  // 23: loads.GetVehicleAssignmentsRequest.from:type_name -> google.protobuf.Timestamp
+	71,  // 24: loads.GetVehicleAssignmentsRequest.to:type_name -> google.protobuf.Timestamp
 	35,  // 25: loads.GetVehicleAssignmentsResponse.assignments:type_name -> loads.VehicleAssignment
 	5,   // 26: loads.UpdateVehicleLocationRequest.vehicle_type:type_name -> loads.VehicleType
-	70,  // 27: loads.UpdateVehicleLocationRequest.gps_time:type_name -> google.protobuf.Timestamp
+	71,  // 27: loads.UpdateVehicleLocationRequest.gps_time:type_name -> google.protobuf.Timestamp
 	0,   // 28: loads.Shipment.status:type_name -> loads.ShipmentStatus
 	1,   // 29: loads.Shipment.type:type_name -> loads.ShipmentType
 	32,  // 30: loads.Shipment.legs:type_name -> loads.ShipmentLeg
-	70,  // 31: loads.Shipment.created_at:type_name -> google.protobuf.Timestamp
-	70,  // 32: loads.Shipment.updated_at:type_name -> google.protobuf.Timestamp
+	71,  // 31: loads.Shipment.created_at:type_name -> google.protobuf.Timestamp
+	71,  // 32: loads.Shipment.updated_at:type_name -> google.protobuf.Timestamp
 	3,   // 33: loads.ShipmentLeg.stop_type:type_name -> loads.StopType
-	70,  // 34: loads.ShipmentLeg.appointment_from:type_name -> google.protobuf.Timestamp
-	70,  // 35: loads.ShipmentLeg.appointment_to:type_name -> google.protobuf.Timestamp
-	70,  // 36: loads.ShipmentLeg.actual_arrival:type_name -> google.protobuf.Timestamp
-	70,  // 37: loads.ShipmentLeg.actual_departure:type_name -> google.protobuf.Timestamp
+	71,  // 34: loads.ShipmentLeg.appointment_from:type_name -> google.protobuf.Timestamp
+	71,  // 35: loads.ShipmentLeg.appointment_to:type_name -> google.protobuf.Timestamp
+	71,  // 36: loads.ShipmentLeg.actual_arrival:type_name -> google.protobuf.Timestamp
+	71,  // 37: loads.ShipmentLeg.actual_departure:type_name -> google.protobuf.Timestamp
 	2,   // 38: loads.Trip.status:type_name -> loads.TripStatus
 	34,  // 39: loads.Trip.stops:type_name -> loads.TripStop
-	70,  // 40: loads.Trip.start_time:type_name -> google.protobuf.Timestamp
-	70,  // 41: loads.Trip.end_time:type_name -> google.protobuf.Timestamp
-	70,  // 42: loads.Trip.created_at:type_name -> google.protobuf.Timestamp
-	70,  // 43: loads.Trip.updated_at:type_name -> google.protobuf.Timestamp
+	71,  // 40: loads.Trip.start_time:type_name -> google.protobuf.Timestamp
+	71,  // 41: loads.Trip.end_time:type_name -> google.protobuf.Timestamp
+	71,  // 42: loads.Trip.created_at:type_name -> google.protobuf.Timestamp
+	71,  // 43: loads.Trip.updated_at:type_name -> google.protobuf.Timestamp
 	3,   // 44: loads.TripStop.stop_type:type_name -> loads.StopType
-	70,  // 45: loads.TripStop.planned_arrival:type_name -> google.protobuf.Timestamp
-	70,  // 46: loads.TripStop.actual_arrival:type_name -> google.protobuf.Timestamp
-	70,  // 47: loads.TripStop.planned_departure:type_name -> google.protobuf.Timestamp
-	70,  // 48: loads.TripStop.actual_departure:type_name -> google.protobuf.Timestamp
+	71,  // 45: loads.TripStop.planned_arrival:type_name -> google.protobuf.Timestamp
+	71,  // 46: loads.TripStop.actual_arrival:type_name -> google.protobuf.Timestamp
+	71,  // 47: loads.TripStop.planned_departure:type_name -> google.protobuf.Timestamp
+	71,  // 48: loads.TripStop.actual_departure:type_name -> google.protobuf.Timestamp
 	4,   // 49: loads.TripStop.status:type_name -> loads.StopStatus
 	5,   // 50: loads.VehicleAssignment.vehicle_type:type_name -> loads.VehicleType
-	70,  // 51: loads.VehicleAssignment.assigned_from:type_name -> google.protobuf.Timestamp
-	70,  // 52: loads.VehicleAssignment.assigned_to:type_name -> google.protobuf.Timestamp
+	71,  // 51: loads.VehicleAssignment.assigned_from:type_name -> google.protobuf.Timestamp
+	71,  // 52: loads.VehicleAssignment.assigned_to:type_name -> google.protobuf.Timestamp
 	5,   // 53: loads.VehicleLocation.vehicle_type:type_name -> loads.VehicleType
-	70,  // 54: loads.VehicleLocation.gps_time:type_name -> google.protobuf.Timestamp
+	71,  // 54: loads.VehicleLocation.gps_time:type_name -> google.protobuf.Timestamp
 	39,  // 55: loads.GetDriverActiveLoadsResponse.loads:type_name -> loads.LoadSuggestion
 	39,  // 56: loads.GetDriverUnsettledLoadsResponse.loads:type_name -> loads.LoadSuggestion
 	39,  // 57: loads.GetDriverDocIssueLoadsResponse.loads:type_name -> loads.LoadSuggestion
-	70,  // 58: loads.GetTripsForPayBatchRequest.period_start:type_name -> google.protobuf.Timestamp
-	70,  // 59: loads.GetTripsForPayBatchRequest.period_end:type_name -> google.protobuf.Timestamp
+	71,  // 58: loads.GetTripsForPayBatchRequest.period_start:type_name -> google.protobuf.Timestamp
+	71,  // 59: loads.GetTripsForPayBatchRequest.period_end:type_name -> google.protobuf.Timestamp
 	6,   // 60: loads.GetTripsForPayBatchRequest.time_type:type_name -> loads.PayBatchTimeType
-	65,  // 61: loads.GetTripsForPayBatchResponse.available:type_name -> loads.PayBatchTrip
-	65,  // 62: loads.GetTripsForPayBatchResponse.in_transit_outside_range:type_name -> loads.PayBatchTrip
-	65,  // 63: loads.GetTripsByIDsResponse.trips:type_name -> loads.PayBatchTrip
-	65,  // 64: loads.GetUnbilledDriverTripsResponse.trips:type_name -> loads.PayBatchTrip
-	70,  // 65: loads.GetShipmentsReadyForBillingRequest.date_from:type_name -> google.protobuf.Timestamp
-	70,  // 66: loads.GetShipmentsReadyForBillingRequest.date_to:type_name -> google.protobuf.Timestamp
+	66,  // 61: loads.GetTripsForPayBatchResponse.available:type_name -> loads.PayBatchTrip
+	66,  // 62: loads.GetTripsForPayBatchResponse.in_transit_outside_range:type_name -> loads.PayBatchTrip
+	66,  // 63: loads.GetTripsByIDsResponse.trips:type_name -> loads.PayBatchTrip
+	66,  // 64: loads.GetUnbilledDriverTripsResponse.trips:type_name -> loads.PayBatchTrip
+	71,  // 65: loads.GetShipmentsReadyForBillingRequest.date_from:type_name -> google.protobuf.Timestamp
+	71,  // 66: loads.GetShipmentsReadyForBillingRequest.date_to:type_name -> google.protobuf.Timestamp
 	6,   // 67: loads.GetShipmentsReadyForBillingRequest.time_type:type_name -> loads.PayBatchTimeType
 	58,  // 68: loads.GetShipmentsReadyForBillingResponse.shipments:type_name -> loads.ShipmentBillingItem
 	58,  // 69: loads.GetShipmentsByIDsResponse.shipments:type_name -> loads.ShipmentBillingItem
-	70,  // 70: loads.ShipmentBillingItem.pickup_date:type_name -> google.protobuf.Timestamp
-	70,  // 71: loads.ShipmentBillingItem.delivery_date:type_name -> google.protobuf.Timestamp
-	60,  // 72: loads.GetShipmentFilesResponse.files:type_name -> loads.ShipmentFile
-	60,  // 73: loads.AttachShipmentFileResponse.file:type_name -> loads.ShipmentFile
-	70,  // 74: loads.PayBatchTrip.pickup_date:type_name -> google.protobuf.Timestamp
-	70,  // 75: loads.PayBatchTrip.delivery_date:type_name -> google.protobuf.Timestamp
-	14,  // 76: loads.LoadsService.GetDriverTripDetails:input_type -> loads.GetDriverTripDetailsRequest
-	7,   // 77: loads.LoadsService.DriverHasActiveTrip:input_type -> loads.DriverHasActiveTripRequest
-	9,   // 78: loads.LoadsService.GetTripsOverlappingWindow:input_type -> loads.GetTripsOverlappingWindowRequest
-	17,  // 79: loads.LoadsService.GetRecentBrokerIDs:input_type -> loads.GetRecentBrokerIDsRequest
-	19,  // 80: loads.LoadsService.GetShipment:input_type -> loads.GetShipmentRequest
-	21,  // 81: loads.LoadsService.ListShipments:input_type -> loads.ListShipmentsRequest
-	23,  // 82: loads.LoadsService.GetTrip:input_type -> loads.GetTripRequest
-	25,  // 83: loads.LoadsService.ListTrips:input_type -> loads.ListTripsRequest
-	27,  // 84: loads.LoadsService.GetVehicleAssignments:input_type -> loads.GetVehicleAssignmentsRequest
-	29,  // 85: loads.LoadsService.UpdateVehicleLocation:input_type -> loads.UpdateVehicleLocationRequest
-	30,  // 86: loads.LoadsService.StreamVehicleLocations:input_type -> loads.StreamVehicleLocationsRequest
-	12,  // 87: loads.LoadsService.ResolveShipmentIDs:input_type -> loads.ShipmentFilterRequest
-	13,  // 88: loads.LoadsService.ResolveTripIDs:input_type -> loads.TripFilterRequest
-	37,  // 89: loads.LoadsService.GetShipmentChatMembers:input_type -> loads.GetShipmentChatMembersRequest
-	40,  // 90: loads.LoadsService.GetDriverActiveLoads:input_type -> loads.GetDriverActiveLoadsRequest
-	42,  // 91: loads.LoadsService.GetDriverUnsettledLoads:input_type -> loads.GetDriverUnsettledLoadsRequest
-	44,  // 92: loads.LoadsService.GetDriverDocIssueLoads:input_type -> loads.GetDriverDocIssueLoadsRequest
-	46,  // 93: loads.LoadsService.GetTripChatInfo:input_type -> loads.GetTripChatInfoRequest
-	48,  // 94: loads.LoadsService.GetTripsForPayBatch:input_type -> loads.GetTripsForPayBatchRequest
-	50,  // 95: loads.LoadsService.GetTripsByIDs:input_type -> loads.GetTripsByIDsRequest
-	52,  // 96: loads.LoadsService.GetUnbilledDriverTrips:input_type -> loads.GetUnbilledDriverTripsRequest
-	54,  // 97: loads.LoadsService.GetShipmentsReadyForBilling:input_type -> loads.GetShipmentsReadyForBillingRequest
-	56,  // 98: loads.LoadsService.GetShipmentsByIDs:input_type -> loads.GetShipmentsByIDsRequest
-	59,  // 99: loads.LoadsService.GetShipmentFiles:input_type -> loads.GetShipmentFilesRequest
-	62,  // 100: loads.LoadsService.AttachShipmentFile:input_type -> loads.AttachShipmentFileRequest
-	64,  // 101: loads.LoadsService.GetTripIDsByShipment:input_type -> loads.GetTripIDsByShipmentRequest
-	15,  // 102: loads.LoadsService.GetDriverTripDetails:output_type -> loads.GetDriverTripDetailsResponse
-	8,   // 103: loads.LoadsService.DriverHasActiveTrip:output_type -> loads.DriverHasActiveTripResponse
-	11,  // 104: loads.LoadsService.GetTripsOverlappingWindow:output_type -> loads.GetTripsOverlappingWindowResponse
-	18,  // 105: loads.LoadsService.GetRecentBrokerIDs:output_type -> loads.GetRecentBrokerIDsResponse
-	20,  // 106: loads.LoadsService.GetShipment:output_type -> loads.ShipmentResponse
-	22,  // 107: loads.LoadsService.ListShipments:output_type -> loads.ListShipmentsResponse
-	24,  // 108: loads.LoadsService.GetTrip:output_type -> loads.TripResponse
-	26,  // 109: loads.LoadsService.ListTrips:output_type -> loads.ListTripsResponse
-	28,  // 110: loads.LoadsService.GetVehicleAssignments:output_type -> loads.GetVehicleAssignmentsResponse
-	71,  // 111: loads.LoadsService.UpdateVehicleLocation:output_type -> google.protobuf.Empty
-	36,  // 112: loads.LoadsService.StreamVehicleLocations:output_type -> loads.VehicleLocation
-	72,  // 113: loads.LoadsService.ResolveShipmentIDs:output_type -> filters.IDsResponse
-	72,  // 114: loads.LoadsService.ResolveTripIDs:output_type -> filters.IDsResponse
-	38,  // 115: loads.LoadsService.GetShipmentChatMembers:output_type -> loads.GetShipmentChatMembersResponse
-	41,  // 116: loads.LoadsService.GetDriverActiveLoads:output_type -> loads.GetDriverActiveLoadsResponse
-	43,  // 117: loads.LoadsService.GetDriverUnsettledLoads:output_type -> loads.GetDriverUnsettledLoadsResponse
-	45,  // 118: loads.LoadsService.GetDriverDocIssueLoads:output_type -> loads.GetDriverDocIssueLoadsResponse
-	47,  // 119: loads.LoadsService.GetTripChatInfo:output_type -> loads.GetTripChatInfoResponse
-	49,  // 120: loads.LoadsService.GetTripsForPayBatch:output_type -> loads.GetTripsForPayBatchResponse
-	51,  // 121: loads.LoadsService.GetTripsByIDs:output_type -> loads.GetTripsByIDsResponse
-	53,  // 122: loads.LoadsService.GetUnbilledDriverTrips:output_type -> loads.GetUnbilledDriverTripsResponse
-	55,  // 123: loads.LoadsService.GetShipmentsReadyForBilling:output_type -> loads.GetShipmentsReadyForBillingResponse
-	57,  // 124: loads.LoadsService.GetShipmentsByIDs:output_type -> loads.GetShipmentsByIDsResponse
-	61,  // 125: loads.LoadsService.GetShipmentFiles:output_type -> loads.GetShipmentFilesResponse
-	63,  // 126: loads.LoadsService.AttachShipmentFile:output_type -> loads.AttachShipmentFileResponse
-	72,  // 127: loads.LoadsService.GetTripIDsByShipment:output_type -> filters.IDsResponse
-	102, // [102:128] is the sub-list for method output_type
-	76,  // [76:102] is the sub-list for method input_type
-	76,  // [76:76] is the sub-list for extension type_name
-	76,  // [76:76] is the sub-list for extension extendee
-	0,   // [0:76] is the sub-list for field type_name
+	71,  // 70: loads.ShipmentBillingItem.pickup_date:type_name -> google.protobuf.Timestamp
+	71,  // 71: loads.ShipmentBillingItem.delivery_date:type_name -> google.protobuf.Timestamp
+	59,  // 72: loads.ShipmentBillingItem.stops:type_name -> loads.ShipmentBillingStop
+	71,  // 73: loads.ShipmentBillingStop.date:type_name -> google.protobuf.Timestamp
+	61,  // 74: loads.GetShipmentFilesResponse.files:type_name -> loads.ShipmentFile
+	61,  // 75: loads.AttachShipmentFileResponse.file:type_name -> loads.ShipmentFile
+	71,  // 76: loads.PayBatchTrip.pickup_date:type_name -> google.protobuf.Timestamp
+	71,  // 77: loads.PayBatchTrip.delivery_date:type_name -> google.protobuf.Timestamp
+	14,  // 78: loads.LoadsService.GetDriverTripDetails:input_type -> loads.GetDriverTripDetailsRequest
+	7,   // 79: loads.LoadsService.DriverHasActiveTrip:input_type -> loads.DriverHasActiveTripRequest
+	9,   // 80: loads.LoadsService.GetTripsOverlappingWindow:input_type -> loads.GetTripsOverlappingWindowRequest
+	17,  // 81: loads.LoadsService.GetRecentBrokerIDs:input_type -> loads.GetRecentBrokerIDsRequest
+	19,  // 82: loads.LoadsService.GetShipment:input_type -> loads.GetShipmentRequest
+	21,  // 83: loads.LoadsService.ListShipments:input_type -> loads.ListShipmentsRequest
+	23,  // 84: loads.LoadsService.GetTrip:input_type -> loads.GetTripRequest
+	25,  // 85: loads.LoadsService.ListTrips:input_type -> loads.ListTripsRequest
+	27,  // 86: loads.LoadsService.GetVehicleAssignments:input_type -> loads.GetVehicleAssignmentsRequest
+	29,  // 87: loads.LoadsService.UpdateVehicleLocation:input_type -> loads.UpdateVehicleLocationRequest
+	30,  // 88: loads.LoadsService.StreamVehicleLocations:input_type -> loads.StreamVehicleLocationsRequest
+	12,  // 89: loads.LoadsService.ResolveShipmentIDs:input_type -> loads.ShipmentFilterRequest
+	13,  // 90: loads.LoadsService.ResolveTripIDs:input_type -> loads.TripFilterRequest
+	37,  // 91: loads.LoadsService.GetShipmentChatMembers:input_type -> loads.GetShipmentChatMembersRequest
+	40,  // 92: loads.LoadsService.GetDriverActiveLoads:input_type -> loads.GetDriverActiveLoadsRequest
+	42,  // 93: loads.LoadsService.GetDriverUnsettledLoads:input_type -> loads.GetDriverUnsettledLoadsRequest
+	44,  // 94: loads.LoadsService.GetDriverDocIssueLoads:input_type -> loads.GetDriverDocIssueLoadsRequest
+	46,  // 95: loads.LoadsService.GetTripChatInfo:input_type -> loads.GetTripChatInfoRequest
+	48,  // 96: loads.LoadsService.GetTripsForPayBatch:input_type -> loads.GetTripsForPayBatchRequest
+	50,  // 97: loads.LoadsService.GetTripsByIDs:input_type -> loads.GetTripsByIDsRequest
+	52,  // 98: loads.LoadsService.GetUnbilledDriverTrips:input_type -> loads.GetUnbilledDriverTripsRequest
+	54,  // 99: loads.LoadsService.GetShipmentsReadyForBilling:input_type -> loads.GetShipmentsReadyForBillingRequest
+	56,  // 100: loads.LoadsService.GetShipmentsByIDs:input_type -> loads.GetShipmentsByIDsRequest
+	60,  // 101: loads.LoadsService.GetShipmentFiles:input_type -> loads.GetShipmentFilesRequest
+	63,  // 102: loads.LoadsService.AttachShipmentFile:input_type -> loads.AttachShipmentFileRequest
+	65,  // 103: loads.LoadsService.GetTripIDsByShipment:input_type -> loads.GetTripIDsByShipmentRequest
+	15,  // 104: loads.LoadsService.GetDriverTripDetails:output_type -> loads.GetDriverTripDetailsResponse
+	8,   // 105: loads.LoadsService.DriverHasActiveTrip:output_type -> loads.DriverHasActiveTripResponse
+	11,  // 106: loads.LoadsService.GetTripsOverlappingWindow:output_type -> loads.GetTripsOverlappingWindowResponse
+	18,  // 107: loads.LoadsService.GetRecentBrokerIDs:output_type -> loads.GetRecentBrokerIDsResponse
+	20,  // 108: loads.LoadsService.GetShipment:output_type -> loads.ShipmentResponse
+	22,  // 109: loads.LoadsService.ListShipments:output_type -> loads.ListShipmentsResponse
+	24,  // 110: loads.LoadsService.GetTrip:output_type -> loads.TripResponse
+	26,  // 111: loads.LoadsService.ListTrips:output_type -> loads.ListTripsResponse
+	28,  // 112: loads.LoadsService.GetVehicleAssignments:output_type -> loads.GetVehicleAssignmentsResponse
+	72,  // 113: loads.LoadsService.UpdateVehicleLocation:output_type -> google.protobuf.Empty
+	36,  // 114: loads.LoadsService.StreamVehicleLocations:output_type -> loads.VehicleLocation
+	73,  // 115: loads.LoadsService.ResolveShipmentIDs:output_type -> filters.IDsResponse
+	73,  // 116: loads.LoadsService.ResolveTripIDs:output_type -> filters.IDsResponse
+	38,  // 117: loads.LoadsService.GetShipmentChatMembers:output_type -> loads.GetShipmentChatMembersResponse
+	41,  // 118: loads.LoadsService.GetDriverActiveLoads:output_type -> loads.GetDriverActiveLoadsResponse
+	43,  // 119: loads.LoadsService.GetDriverUnsettledLoads:output_type -> loads.GetDriverUnsettledLoadsResponse
+	45,  // 120: loads.LoadsService.GetDriverDocIssueLoads:output_type -> loads.GetDriverDocIssueLoadsResponse
+	47,  // 121: loads.LoadsService.GetTripChatInfo:output_type -> loads.GetTripChatInfoResponse
+	49,  // 122: loads.LoadsService.GetTripsForPayBatch:output_type -> loads.GetTripsForPayBatchResponse
+	51,  // 123: loads.LoadsService.GetTripsByIDs:output_type -> loads.GetTripsByIDsResponse
+	53,  // 124: loads.LoadsService.GetUnbilledDriverTrips:output_type -> loads.GetUnbilledDriverTripsResponse
+	55,  // 125: loads.LoadsService.GetShipmentsReadyForBilling:output_type -> loads.GetShipmentsReadyForBillingResponse
+	57,  // 126: loads.LoadsService.GetShipmentsByIDs:output_type -> loads.GetShipmentsByIDsResponse
+	62,  // 127: loads.LoadsService.GetShipmentFiles:output_type -> loads.GetShipmentFilesResponse
+	64,  // 128: loads.LoadsService.AttachShipmentFile:output_type -> loads.AttachShipmentFileResponse
+	73,  // 129: loads.LoadsService.GetTripIDsByShipment:output_type -> filters.IDsResponse
+	104, // [104:130] is the sub-list for method output_type
+	78,  // [78:104] is the sub-list for method input_type
+	78,  // [78:78] is the sub-list for extension type_name
+	78,  // [78:78] is the sub-list for extension extendee
+	0,   // [0:78] is the sub-list for field type_name
 }
 
 func init() { file_loads_loads_proto_init() }
@@ -5477,15 +5568,15 @@ func file_loads_loads_proto_init() {
 	file_loads_loads_proto_msgTypes[40].OneofWrappers = []any{}
 	file_loads_loads_proto_msgTypes[47].OneofWrappers = []any{}
 	file_loads_loads_proto_msgTypes[51].OneofWrappers = []any{}
-	file_loads_loads_proto_msgTypes[55].OneofWrappers = []any{}
-	file_loads_loads_proto_msgTypes[58].OneofWrappers = []any{}
+	file_loads_loads_proto_msgTypes[56].OneofWrappers = []any{}
+	file_loads_loads_proto_msgTypes[59].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_loads_loads_proto_rawDesc), len(file_loads_loads_proto_rawDesc)),
 			NumEnums:      7,
-			NumMessages:   59,
+			NumMessages:   60,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

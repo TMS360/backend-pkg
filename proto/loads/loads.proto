@@ -659,6 +659,12 @@ message ShipmentBillingItem {
   string pickup_facility_name   = 21;
   string delivery_facility_name = 22;
 
+  // All stops (every leg by leg_sequence), for the full multi-stop invoice
+  // list. The renderer iterates these; the flat pickup_*/delivery_* fields
+  // above stay populated for wire-compat and paper-overlay of first/last.
+  // Empty on older backend-load payloads — accounting falls back to first/last.
+  repeated ShipmentBillingStop stops = 23;
+
   // Money.
   double total_amount       = 16;         // shipment.total_pay
 
@@ -669,6 +675,15 @@ message ShipmentBillingItem {
   string mc_number              = 18;
   string factoring_company_name = 19;
   string factoring_remit_to     = 20;
+}
+
+// One stop of a shipment's route (one leg), for the full multi-stop invoice
+// list. Ordered by leg_sequence in ShipmentBillingItem.stops.
+message ShipmentBillingStop {
+  string address                 = 1;  // leg.location
+  string facility_name           = 2;  // "" when unset
+  google.protobuf.Timestamp date = 3;  // COALESCE(trip_stop.checked_in_at, leg.appointment_from)
+  string stop_type               = 4;  // "PICKUP" | "DELIVERY" (leg.stop_type)
 }
 
 // ── Shipment Files (backend-accounting) ─────────────────────────────

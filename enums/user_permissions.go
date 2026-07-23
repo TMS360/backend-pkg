@@ -1,5 +1,7 @@
 package enums
 
+import "sort"
+
 // UserPermissionEnum is the canonical set of permission codes recognized by
 // the system. Permissions are dotted identifier strings (`module.entity.action`)
 // that GraphQL `@hasPerm` directives and service-layer checks consult; this
@@ -172,7 +174,7 @@ var PermissionCatalog = []PermissionCatalogEntry{
 	{Code: "settings.accounting_types", ParentCode: "settings", Label: "Accounting types", Actions: []string{"view", "create", "edit"}},
 	{Code: "settings.office_users", ParentCode: "settings", Label: "Office users", Actions: []string{"view", "create", "edit"}},
 	{Code: "settings.office_roles", ParentCode: "settings", Label: "Office roles", Actions: []string{"view", "edit"}},
-	{Code: "settings.pdf_layouts", ParentCode: "settings", Label: "Office roles", Actions: []string{"view", "edit"}},
+	{Code: "settings.pdf_layouts", ParentCode: "settings", Label: "PDF layouts", Actions: []string{"view", "edit"}},
 	{Code: "settings.compliance", ParentCode: "settings", Label: "Compliance", Actions: []string{"view", "edit"}},
 }
 
@@ -241,6 +243,179 @@ func buildValidPermissionCodes() map[string]struct{} {
 		m[c.Code] = struct{}{}
 	}
 	return m
+}
+
+// catalogIndex is the derived, read-only view of PermissionCatalog that
+// ExpandPermissions / RollupPermissions consult. It is built once at package
+// init (permIndex) so neither function re-scans the catalog per call. The two
+// maps double as the module/entity sets — a code is a module iff it keys
+// moduleEntities, an entity iff it keys entityLeaves — so there is one source
+// of truth per fact.
+type catalogIndex struct {
+	moduleEntities map[string][]string // module code -> its entity codes
+	entityLeaves   map[string][]string // entity code -> its full leaf codes (entity.action)
+	entityModule   map[string]string   // entity code -> its module code
+}
+
+func (ix catalogIndex) isModule(code string) bool { _, ok := ix.moduleEntities[code]; return ok }
+func (ix catalogIndex) isEntity(code string) bool { _, ok := ix.entityLeaves[code]; return ok }
+
+var permIndex = buildCatalogIndex()
+
+func buildCatalogIndex() catalogIndex {
+	ix := catalogIndex{
+		moduleEntities: make(map[string][]string),
+		entityLeaves:   make(map[string][]string),
+		entityModule:   make(map[string]string),
+	}
+	for _, e := range PermissionCatalog {
+		if e.ParentCode == "" {
+			// Register the module even if it has no entities yet, so isModule
+			// recognises it.
+			if _, ok := ix.moduleEntities[e.Code]; !ok {
+				ix.moduleEntities[e.Code] = nil
+			}
+			continue
+		}
+		ix.entityModule[e.Code] = e.ParentCode
+		ix.moduleEntities[e.ParentCode] = append(ix.moduleEntities[e.ParentCode], e.Code)
+		leaves := make([]string, 0, len(e.Actions))
+		for _, a := range e.Actions {
+			leaves = append(leaves, e.Code+"."+a)
+		}
+		ix.entityLeaves[e.Code] = leaves
+	}
+	return ix
+}
+
+// ExpandPermissions returns the concrete leaf codes implied by codes, per
+// PermissionCatalog: a module code expands to every leaf of its entities, an
+// entity code expands to its own leaves, and any other code (an already-leaf
+// action, a flat custom code, or an unrecognised code) is kept unchanged. The
+// result is deduplicated and sorted. It never drops an input grant, so it is
+// the safe way to bring a mixed set of module/entity/leaf codes to a single
+// granularity before set algebra (merge, diff).
+func ExpandPermissions(codes []string) []string {
+	set := make(map[string]struct{}, len(codes)*4)
+	for _, c := range codes {
+		switch {
+		case c == "":
+			// skip
+		case permIndex.isModule(c):
+			for _, ent := range permIndex.moduleEntities[c] {
+				for _, leaf := range permIndex.entityLeaves[ent] {
+					set[leaf] = struct{}{}
+				}
+			}
+		case permIndex.isEntity(c):
+			for _, leaf := range permIndex.entityLeaves[c] {
+				set[leaf] = struct{}{}
+			}
+		default:
+			set[c] = struct{}{}
+		}
+	}
+	return sortedKeys(set)
+}
+
+// RollupPermissions is the inverse of ExpandPermissions: it replaces a complete
+// set of children with their single parent code. If every catalog leaf of an
+// entity is held, the entity code is emitted instead of the leaves; if every
+// entity of a module is held, the module code is emitted instead of the
+// entities. A code held via an already-present ancestor (e.g. an
+// `accounting.invoices.view` leaf when `accounting` is present) is dropped as
+// redundant — so this subsumes the old prefix-only CompactHierarchy. Codes with
+// no catalog parent (flat custom codes, unrecognised codes) are preserved as-is.
+// The result is deduplicated and sorted and never drops a grant.
+func RollupPermissions(codes []string) []string {
+	present := make(map[string]struct{}, len(codes))
+	for _, c := range codes {
+		if c != "" {
+			present[c] = struct{}{}
+		}
+	}
+
+	// An entity is complete when every one of its leaves is held (present, or
+	// implied by a present ancestor); a module is complete when every one of its
+	// entities is complete.
+	completeEntities := make(map[string]struct{})
+	for ent, leaves := range permIndex.entityLeaves {
+		if len(leaves) > 0 && allImpliedBy(leaves, present) {
+			completeEntities[ent] = struct{}{}
+		}
+	}
+	completeModules := make(map[string]struct{})
+	for mod, ents := range permIndex.moduleEntities {
+		if len(ents) > 0 && allIn(ents, completeEntities) {
+			completeModules[mod] = struct{}{}
+		}
+	}
+
+	// The rolled-up set is the minimal representatives — complete modules, plus
+	// complete entities whose module isn't itself complete — together with every
+	// present code they don't already cover (leaves of incomplete entities, flat
+	// custom codes, unknown codes). Building it this way guarantees no grant is
+	// dropped: a present code is emitted unless a representative implies it.
+	out := make(map[string]struct{}, len(present))
+	for mod := range completeModules {
+		out[mod] = struct{}{}
+	}
+	for ent := range completeEntities {
+		if _, moduleComplete := completeModules[permIndex.entityModule[ent]]; !moduleComplete {
+			out[ent] = struct{}{}
+		}
+	}
+	for c := range present {
+		if !impliedBy(c, out) {
+			out[c] = struct{}{}
+		}
+	}
+	return sortedKeys(out)
+}
+
+// impliedBy reports whether code, or any of its dotted-prefix ancestors, is a
+// member of set — the same self-or-ancestor rule middleware.HasPermission uses
+// (`accounting` implies `accounting.invoices.view`). It scans dot boundaries in
+// place, so it allocates nothing (it runs once per catalog leaf per rollup).
+func impliedBy(code string, set map[string]struct{}) bool {
+	if _, ok := set[code]; ok {
+		return true
+	}
+	for i := len(code) - 1; i > 0; i-- {
+		if code[i] == '.' {
+			if _, ok := set[code[:i]]; ok {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func allImpliedBy(codes []string, set map[string]struct{}) bool {
+	for _, c := range codes {
+		if !impliedBy(c, set) {
+			return false
+		}
+	}
+	return true
+}
+
+func allIn(codes []string, set map[string]struct{}) bool {
+	for _, c := range codes {
+		if _, ok := set[c]; !ok {
+			return false
+		}
+	}
+	return true
+}
+
+func sortedKeys(set map[string]struct{}) []string {
+	out := make([]string, 0, len(set))
+	for c := range set {
+		out = append(out, c)
+	}
+	sort.Strings(out)
+	return out
 }
 
 // String satisfies fmt.Stringer.

@@ -18,14 +18,21 @@ type fakeUploader struct {
 	mu        sync.Mutex
 	dirs      []string
 	uploads   []recordedUpload
+	renames   []recordedRename
 	closed    bool
 	uploadErr error
+	renameErr error
 }
 
 type recordedUpload struct {
 	dir      string
 	filename string
 	content  []byte
+}
+
+type recordedRename struct {
+	dir      string
+	from, to string
 }
 
 func (f *fakeUploader) EnsureDir(dir string) error {
@@ -43,6 +50,16 @@ func (f *fakeUploader) Upload(dir, filename string, content []byte) (string, err
 	}
 	f.uploads = append(f.uploads, recordedUpload{dir: dir, filename: filename, content: append([]byte(nil), content...)})
 	return dir + "/" + filename, nil
+}
+
+func (f *fakeUploader) Rename(dir, from, to string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.renameErr != nil {
+		return f.renameErr
+	}
+	f.renames = append(f.renames, recordedRename{dir: dir, from: from, to: to})
+	return nil
 }
 
 func (f *fakeUploader) Close() error {
@@ -75,7 +92,7 @@ func TestSubmitBatch_UploadOrder_PDFsBeforeCSV(t *testing.T) {
 		SubmittedAt: time.Date(2026, 1, 11, 14, 30, 52, 0, time.UTC),
 		Invoices: []InvoiceLine{
 			{DebtorName: "ABC Logistics, LLC", InvoiceNumber: "IN-000000", InvoiceDate: time.Date(2026, 1, 11, 0, 0, 0, 0, time.UTC), PONumber: "5555555", AmountUSD: 1000},
-			{DebtorName: "XYZ Brokers",        InvoiceNumber: "IN-000001", InvoiceDate: time.Date(2026, 1, 11, 0, 0, 0, 0, time.UTC), PONumber: "6666666", AmountUSD: 500},
+			{DebtorName: "XYZ Brokers", InvoiceNumber: "IN-000001", InvoiceDate: time.Date(2026, 1, 11, 0, 0, 0, 0, time.UTC), PONumber: "6666666", AmountUSD: 500},
 		},
 		PDFs: []InvoicePDF{
 			{InvoiceNumber: "IN-000000", Bytes: []byte("pdf1")},
@@ -246,12 +263,12 @@ func TestProviderType_UnmarshalGQL(t *testing.T) {
 
 func TestSanitizePDFName(t *testing.T) {
 	cases := map[string]string{
-		"INV-2026-00042":   "INV-2026-00042.pdf",
-		"INV/1":            "INV_1.pdf",
-		"INV 1":            "INV_1.pdf",
-		"INV#1":            "INV_1.pdf",
-		"abc_123.xyz":      "abc_123.xyz.pdf",
-		"":                 ".pdf",
+		"INV-2026-00042": "INV-2026-00042.pdf",
+		"INV/1":          "INV_1.pdf",
+		"INV 1":          "INV_1.pdf",
+		"INV#1":          "INV_1.pdf",
+		"abc_123.xyz":    "abc_123.xyz.pdf",
+		"":               ".pdf",
 	}
 	for input, want := range cases {
 		got := sanitizePDFName(input)

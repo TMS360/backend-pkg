@@ -22,6 +22,8 @@ func NewProviderFromCredential(cred Credential) (Provider, error) {
 	switch cred.ProviderType {
 	case ProviderTriumphSFTP:
 		return NewTriumphSFTP(cred), nil
+	case ProviderRTSSFTP:
+		return NewRTSSFTP(cred), nil
 	default:
 		return nil, fmt.Errorf("factoring: provider %q has no implementation yet", cred.ProviderType)
 	}

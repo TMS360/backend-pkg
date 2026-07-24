@@ -32,7 +32,7 @@ type sftpDialer struct {
 	Port            int
 	Username        string
 	Password        string
-	ProviderType    ProviderType        // reported on AuthError; defaults to ProviderTriumphSFTP if empty
+	ProviderType    ProviderType // reported on AuthError; defaults to ProviderTriumphSFTP if empty
 	DialTimeout     time.Duration
 	HostKeyCallback ssh.HostKeyCallback // nil → ssh.InsecureIgnoreHostKey()
 }
@@ -140,6 +140,25 @@ func (c *sftpClient) Upload(remoteDir, filename string, content []byte) (string,
 		return "", fmt.Errorf("factoring/sftp: close %s: %w", remotePath, err)
 	}
 	return remotePath, nil
+}
+
+// Rename atomically moves remoteDir/from to remoteDir/to, replacing any
+// existing target. Used for trigger-safe manifest drops: the manifest is
+// uploaded under an inert temp name first, then renamed to its final
+// spreadsheet name — so a connection drop mid-write can never leave a
+// truncated file that the factor's poller would treat as a live trigger
+// (RTS ingests on any *.csv/*.xlsx the moment it appears). Prefers
+// POSIX rename (atomic replace); falls back to plain SFTP rename for
+// servers without the posix-rename@openssh.com extension.
+func (c *sftpClient) Rename(remoteDir, from, to string) error {
+	fromPath := path.Join(remoteDir, from)
+	toPath := path.Join(remoteDir, to)
+	if err := c.sftp.PosixRename(fromPath, toPath); err != nil {
+		if rerr := c.sftp.Rename(fromPath, toPath); rerr != nil {
+			return fmt.Errorf("factoring/sftp: rename %s -> %s: %w", fromPath, toPath, err)
+		}
+	}
+	return nil
 }
 
 // Close releases the SFTP subsystem and the underlying SSH connection. Safe

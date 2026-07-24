@@ -29,12 +29,15 @@ const (
 	envTestSFTPInboundDir = "TEST_SFTP_INBOUND_DIR"
 )
 
-// sftpUploader is the subset of *sftpClient that TriumphSFTPProvider needs.
-// Exists as an interface so tests can inject a fake without spinning up a real
-// SSH server. Production path uses the dialSFTP adapter below.
+// sftpUploader is the subset of *sftpClient the SFTP providers need. Exists as
+// an interface so tests can inject a fake without spinning up a real SSH
+// server. Production path uses the dialSFTP adapter below.
 type sftpUploader interface {
 	EnsureDir(remoteDir string) error
 	Upload(remoteDir, filename string, content []byte) (string, error)
+	// Rename moves remoteDir/from to remoteDir/to (replacing the target) —
+	// the second half of a trigger-safe two-step manifest drop.
+	Rename(remoteDir, from, to string) error
 	Close() error
 }
 
@@ -131,7 +134,7 @@ func (p *TriumphSFTPProvider) SubmitBatch(ctx context.Context, batch Batch, onPr
 		return SubmitResult{}, err
 	}
 
-	csvBytes, err := BuildTriumphCSV(batch.Invoices)
+	csvBytes, err := p.BuildManifest(batch.Invoices)
 	if err != nil {
 		return SubmitResult{}, err
 	}
@@ -192,6 +195,13 @@ func (p *TriumphSFTPProvider) SubmitBatch(ctx context.Context, batch Batch, onPr
 	}
 
 	return SubmitResult{CSVFileName: csvFileName, Uploaded: uploaded}, nil
+}
+
+// BuildManifest renders the Triumph 5-column CSV — the same bytes SubmitBatch
+// ships. Exposed via the Provider interface so backend-accounting's archive
+// paths (S3 copy, batch ZIP) emit the active provider's format.
+func (p *TriumphSFTPProvider) BuildManifest(invoices []InvoiceLine) ([]byte, error) {
+	return BuildTriumphCSV(invoices)
 }
 
 func (p *TriumphSFTPProvider) clock() time.Time {

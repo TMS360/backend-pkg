@@ -494,7 +494,10 @@ func DefaultRolePermissions() map[UserRoleEnum][]string {
 		// registered/grantable for a future maker-checker flow, but seeding it now
 		// would leave accounting with approve-and-no-edit, the exact divergence this
 		// matrix fixes.
-		UserRoleAdmin:      withExtra(string(PermTripFinancialsEdit)),
+		// DEV-1227 / BL §7.5: reassigning a committed trip's driver
+		// (trip_reassign_committed) is held by default by manager AND admin.
+		// A regular dispatcher does NOT get it (a custom role may add it later).
+		UserRoleAdmin:      withExtra(string(PermTripFinancialsEdit), string(PermTripReassignCommitted)),
 		UserRoleManager:    withExtra(string(PermTripReassignCommitted)),
 		UserRoleAccounting: withExtra(string(PermTripFinancialsEdit)),
 		UserRoleFleet:      withExtra(),

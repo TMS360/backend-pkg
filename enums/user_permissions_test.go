@@ -105,8 +105,9 @@ func TestDefaultRolePermissions_TripFinancialsMatrix(t *testing.T) {
 	assert.False(t, ok, "super_admin must not be seeded (it bypasses permission checks)")
 }
 
-// DEV-1226: trip_reassign_committed is a registered custom code held by manager
-// (dispatch manager) by default, but NOT by the regular dispatcher.
+// DEV-1226 / DEV-1227: trip_reassign_committed is a registered custom code held
+// by manager (dispatch manager) and admin by default, but NOT by the regular
+// dispatcher.
 func TestTripReassignCommitted_RegisteredAndManagerDefault(t *testing.T) {
 	code := string(enums.PermTripReassignCommitted)
 	assert.Equal(t, "trip_reassign_committed", code)
@@ -115,6 +116,7 @@ func TestTripReassignCommitted_RegisteredAndManagerDefault(t *testing.T) {
 
 	defaults := enums.DefaultRolePermissions()
 	assert.Contains(t, defaults[enums.UserRoleManager], code, "manager holds it by default")
+	assert.Contains(t, defaults[enums.UserRoleAdmin], code, "admin holds it by default")
 	assert.NotContains(t, defaults[enums.UserRoleDispatcher], code, "dispatcher must NOT hold it")
 
 	// Flat code → exact match only: no module grant implies it.

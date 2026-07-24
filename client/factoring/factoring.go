@@ -8,9 +8,9 @@
 // interface that hides the transport so callers (backend-accounting) write the
 // submission flow once.
 //
-// v1 ships one implementation: TriumphSFTPProvider. Add more (TriumphAPI,
-// RTSSFTP, EcapitalAPI...) by writing a new file and registering it in
-// registry.go.
+// Implementations: TriumphSFTPProvider (triumph_sftp) and RTSSFTPProvider
+// (rts_sftp). Add more (TriumphAPI, EcapitalAPI...) by writing a new file and
+// registering it in registry.go.
 //
 // Credentials are per-company and stored in tms360-backend's `settings` table
 // under one universal key — `factoring_credentials` — mirrored to Redis at
@@ -37,12 +37,14 @@ type ProviderType string
 
 const (
 	ProviderTriumphSFTP ProviderType = "triumph_sftp"
+	ProviderRTSSFTP     ProviderType = "rts_sftp"
 )
 
 // AllProviderTypes is the canonical list of supported provider types — used by
 // tms360-backend's credential validator and by gqlgen for the GraphQL enum.
 var AllProviderTypes = []ProviderType{
 	ProviderTriumphSFTP,
+	ProviderRTSSFTP,
 }
 
 // IsValid reports whether p is a known ProviderType. Useful for validating
@@ -101,7 +103,6 @@ type Credential struct {
 	RemitNotice          string       `json:"remit_notice,omitempty"`
 }
 
-
 // Progress is one upload-progress tick reported by a Provider during
 // SubmitBatch. Provider-neutral: SFTP, API, or any future factor reports the
 // same shape so backend-accounting can surface a live progress bar regardless
@@ -130,6 +131,13 @@ type Provider interface {
 	// caller can surface live per-file progress. Implementations MUST treat a
 	// nil onProgress as "do not report".
 	SubmitBatch(ctx context.Context, batch Batch, onProgress ProgressFunc) (SubmitResult, error)
+
+	// BuildManifest renders this provider's CSV manifest for the given invoice
+	// lines — the same bytes SubmitBatch ships. Pure rendering: provider rule
+	// validation lives in ValidateInvoicesForProvider, NOT here, so archival /
+	// bookkeeping callers can always obtain the bytes even for a batch that
+	// would be rejected on submission.
+	BuildManifest(invoices []InvoiceLine) ([]byte, error)
 }
 
 // Batch is the unit of submission: one InvoiceBatch from backend-accounting

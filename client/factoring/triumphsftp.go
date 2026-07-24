@@ -14,7 +14,8 @@ import (
 // the manifest + PDFs in the TMS_INPUT subfolder (their poller scans only
 // that path).
 //
-// NewTriumphSFTP transparently swaps these defaults for TEST_SFTP_* env vars
+// NewTriumphSFTP transparently swaps these defaults for TEST_TRIUMPH_SFTP_*
+// env vars (legacy TEST_SFTP_* still honored)
 // when APP_ENV is dev / stage / local, so a self-hosted sftpgo instance can
 // stand in for Triumph end-to-end without any UI or credential changes. The
 // allowlist (NOT a deny-list against "prod") means an unset APP_ENV in
@@ -24,9 +25,16 @@ const (
 	triumphSFTPPort       = 22
 	triumphSFTPInboundDir = "TMS_INPUT"
 
-	envTestSFTPHost       = "TEST_SFTP_HOST"
-	envTestSFTPPort       = "TEST_SFTP_PORT"
-	envTestSFTPInboundDir = "TEST_SFTP_INBOUND_DIR"
+	envTestTriumphSFTPHost       = "TEST_TRIUMPH_SFTP_HOST"
+	envTestTriumphSFTPPort       = "TEST_TRIUMPH_SFTP_PORT"
+	envTestTriumphSFTPInboundDir = "TEST_TRIUMPH_SFTP_INBOUND_DIR"
+
+	// Legacy names from the single-provider era ("SFTP" meant Triumph back
+	// then). Still honored as a fallback so existing dev/stage environments
+	// keep working; prefer the TEST_TRIUMPH_SFTP_* names above.
+	envTestSFTPHostLegacy       = "TEST_SFTP_HOST"
+	envTestSFTPPortLegacy       = "TEST_SFTP_PORT"
+	envTestSFTPInboundDirLegacy = "TEST_SFTP_INBOUND_DIR"
 )
 
 // sftpUploader is the subset of *sftpClient the SFTP providers need. Exists as
@@ -67,7 +75,8 @@ type TriumphSFTPProvider struct {
 // closed inside each SubmitBatch.
 //
 // In dev / stage / local environments (APP_ENV allowlist) the transport host
-// is swapped for TEST_SFTP_HOST / TEST_SFTP_PORT / TEST_SFTP_INBOUND_DIR if
+// is swapped for TEST_TRIUMPH_SFTP_HOST / TEST_TRIUMPH_SFTP_PORT /
+// TEST_TRIUMPH_SFTP_INBOUND_DIR (legacy TEST_SFTP_* honored as fallback) if
 // any of those env vars are set — so the GraphQL surface (one provider type
 // "triumph_sftp", one Settings form) stays identical across environments
 // while a self-hosted sftpgo instance can stand in for Triumph. In
@@ -79,15 +88,15 @@ func NewTriumphSFTP(cred Credential) *TriumphSFTPProvider {
 	inboundDir := triumphSFTPInboundDir
 
 	if isNonProdAppEnv() {
-		if h := strings.TrimSpace(os.Getenv(envTestSFTPHost)); h != "" {
+		if h := firstNonEmptyEnv(envTestTriumphSFTPHost, envTestSFTPHostLegacy); h != "" {
 			host = h
 		}
-		if raw := strings.TrimSpace(os.Getenv(envTestSFTPPort)); raw != "" {
+		if raw := firstNonEmptyEnv(envTestTriumphSFTPPort, envTestSFTPPortLegacy); raw != "" {
 			if n, err := strconv.Atoi(raw); err == nil && n > 0 {
 				port = n
 			}
 		}
-		if d := strings.TrimSpace(os.Getenv(envTestSFTPInboundDir)); d != "" {
+		if d := firstNonEmptyEnv(envTestTriumphSFTPInboundDir, envTestSFTPInboundDirLegacy); d != "" {
 			inboundDir = d
 		}
 	}
@@ -103,10 +112,23 @@ func NewTriumphSFTP(cred Credential) *TriumphSFTPProvider {
 	}
 }
 
+// firstNonEmptyEnv returns the first of the named env vars whose trimmed
+// value is non-empty. Used for the canonical-name-with-legacy-fallback test
+// override lookups.
+func firstNonEmptyEnv(names ...string) string {
+	for _, name := range names {
+		if v := strings.TrimSpace(os.Getenv(name)); v != "" {
+			return v
+		}
+	}
+	return ""
+}
+
 // isNonProdAppEnv reports whether the current deployment may honour the
-// TEST_SFTP_* overrides. Implemented as an allowlist (NOT a deny-list against
-// "prod") so an empty / typo'd APP_ENV is treated as production — overrides
-// are ignored and real Triumph is used. Match is case-insensitive.
+// TEST_*_SFTP_* overrides. Implemented as an allowlist (NOT a deny-list
+// against "prod") so an empty / typo'd APP_ENV is treated as production —
+// overrides are ignored and the real factor endpoint is used. Match is
+// case-insensitive.
 func isNonProdAppEnv() bool {
 	switch strings.ToLower(strings.TrimSpace(os.Getenv("APP_ENV"))) {
 	case "dev", "stage", "staging", "local":

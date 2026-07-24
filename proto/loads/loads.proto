@@ -134,6 +134,16 @@ service LoadsService {
   // Reuses filters.IDsResponse — payload is just a list of UUID strings.
   rpc GetTripIDsByShipment(GetTripIDsByShipmentRequest)
       returns (filters.IDsResponse);
+
+  // ── Customer Load Stats (used by backend-accounting, DEV-738) ──────────
+  // Per-customer shipment aggregates for the broker-dependency panel:
+  // stage counters + 8-month loads trend + company-wide denominator.
+  // Counts shipments by status; all money aggregates stay in accounting.
+  // company_id is passed explicitly (backend-load's gRPC server runs
+  // without an AuthServerInterceptor), same contract as
+  // GetShipmentsReadyForBillingRequest.company_id.
+  rpc GetCustomerLoadStats(GetCustomerLoadStatsRequest)
+      returns (GetCustomerLoadStatsResponse);
 }
 
 message DriverHasActiveTripRequest {
@@ -684,6 +694,45 @@ message ShipmentBillingStop {
   string facility_name           = 2;  // "" when unset
   google.protobuf.Timestamp date = 3;  // COALESCE(trip_stop.checked_in_at, leg.appointment_from)
   string stop_type               = 4;  // "PICKUP" | "DELIVERY" (leg.stop_type)
+}
+
+// ── Customer Load Stats messages (backend-accounting, DEV-738) ─────────
+
+message GetCustomerLoadStatsRequest {
+  // Tenant scope — accounting passes the caller's company_id (from JWT)
+  // because backend-load's gRPC server runs without AuthServerInterceptor.
+  string company_id  = 1;
+  string customer_id = 2;
+
+  // Period window, tested against the shipment's pickup date (first leg's
+  // appointment_from, leg_sequence=1). Both nil ⇒ LIFETIME (no date filter).
+  optional google.protobuf.Timestamp period_from = 3;
+  optional google.protobuf.Timestamp period_to   = 4;
+
+  // Start of the 8-month monthly-trend window (month-truncated). The trend is
+  // always the trailing 8 months, independent of the period window above.
+  google.protobuf.Timestamp trend_from = 5;
+}
+
+message GetCustomerLoadStatsResponse {
+  // Customer-scoped stage counters, period-filtered by pickup date.
+  int64 doing_now             = 1;  // DISPATCHED, ACCEPTED, IN_TRANSIT
+  int64 did                   = 2;  // DELIVERED, COMPLETED, READY_FOR_BILLING, INVOICED, PAID, TONU
+  int64 cancelled             = 3;  // CANCELLED
+  int64 customer_active_loads = 4;  // all statuses in period (dependency numerator)
+
+  // Company-wide denominator: all statuses in period, NO customer filter.
+  int64 company_active_loads  = 5;
+
+  // Trailing-8-month loads count for this customer, bucketed by pickup month.
+  // Server returns only months that have data; accounting zero-fills to 8 and
+  // merges in per-month revenue.
+  repeated MonthlyLoads monthly_trend = 6;
+}
+
+message MonthlyLoads {
+  string month       = 1;  // "2006-01" (year-month key)
+  int64  loads_count = 2;
 }
 
 // ── Shipment Files (backend-accounting) ─────────────────────────────

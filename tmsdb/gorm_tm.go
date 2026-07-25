@@ -178,6 +178,14 @@ func (m *GormTransactionManager) Filter(ctx context.Context, model interface{}) 
 }
 
 // CalculateChanges compares two structs and returns a list of changes.
+//
+// Contract: audit change values are scalar-only. Object fields (nested struct,
+// map, slice/array of struct, pointer-to-struct) are skipped via
+// isAssociationField and MUST NOT produce a Change — an object value renders in
+// the activity feed as an unreadable Go map dump (e.g. a whole Shipment struct:
+// map[BillToID:<nil> BillingNote:<nil> ...]) that no human can diff by eye.
+// Scalars — including time.Time, uuid.UUID ([16]byte) and []byte — still diff.
+// This is guaranteed by TestCalculateChanges_* in gorm_tm_test.go; keep it green.
 func CalculateChanges(oldVal, newVal interface{}) []events.Change {
 	var changes []events.Change
 

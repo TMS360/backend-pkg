@@ -14,6 +14,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/TMS360/backend-pkg/consts"
 	"github.com/TMS360/backend-pkg/middleware"
 	"github.com/TMS360/backend-pkg/response"
 	sentrygin "github.com/getsentry/sentry-go/gin"
@@ -126,33 +127,72 @@ func captureWithLevel(ctx context.Context, err error, level sentry.Level) {
 		if rid := middleware.GetRequestID(ctx); rid != "" {
 			scope.SetTag("request_id", rid)
 		}
-		enrichWithActor(ctx, scope)
+		setActorOnScope(ctx, scope)
 		hub.CaptureException(err)
 	})
 }
 
-// enrichWithActor tags the scope with who triggered the event so user-friction
-// warnings (and errors) can be filtered by user/company in Sentry. No-op when
-// there is no actor on the context (e.g. background jobs).
-func enrichWithActor(ctx context.Context, scope *sentry.Scope) {
+// setActorOnScope tags a Sentry scope with who triggered the event so events can
+// be filtered by user/company/actor_type in Sentry — and so a BE error and the
+// user's later feedback submission tie together on the same user id. It is the
+// single enrichment path shared by the per-request middleware (SentryUserMiddleware)
+// and the on-capture helpers, so HTTP requests and background captures attribute
+// identically. It never panics on nil/empty fields.
+//
+// actor_type:
+//   - authenticated user  → "user"   (+ user.id, company_id)
+//   - broker actor        → "broker" (Claims.ActorType == consts.ActorBroker)
+//   - guest / share-link  → "guest"  (+ share_resource / share_resource_id tags;
+//     guests have a Nil user id, so the shared resource is what we attribute to)
+//   - system / background  → "system"
+//   - no actor on ctx     → "system" (Kafka consumers, gRPC, pre-auth requests):
+//     the point of the edge case is to never fail the set when there is nothing
+//     to attribute, not to invent a user.
+//
+// The JWT (consts.UserClaims) carries no email/username, so only the user id is
+// set on sentry.User. The FE feedback widget supplies the email on its side and
+// the two events group by id.
+func setActorOnScope(ctx context.Context, scope *sentry.Scope) {
 	actor, err := middleware.GetActor(ctx)
 	if err != nil || actor == nil {
+		scope.SetTag("actor_type", "system")
 		return
 	}
+
 	switch {
 	case actor.IsSystem:
 		scope.SetTag("actor_type", "system")
+	case isBrokerActor(actor):
+		scope.SetTag("actor_type", "broker")
 	case actor.IsGuest:
 		scope.SetTag("actor_type", "guest")
 	default:
 		scope.SetTag("actor_type", "user")
 	}
+
 	if actor.ID != uuid.Nil {
 		scope.SetUser(sentry.User{ID: actor.ID.String()})
 	}
 	if cid := actor.GetCompanyID(); cid != nil {
 		scope.SetTag("company_id", cid.String())
 	}
+
+	// Guest / broker share-link requests have a Nil user id — tag the shared
+	// resource so that traffic is still attributable to something.
+	if actor.Claims != nil {
+		if actor.Claims.Resource != "" {
+			scope.SetTag("share_resource", actor.Claims.Resource)
+		}
+		if actor.Claims.ResourceID != uuid.Nil {
+			scope.SetTag("share_resource_id", actor.Claims.ResourceID.String())
+		}
+	}
+}
+
+// isBrokerActor reports whether the actor authenticated as a broker. Kept aligned
+// with the audit actor work (DEV-678): the canonical signal is Claims.ActorType.
+func isBrokerActor(actor *consts.Actor) bool {
+	return actor.Claims != nil && actor.Claims.ActorType == consts.ActorBroker
 }
 
 // GinMiddleware installs Sentry's request-scoped hub + panic recovery on the
@@ -162,6 +202,29 @@ func GinMiddleware() gin.HandlerFunc {
 		return func(c *gin.Context) { c.Next() }
 	}
 	return sentrygin.New(sentrygin.Options{Repanic: true})
+}
+
+// SentryUserMiddleware enriches the per-request Sentry hub with the caller's
+// identity so EVERY event emitted while handling the request carries the user
+// and actor_type — not only the ones explicitly sent through CaptureWithCtx. In
+// particular it makes panics recovered by GinMiddleware (sentrygin) show the
+// calling user on the issue, so a BE error and the user's later User Feedback
+// submission tie together by id (see DEV-679).
+//
+// Install it AFTER GinMiddleware (the per-request hub must already exist) and
+// AFTER IdentifyUser + the guest middleware (the actor must already be on the
+// request context). No-op when Sentry is disabled, consistent with the rest of
+// this package — so an empty SENTRY_DSN leaves the request path untouched.
+func SentryUserMiddleware() gin.HandlerFunc {
+	if !enabled {
+		return func(c *gin.Context) { c.Next() }
+	}
+	return func(c *gin.Context) {
+		if hub := sentrygin.GetHubFromContext(c); hub != nil {
+			setActorOnScope(c.Request.Context(), hub.Scope())
+		}
+		c.Next()
+	}
 }
 
 // CaptureRestError reports err to Sentry when the effective HTTP status is

@@ -21,6 +21,15 @@ type EventPayload struct {
 	Data          json.RawMessage `json:"data,omitempty"`    // {id: 123, name: "John Doe", ...}
 	Changes       []Change        `json:"changes,omitempty"` // [{field: "name", old_value: "John", new_value: "John Doe"}, ...]
 
+	// ActorIP and UserAgent record where the action came from. Stamped once by
+	// tmsdb.writeEvent from the request context (middleware.ClientOrigin), so
+	// producers never pass them explicitly. Both are omitted for events with no
+	// HTTP request behind them — a Kafka-consumer or cron-triggered change
+	// records nothing rather than the server's own address. UserAgent is
+	// truncated to middleware.MaxUserAgentLen at capture time.
+	ActorIP   *string `json:"actor_ip,omitempty"`
+	UserAgent *string `json:"user_agent,omitempty"`
+
 	// Reason is an optional human-supplied justification for the action (e.g. why a
 	// dispatcher cleared a check-in). Most events omit it (nil); only actions that
 	// require an explanation set it via EventBuilder.WithReason. Surfaced by

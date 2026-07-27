@@ -81,6 +81,19 @@ func (m *GormTransactionManager) writeEvent(ctx context.Context, b *EventBuilder
 		}
 	}
 
+	// Origin (IP + user-agent) кладёт в контекст middleware.IdentifyUser на входе
+	// HTTP-запроса. Для событий без запроса (Kafka-консьюмеры, крон, сидеры)
+	// контекст пустой -> оба поля nil, а не адрес самого сервиса (DEV-1411).
+	var actorIP, userAgent *string
+	if origin := middleware.GetClientOrigin(ctx); origin != nil {
+		if origin.IP != "" {
+			actorIP = utils.Pointer(origin.IP)
+		}
+		if origin.UserAgent != "" {
+			userAgent = utils.Pointer(origin.UserAgent)
+		}
+	}
+
 	dataBytes, err := json.Marshal(b.data)
 	if err != nil {
 		return err // marshal-ошибка = реальный баг, до БД, txn не трогает — surface it
@@ -109,6 +122,8 @@ func (m *GormTransactionManager) writeEvent(ctx context.Context, b *EventBuilder
 		Data:           json.RawMessage(dataBytes),
 		Changes:        changes,
 		Reason:         b.reason,
+		ActorIP:        actorIP,
+		UserAgent:      userAgent,
 		Timestamp:      time.Now(),
 		RootEntityType: rootType,
 		RootEntityID:   rootID,

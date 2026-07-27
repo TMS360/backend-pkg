@@ -16,9 +16,20 @@ import (
 	"github.com/google/uuid"
 )
 
-// IdentifyUser извлекает и проверяет JWT из заголовка Authorization и устанавливает информацию о пользователе в контекст
+// IdentifyUser извлекает и проверяет JWT из заголовка Authorization и устанавливает информацию о пользователе в контекст.
+//
+// Здесь же в контекст кладётся ClientOrigin (IP + user-agent). Это единственная
+// точка, которую подключают все сервисы, поэтому origin попадает в контекст
+// каждого запроса без правок в самих сабграфах — ровно так же, как actor.
+// tmsdb.writeEvent читает его при штамповке outbox-события (DEV-1411).
 func IdentifyUser(rsaPubKey *rsa.PublicKey) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
+		// 0. Origin ставим до аутентификации: он нужен и анонимным, и гостевым
+		// запросам, и запросам с невалидным токеном.
+		ctx.Request = ctx.Request.WithContext(
+			WithClientOrigin(ctx.Request.Context(), ResolveClientOrigin(ctx.Request)),
+		)
+
 		// 1. Attempt System User Authentication
 		if authHeader := ctx.GetHeader("Authorization"); authHeader != "" {
 			actor, err := parseAuthToken(authHeader, rsaPubKey)

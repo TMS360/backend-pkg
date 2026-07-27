@@ -88,6 +88,9 @@ const (
 	CompanySettingsIntegrationKeySamsaraAPIKey   CompanySettingsIntegrationKey = "samsara_api_key"
 	CompanySettingsIntegrationKeyRelayAPIKey     CompanySettingsIntegrationKey = "relay_api_key"
 	CompanySettingsIntegrationKeyUSPSCredentials CompanySettingsIntegrationKey = "usps_credentials"
+	// CompanySettingsIntegrationKeyGoogleMapsAPIKey is the tenant's Google Maps
+	// Platform key, used only as a fallback after a classified HERE failure.
+	CompanySettingsIntegrationKeyGoogleMapsAPIKey CompanySettingsIntegrationKey = "google_maps_api_key"
 )
 
 var AllCompanySettingsIntegrationKey = []CompanySettingsIntegrationKey{
@@ -95,6 +98,7 @@ var AllCompanySettingsIntegrationKey = []CompanySettingsIntegrationKey{
 	CompanySettingsIntegrationKeySamsaraAPIKey,
 	CompanySettingsIntegrationKeyRelayAPIKey,
 	CompanySettingsIntegrationKeyUSPSCredentials,
+	CompanySettingsIntegrationKeyGoogleMapsAPIKey,
 }
 
 func (e CompanySettingsIntegrationKey) IsValid() bool {
@@ -102,7 +106,8 @@ func (e CompanySettingsIntegrationKey) IsValid() bool {
 	case CompanySettingsIntegrationKeyHereAPIKey,
 		CompanySettingsIntegrationKeySamsaraAPIKey,
 		CompanySettingsIntegrationKeyRelayAPIKey,
-		CompanySettingsIntegrationKeyUSPSCredentials:
+		CompanySettingsIntegrationKeyUSPSCredentials,
+		CompanySettingsIntegrationKeyGoogleMapsAPIKey:
 		return true
 	}
 	return false

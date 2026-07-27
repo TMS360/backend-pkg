@@ -26,6 +26,7 @@ type Config struct {
 	MailConfig        `mapstructure:"MAIL"`
 	SamsaraConfig     `mapstructure:"SAMSARA"`
 	HereConfig        `mapstructure:"HERE"`
+	GoogleMapsConfig  `mapstructure:"GOOGLE_MAPS"`
 	RelayConfig       `mapstructure:"RELAY"`
 	UspsConfig        `mapstructure:"USPS"`
 	FactoringConfig   `mapstructure:"FACTORING"`
@@ -120,6 +121,15 @@ type HereConfig struct {
 	RouterHost  string `mapstructure:"ROUTER_HOST"`
 	GeocodeHost string `mapstructure:"GEOCODE_HOST"`
 	LookupHost  string `mapstructure:"LOOKUP_HOST"`
+}
+
+// GoogleMapsConfig holds the non-secret Google Maps Platform hosts. The API key
+// is NOT stored here — it lives per-company in Redis under google_maps_api_key,
+// same as the HERE key. Geocoding and Places share one host; Routes v2 is a
+// separate service.
+type GoogleMapsConfig struct {
+	GeocodeHost string `mapstructure:"GEOCODE_HOST"`
+	RoutesHost  string `mapstructure:"ROUTES_HOST"`
 }
 
 type RelayConfig struct {

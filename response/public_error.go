@@ -16,12 +16,34 @@ type PublicError interface {
 	Extensions() map[string]any
 }
 
+// CodedError is the optional string-code extension of PublicError.
+//
+// Why it exists: ErrorCode() is an int that no constructor here ever populates,
+// so every PublicError ships extensions.code = 0 — useless to branch on. The
+// payload map cannot fill the gap either: the GraphQL presenter reserves the
+// "code" and "status" keys so a caller-supplied payload can never shadow the
+// shared contract. Services that need a stable, machine-readable code (e.g.
+// "INVOICE_TRANSITION_INVALID") were therefore reduced to embedding a token in
+// the technical message and having the client substring-match it.
+//
+// When an error in the chain implements this interface AND returns a non-empty
+// string, the presenter uses that string as extensions.code in place of the
+// legacy int. An empty string falls back to the int, so implementing this
+// interface is never a breaking change for an existing caller.
+type CodedError interface {
+	PublicError
+	ErrorCodeString() string
+}
+
 type publicError struct {
 	Technical string
 	User      string
 	Status    int
 	Code      int
-	Ext       map[string]any
+	// CodeStr is the machine-readable string code surfaced as extensions.code.
+	// Empty means "no string code" — the presenter then keeps the legacy int.
+	CodeStr string
+	Ext     map[string]any
 }
 
 func (e *publicError) Error() string {
@@ -44,6 +66,10 @@ func (e *publicError) Extensions() map[string]any {
 	return e.Ext
 }
 
+func (e *publicError) ErrorCodeString() string {
+	return e.CodeStr
+}
+
 func NewError(tech, user string, status int) PublicError {
 	slog.Error(fmt.Sprintf("[tech=%s,user=%s]", tech, user))
 	return &publicError{Technical: tech, User: user, Status: status}
@@ -56,4 +82,16 @@ func NewError(tech, user string, status int) PublicError {
 func NewErrorWithExtensions(tech, user string, status int, ext map[string]any) PublicError {
 	slog.Error(fmt.Sprintf("[tech=%s,user=%s]", tech, user))
 	return &publicError{Technical: tech, User: user, Status: status, Ext: ext}
+}
+
+// NewCodedError is NewErrorWithExtensions plus a stable machine-readable code
+// that the GraphQL presenter surfaces as extensions.code. Use it when the
+// client must branch on the failure kind rather than on the message text —
+// messages are user-facing prose and change; codes are a contract.
+//
+// The returned error satisfies CodedError. A nil or empty map behaves like
+// NewError; an empty code behaves like NewErrorWithExtensions.
+func NewCodedError(code, tech, user string, status int, ext map[string]any) PublicError {
+	slog.Error(fmt.Sprintf("[code=%s,tech=%s,user=%s]", code, tech, user))
+	return &publicError{Technical: tech, User: user, Status: status, CodeStr: code, Ext: ext}
 }

@@ -73,6 +73,15 @@ var (
 // support. 5xx errors are captured to Sentry as errors (they alert); 4xx
 // PublicErrors are captured as warnings so user friction is queryable without
 // paging anyone.
+//
+// extensions.code precedence, highest first:
+//  1. a response.CodedError's ErrorCodeString(), when non-empty — the stable
+//     string contract (e.g. "INVOICE_TRANSITION_INVALID");
+//  2. PublicError.ErrorCode(), the legacy int (0 unless a service sets it);
+//  3. the gRPC-mapped string set, or "INTERNAL_SERVER_ERROR"/"VALIDATION_ERROR".
+//
+// The payload map from Extensions() can never supply `code` or `status` — those
+// two keys are reserved so a caller cannot break the shared contract.
 func NewErrorPresenter(isDebug bool) graphql.ErrorPresenterFunc {
 	return func(ctx context.Context, err error) *gqlerror.Error {
 		requestID := middleware.GetRequestID(ctx)
@@ -118,6 +127,18 @@ func NewErrorPresenter(isDebug bool) graphql.ErrorPresenterFunc {
 					continue
 				}
 				gqlErr.Extensions[k] = v
+			}
+			// A CodedError carries a stable machine-readable string code. Applied
+			// AFTER the merge loop on purpose: the reserved-key invariant above
+			// still holds (a payload map can never shadow `code`), while the code
+			// the error was CONSTRUCTED with wins. Without this, extensions.code is
+			// customErr.ErrorCode() — an int no constructor populates, so every 4xx
+			// ships `"code": 0` and clients are forced to parse the message.
+			var coded response.CodedError
+			if errors.As(err, &coded) {
+				if s := coded.ErrorCodeString(); s != "" {
+					gqlErr.Extensions["code"] = s
+				}
 			}
 			// 5xx are server faults — capture as errors (they alert). 4xx are
 			// user-facing rejections — capture as warnings so friction is

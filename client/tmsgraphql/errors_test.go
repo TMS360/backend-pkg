@@ -3,6 +3,7 @@ package tmsgraphql
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"testing"
 
@@ -151,6 +152,85 @@ func TestErrorPresenter_PublicErrorWithoutExtensionsIsUnchanged(t *testing.T) {
 	// Expect only the three keys the presenter always writes: code, status, requestId.
 	if got, want := len(gqlErr.Extensions), 3; got != want {
 		t.Errorf("Extensions has %d keys (%v), want %d", got, gqlErr.Extensions, want)
+	}
+}
+
+// A CodedError must put its string code in extensions.code, replacing the
+// legacy int. This is what lets a client branch on the failure kind instead of
+// substring-matching the human message.
+func TestErrorPresenter_CodedErrorSetsStringCode(t *testing.T) {
+	withCaptureSpy(t)
+
+	present := NewErrorPresenter(false)
+	gqlErr := present(context.Background(), response.NewCodedConflict(
+		"INVOICE_TRANSITION_INVALID",
+		"cannot transition invoice from PAID to SUPERSEDED",
+		"This invoice is paid and can't be changed.",
+		map[string]any{
+			"currentStatus":   "PAID",
+			"attemptedStatus": "SUPERSEDED",
+		},
+	))
+
+	if got := gqlErr.Extensions["code"]; got != "INVOICE_TRANSITION_INVALID" {
+		t.Errorf("Extensions[code] = %v, want the string code", got)
+	}
+	if got := gqlErr.Extensions["status"]; got != http.StatusConflict {
+		t.Errorf("Extensions[status] = %v, want %d", got, http.StatusConflict)
+	}
+	if got := gqlErr.Extensions["currentStatus"]; got != "PAID" {
+		t.Errorf("Extensions[currentStatus] = %v, want PAID", got)
+	}
+	if got := gqlErr.Extensions["attemptedStatus"]; got != "SUPERSEDED" {
+		t.Errorf("Extensions[attemptedStatus] = %v, want SUPERSEDED", got)
+	}
+}
+
+// The string code comes from how the error was CONSTRUCTED, never from its
+// payload — the reserved-key invariant must survive the CodedError path too.
+func TestErrorPresenter_CodedErrorPayloadStillCannotShadowCode(t *testing.T) {
+	withCaptureSpy(t)
+
+	present := NewErrorPresenter(false)
+	gqlErr := present(context.Background(), response.NewCodedConflict(
+		"REAL_CODE",
+		"tech",
+		"user",
+		map[string]any{"code": "HIJACKED", "status": 200},
+	))
+
+	if got := gqlErr.Extensions["code"]; got != "REAL_CODE" {
+		t.Errorf("Extensions[code] = %v, want REAL_CODE — payload must not shadow it", got)
+	}
+	if got := gqlErr.Extensions["status"]; got != http.StatusConflict {
+		t.Errorf("Extensions[status] = %v, want %d", got, http.StatusConflict)
+	}
+}
+
+// An empty string code falls back to the legacy int, so adopting the interface
+// is never a breaking change for a caller that does not set a code.
+func TestErrorPresenter_EmptyStringCodeFallsBackToInt(t *testing.T) {
+	withCaptureSpy(t)
+
+	present := NewErrorPresenter(false)
+	gqlErr := present(context.Background(), response.NewCodedError("", "tech", "user", http.StatusConflict, nil))
+
+	if got := gqlErr.Extensions["code"]; got != 0 {
+		t.Errorf("Extensions[code] = %v (%T), want the legacy int 0", got, got)
+	}
+}
+
+// A CodedError found through %w wrapping must still be honoured — services wrap
+// domain errors on the way out of the service layer.
+func TestErrorPresenter_CodedErrorFoundThroughWrapping(t *testing.T) {
+	withCaptureSpy(t)
+
+	present := NewErrorPresenter(false)
+	wrapped := fmt.Errorf("service layer: %w", response.NewCodedConflict("WRAPPED_CODE", "tech", "user", nil))
+	gqlErr := present(context.Background(), wrapped)
+
+	if got := gqlErr.Extensions["code"]; got != "WRAPPED_CODE" {
+		t.Errorf("Extensions[code] = %v, want WRAPPED_CODE through the wrap", got)
 	}
 }
 

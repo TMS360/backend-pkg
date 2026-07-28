@@ -12,6 +12,7 @@ const (
 	UserRoleSafety     UserRoleEnum = "safety"
 	UserRoleFleet      UserRoleEnum = "fleet"
 	UserRoleHr         UserRoleEnum = "hr"
+	UserRoleAuditor    UserRoleEnum = "auditor"
 	UserRoleDispatcher UserRoleEnum = "dispatcher"
 	UserRoleDriver     UserRoleEnum = "driver"
 	UserRoleCustomer   UserRoleEnum = "customer"
@@ -35,6 +36,8 @@ func (s UserRoleEnum) String() string {
 		return "fleet"
 	case UserRoleHr:
 		return "hr"
+	case UserRoleAuditor:
+		return "auditor"
 	case UserRoleDispatcher:
 		return "dispatcher"
 	case UserRoleDriver:
@@ -51,7 +54,7 @@ func (s UserRoleEnum) String() string {
 // IsValid checks if the status is a known value
 func (s UserRoleEnum) IsValid() bool {
 	switch s {
-	case UserRoleSuperAdmin, UserRoleAdmin, UserRoleManager, UserRoleAccounting, UserRoleSafety, UserRoleFleet, UserRoleHr, UserRoleDispatcher, UserRoleDriver, UserRoleCustomer, UserRoleOther:
+	case UserRoleSuperAdmin, UserRoleAdmin, UserRoleManager, UserRoleAccounting, UserRoleSafety, UserRoleFleet, UserRoleHr, UserRoleAuditor, UserRoleDispatcher, UserRoleDriver, UserRoleCustomer, UserRoleOther:
 		return true
 	default:
 		return false
@@ -71,6 +74,12 @@ var UserRoleHierarchy = map[UserRoleEnum]int32{
 	UserRoleHr:         3,
 	UserRoleFleet:      3,
 	UserRoleSafety:     3,
+	// The auditor's authority is governance over records (correcting a locked
+	// statement, voiding a revised invoice, reading the audit log), not authority
+	// over people — so it sits in the specialist band with its peers rather than
+	// above them. Band 3 cannot create or re-permission band-3 users, which is
+	// the separation of duties an auditor should have.
+	UserRoleAuditor:    3,
 	UserRoleDispatcher: 3,
 	UserRoleDriver:     4,
 	UserRoleOther:      4,

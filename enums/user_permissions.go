@@ -503,6 +503,11 @@ func DefaultRolePermissions() map[UserRoleEnum][]string {
 		UserRoleFleet:      withExtra(),
 		UserRoleSafety:     withExtra(),
 		UserRoleHr:         withExtra(),
+		// DEV-1409: the auditor gets the same module baseline as its peers. Its
+		// governed powers (locked-statement corrections, revised-invoice voids,
+		// reading the tenant audit log) are gated by role, not by a permission
+		// code, so there is nothing extra to seed here.
+		UserRoleAuditor:    withExtra(),
 		UserRoleDispatcher: withExtra(),
 		UserRoleDriver:     withExtra(),
 		UserRoleOther:      withExtra(),

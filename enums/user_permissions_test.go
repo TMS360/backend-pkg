@@ -136,3 +136,34 @@ func TestDefaultRolePermissions_SlicesAreIndependent(t *testing.T) {
 	}
 	assert.NotContains(t, enums.DefaultRolePermissions()[enums.UserRoleAccounting], "mutated")
 }
+
+// file_delete_any (file-delete coverage) gates removing a file attachment the
+// actor did not upload, or one past the 24h uploader window. It must be a FLAT
+// code: every built-in role — driver included — is seeded the whole module
+// baseline, and HasPermission matches hierarchically, so a dotted
+// "shipments.trip_files.delete" would be satisfied by any driver holding
+// "shipments" and could not express "office only".
+func TestFileDeleteAny_IsFlatAndSupervisorOnly(t *testing.T) {
+	code := string(enums.PermFileDeleteAny)
+	assert.Equal(t, "file_delete_any", code)
+	assert.True(t, enums.IsValidPermissionCode(code), "must validate so custom roles can grant it")
+	assert.True(t, enums.IsCustomPermissionCode(code))
+
+	defaults := enums.DefaultRolePermissions()
+	assert.Contains(t, defaults[enums.UserRoleAdmin], code, "admin holds it by default")
+	assert.Contains(t, defaults[enums.UserRoleManager], code, "manager holds it by default")
+	for _, role := range []enums.UserRoleEnum{
+		enums.UserRoleDriver, enums.UserRoleDispatcher, enums.UserRoleAccounting, enums.UserRoleOther,
+	} {
+		assert.NotContainsf(t, defaults[role], code, "role %s must NOT hold %s by default", role, code)
+	}
+
+	// The whole point: no module grant, and no full default driver grant set,
+	// may imply it.
+	for _, m := range enums.ModulePermissionCodes() {
+		assert.Falsef(t, middleware.HasPermission([]string{m}, code), "module %q must not imply %q", m, code)
+	}
+	assert.False(t, middleware.HasPermission(defaults[enums.UserRoleDriver], code),
+		"the driver default grant set must not imply %q", code)
+	assert.True(t, middleware.HasPermission([]string{code}, code))
+}

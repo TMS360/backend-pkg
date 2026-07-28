@@ -69,6 +69,23 @@ const (
 	// (dispatch managers, admins). Enforced inside the trip service layer, not via
 	// an @hasPerm on updateTrip, because it depends on runtime trip state.
 	PermTripReassignCommitted UserPermissionEnum = "trip_reassign_committed"
+
+	// PermFileDeleteAny gates deleting a file attachment the actor did not upload,
+	// or one whose uploader window has closed (deleteUserFile in tms-auth,
+	// deleteOrderFile in tms-loads). Without it an actor may only remove their OWN
+	// upload, and only inside the delete window.
+	//
+	// It MUST be a flat custom permission, not a `module.entity.delete` code: every
+	// built-in role — driver included — is seeded the full module baseline
+	// (see DefaultRolePermissions / ModulePermissionCodes), and HasPermission
+	// matches hierarchically, so holding "shipments" would satisfy
+	// "shipments.trip_files.delete". A dotted code therefore cannot express
+	// "office only". A flat code carries no dots, so it resolves by exact match and
+	// is default-deny for everyone it is not explicitly seeded to.
+	//
+	// Enforced in the service layer rather than via @hasPerm, because the rule
+	// depends on runtime row state (uploader identity + row age).
+	PermFileDeleteAny UserPermissionEnum = "file_delete_any"
 )
 
 // PermissionCatalogEntry describes one row written to the permissions table.
@@ -202,6 +219,7 @@ var CustomPermissionCatalog = []CustomPermissionEntry{
 	// DefaultRolePermissions).
 	{Code: string(PermTripFinancialsApprove), Label: "Approve trip financial changes"},
 	{Code: string(PermTripReassignCommitted), Label: "Reassign driver after trip accepted"},
+	{Code: string(PermFileDeleteAny), Label: "Delete any uploaded file"},
 }
 
 // CustomPermissionCodes returns just the flat custom permission codes, in
@@ -497,8 +515,12 @@ func DefaultRolePermissions() map[UserRoleEnum][]string {
 		// DEV-1227 / BL §7.5: reassigning a committed trip's driver
 		// (trip_reassign_committed) is held by default by manager AND admin.
 		// A regular dispatcher does NOT get it (a custom role may add it later).
-		UserRoleAdmin:      withExtra(string(PermTripFinancialsEdit), string(PermTripReassignCommitted)),
-		UserRoleManager:    withExtra(string(PermTripReassignCommitted)),
+		// file_delete_any: removing someone else's upload (or one past the uploader
+		// window) is an office-supervisor action, so it goes to admin and manager
+		// only. Every other role — driver included — falls back to the
+		// "own upload, inside the window" path.
+		UserRoleAdmin:      withExtra(string(PermTripFinancialsEdit), string(PermTripReassignCommitted), string(PermFileDeleteAny)),
+		UserRoleManager:    withExtra(string(PermTripReassignCommitted), string(PermFileDeleteAny)),
 		UserRoleAccounting: withExtra(string(PermTripFinancialsEdit)),
 		UserRoleFleet:      withExtra(),
 		UserRoleSafety:     withExtra(),

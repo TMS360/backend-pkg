@@ -12,10 +12,22 @@ import (
 	"github.com/google/uuid"
 )
 
-// PermsCacheTTL is the lifetime of a cached user perm list. Permission
-// mutations invalidate the key directly; this TTL is the safety net for
-// stale writers that forget to invalidate.
-const PermsCacheTTL = 24 * time.Hour
+// PermsCacheTTL is the lifetime of a cached user perm list.
+//
+// tms-auth invalidates the key directly on every permission write, so the
+// normal path is immediate. This TTL is the blast-radius cap for the cases
+// direct invalidation cannot reach:
+//
+//   - a subgraph running against its OWN Redis instance (auth deletes only the
+//     key in the Redis it is connected to);
+//   - a Redis DEL that failed or was lost.
+//
+// DEV-1430: it used to be 24h, which turned a bad permission write into a
+// day-long outage for the affected users even after ops had already fixed the
+// grants — the fix was invisible to teams/loads/etc. because their cached copy
+// never expired. 5 minutes is the agreed worst case (AC: ≤ 5 min); it costs at
+// most one extra ResolveUserPerms round-trip per user per 5 minutes.
+const PermsCacheTTL = 5 * time.Minute
 
 // AuthServiceClient is the contract every service uses to fetch a user's
 // effective perms from tms-auth. The concrete implementation in tms-auth's
@@ -42,7 +54,7 @@ func (pr *PermResolver) GetUserPerms(ctx context.Context, userID uuid.UUID) ([]s
 	key := cacheKey(userID)
 
 	var cached []string
-	if err := cache.Get(ctx, key, &cached); err == nil {
+	if err := cache.GetGlobal(ctx, key, &cached); err == nil {
 		return cached, nil
 	} else if !errors.Is(err, redis.Nil) {
 		slog.Debug("perm cache read failed", "userID", userID, "err", err)
@@ -59,7 +71,7 @@ func (pr *PermResolver) GetUserPerms(ctx context.Context, userID uuid.UUID) ([]s
 	}
 
 	if len(perms) > 0 {
-		if cacheErr := cache.Set(ctx, key, perms, PermsCacheTTL); cacheErr != nil {
+		if cacheErr := cache.SetGlobal(ctx, key, perms, PermsCacheTTL); cacheErr != nil {
 			slog.Warn("failed to cache user perms", "userID", userID, "err", cacheErr)
 		}
 	}
@@ -69,8 +81,11 @@ func (pr *PermResolver) GetUserPerms(ctx context.Context, userID uuid.UUID) ([]s
 
 // InvalidateUserPerms removes one user's cached perms. Call this after any
 // mutation that changes the user's role or direct perm grants.
+//
+// Uses the Global (un-prefixed) key so the delete lands on the same key the
+// reader wrote, whoever the acting user is — see cache.SetGlobal.
 func InvalidateUserPerms(ctx context.Context, userID uuid.UUID) error {
-	return cache.Delete(ctx, cacheKey(userID))
+	return cache.DeleteGlobal(ctx, cacheKey(userID))
 }
 
 // InvalidateUsersPerms drops cached perms for a batch of users. Use this
@@ -84,9 +99,12 @@ func InvalidateUsersPerms(ctx context.Context, userIDs []uuid.UUID) error {
 	for i, uid := range userIDs {
 		keys[i] = cacheKey(uid)
 	}
-	return cache.DeleteKeys(ctx, keys)
+	return cache.DeleteKeysGlobal(ctx, keys)
 }
 
+// cacheKey is deliberately company-free: userID is globally unique, and the key
+// must be identical for the subgraph that caches it and the auth service that
+// invalidates it.
 func cacheKey(userID uuid.UUID) string {
 	return fmt.Sprintf("user_perms:%s", userID.String())
 }

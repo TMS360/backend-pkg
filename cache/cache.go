@@ -88,6 +88,48 @@ func Exists(ctx context.Context, key string) (bool, error) {
 	return n > 0, err
 }
 
+// --- Global (actor-independent) keys ---------------------------------------
+//
+// The default Set/Get/Delete prefix every key with the *calling actor's*
+// company id. That is right for tenant-scoped payloads, but wrong for a key
+// that is already globally unique (one keyed by a UUID) and is written and
+// invalidated by DIFFERENT actors.
+//
+// user_perms:{userID} is exactly that case: the subgraph middleware writes it
+// as the user themselves (prefix = user's company), while tms-auth invalidates
+// it as whoever edited the permissions — a tenant admin (same prefix, works)
+// or a super_admin / system actor with no company_id at all (NO prefix, silent
+// miss). The invalidation then hit a key nobody reads and the stale set stayed
+// live until the TTL expired. The *Global variants skip buildKey so both sides
+// address the same key regardless of who is acting.
+
+func SetGlobal(ctx context.Context, key string, value any, ttl time.Duration) error {
+	data, err := json.Marshal(value)
+	if err != nil {
+		return fmt.Errorf("cache: marshal error: %w", err)
+	}
+	return client.Set(ctx, key, data, ttl).Err()
+}
+
+func GetGlobal(ctx context.Context, key string, dest any) error {
+	data, err := client.Get(ctx, key).Bytes()
+	if err != nil {
+		return err
+	}
+	return json.Unmarshal(data, dest)
+}
+
+func DeleteGlobal(ctx context.Context, key string) error {
+	return client.Del(ctx, key).Err()
+}
+
+func DeleteKeysGlobal(ctx context.Context, keys []string) error {
+	if len(keys) == 0 {
+		return nil
+	}
+	return client.Del(ctx, keys...).Err()
+}
+
 func Pipeline() redis.Pipeliner {
 	return client.Pipeline()
 }

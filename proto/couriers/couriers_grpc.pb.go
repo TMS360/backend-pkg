@@ -42,9 +42,11 @@ type CouriersServiceClient interface {
 	ResolveIDs(ctx context.Context, in *UserFilter, opts ...grpc.CallOption) (*filters.IDsResponse, error)
 	// Returns user_ids of all users in company with role ∉ {driver, super_admin}.
 	ListOfficeUsers(ctx context.Context, in *ListOfficeUsersRequest, opts ...grpc.CallOption) (*ListOfficeUsersResponse, error)
-	// Returns user_ids of ALL drivers (role = driver) in the company — no status
-	// filter (active + inactive). Used by backend-accounting's pay-batch
-	// "Add driver" picker (availableDriversForBatch).
+	// Returns user_ids of drivers (role = driver) in the company. By default ALL
+	// of them (active + inactive) — set active_only to narrow to status = ACTIVE.
+	// Consumers: backend-accounting's pay-batch "Add driver" picker
+	// (availableDriversForBatch, wants all) and its fuel-coverage queue
+	// (fuelDriverCoverage, wants active only).
 	ListDrivers(ctx context.Context, in *ListDriversRequest, opts ...grpc.CallOption) (*ListDriversResponse, error)
 	// ListUserFiles returns user_files attached to a (entity_type, entity_id) pair
 	// within the requesting actor's tenant. Used by the driver-app aggregator in
@@ -145,9 +147,11 @@ type CouriersServiceServer interface {
 	ResolveIDs(context.Context, *UserFilter) (*filters.IDsResponse, error)
 	// Returns user_ids of all users in company with role ∉ {driver, super_admin}.
 	ListOfficeUsers(context.Context, *ListOfficeUsersRequest) (*ListOfficeUsersResponse, error)
-	// Returns user_ids of ALL drivers (role = driver) in the company — no status
-	// filter (active + inactive). Used by backend-accounting's pay-batch
-	// "Add driver" picker (availableDriversForBatch).
+	// Returns user_ids of drivers (role = driver) in the company. By default ALL
+	// of them (active + inactive) — set active_only to narrow to status = ACTIVE.
+	// Consumers: backend-accounting's pay-batch "Add driver" picker
+	// (availableDriversForBatch, wants all) and its fuel-coverage queue
+	// (fuelDriverCoverage, wants active only).
 	ListDrivers(context.Context, *ListDriversRequest) (*ListDriversResponse, error)
 	// ListUserFiles returns user_files attached to a (entity_type, entity_id) pair
 	// within the requesting actor's tenant. Used by the driver-app aggregator in

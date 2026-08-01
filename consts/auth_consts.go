@@ -28,6 +28,17 @@ const ActorCtx contextKey = "actor"
 // (middleware -> auth -> cache -> middleware).
 const PermsCtx contextKey = "user_perms"
 
+// CodeTokenRevoked / MsgTokenRevoked are the distinct signal a request carries a
+// token that was revoked (session ended, user terminated) rather than a token
+// that merely lacks a permission. Support and Sentry can tell "your access was
+// withdrawn" (401, this code) apart from "you lack permission" (403,
+// "access denied: missing permission") without reading code. The FE treats it
+// like any other 401 — refresh once, then sign out if the refresh also fails.
+const (
+	CodeTokenRevoked = "token_revoked"
+	MsgTokenRevoked  = "Your access has been revoked. Please sign in again."
+)
+
 // WithActor / GetActor / MustGetActor / WithSystemActor are the canonical actor
 // context accessors. They live in consts (alongside the ActorCtx key) so that
 // cache and auth can reach the actor without importing middleware. middleware

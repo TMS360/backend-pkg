@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/TMS360/backend-pkg/cache"
+	"github.com/TMS360/backend-pkg/consts"
 	"github.com/go-redis/redis/v8"
 	"github.com/google/uuid"
 )
@@ -81,25 +82,59 @@ func (pr *PermResolver) GetUserPerms(ctx context.Context, userID uuid.UUID) ([]s
 
 // InvalidateUserPerms removes one user's cached perms. Call this after any
 // mutation that changes the user's role or direct perm grants.
-//
-// Uses the Global (un-prefixed) key so the delete lands on the same key the
-// reader wrote, whoever the acting user is — see cache.SetGlobal.
 func InvalidateUserPerms(ctx context.Context, userID uuid.UUID) error {
-	return cache.DeleteGlobal(ctx, cacheKey(userID))
+	return InvalidateUsersPerms(ctx, []uuid.UUID{userID})
 }
 
 // InvalidateUsersPerms drops cached perms for a batch of users. Use this
 // after role-level mutations, where every user holding the role needs a
 // fresh read on the next request.
+//
+// It deletes BOTH key shapes for every user:
+//
+//   - `user_perms:{userID}` — what this version reads and writes;
+//   - `{companyID}:user_perms:{userID}` — the tenant-prefixed key that services
+//     still running an older backend-pkg read and write.
+//
+// The legacy delete is what makes a permission fix land during a rollout.
+// backend-pkg is pinned per service, so tms-auth picks up a cache-key change
+// long before the subgraphs do. Deleting only the new shape meant every
+// un-bumped subgraph kept serving its stale copy, with nothing to fall back on
+// but that version's 24h TTL — the AC3 failure QA caught on 2026-07-29. One
+// extra DEL removes the lock-step-deploy requirement entirely; drop it once
+// every PermResolver consumer runs this version or later.
 func InvalidateUsersPerms(ctx context.Context, userIDs []uuid.UUID) error {
+	return cache.DeleteKeysGlobal(ctx, PermCacheKeys(ctx, userIDs))
+}
+
+// PermCacheKeys returns every Redis key that may hold these users' cached perms
+// — the canonical one plus, while the fleet is mid-rollout, the legacy
+// tenant-prefixed one. Exported so invalidation stays testable without Redis and
+// so ops tooling can clear the same keys by hand.
+func PermCacheKeys(ctx context.Context, userIDs []uuid.UUID) []string {
 	if len(userIDs) == 0 {
 		return nil
 	}
-	keys := make([]string, len(userIDs))
-	for i, uid := range userIDs {
-		keys[i] = cacheKey(uid)
+	// The tenant prefix an older reader would have used. It is the acting user's
+	// company, which for a permission write is the tenant being edited — the one
+	// case that matters, since a super_admin's own company is empty and yields
+	// the bare key we already delete.
+	legacyPrefix := ""
+	if actor, _ := ctx.Value(consts.ActorCtx).(*consts.Actor); actor != nil {
+		if cid := actor.GetCompanyID(); cid != nil {
+			legacyPrefix = cid.String()
+		}
 	}
-	return cache.DeleteKeysGlobal(ctx, keys)
+
+	keys := make([]string, 0, len(userIDs)*2)
+	for _, uid := range userIDs {
+		key := cacheKey(uid)
+		keys = append(keys, key)
+		if legacyPrefix != "" {
+			keys = append(keys, cache.ScopedKey(legacyPrefix, key))
+		}
+	}
+	return keys
 }
 
 // cacheKey is deliberately company-free: userID is globally unique, and the key

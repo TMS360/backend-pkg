@@ -21,11 +21,24 @@ const (
 	PermDriversDriversView      UserPermissionEnum = "drivers.drivers.view"
 	PermDriversDriversEdit      UserPermissionEnum = "drivers.drivers.edit"
 
-	// DEV-1017 compliance documents. Mutations (upload/renew) gate on
-	// PermComplianceUpload; reads gate on PermComplianceView.
-	PermComplianceView   UserPermissionEnum = "compliance.view"
-	PermComplianceUpload UserPermissionEnum = "compliance.upload"
-	PermComplianceRenew  UserPermissionEnum = "compliance.renew"
+	// DEV-1466 compliance documents — ONE grantable vocabulary, hierarchical under
+	// the `settings` module so a `settings` grant implies both leaves (exactly like
+	// every other settings.* entity). These constants MUST equal the
+	// PermissionCatalog leaves for `settings.compliance` below.
+	//
+	//   settings.compliance.view — read the compliance dashboard: entity files,
+	//                              cards, rollup status, and reminder mutes.
+	//   settings.compliance.edit — upload, renew, delete, and mute/unmute reminders.
+	//                              There is deliberately NO separate
+	//                              upload/renew/configure leaf: edit covers them all.
+	//
+	// The earlier flat `compliance.view|upload|renew` codes and the FE-only
+	// `compliance.configure|self-view` names are intentionally gone — none of them
+	// were ever in the catalog, so they could never be granted or satisfied.
+	// Office-user self-service has no leaf yet (not shipped): do not reintroduce a
+	// `self-view` phantom; add a real catalog leaf if/when product commits to it.
+	PermComplianceView UserPermissionEnum = "settings.compliance.view"
+	PermComplianceEdit UserPermissionEnum = "settings.compliance.edit"
 
 	// Projects/Task-Management module (backend-tasks). The Task work-item
 	// domain is a self-contained page, so its grants hang directly off the
@@ -192,6 +205,10 @@ var PermissionCatalog = []PermissionCatalogEntry{
 	{Code: "settings.office_users", ParentCode: "settings", Label: "Office users", Actions: []string{"view", "create", "edit"}},
 	{Code: "settings.office_roles", ParentCode: "settings", Label: "Office roles", Actions: []string{"view", "edit"}},
 	{Code: "settings.pdf_layouts", ParentCode: "settings", Label: "PDF layouts", Actions: []string{"view", "edit"}},
+	// DEV-1466: the ONLY compliance vocabulary. `view` = read dashboard/list/cards/
+	// status/mutes; `edit` = upload/renew/delete/mute. A `settings` module grant
+	// implies both leaves via HasPermission prefix-matching (see PermComplianceView /
+	// PermComplianceEdit), so no separate per-role leaf seeding is required.
 	{Code: "settings.compliance", ParentCode: "settings", Label: "Compliance", Actions: []string{"view", "edit"}},
 }
 

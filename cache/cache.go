@@ -32,7 +32,21 @@ func buildKey(ctx context.Context, key string) string {
 	if companyID == nil {
 		return key
 	}
-	return fmt.Sprintf("%s:%s", companyID.String(), key)
+	return ScopedKey(companyID.String(), key)
+}
+
+// ScopedKey builds the tenant-prefixed key for an EXPLICIT company, instead of
+// deriving it from whoever happens to be acting. Same format buildKey produces,
+// defined once so the two can never drift.
+//
+// Use it when a key is written by one actor and addressed by another — the
+// classic case being an admin invalidating a cache entry that the target user
+// wrote under their own company. An empty companyID yields the bare key.
+func ScopedKey(companyID, key string) string {
+	if companyID == "" {
+		return key
+	}
+	return fmt.Sprintf("%s:%s", companyID, key)
 }
 
 func Set(ctx context.Context, key string, value any, ttl time.Duration) error {

@@ -144,6 +144,13 @@ service LoadsService {
   // GetShipmentsReadyForBillingRequest.company_id.
   rpc GetCustomerLoadStats(GetCustomerLoadStatsRequest)
       returns (GetCustomerLoadStatsResponse);
+
+  // ── Truck identifier resolution (used by tms-files compliance list, DEV-1463) ──
+  // Returns the IDs of the company's trucks whose unit number, license plate, or
+  // VIN match the free-text search. company_id is passed explicitly (backend-load's
+  // gRPC server runs without an AuthServerInterceptor, so there is no actor to
+  // scope by), same contract as GetTripIDsByShipment / GetCustomerLoadStats.
+  rpc ResolveTruckIDs(ResolveTruckIDsRequest) returns (filters.IDsResponse);
 }
 
 message DriverHasActiveTripRequest {
@@ -784,6 +791,11 @@ message AttachShipmentFileResponse {
 message GetTripIDsByShipmentRequest {
   string company_id  = 1;
   string shipment_id = 2;
+}
+
+message ResolveTruckIDsRequest {
+  string company_id = 1;
+  string search     = 2; // free text matched against unit number / plate / VIN
 }
 
 // Детали trip-а, нужные backend-accounting чтобы создать pay_batch

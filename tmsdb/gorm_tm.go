@@ -111,6 +111,23 @@ func (m *GormTransactionManager) writeEvent(ctx context.Context, b *EventBuilder
 		rootID = b.aggID
 	}
 
+	// Sensitivity is assigned on the PRODUCING side so the class travels with the
+	// event. An explicit WithSensitivity wins; otherwise classify from the
+	// event's structured shape (entity_type + changed field names), never from a
+	// rendered label. Empty stays empty only if the producer explicitly set it so.
+	sensitivity := b.sensitivity
+	if sensitivity == "" {
+		changedFields := make([]string, 0, len(changes))
+		for _, c := range changes {
+			changedFields = append(changedFields, c.Field)
+		}
+		sensitivity = events.Classify(m.sourceService, b.aggType, b.evtType, changedFields)
+	}
+
+	// The caller is always a participant (ACTOR); producers add SUBJECT/AFFECTED/
+	// ASSIGNED. Centralised so every emit path stamps the actor identically.
+	participants := events.WithActor(b.participants, actorID)
+
 	eventPayload := events.EventPayload{
 		SourceService:  m.sourceService,
 		EventID:        uuid.New(),
@@ -127,6 +144,8 @@ func (m *GormTransactionManager) writeEvent(ctx context.Context, b *EventBuilder
 		Timestamp:      time.Now(),
 		RootEntityType: rootType,
 		RootEntityID:   rootID,
+		Sensitivity:    sensitivity,
+		Participants:   participants,
 	}
 
 	payloadBytes, err := json.Marshal(eventPayload)

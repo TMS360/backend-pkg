@@ -42,6 +42,22 @@ type EventPayload struct {
 	// keep working.
 	RootEntityType string    `json:"root_entity_type,omitempty"`
 	RootEntityID   uuid.UUID `json:"root_entity_id,omitempty"`
+
+	// Sensitivity classifies what KIND of information this event carries so the
+	// audit read path can seal events a reader may not see. Assigned by the
+	// producing service at emit time (tmsdb.writeEvent auto-classifies via
+	// events.Classify unless the producer set it with WithSensitivity). Empty on
+	// the wire means unclassified — the read side treats that as the most
+	// restrictive class and flags it, never as "open".
+	Sensitivity Sensitivity `json:"sensitivity,omitempty"`
+
+	// Participants are the entities that took part in the action and the role
+	// each played (ACTOR / SUBJECT / AFFECTED / ASSIGNED). The caller is stamped
+	// as ACTOR automatically; producers add the rest — e.g. a trip assignment
+	// expands the crew to its drivers (SUBJECT) plus the crew (ASSIGNED). This is
+	// the join key that lets a driver page fan in a dispatch, a pay statement and
+	// a reported issue about the same person from three different services.
+	Participants []Participant `json:"participants,omitempty"`
 }
 
 type Change struct {

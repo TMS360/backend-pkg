@@ -62,8 +62,18 @@ func IdentifyUserPerms(pr *PermResolver, revocationExemptPrefixes ...string) gin
 
 		perms, err := pr.GetUserPerms(ctx.Request.Context(), actor.ID)
 		if err != nil {
-			slog.Warn("perms resolution failed, continuing with empty perms", "userID", actor.ID, "err", err)
-			perms = []string{}
+			// Unresolved ≠ denied. Substituting []string{} made every @hasPerm
+			// answer "access denied: missing permission" for infra blips
+			// (auth hop 403/timeout), which is indistinguishable from a real
+			// RBAC denial for the user, FE, and Sentry (DEV-1555).
+			slog.Error("perms resolution failed", "userID", actor.ID, "err", err)
+			newCtx := context.WithValue(ctx.Request.Context(), consts.PermsUnresolvedCtx, true)
+			// Keep an empty list for readers that only check the slice; gates
+			// must consult PermsUnresolved first.
+			newCtx = context.WithValue(newCtx, consts.PermsCtx, []string{})
+			ctx.Request = ctx.Request.WithContext(newCtx)
+			ctx.Next()
+			return
 		}
 
 		newCtx := context.WithValue(ctx.Request.Context(), consts.PermsCtx, perms)

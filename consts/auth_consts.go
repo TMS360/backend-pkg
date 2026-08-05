@@ -28,6 +28,12 @@ const ActorCtx contextKey = "actor"
 // (middleware -> auth -> cache -> middleware).
 const PermsCtx contextKey = "user_perms"
 
+// PermsUnresolvedCtx marks that the upstream perm lookup failed for this
+// request. When set, @hasPerm / RequirePerms must NOT treat an empty list as a
+// real denial — that was the false "access denied: missing permission" flap
+// (DEV-1555). Readers use middleware.PermsUnresolved.
+const PermsUnresolvedCtx contextKey = "perms_unresolved"
+
 // CodeTokenRevoked / MsgTokenRevoked are the distinct signal a request carries a
 // token that was revoked (session ended, user terminated) rather than a token
 // that merely lacks a permission. Support and Sentry can tell "your access was

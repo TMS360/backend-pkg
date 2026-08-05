@@ -3,6 +3,7 @@ package tmsgraphql
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"slices"
 
 	"github.com/99designs/gqlgen/graphql"
@@ -81,6 +82,17 @@ func HasPermDirective(ctx context.Context, obj interface{}, next graphql.Resolve
 	}
 	if actor.IsSuperAdmin() {
 		return next(ctx)
+	}
+
+	// DEV-1555: upstream perm lookup failed — not a real RBAC denial.
+	if middleware.PermsUnresolved(ctx) {
+		return nil, response.NewCodedError(
+			"PERMS_UNRESOLVED",
+			"perms unresolved: upstream auth lookup failed",
+			"permission service unavailable, please retry",
+			http.StatusServiceUnavailable,
+			nil,
+		)
 	}
 
 	userPerms := middleware.GetUserPermsFromContext(ctx)

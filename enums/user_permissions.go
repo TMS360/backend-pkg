@@ -64,8 +64,31 @@ const (
 	PermWorkspacesBoardsCreate UserPermissionEnum = "workspaces.boards.create"
 	PermWorkspacesBoardsEdit   UserPermissionEnum = "workspaces.boards.edit"
 	PermWorkspacesBoardsDelete UserPermissionEnum = "workspaces.boards.delete"
-	PermWorkspacesValuesView   UserPermissionEnum = "workspaces.values.view"
-	PermWorkspacesValuesEdit   UserPermissionEnum = "workspaces.values.edit"
+	// workspaces.values gates CELL-LEVEL access — the stored value inside a board
+	// cell — as distinct from workspaces.boards, which gates the board STRUCTURE
+	// (creating boards, adding/removing/retyping columns, groups, views). The two
+	// separate cleanly: a user may be allowed to type into cells without being
+	// allowed to reshape the board, or the reverse.
+	//   - workspaces.values.edit authorises WRITING and CLEARING a cell; it is what
+	//     the cell mutation enforces (backend-workspaces upsertBoardValue). It is
+	//     also the board-side half of the write-back correction authority (DEC-B):
+	//     correcting a value that writes back to an owning record needs BOTH this
+	//     and the owning service's own write permission.
+	//   - workspaces.values.view is the cell-level READ gate; the board read path
+	//     currently admits cell values under workspaces.boards.view, so this action
+	//     is reserved for a finer read split.
+	PermWorkspacesValuesView UserPermissionEnum = "workspaces.values.view"
+	PermWorkspacesValuesEdit UserPermissionEnum = "workspaces.values.edit"
+	// workspaces.templates gates the ready-made board TEMPLATE catalog (DEV-1385):
+	//   - workspaces.templates.view lists the templates (getBoardTemplates);
+	//   - workspaces.templates.create instantiates one into a workspace
+	//     (createBoardFromTemplate) — so .view ALONE cannot instantiate;
+	//   - workspaces.templates.edit is reserved for future template authoring.
+	// Granting the whole "workspaces" module implies all of these via hierarchical
+	// prefix matching — no separate grant is needed.
+	PermWorkspacesTemplatesView   UserPermissionEnum = "workspaces.templates.view"
+	PermWorkspacesTemplatesCreate UserPermissionEnum = "workspaces.templates.create"
+	PermWorkspacesTemplatesEdit   UserPermissionEnum = "workspaces.templates.edit"
 
 	// PermTripFinancialsEdit (DEV-1256) gates the hand-typed trip miles /
 	// gross-rate override (DEV-1257). It lives OUTSIDE the auto-granted module set
@@ -138,7 +161,12 @@ var PermissionCatalog = []PermissionCatalogEntry{
 	// === workspaces entities (backend-workspaces custom boards) ===
 	{Code: "workspaces.workspaces", ParentCode: "workspaces", Label: "Workspaces", Actions: []string{"view", "create", "edit", "delete"}},
 	{Code: "workspaces.boards", ParentCode: "workspaces", Label: "Boards", Actions: []string{"view", "create", "edit", "delete"}},
+	// workspaces.values gates the cell VALUE (read/edit), not the board structure
+	// (that is workspaces.boards). See the PermWorkspacesValues* constants above.
 	{Code: "workspaces.values", ParentCode: "workspaces", Label: "Board values", Actions: []string{"view", "edit"}},
+	// workspaces.templates gates the board-template catalog: view lists templates,
+	// create instantiates one, edit is reserved for template authoring (DEV-1385).
+	{Code: "workspaces.templates", ParentCode: "workspaces", Label: "Board templates", Actions: []string{"view", "create", "edit"}},
 
 	// === dashboard entities ===
 	{Code: "dashboard.stats", ParentCode: "dashboard", Label: "Stats", Actions: []string{"view"}},

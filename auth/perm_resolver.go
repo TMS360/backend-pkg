@@ -11,6 +11,7 @@ import (
 	"github.com/TMS360/backend-pkg/consts"
 	"github.com/go-redis/redis/v8"
 	"github.com/google/uuid"
+	"golang.org/x/sync/singleflight"
 )
 
 // PermsCacheTTL is the lifetime of a cached user perm list.
@@ -42,6 +43,7 @@ type AuthServiceClient interface {
 // AuthServiceClient directly.
 type PermResolver struct {
 	authClient AuthServiceClient
+	sf         singleflight.Group
 }
 
 func NewPermResolver(authClient AuthServiceClient) *PermResolver {
@@ -50,7 +52,11 @@ func NewPermResolver(authClient AuthServiceClient) *PermResolver {
 
 // GetUserPerms returns the user's effective permission keys, hitting Redis
 // first and falling back to the AuthServiceClient on cache miss. On fetch
-// failure it returns an empty slice and the error so callers can fail-closed.
+// failure it returns an empty slice and the error so callers can fail-closed
+// as "unresolved" (not as a real empty grant list).
+//
+// Concurrent misses for the same user are single-flighted so a page full of
+// parallel GraphQL ops at TTL expiry does not stampede tms-auth (DEV-1555).
 func (pr *PermResolver) GetUserPerms(ctx context.Context, userID uuid.UUID) ([]string, error) {
 	key := cacheKey(userID)
 
@@ -61,22 +67,39 @@ func (pr *PermResolver) GetUserPerms(ctx context.Context, userID uuid.UUID) ([]s
 		slog.Debug("perm cache read failed", "userID", userID, "err", err)
 	}
 
-	perms, err := pr.authClient.ResolveUserPerms(ctx, userID)
+	v, err, _ := pr.sf.Do(userID.String(), func() (interface{}, error) {
+		// Re-check cache inside the singleflight so waiters after the first
+		// successful resolve do not each hit auth again.
+		var again []string
+		if err := cache.GetGlobal(ctx, key, &again); err == nil {
+			return again, nil
+		}
+
+		perms, err := pr.authClient.ResolveUserPerms(ctx, userID)
+		if err != nil {
+			slog.Warn("failed to resolve user perms from auth-service", "userID", userID, "err", err)
+			return []string{}, err
+		}
+
+		if perms == nil {
+			perms = []string{}
+		}
+
+		if len(perms) > 0 {
+			if cacheErr := cache.SetGlobal(ctx, key, perms, PermsCacheTTL); cacheErr != nil {
+				slog.Warn("failed to cache user perms", "userID", userID, "err", cacheErr)
+			}
+		}
+
+		return perms, nil
+	})
 	if err != nil {
-		slog.Warn("failed to resolve user perms from auth-service", "userID", userID, "err", err)
 		return []string{}, err
 	}
-
+	perms, _ := v.([]string)
 	if perms == nil {
 		perms = []string{}
 	}
-
-	if len(perms) > 0 {
-		if cacheErr := cache.SetGlobal(ctx, key, perms, PermsCacheTTL); cacheErr != nil {
-			slog.Warn("failed to cache user perms", "userID", userID, "err", cacheErr)
-		}
-	}
-
 	return perms, nil
 }
 

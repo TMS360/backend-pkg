@@ -84,7 +84,17 @@ func RequirePerms(perms ...string) gin.HandlerFunc {
 			return
 		}
 
-		userPerms := GetUserPermsFromContext(ctx.Request.Context())
+		reqCtx := ctx.Request.Context()
+		if PermsUnresolved(reqCtx) {
+			// DEV-1555: infra failure loading perms is not a real grant denial.
+			ctx.AbortWithStatusJSON(http.StatusServiceUnavailable, gin.H{
+				"error":   "PERMS_UNRESOLVED",
+				"message": "permission service unavailable, please retry",
+			})
+			return
+		}
+
+		userPerms := GetUserPermsFromContext(reqCtx)
 		for _, required := range perms {
 			if HasPermission(userPerms, required) {
 				ctx.Next()
@@ -105,6 +115,14 @@ func GetUserPermsFromContext(ctx context.Context) []string {
 		return perms
 	}
 	return []string{}
+}
+
+// PermsUnresolved reports that IdentifyUserPerms failed to load the caller's
+// permission list for this request. Gates must treat this as a temporary
+// service failure, never as "missing permission" (DEV-1555).
+func PermsUnresolved(ctx context.Context) bool {
+	v, ok := ctx.Value(consts.PermsUnresolvedCtx).(bool)
+	return ok && v
 }
 
 // RequireAdmin guards routes that require an admin or super_admin role.

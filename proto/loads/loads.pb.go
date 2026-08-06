@@ -2235,8 +2235,12 @@ type Trip struct {
 	EndTime          *timestamppb.Timestamp `protobuf:"bytes,15,opt,name=end_time,json=endTime,proto3" json:"end_time,omitempty"`
 	CreatedAt        *timestamppb.Timestamp `protobuf:"bytes,16,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
 	UpdatedAt        *timestamppb.Timestamp `protobuf:"bytes,17,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	// DEV-1577. true ⇒ trips.empty_miles IS NULL (deferred, ещё не посчитан).
+	// См. PayBatchTrip.empty_miles_not_calculated — та же семантика и та же причина
+	// быть отдельным полем, а не optional на empty_miles.
+	EmptyMilesNotCalculated *bool `protobuf:"varint,18,opt,name=empty_miles_not_calculated,json=emptyMilesNotCalculated,proto3,oneof" json:"empty_miles_not_calculated,omitempty"`
+	unknownFields           protoimpl.UnknownFields
+	sizeCache               protoimpl.SizeCache
 }
 
 func (x *Trip) Reset() {
@@ -2386,6 +2390,13 @@ func (x *Trip) GetUpdatedAt() *timestamppb.Timestamp {
 		return x.UpdatedAt
 	}
 	return nil
+}
+
+func (x *Trip) GetEmptyMilesNotCalculated() bool {
+	if x != nil && x.EmptyMilesNotCalculated != nil {
+		return *x.EmptyMilesNotCalculated
+	}
+	return false
 }
 
 // Trip stop
@@ -4867,8 +4878,18 @@ type PayBatchTrip struct {
 	ShipmentLoadRate   float64 `protobuf:"fixed64,26,opt,name=shipment_load_rate,json=shipmentLoadRate,proto3" json:"shipment_load_rate,omitempty"`       // ставка груза целиком (load_pay) = база percentage-доли и сверки
 	ShipmentHasIssues  bool    `protobuf:"varint,27,opt,name=shipment_has_issues,json=shipmentHasIssues,proto3" json:"shipment_has_issues,omitempty"`     // груз вёлся с проблемами (split/recovery)
 	ParentTripId       *string `protobuf:"bytes,28,opt,name=parent_trip_id,json=parentTripId,proto3,oneof" json:"parent_trip_id,omitempty"`               // trip.parent_trip_id (UUID) у recovery-трипа сплита
-	unknownFields      protoimpl.UnknownFields
-	sizeCache          protoimpl.SizeCache
+	// DEV-1577. true ⇒ trips.empty_miles IS NULL: порожний пробег ещё НЕ посчитан
+	// (компания в режиме deferred, диспетчер не нажал Calculate). empty_miles выше
+	// в этом случае несёт 0 и означать «ноль миль» НЕ может — потребитель обязан
+	// отказать, а не платить по нулю.
+	//
+	// Отдельное поле, а не optional на empty_miles: в proto3 нулевой double не
+	// сериализуется, поэтому старый сервер отдавал бы легитимный «empty = 0» как
+	// отсутствующее значение и новый клиент блокировал бы нормальные трипы на
+	// денежном пути. Отсутствие ЭТОГО поля у старого сервера = false = не блокирует.
+	EmptyMilesNotCalculated *bool `protobuf:"varint,29,opt,name=empty_miles_not_calculated,json=emptyMilesNotCalculated,proto3,oneof" json:"empty_miles_not_calculated,omitempty"`
+	unknownFields           protoimpl.UnknownFields
+	sizeCache               protoimpl.SizeCache
 }
 
 func (x *PayBatchTrip) Reset() {
@@ -5097,6 +5118,13 @@ func (x *PayBatchTrip) GetParentTripId() string {
 	return ""
 }
 
+func (x *PayBatchTrip) GetEmptyMilesNotCalculated() bool {
+	if x != nil && x.EmptyMilesNotCalculated != nil {
+		return *x.EmptyMilesNotCalculated
+	}
+	return false
+}
+
 var File_loads_loads_proto protoreflect.FileDescriptor
 
 const file_loads_loads_proto_rawDesc = "" +
@@ -5261,7 +5289,7 @@ const file_loads_loads_proto_rawDesc = "" +
 	"\x0eappointment_to\x18\t \x01(\v2\x1a.google.protobuf.TimestampR\rappointmentTo\x12A\n" +
 	"\x0eactual_arrival\x18\n" +
 	" \x01(\v2\x1a.google.protobuf.TimestampR\ractualArrival\x12E\n" +
-	"\x10actual_departure\x18\v \x01(\v2\x1a.google.protobuf.TimestampR\x0factualDeparture\"\xba\x05\n" +
+	"\x10actual_departure\x18\v \x01(\v2\x1a.google.protobuf.TimestampR\x0factualDeparture\"\x9b\x06\n" +
 	"\x04Trip\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1f\n" +
 	"\vshipment_id\x18\x02 \x01(\tR\n" +
@@ -5287,7 +5315,9 @@ const file_loads_loads_proto_rawDesc = "" +
 	"\n" +
 	"created_at\x18\x10 \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x129\n" +
 	"\n" +
-	"updated_at\x18\x11 \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\"\xb6\x04\n" +
+	"updated_at\x18\x11 \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\x12@\n" +
+	"\x1aempty_miles_not_calculated\x18\x12 \x01(\bH\x00R\x17emptyMilesNotCalculated\x88\x01\x01B\x1d\n" +
+	"\x1b_empty_miles_not_calculated\"\xb6\x04\n" +
 	"\bTripStop\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x17\n" +
 	"\atrip_id\x18\x02 \x01(\tR\x06tripId\x12\x15\n" +
@@ -5507,7 +5537,7 @@ const file_loads_loads_proto_rawDesc = "" +
 	"\x16ResolveTruckIDsRequest\x12\x1d\n" +
 	"\n" +
 	"company_id\x18\x01 \x01(\tR\tcompanyId\x12\x16\n" +
-	"\x06search\x18\x02 \x01(\tR\x06search\"\x92\t\n" +
+	"\x06search\x18\x02 \x01(\tR\x06search\"\xf3\t\n" +
 	"\fPayBatchTrip\x12\x17\n" +
 	"\atrip_id\x18\x01 \x01(\tR\x06tripId\x12\x1f\n" +
 	"\vtrip_number\x18\x02 \x01(\tR\n" +
@@ -5547,7 +5577,8 @@ const file_loads_loads_proto_rawDesc = "" +
 	"\x14shipment_total_miles\x18\x19 \x01(\x01R\x12shipmentTotalMiles\x12,\n" +
 	"\x12shipment_load_rate\x18\x1a \x01(\x01R\x10shipmentLoadRate\x12.\n" +
 	"\x13shipment_has_issues\x18\x1b \x01(\bR\x11shipmentHasIssues\x12)\n" +
-	"\x0eparent_trip_id\x18\x1c \x01(\tH\x05R\fparentTripId\x88\x01\x01B\n" +
+	"\x0eparent_trip_id\x18\x1c \x01(\tH\x05R\fparentTripId\x88\x01\x01\x12@\n" +
+	"\x1aempty_miles_not_calculated\x18\x1d \x01(\bH\x06R\x17emptyMilesNotCalculated\x88\x01\x01B\n" +
 	"\n" +
 	"\b_load_idB\f\n" +
 	"\n" +
@@ -5555,7 +5586,8 @@ const file_loads_loads_proto_rawDesc = "" +
 	"\f_shipment_idB\x16\n" +
 	"\x14_secondary_driver_idB\v\n" +
 	"\t_truck_idB\x11\n" +
-	"\x0f_parent_trip_id*\x83\x03\n" +
+	"\x0f_parent_trip_idB\x1d\n" +
+	"\x1b_empty_miles_not_calculated*\x83\x03\n" +
 	"\x0eShipmentStatus\x12\x1f\n" +
 	"\x1bSHIPMENT_STATUS_UNSPECIFIED\x10\x00\x12\x1b\n" +
 	"\x17SHIPMENT_STATUS_PENDING\x10\x01\x12\x1d\n" +
@@ -5882,6 +5914,7 @@ func file_loads_loads_proto_init() {
 	}
 	file_loads_loads_proto_msgTypes[5].OneofWrappers = []any{}
 	file_loads_loads_proto_msgTypes[6].OneofWrappers = []any{}
+	file_loads_loads_proto_msgTypes[26].OneofWrappers = []any{}
 	file_loads_loads_proto_msgTypes[40].OneofWrappers = []any{}
 	file_loads_loads_proto_msgTypes[47].OneofWrappers = []any{}
 	file_loads_loads_proto_msgTypes[51].OneofWrappers = []any{}

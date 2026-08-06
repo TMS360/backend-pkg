@@ -69,4 +69,9 @@ message Company {
   // the general `email` (contact). Empty when not configured: the footer line
   // is omitted.
   string billing_email     = 20;
+  // logo — backend-files file id (UUID) of the tenant's company logo, drawn
+  // into the header of Invoice and Driver Pay Statement PDFs (DEV-699). Set
+  // via the saveCompanyLogo mutation. Absent when the tenant has not uploaded
+  // one: the header renders without a logo, never with a placeholder.
+  optional string logo     = 21;
 }

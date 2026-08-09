@@ -1,0 +1,49 @@
+# Fleet unit CI — same gate as backend-load's unit job (DEV-1434).
+# No integration/postgres here: land the gate green first; add tests/ later per-repo.
+# Requires repo secret G_TOKEN (PAT that can read github.com/TMS360/* private modules).
+#
+# Context: reports/CI_AUDIT_2026-07-28.md · reports/CI_HEALTH_2026-08-09.md
+
+name: CI tests
+
+on:
+  pull_request:
+  push:
+    branches: [main, master, develop]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  unit:
+    name: vet + unit tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Authenticate private modules
+        env:
+          G_TOKEN: ${{ secrets.G_TOKEN }}
+        run: |
+          if [ -z "$G_TOKEN" ]; then
+            echo "::error::G_TOKEN is not set — github.com/TMS360/* private modules cannot be fetched."
+            exit 1
+          fi
+          go env -w GOPRIVATE='github.com/TMS360/*'
+          git config --global url."https://x-access-token:${G_TOKEN}@github.com/".insteadOf "https://github.com/"
+
+      - name: go vet
+        run: go vet ./...
+
+      # Exclude integration trees that hardcode Host: "db" / redis and need service containers.
+      # -count=1 disables the result cache so green means the tests actually ran.
+      - name: go test (unit)
+        run: go test -count=1 $(go list ./... | grep -vE '/tests(/|$)|/test(/|$)')

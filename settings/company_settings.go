@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"strings"
 
 	"github.com/TMS360/backend-pkg/cache"
 	"github.com/TMS360/backend-pkg/enums"
@@ -46,6 +47,80 @@ func SamsaraAssetTrackingOnForCompany(ctx context.Context, companyID string) boo
 		err = json.Unmarshal(data, &v)
 	}
 	return samsaraTrackingFromCache(v, err)
+}
+
+// EmptyMilesWorkflow is when a trip's empty (deadhead) miles get written.
+type EmptyMilesWorkflow string
+
+const (
+	// EmptyMilesWorkflowAuto recomputes and persists empty miles on every
+	// lifecycle step that can move the deadhead origin. Historical behaviour.
+	EmptyMilesWorkflowAuto EmptyMilesWorkflow = "auto"
+	// EmptyMilesWorkflowDeferred leaves empty miles NULL until dispatch has
+	// checked the origin and explicitly calculated. Nothing writes them by itself.
+	EmptyMilesWorkflowDeferred EmptyMilesWorkflow = "deferred"
+)
+
+// DefaultEmptyMilesWorkflow is what an unconfigured (or unreadable) tenant gets.
+// Deliberately the permissive end: a company that predates the setting, or one
+// whose Redis blipped, must keep behaving exactly as it did before the feature
+// shipped. Flipping an unreadable tenant to deferred would silently stop empty
+// miles from ever being written and stall their driver pay.
+const DefaultEmptyMilesWorkflow = EmptyMilesWorkflowAuto
+
+func (w EmptyMilesWorkflow) IsValid() bool {
+	switch w {
+	case EmptyMilesWorkflowAuto, EmptyMilesWorkflowDeferred:
+		return true
+	}
+	return false
+}
+
+// IsDeferred is the predicate every auto-write path gates on.
+func (w EmptyMilesWorkflow) IsDeferred() bool { return w == EmptyMilesWorkflowDeferred }
+
+func (w EmptyMilesWorkflow) String() string { return string(w) }
+
+// EmptyMilesWorkflowFor reads the company's empty-miles mode. Requires an actor
+// in ctx: cache.Get prefixes the key with "{companyID}:". Use the ForCompany
+// variant on gRPC/Kafka/background paths, where ctx carries no actor and this
+// would silently read an unprefixed key and fall back to auto.
+func EmptyMilesWorkflowFor(ctx context.Context) EmptyMilesWorkflow {
+	var v string
+	err := cache.Get(ctx, fmt.Sprintf("setting:%s", enums.CompanySettingsGeneralKeyEmptyMilesWorkflow), &v)
+	return emptyMilesWorkflowFromCache(v, err)
+}
+
+// EmptyMilesWorkflowForCompany is the actor-less variant: it builds the
+// company-scoped key explicitly and unmarshals the JSON-encoded string, mirroring
+// SamsaraAssetTrackingOnForCompany.
+func EmptyMilesWorkflowForCompany(ctx context.Context, companyID string) EmptyMilesWorkflow {
+	key := fmt.Sprintf("%s:setting:%s", companyID, enums.CompanySettingsGeneralKeyEmptyMilesWorkflow)
+	data, err := cache.Client().Get(ctx, key).Bytes()
+	var v string
+	if err == nil {
+		err = json.Unmarshal(data, &v)
+	}
+	return emptyMilesWorkflowFromCache(v, err)
+}
+
+// emptyMilesWorkflowFromCache maps a raw cache read to a mode. Both a miss and a
+// read failure degrade to auto — see DefaultEmptyMilesWorkflow. An unrecognized
+// stored value degrades the same way rather than guessing.
+func emptyMilesWorkflowFromCache(v string, err error) EmptyMilesWorkflow {
+	switch {
+	case err == nil:
+		if w := EmptyMilesWorkflow(strings.ToLower(strings.TrimSpace(v))); w.IsValid() {
+			return w
+		}
+		slog.Warn("empty miles workflow: unrecognized value, defaulting to auto", "value", v)
+		return DefaultEmptyMilesWorkflow
+	case errors.Is(err, redis.Nil):
+		return DefaultEmptyMilesWorkflow
+	default:
+		slog.Error("empty miles workflow: cache read failed, defaulting to auto", "error", err)
+		return DefaultEmptyMilesWorkflow
+	}
 }
 
 func samsaraTrackingFromCache(v string, err error) bool {

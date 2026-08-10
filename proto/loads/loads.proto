@@ -372,6 +372,10 @@ message Trip {
   google.protobuf.Timestamp end_time = 15;
   google.protobuf.Timestamp created_at = 16;
   google.protobuf.Timestamp updated_at = 17;
+  // DEV-1577. true ⇒ trips.empty_miles IS NULL (deferred, ещё не посчитан).
+  // См. PayBatchTrip.empty_miles_not_calculated — та же семантика и та же причина
+  // быть отдельным полем, а не optional на empty_miles.
+  optional bool empty_miles_not_calculated = 18;
 }
 
 // Trip stop
@@ -838,5 +842,16 @@ message PayBatchTrip {
   double shipment_load_rate    = 26;  // ставка груза целиком (load_pay) = база percentage-доли и сверки
   bool   shipment_has_issues   = 27;  // груз вёлся с проблемами (split/recovery)
   optional string parent_trip_id = 28;  // trip.parent_trip_id (UUID) у recovery-трипа сплита
+
+  // DEV-1577. true ⇒ trips.empty_miles IS NULL: порожний пробег ещё НЕ посчитан
+  // (компания в режиме deferred, диспетчер не нажал Calculate). empty_miles выше
+  // в этом случае несёт 0 и означать «ноль миль» НЕ может — потребитель обязан
+  // отказать, а не платить по нулю.
+  //
+  // Отдельное поле, а не optional на empty_miles: в proto3 нулевой double не
+  // сериализуется, поэтому старый сервер отдавал бы легитимный «empty = 0» как
+  // отсутствующее значение и новый клиент блокировал бы нормальные трипы на
+  // денежном пути. Отсутствие ЭТОГО поля у старого сервера = false = не блокирует.
+  optional bool empty_miles_not_calculated = 29;
 }
 

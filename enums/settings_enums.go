@@ -25,6 +25,14 @@ const (
 	// Default OFF: risk scoring still works off the free required-speed estimate and
 	// the ETA stays a placeholder until an admin opts in. Per-company.
 	CompanySettingsGeneralKeyUseHereInRisk CompanySettingsGeneralKey = "use_here_in_risk"
+	// CompanySettingsGeneralKeyEmptyMilesWorkflow decides when a trip's empty
+	// (deadhead) miles get written. "auto" keeps the historical behaviour — every
+	// lifecycle step that can change the deadhead origin recomputes and persists
+	// the number. "deferred" leaves empty miles NULL until dispatch has checked the
+	// origin and explicitly calculated, so nothing invents a mileage the driver
+	// then gets paid on (DEV-1573/DEV-1577). Missing row reads as "auto": tenants
+	// that predate the setting must not change behaviour on deploy.
+	CompanySettingsGeneralKeyEmptyMilesWorkflow CompanySettingsGeneralKey = "empty_miles_workflow"
 )
 
 var AllCompanySettingsGeneralKey = []CompanySettingsGeneralKey{
@@ -36,11 +44,12 @@ var AllCompanySettingsGeneralKey = []CompanySettingsGeneralKey{
 	CompanySettingsGeneralKeyTripAssignmentBufferHours,
 	CompanySettingsGeneralKeySamsaraAssetTrackingEnabled,
 	CompanySettingsGeneralKeyUseHereInRisk,
+	CompanySettingsGeneralKeyEmptyMilesWorkflow,
 }
 
 func (e CompanySettingsGeneralKey) IsValid() bool {
 	switch e {
-	case CompanySettingsGeneralKeyLogo, CompanySettingsGeneralKeyTimezone, CompanySettingsGeneralKeyHazmatEnabled, CompanySettingsGeneralKeyReeferEnabled, CompanySettingsGeneralKeyBrokerHasVerifyShipments, CompanySettingsGeneralKeyTripAssignmentBufferHours, CompanySettingsGeneralKeySamsaraAssetTrackingEnabled, CompanySettingsGeneralKeyUseHereInRisk:
+	case CompanySettingsGeneralKeyLogo, CompanySettingsGeneralKeyTimezone, CompanySettingsGeneralKeyHazmatEnabled, CompanySettingsGeneralKeyReeferEnabled, CompanySettingsGeneralKeyBrokerHasVerifyShipments, CompanySettingsGeneralKeyTripAssignmentBufferHours, CompanySettingsGeneralKeySamsaraAssetTrackingEnabled, CompanySettingsGeneralKeyUseHereInRisk, CompanySettingsGeneralKeyEmptyMilesWorkflow:
 		return true
 	}
 	return false

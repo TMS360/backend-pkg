@@ -167,3 +167,53 @@ func TestFileDeleteAny_IsFlatAndSupervisorOnly(t *testing.T) {
 		"the driver default grant set must not imply %q", code)
 	assert.True(t, middleware.HasPermission([]string{code}, code))
 }
+
+// BL-22 §22.1 (Dynamic Report Builder): reports_run / reports_manage are FLAT
+// custom codes held by default by admin + accounting only. They must be flat so
+// no module prefix satisfies them and external/portal roles never resolve them —
+// this is exactly the ticket AC "the broker portal role must never be granted
+// reports.run / reports.manage". There is no dedicated broker-portal role in the
+// codebase; UserRoleCustomer is its analogue (external actor) and, being absent
+// from DefaultRolePermissions, receives no default grant at all.
+func TestReportsPermissions_FlatAndAdminAccountingOnly(t *testing.T) {
+	run := string(enums.PermReportsRun)
+	manage := string(enums.PermReportsManage)
+	assert.Equal(t, "reports_run", run)
+	assert.Equal(t, "reports_manage", manage)
+
+	for _, code := range []string{run, manage} {
+		assert.Truef(t, enums.IsValidPermissionCode(code), "%q must validate so custom roles can grant it", code)
+		assert.Truef(t, enums.IsCustomPermissionCode(code), "%q must be a flat custom code", code)
+	}
+
+	defaults := enums.DefaultRolePermissions()
+	// admin + accounting hold both by default.
+	for _, role := range []enums.UserRoleEnum{enums.UserRoleAdmin, enums.UserRoleAccounting} {
+		assert.Containsf(t, defaults[role], run, "%s must hold reports_run", role)
+		assert.Containsf(t, defaults[role], manage, "%s must hold reports_manage", role)
+	}
+	// every other seeded role holds neither.
+	for _, role := range []enums.UserRoleEnum{
+		enums.UserRoleManager, enums.UserRoleFleet, enums.UserRoleSafety, enums.UserRoleHr,
+		enums.UserRoleAuditor, enums.UserRoleDispatcher, enums.UserRoleDriver, enums.UserRoleOther,
+	} {
+		assert.NotContainsf(t, defaults[role], run, "role %s must NOT hold reports_run by default", role)
+		assert.NotContainsf(t, defaults[role], manage, "role %s must NOT hold reports_manage by default", role)
+	}
+
+	// The "broker portal" AC: an external/portal actor (customer) is absent from
+	// the default map → no grant, and cannot resolve either code by any means.
+	assert.NotContains(t, defaults, enums.UserRoleCustomer, "customer (portal actor) gets no default grant")
+	for _, code := range []string{run, manage} {
+		// No module — nor the whole default set of a non-privileged role — implies it.
+		for _, m := range enums.ModulePermissionCodes() {
+			assert.Falsef(t, middleware.HasPermission([]string{m}, code), "module %q must not imply %q", m, code)
+		}
+		assert.Falsef(t, middleware.HasPermission(defaults[enums.UserRoleDriver], code),
+			"the driver default grant set must not imply %q", code)
+		assert.True(t, middleware.HasPermission([]string{code}, code))
+	}
+	// The two codes do not imply each other.
+	assert.False(t, middleware.HasPermission([]string{run}, manage))
+	assert.False(t, middleware.HasPermission([]string{manage}, run))
+}

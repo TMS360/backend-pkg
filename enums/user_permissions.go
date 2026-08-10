@@ -122,6 +122,29 @@ const (
 	// Enforced in the service layer rather than via @hasPerm, because the rule
 	// depends on runtime row state (uploader identity + row age).
 	PermFileDeleteAny UserPermissionEnum = "file_delete_any"
+
+	// PermReportsRun / PermReportsManage gate the Dynamic Report Builder
+	// (BL-22 §22, epic DEV-1111). run = execute a saved report config and export
+	// it to CSV; manage = create / edit / delete report configs and read the
+	// execution/export audit log.
+	//
+	// Both are FLAT custom permissions (no dots), exactly like PermFileDeleteAny:
+	// a flat code resolves by EXACT match, so it is default-deny for every role it
+	// is not explicitly seeded to and can never be satisfied via a module prefix.
+	// That is the only shape that can honour BL-22 §22.1 "the broker portal role
+	// must never be granted reports.run" — a hierarchical top-level `reports`
+	// module would be swept into ModulePermissionCodes and auto-granted to EVERY
+	// role at signup (the exact thing §22.1 forbids). Seeded to Admin + Accounting
+	// only (see DefaultRolePermissions); external/portal roles (customer) get
+	// neither, by construction.
+	//
+	// Financial columns inside a report are additionally masked by data
+	// provenance: the reporting engine keys each money column on the OWNING
+	// service's view permission (Phase-1 settlement data → accounting.pay_statements.view)
+	// rather than a bare `accounting.view`, so a holder of reports_run without the
+	// underlying accounting-view sees those columns as "—", never a raw number.
+	PermReportsRun    UserPermissionEnum = "reports_run"
+	PermReportsManage UserPermissionEnum = "reports_manage"
 )
 
 // PermissionCatalogEntry describes one row written to the permissions table.
@@ -265,6 +288,8 @@ var CustomPermissionCatalog = []CustomPermissionEntry{
 	{Code: string(PermTripFinancialsApprove), Label: "Approve trip financial changes"},
 	{Code: string(PermTripReassignCommitted), Label: "Reassign driver after trip accepted"},
 	{Code: string(PermFileDeleteAny), Label: "Delete any uploaded file"},
+	{Code: string(PermReportsRun), Label: "Run & export reports"},
+	{Code: string(PermReportsManage), Label: "Manage report configs & view report audit log"},
 }
 
 // CustomPermissionCodes returns just the flat custom permission codes, in
@@ -564,9 +589,12 @@ func DefaultRolePermissions() map[UserRoleEnum][]string {
 		// window) is an office-supervisor action, so it goes to admin and manager
 		// only. Every other role — driver included — falls back to the
 		// "own upload, inside the window" path.
-		UserRoleAdmin:      withExtra(string(PermTripFinancialsEdit), string(PermTripReassignCommitted), string(PermFileDeleteAny)),
+		// reports_run / reports_manage (BL-22 §22.1): the report builder is an
+		// admin + accounting capability. Both are flat custom perms, so every other
+		// role — including any external/portal (customer) role — is default-deny.
+		UserRoleAdmin:      withExtra(string(PermTripFinancialsEdit), string(PermTripReassignCommitted), string(PermFileDeleteAny), string(PermReportsRun), string(PermReportsManage)),
 		UserRoleManager:    withExtra(string(PermTripReassignCommitted), string(PermFileDeleteAny)),
-		UserRoleAccounting: withExtra(string(PermTripFinancialsEdit)),
+		UserRoleAccounting: withExtra(string(PermTripFinancialsEdit), string(PermReportsRun), string(PermReportsManage)),
 		UserRoleFleet:      withExtra(),
 		UserRoleSafety:     withExtra(),
 		UserRoleHr:         withExtra(),

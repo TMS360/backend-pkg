@@ -52,7 +52,7 @@ type EventPayload struct {
 	Sensitivity Sensitivity `json:"sensitivity,omitempty"`
 
 	// Participants are the entities that took part in the action and the role
-	// each played (ACTOR / SUBJECT / AFFECTED / ASSIGNED). The caller is stamped
+	// each played (ACTOR / SUBJECT / ASSIGNED / MENTIONED / AFFECTED). The caller is stamped
 	// as ACTOR automatically; producers add the rest — e.g. a trip assignment
 	// expands the crew to its drivers (SUBJECT) plus the crew (ASSIGNED). This is
 	// the join key that lets a driver page fan in a dispatch, a pay statement and

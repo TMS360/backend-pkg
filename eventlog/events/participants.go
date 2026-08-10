@@ -14,11 +14,16 @@ const (
 	ParticipantActor ParticipantRole = "ACTOR"
 	// ParticipantSubject — the primary entity the action is about.
 	ParticipantSubject ParticipantRole = "SUBJECT"
-	// ParticipantAffected — another entity materially affected by the action.
+	// ParticipantAffected — another entity affected next in the chain, i.e. a
+	// downstream consequence of the action.
 	ParticipantAffected ParticipantRole = "AFFECTED"
 	// ParticipantAssigned — an assignment target, e.g. the crew a trip was
 	// dispatched to (its drivers are the SUBJECT/AFFECTED participants).
 	ParticipantAssigned ParticipantRole = "ASSIGNED"
+	// ParticipantMentioned — an entity named as the target of a chat message or
+	// task (a @mention), so the mentioned person's timeline surfaces it even
+	// though the action was neither about nor performed by them.
+	ParticipantMentioned ParticipantRole = "MENTIONED"
 )
 
 // ParticipantKind names what an id points at, so an event can carry several

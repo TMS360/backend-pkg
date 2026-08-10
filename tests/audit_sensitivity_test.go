@@ -134,3 +134,24 @@ func TestParticipantIDs_DedupesAndSkipsNil(t *testing.T) {
 	})
 	assert.Equal(t, []uuid.UUID{a, b}, ids)
 }
+
+// DEV-1514 — the participant contract must carry all five roles the entity
+// timeline distinguishes: who acted, who it is about, who was assigned, who was
+// mentioned, and who was affected next in the chain. These are distinct wire
+// values (they land verbatim in the audit row), so a rename or a missing role
+// silently drops a class of participation off every timeline.
+func TestParticipantRoles_AreTheFiveDistinctContractValues(t *testing.T) {
+	roles := map[string]events.ParticipantRole{
+		"ACTOR":     events.ParticipantActor,
+		"SUBJECT":   events.ParticipantSubject,
+		"ASSIGNED":  events.ParticipantAssigned,
+		"MENTIONED": events.ParticipantMentioned,
+		"AFFECTED":  events.ParticipantAffected,
+	}
+	seen := make(map[events.ParticipantRole]struct{}, len(roles))
+	for wire, role := range roles {
+		assert.Equal(t, wire, string(role), "role wire value must be stable")
+		seen[role] = struct{}{}
+	}
+	assert.Len(t, seen, 5, "all five roles must be distinct")
+}

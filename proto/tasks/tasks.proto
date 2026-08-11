@@ -1,0 +1,65 @@
+// pkg/proto/tasks/tasks.proto
+syntax = "proto3";
+
+package tasks;
+
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/TMS360/backend-pkg/proto/tasks";
+
+// TasksService is the producer API for automated task creation (DEV-1035).
+// Other services (the rule engine, later the workflow engine) call CreateTask
+// instead of knowing anything about the task service internals. Tenant, acting
+// identity and auth travel in gRPC metadata (x-internal-token, x-company-id,
+// x-actor-id) — exactly like every other internal service-to-service call,
+// never in the request body.
+service TasksService {
+  // CreateTask creates the task for a rule-driven validation, or returns the
+  // one already open for it. Idempotent on the whole DedupKey: while the
+  // validation is live exactly one open task exists, so the same call twice —
+  // a retry or a network duplicate — yields one task. `created` tells the
+  // caller which happened.
+  rpc CreateTask(CreateTaskRequest) returns (CreateTaskResponse);
+
+  // ResolveTask auto-resolves the open task for a validation that no longer
+  // holds (the problem was fixed). Idempotent: a no-op when nothing is open.
+  // A later re-occurrence of the same validation creates a fresh task.
+  rpc ResolveTask(ResolveTaskRequest) returns (ResolveTaskResponse);
+}
+
+// DedupKey identifies the specific validation occurrence a task belongs to.
+// The whole key together is what "the same problem" means; exactly one live
+// task exists per key.
+message DedupKey {
+  string rule_id = 1;             // the rule that fired
+  string entity_type = 2;         // load | trip | driver | document | ...
+  string entity_id = 3;           // the TMS entity the task concerns (UUID)
+  string validation_instance = 4; // the specific check that triggered
+}
+
+message CreateTaskRequest {
+  DedupKey key = 1;
+
+  string title = 2;
+  string description = 3;
+  string priority = 4;      // low|normal|high|urgent — empty = normal
+  string assignee_type = 5; // user|department|role|all
+  string assignee_id = 6;   // UUID; required unless assignee_type = "all"
+  google.protobuf.Timestamp due_at = 7; // optional
+}
+
+message CreateTaskResponse {
+  string task_id = 1;
+  string status = 2; // "open" on a fresh task; current status if it already existed
+  bool created = 3;  // true = new task; false = existing one returned (dup/retry)
+}
+
+message ResolveTaskRequest {
+  DedupKey key = 1;
+  string reason = 2; // optional; recorded on the system status change
+}
+
+message ResolveTaskResponse {
+  string task_id = 1; // the resolved task, or empty when nothing was open
+  bool resolved = 2;  // true = a task was auto-resolved; false = no-op
+}

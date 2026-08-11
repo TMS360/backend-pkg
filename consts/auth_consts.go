@@ -45,6 +45,16 @@ const (
 	MsgTokenRevoked  = "Your access has been revoked. Please sign in again."
 )
 
+// CodeRateLimited / MsgRateLimited are the signal that an authenticated caller
+// exceeded the per-(user, IP) request ceiling (DEV-1485). It is deliberately
+// distinct from the guest sign-in throttle (which returns its own GraphQL error
+// string) so the two 429s stay tellable apart in logs, Sentry and the FE. The
+// message is intentionally generic — it must not leak the limit or the window.
+const (
+	CodeRateLimited = "rate_limited"
+	MsgRateLimited  = "Too many requests. Please slow down and try again shortly."
+)
+
 // WithActor / GetActor / MustGetActor / WithSystemActor are the canonical actor
 // context accessors. They live in consts (alongside the ActorCtx key) so that
 // cache and auth can reach the actor without importing middleware. middleware

@@ -18,6 +18,80 @@ type contextKey string
 // TODO: encapsulate context keys with methods to avoid collisions
 const ActorCtx contextKey = "actor"
 
+<<<<<<< HEAD
+=======
+// PermsCtx holds the caller's resolved permission codes (stashed by
+// IdentifyUserPerms). It lives here — not in middleware — so low-level packages
+// (auth, cache) can read/write request-scoped auth data without importing
+// middleware, which would form an import cycle
+// (middleware -> auth -> cache -> middleware).
+const PermsCtx contextKey = "user_perms"
+
+// PermsUnresolvedCtx marks that the upstream perm lookup failed for this
+// request. When set, @hasPerm / RequirePerms must NOT treat an empty list as a
+// real denial — that was the false "access denied: missing permission" flap
+// (DEV-1555). Readers use middleware.PermsUnresolved.
+const PermsUnresolvedCtx contextKey = "perms_unresolved"
+
+// CodeTokenRevoked / MsgTokenRevoked are the distinct signal a request carries a
+// token that was revoked (session ended, user terminated) rather than a token
+// that merely lacks a permission. Support and Sentry can tell "your access was
+// withdrawn" (401, this code) apart from "you lack permission" (403,
+// "access denied: missing permission") without reading code. The FE treats it
+// like any other 401 — refresh once, then sign out if the refresh also fails.
+const (
+	CodeTokenRevoked = "token_revoked"
+	MsgTokenRevoked  = "Your access has been revoked. Please sign in again."
+)
+
+// CodeRateLimited / MsgRateLimited are the signal that an authenticated caller
+// exceeded the per-(user, IP) request ceiling (DEV-1485). It is deliberately
+// distinct from the guest sign-in throttle (which returns its own GraphQL error
+// string) so the two 429s stay tellable apart in logs, Sentry and the FE. The
+// message is intentionally generic — it must not leak the limit or the window.
+const (
+	CodeRateLimited = "rate_limited"
+	MsgRateLimited  = "Too many requests. Please slow down and try again shortly."
+)
+
+// WithActor / GetActor / MustGetActor / WithSystemActor are the canonical actor
+// context accessors. They live in consts (alongside the ActorCtx key) so that
+// cache and auth can reach the actor without importing middleware. middleware
+// keeps same-named wrappers that delegate here, so existing call sites are
+// unaffected.
+func WithActor(ctx context.Context, actor *Actor) context.Context {
+	return context.WithValue(ctx, ActorCtx, actor)
+}
+
+func WithSystemActor(ctx context.Context) context.Context {
+	return context.WithValue(ctx, ActorCtx, &Actor{ID: uuid.Nil, IsSystem: true})
+}
+
+func GetActor(ctx context.Context) (*Actor, error) {
+	actor, ok := ctx.Value(ActorCtx).(*Actor)
+	if !ok {
+		return nil, errors.New("actor not found in context")
+	}
+	return actor, nil
+}
+
+// MustGetActor returns a default system actor when none is present, for call
+// sites that would otherwise have to panic or nil-check.
+func MustGetActor(ctx context.Context) *Actor {
+	actor, ok := ctx.Value(ActorCtx).(*Actor)
+	if !ok {
+		return &Actor{ID: uuid.Nil, Claims: nil, IsSystem: true}
+	}
+	return actor
+}
+
+// WithUserPerms stashes resolved permission codes; GetUserPermsFromContext reads
+// them back (empty slice when absent, which denies all under HasPermission).
+func WithUserPerms(ctx context.Context, perms []string) context.Context {
+	return context.WithValue(ctx, PermsCtx, perms)
+}
+
+>>>>>>> 3c11de4 (DEV-1485: rate limit authenticated traffic per (user, IP))
 type Actor struct {
 	ID       uuid.UUID
 	Claims   *UserClaims

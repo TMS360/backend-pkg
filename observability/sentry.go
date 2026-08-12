@@ -20,6 +20,8 @@ import (
 	sentrygin "github.com/getsentry/sentry-go/gin"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	"github.com/getsentry/sentry-go"
 )
@@ -124,12 +126,49 @@ func captureWithLevel(ctx context.Context, err error, level sentry.Level) {
 	}
 	hub.WithScope(func(scope *sentry.Scope) {
 		scope.SetLevel(level)
+		// Collapse every routine 401 "Unauthorized!" event into ONE Sentry issue
+		// (DEV-1668). Without a fixed fingerprint Sentry groups by the call site,
+		// so an expired token polling N GraphQL fields opens N issues and buries
+		// real problems. A spike on the single grouped issue still surfaces an
+		// attack or outage. Only pure 401s are grouped; every other 4xx keeps its
+		// default per-site grouping.
+		if isUnauthorized(err) {
+			scope.SetFingerprint(unauthorizedFingerprint)
+		}
 		if rid := middleware.GetRequestID(ctx); rid != "" {
 			scope.SetTag("request_id", rid)
 		}
 		setActorOnScope(ctx, scope)
 		hub.CaptureException(err)
 	})
+}
+
+// unauthorizedFingerprint is the fixed Sentry group key for routine 401s
+// (DEV-1668) — a single, stable value so every "Unauthorized!" event lands in
+// one issue regardless of which field or service emitted it.
+var unauthorizedFingerprint = []string{"unauthorized"}
+
+// isUnauthorized reports whether err is a PURE 401 Unauthorized — the expired/
+// absent-token case that floods Sentry. Two capture paths produce it: a
+// response.PublicError with a 401 status (the direct auth rejection), and a
+// downstream gRPC status carrying codes.Unauthenticated (which the GraphQL
+// presenter maps to 401 and captures with the raw status error). Only 401
+// qualifies: a 403 (permission denied), a 404, or a database-constraint 4xx must
+// keep its own grouping, so they are deliberately not matched here.
+func isUnauthorized(err error) bool {
+	if err == nil {
+		return false
+	}
+	var pe response.PublicError
+	if errors.As(err, &pe) && pe.ErrorStatus() == http.StatusUnauthorized {
+		return true
+	}
+	type grpcStatuser interface{ GRPCStatus() *status.Status }
+	var gs grpcStatuser
+	if errors.As(err, &gs) && gs.GRPCStatus().Code() == codes.Unauthenticated {
+		return true
+	}
+	return false
 }
 
 // setActorOnScope tags a Sentry scope with who triggered the event so events can

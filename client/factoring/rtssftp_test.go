@@ -196,6 +196,49 @@ func TestNewProviderFromCredential_ReturnsRTSForKnownType(t *testing.T) {
 	assert.True(t, ok, "expected *RTSSFTPProvider")
 }
 
+func TestNewProviderFromCredential_ReturnsRTSTest(t *testing.T) {
+	t.Setenv("APP_ENV", "")
+	prov, err := NewProviderFromCredential(Credential{
+		ProviderType: ProviderRTSTestSFTP,
+		Username:     "u",
+		Password:     "p",
+		AccessKey:    "should-not-be-the-host",
+	})
+	require.NoError(t, err)
+	p, ok := prov.(*RTSSFTPProvider)
+	require.True(t, ok, "expected *RTSSFTPProvider")
+	assert.Equal(t, ProviderRTSTestSFTP, p.providerType)
+	assert.Equal(t, rtsTestSFTPHost, p.host)
+}
+
+func TestNewRTSSFTP_ProdHostIgnoresAccessKey(t *testing.T) {
+	t.Setenv("APP_ENV", "")
+	p := NewRTSSFTP(Credential{
+		ProviderType: ProviderRTSSFTP,
+		Username:     "u",
+		Password:     "p",
+		AccessKey:    "ftp.evil.example",
+	})
+	assert.Equal(t, rtsSFTPHost, p.host)
+	assert.Equal(t, ProviderRTSSFTP, p.providerType)
+}
+
+func TestNewRTSSFTP_NonProdRemapsBothRTSTypes(t *testing.T) {
+	t.Setenv("APP_ENV", "dev")
+	t.Setenv("TEST_RTS_SFTP_HOST", "sftpgo.internal")
+	t.Setenv("TEST_RTS_SFTP_PORT", "2022")
+	t.Setenv("TEST_RTS_SFTP_INBOUND_DIR", "TMS_INPUT")
+
+	prod := NewRTSSFTP(Credential{ProviderType: ProviderRTSSFTP, Username: "u", Password: "p"})
+	test := NewRTSTestSFTP(Credential{ProviderType: ProviderRTSTestSFTP, Username: "u", Password: "p"})
+	assert.Equal(t, "sftpgo.internal", prod.host)
+	assert.Equal(t, "sftpgo.internal", test.host)
+	assert.Equal(t, 2022, prod.port)
+	assert.Equal(t, 2022, test.port)
+	assert.Equal(t, "TMS_INPUT", prod.inboundDir)
+	assert.Equal(t, "TMS_INPUT", test.inboundDir)
+}
+
 func TestBuildManifest_PerProviderFormats(t *testing.T) {
 	lines := rtsBatch().Invoices
 

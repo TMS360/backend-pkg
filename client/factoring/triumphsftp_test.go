@@ -256,6 +256,8 @@ func TestProviderType_UnmarshalGQL(t *testing.T) {
 	var p ProviderType
 	require.NoError(t, p.UnmarshalGQL("triumph_sftp"))
 	assert.Equal(t, ProviderTriumphSFTP, p)
+	require.NoError(t, p.UnmarshalGQL("rts_test_sftp"))
+	assert.Equal(t, ProviderRTSTestSFTP, p)
 
 	require.Error(t, p.UnmarshalGQL("apex_api"), "unknown type must reject")
 	require.Error(t, p.UnmarshalGQL(123), "non-string must reject")

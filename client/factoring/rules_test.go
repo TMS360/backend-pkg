@@ -39,6 +39,14 @@ func TestRulesFor_RTS(t *testing.T) {
 	assert.True(t, r.RequireUniqueInvoiceNumbers)
 	assert.True(t, r.RequirePositiveAmounts)
 	assert.True(t, r.RequireAllFields)
+	assert.True(t, r.TriggerAndClear)
+	assert.Equal(t, r, RulesFor(ProviderRTSTestSFTP))
+}
+
+func TestIsRTS(t *testing.T) {
+	assert.True(t, IsRTS(ProviderRTSSFTP))
+	assert.True(t, IsRTS(ProviderRTSTestSFTP))
+	assert.False(t, IsRTS(ProviderTriumphSFTP))
 }
 
 func TestValidateInvoices_RecordLimit999PassesAnd1000Blocks(t *testing.T) {

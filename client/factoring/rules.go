@@ -42,8 +42,8 @@ type ProviderRules struct {
 // RulesFor returns the submission constraints of a provider. Unknown types get
 // the zero value (no constraints) — the registry rejects them earlier anyway.
 func RulesFor(pt ProviderType) ProviderRules {
-	switch pt {
-	case ProviderRTSSFTP:
+	switch {
+	case IsRTS(pt):
 		return ProviderRules{
 			MaxRecords:                  999,
 			MinSubmissionGap:            5 * time.Minute,

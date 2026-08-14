@@ -21,6 +21,7 @@ import (
 // stage box can point the two providers at different sftpgo users).
 const (
 	rtsSFTPHost       = "ftps.financial.rtspro.com"
+	rtsTestSFTPHost   = "ftps.rtsfinancial.com"
 	rtsSFTPPort       = 22
 	rtsSFTPInboundDir = "" // chrooted home dir; EnsureDir("") is a documented no-op
 
@@ -47,13 +48,23 @@ type RTSSFTPProvider struct {
 	now          func() time.Time
 }
 
-// NewRTSSFTP builds an RTSSFTPProvider for a single submission. Reuse across
-// calls is safe (no internal state); the connection is opened and closed
-// inside each SubmitBatch. Reads only Username + Password from the universal
-// Credential — the username doubles as the RTS "Client Number" (first CSV
-// column).
+// NewRTSSFTP builds an RTSSFTPProvider aimed at the production RTS host.
+// Reuse across calls is safe (no internal state); the connection is opened
+// and closed inside each SubmitBatch. Reads only Username + Password from
+// the universal Credential — the username doubles as the RTS "Client Number"
+// (first CSV column). AccessKey is ignored (it is not a host).
 func NewRTSSFTP(cred Credential) *RTSSFTPProvider {
-	host := rtsSFTPHost
+	return newRTSSFTP(cred, rtsSFTPHost, ProviderRTSSFTP)
+}
+
+// NewRTSTestSFTP is the same adapter as NewRTSSFTP, pointed at the RTS test
+// host. On non-prod (APP_ENV allowlist) both constructors honour
+// TEST_RTS_SFTP_* so golden-tenant / our dev never dial real RTS.
+func NewRTSTestSFTP(cred Credential) *RTSSFTPProvider {
+	return newRTSSFTP(cred, rtsTestSFTPHost, ProviderRTSTestSFTP)
+}
+
+func newRTSSFTP(cred Credential, host string, pt ProviderType) *RTSSFTPProvider {
 	port := rtsSFTPPort
 	inboundDir := rtsSFTPInboundDir
 
@@ -77,7 +88,7 @@ func NewRTSSFTP(cred Credential) *RTSSFTPProvider {
 		host:         host,
 		port:         port,
 		inboundDir:   inboundDir,
-		providerType: ProviderRTSSFTP,
+		providerType: pt,
 		dialFn:       defaultSFTPDial,
 	}
 }

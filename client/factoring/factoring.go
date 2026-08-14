@@ -9,8 +9,9 @@
 // submission flow once.
 //
 // Implementations: TriumphSFTPProvider (triumph_sftp) and RTSSFTPProvider
-// (rts_sftp). Add more (TriumphAPI, EcapitalAPI...) by writing a new file and
-// registering it in registry.go.
+// (rts_sftp / rts_test_sftp — same adapter, different host). Add more
+// (TriumphAPI, EcapitalAPI...) by writing a new file and registering it in
+// registry.go.
 //
 // Credentials are per-company and stored in tms360-backend's `settings` table
 // under one universal key — `factoring_credentials` — mirrored to Redis at
@@ -38,6 +39,7 @@ type ProviderType string
 const (
 	ProviderTriumphSFTP ProviderType = "triumph_sftp"
 	ProviderRTSSFTP     ProviderType = "rts_sftp"
+	ProviderRTSTestSFTP ProviderType = "rts_test_sftp"
 )
 
 // AllProviderTypes is the canonical list of supported provider types — used by
@@ -45,6 +47,14 @@ const (
 var AllProviderTypes = []ProviderType{
 	ProviderTriumphSFTP,
 	ProviderRTSSFTP,
+	ProviderRTSTestSFTP,
+}
+
+// IsRTS reports whether pt is an RTS Financial SFTP provider (prod or test).
+// Use this for rules, invoice PDF profile, and trigger-and-clear behaviour —
+// not for picking the dial host.
+func IsRTS(pt ProviderType) bool {
+	return pt == ProviderRTSSFTP || pt == ProviderRTSTestSFTP
 }
 
 // IsValid reports whether p is a known ProviderType. Useful for validating

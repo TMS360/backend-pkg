@@ -20,6 +20,7 @@ import (
 	sentrygin "github.com/getsentry/sentry-go/gin"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgconn"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
@@ -100,7 +101,45 @@ func Flush(timeout time.Duration) {
 // (5xx) and genuinely unexpected errors — these fire alerts. Safe to call when
 // Sentry is disabled — it becomes a no-op.
 func CaptureWithCtx(ctx context.Context, err error) {
+	// A short-lived Postgres connection drop (Railway restart / replica failover)
+	// heals itself on the next poll tick, so a long-running loop — outbox relay,
+	// Kafka consumer, scheduler — must not page Sentry each time (DEV-851). Downgrade
+	// the known self-healing SQLSTATEs to a WARN log and skip the capture. Applied
+	// ONLY on this error path, not the warning/request-scoped ones. 53300
+	// (too_many_connections) is deliberately NOT suppressed — that is the real
+	// capacity signal (DEV-848) and must stay loud.
+	if code, ok := transientPGError(err); ok {
+		slog.Warn("transient Postgres connection dropped — self-healing, not sent to Sentry",
+			"sqlstate", code, "err", err)
+		return
+	}
 	captureWithLevel(ctx, err, sentry.LevelError)
+}
+
+// transientSQLStates are the short-lived Postgres connection SQLSTATEs a
+// long-running loop recovers from on its next tick (a restart / failover, not a
+// fault). 53300 (too_many_connections) is intentionally excluded — it is the
+// real capacity signal (DEV-848) and stays loud.
+var transientSQLStates = map[string]struct{}{
+	"57P01": {}, // admin_shutdown        — terminating connection due to administrator command
+	"57P02": {}, // crash_shutdown
+	"57P03": {}, // cannot_connect_now
+	"08006": {}, // connection_failure
+	"08001": {}, // sqlclient_unable_to_establish_sqlconnection
+	"08003": {}, // connection_does_not_exist
+	"08004": {}, // sqlserver_rejected_establishment_of_sqlconnection
+}
+
+// transientPGError reports whether err (anywhere in its wrap chain) is a Postgres
+// error with a known short-lived connection SQLSTATE, returning that code.
+func transientPGError(err error) (string, bool) {
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) {
+		if _, ok := transientSQLStates[pgErr.Code]; ok {
+			return pgErr.Code, true
+		}
+	}
+	return "", false
 }
 
 // CaptureWarningWithCtx sends err to Sentry at Warning level, enriched the same

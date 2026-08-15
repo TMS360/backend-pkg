@@ -18,6 +18,7 @@ import (
 	"github.com/TMS360/backend-pkg/response"
 	sentrygin "github.com/getsentry/sentry-go/gin"
 	"github.com/gin-gonic/gin"
+	"github.com/jackc/pgx/v5/pgconn"
 
 	"github.com/getsentry/sentry-go"
 )
@@ -95,6 +96,11 @@ func Flush(timeout time.Duration) {
 // per-request fields) and sends it to Sentry. Safe to call when Sentry is
 // disabled — it becomes a no-op.
 func CaptureWithCtx(ctx context.Context, err error) {
+	if code, ok := transientPGError(err); ok {
+		slog.Warn("transient Postgres connection dropped — self-healing, not sent to Sentry",
+			"sqlstate", code, "err", err)
+		return
+	}
 	if !enabled || err == nil {
 		return
 	}
@@ -108,6 +114,26 @@ func CaptureWithCtx(ctx context.Context, err error) {
 		}
 		hub.CaptureException(err)
 	})
+}
+
+var transientSQLStates = map[string]struct{}{
+	"57P01": {},
+	"57P02": {},
+	"57P03": {},
+	"08006": {},
+	"08001": {},
+	"08003": {},
+	"08004": {},
+}
+
+func transientPGError(err error) (string, bool) {
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) {
+		if _, ok := transientSQLStates[pgErr.Code]; ok {
+			return pgErr.Code, true
+		}
+	}
+	return "", false
 }
 
 // GinMiddleware installs Sentry's request-scoped hub + panic recovery on the

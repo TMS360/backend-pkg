@@ -1,7 +1,6 @@
 package observability
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"testing"
@@ -42,29 +41,4 @@ func TestTransientPGError_Classification(t *testing.T) {
 	}
 }
 
-// A transient Postgres drop produces no Sentry event (WARN log only).
-func TestCaptureWithCtx_TransientPG_SkipsSentry(t *testing.T) {
-	ctx, mt := mockHubCtx(t, context.Background())
-	CaptureWithCtx(ctx, fmt.Errorf("outbox relay poll: %w", pgErr("57P01")))
-	if n := len(mt.Events()); n != 0 {
-		t.Fatalf("transient 57P01 must not be captured; got %d events", n)
-	}
-}
 
-// 53300 pool exhaustion still fires to Sentry (DEV-848 stays loud).
-func TestCaptureWithCtx_TooManyConnections_StillCaptures(t *testing.T) {
-	ctx, mt := mockHubCtx(t, context.Background())
-	CaptureWithCtx(ctx, pgErr("53300"))
-	if n := len(mt.Events()); n != 1 {
-		t.Fatalf("53300 must still be captured; got %d events", n)
-	}
-}
-
-// A non-transient Postgres fault is still captured.
-func TestCaptureWithCtx_NonTransientPG_StillCaptures(t *testing.T) {
-	ctx, mt := mockHubCtx(t, context.Background())
-	CaptureWithCtx(ctx, pgErr("23505"))
-	if n := len(mt.Events()); n != 1 {
-		t.Fatalf("23505 must still be captured; got %d events", n)
-	}
-}

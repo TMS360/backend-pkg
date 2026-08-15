@@ -15,6 +15,10 @@ const (
 	CompanySettingsGeneralKeyReeferEnabled             CompanySettingsGeneralKey = "reefer_enabled"
 	CompanySettingsGeneralKeyBrokerHasVerifyShipments  CompanySettingsGeneralKey = "broker_has_verify_shipments"
 	CompanySettingsGeneralKeyTripAssignmentBufferHours CompanySettingsGeneralKey = "trip_assignment_buffer_hours"
+	// CompanySettingsGeneralKeySamsaraAssetTrackingEnabled decides where recorded
+	// mileage comes from: Samsara GPS actual when on (default), HERE road-distance
+	// estimate when off. Default-on preserves current behaviour for existing tenants.
+	CompanySettingsGeneralKeySamsaraAssetTrackingEnabled CompanySettingsGeneralKey = "samsara_asset_tracking_enabled"
 )
 
 var AllCompanySettingsGeneralKey = []CompanySettingsGeneralKey{
@@ -23,11 +27,12 @@ var AllCompanySettingsGeneralKey = []CompanySettingsGeneralKey{
 	CompanySettingsGeneralKeyReeferEnabled,
 	CompanySettingsGeneralKeyBrokerHasVerifyShipments,
 	CompanySettingsGeneralKeyTripAssignmentBufferHours,
+	CompanySettingsGeneralKeySamsaraAssetTrackingEnabled,
 }
 
 func (e CompanySettingsGeneralKey) IsValid() bool {
 	switch e {
-	case CompanySettingsGeneralKeyLogo, CompanySettingsGeneralKeyHazmatEnabled, CompanySettingsGeneralKeyReeferEnabled, CompanySettingsGeneralKeyBrokerHasVerifyShipments, CompanySettingsGeneralKeyTripAssignmentBufferHours:
+	case CompanySettingsGeneralKeyLogo, CompanySettingsGeneralKeyHazmatEnabled, CompanySettingsGeneralKeyReeferEnabled, CompanySettingsGeneralKeyBrokerHasVerifyShipments, CompanySettingsGeneralKeyTripAssignmentBufferHours, CompanySettingsGeneralKeySamsaraAssetTrackingEnabled:
 		return true
 	}
 	return false

@@ -14,6 +14,14 @@ import (
 	"gorm.io/gorm"
 )
 
+// Default Postgres pool sizes. Conservative so N services × pool ≪ Railway
+// max_connections; override per-service via POSTGRES_MAX_OPEN_CONNS /
+// POSTGRES_MAX_IDLE_CONNS when a service genuinely needs more headroom.
+const (
+	defaultPostgresMaxOpenConns = 8
+	defaultPostgresMaxIdleConns = 2
+)
+
 type Client struct {
 }
 
@@ -66,22 +74,22 @@ func NewClient(cfg config.PostgresSQLConfig) (*gorm.DB, error) {
 	}
 
 	if sqlDB, err := db.DB(); err == nil {
-		//sqlDB.SetMaxIdleConns(10)
-		//sqlDB.SetMaxOpenConns(100)
-		//sqlDB.SetConnMaxLifetime(30 * time.Minute)
-		//sqlDB.SetConnMaxIdleTime(5 * time.Minute)
-		sqlDB.SetMaxIdleConns(2)
-		sqlDB.SetMaxOpenConns(8)
+		maxOpen := cfg.MaxOpenConns
+		if maxOpen <= 0 {
+			maxOpen = defaultPostgresMaxOpenConns
+		}
+		maxIdle := cfg.MaxIdleConns
+		if maxIdle <= 0 {
+			maxIdle = defaultPostgresMaxIdleConns
+		}
+		if maxIdle > maxOpen {
+			maxIdle = maxOpen
+		}
+		sqlDB.SetMaxOpenConns(maxOpen)
+		sqlDB.SetMaxIdleConns(maxIdle)
 		sqlDB.SetConnMaxIdleTime(5 * time.Minute)
 		sqlDB.SetConnMaxLifetime(30 * time.Minute)
-
-		//for i := 0; i < 3; i++ {
-		//	start := time.Now()
-		//	if err := db.Exec("SELECT 1").Error; err != nil {
-		//		log.Printf("SELECT 1 error: %v", err)
-		//	}
-		//	log.Printf("SELECT 1 #%d took %s", i+1, time.Since(start))
-		//}
+		log.Printf("postgres pool: max_open=%d max_idle=%d", maxOpen, maxIdle)
 	}
 
 	return db, nil

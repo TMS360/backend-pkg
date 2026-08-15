@@ -59,14 +59,16 @@ type HTTPServer struct {
 }
 
 type PostgresSQLConfig struct {
-	Host       string `mapstructure:"HOST"`
-	Port       string `mapstructure:"PORT"`
-	DBName     string `mapstructure:"DATABASE"`
-	DBNameTest string `mapstructure:"DATABASE_TEST"`
-	User       string `mapstructure:"USERNAME"`
-	Password   string `mapstructure:"PASSWORD"`
-	SSLMode    string `mapstructure:"SSLMODE"`
-	TimeZone   string `mapstructure:"TIMEZONE"`
+	Host         string `mapstructure:"HOST"`
+	Port         string `mapstructure:"PORT"`
+	DBName       string `mapstructure:"DATABASE"`
+	DBNameTest   string `mapstructure:"DATABASE_TEST"`
+	User         string `mapstructure:"USERNAME"`
+	Password     string `mapstructure:"PASSWORD"`
+	SSLMode      string `mapstructure:"SSLMODE"`
+	TimeZone     string `mapstructure:"TIMEZONE"`
+	MaxOpenConns int    `mapstructure:"MAX_OPEN_CONNS"`
+	MaxIdleConns int    `mapstructure:"MAX_IDLE_CONNS"`
 }
 
 type KafkaConfig struct {

@@ -129,7 +129,11 @@ type Customer struct {
 	// Optional factoring routing. Absent when the customer pays direct.
 	Factoring *Factoring `protobuf:"bytes,5,opt,name=factoring,proto3,oneof" json:"factoring,omitempty"`
 	// USDOT number from CourierCustomer.usdot. Empty string when not set.
-	Usdot         string `protobuf:"bytes,6,opt,name=usdot,proto3" json:"usdot,omitempty"`
+	Usdot string `protobuf:"bytes,6,opt,name=usdot,proto3" json:"usdot,omitempty"`
+	// Billing email from CustomerBilling.billing_email — where backend-accounting
+	// emails the invoice PDF for direct-pay (non-factored) customers. Empty
+	// string when not configured (send is blocked, mark-sent-manually allowed).
+	BillingEmail  string `protobuf:"bytes,7,opt,name=billing_email,json=billingEmail,proto3" json:"billing_email,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -206,6 +210,13 @@ func (x *Customer) GetUsdot() string {
 	return ""
 }
 
+func (x *Customer) GetBillingEmail() string {
+	if x != nil {
+		return x.BillingEmail
+	}
+	return ""
+}
+
 type Factoring struct {
 	state       protoimpl.MessageState `protogen:"open.v1"`
 	CompanyName string                 `protobuf:"bytes,1,opt,name=company_name,json=companyName,proto3" json:"company_name,omitempty"`
@@ -268,14 +279,15 @@ const file_customers_customers_proto_rawDesc = "" +
 	"\x13GetCustomersRequest\x12!\n" +
 	"\fcustomer_ids\x18\x01 \x03(\tR\vcustomerIds\"I\n" +
 	"\x14GetCustomersResponse\x121\n" +
-	"\tcustomers\x18\x01 \x03(\v2\x13.customers.CustomerR\tcustomers\"\xe0\x01\n" +
+	"\tcustomers\x18\x01 \x03(\v2\x13.customers.CustomerR\tcustomers\"\x85\x02\n" +
 	"\bCustomer\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12!\n" +
 	"\fcompany_name\x18\x02 \x01(\tR\vcompanyName\x12\x1b\n" +
 	"\tmc_number\x18\x03 \x01(\tR\bmcNumber\x12'\n" +
 	"\x0fbilling_address\x18\x04 \x01(\tR\x0ebillingAddress\x127\n" +
 	"\tfactoring\x18\x05 \x01(\v2\x14.customers.FactoringH\x00R\tfactoring\x88\x01\x01\x12\x14\n" +
-	"\x05usdot\x18\x06 \x01(\tR\x05usdotB\f\n" +
+	"\x05usdot\x18\x06 \x01(\tR\x05usdot\x12#\n" +
+	"\rbilling_email\x18\a \x01(\tR\fbillingEmailB\f\n" +
 	"\n" +
 	"_factoring\"I\n" +
 	"\tFactoring\x12!\n" +

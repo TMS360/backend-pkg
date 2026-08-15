@@ -38,6 +38,10 @@ message Customer {
   optional Factoring factoring = 5;
   // USDOT number from CourierCustomer.usdot. Empty string when not set.
   string usdot = 6;
+  // Billing email from CustomerBilling.billing_email — where backend-accounting
+  // emails the invoice PDF for direct-pay (non-factored) customers. Empty
+  // string when not configured (send is blocked, mark-sent-manually allowed).
+  string billing_email = 7;
 }
 
 message Factoring {

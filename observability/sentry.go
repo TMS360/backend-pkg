@@ -14,15 +14,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/TMS360/backend-pkg/consts"
 	"github.com/TMS360/backend-pkg/middleware"
 	"github.com/TMS360/backend-pkg/response"
 	sentrygin "github.com/getsentry/sentry-go/gin"
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgconn"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 
 	"github.com/getsentry/sentry-go"
 )
@@ -96,42 +92,40 @@ func Flush(timeout time.Duration) {
 	sentry.Flush(timeout)
 }
 
-// CaptureWithCtx sends err to Sentry at Error level, enriched with the
-// request_id and actor tags (see captureWithLevel). Use for server faults
-// (5xx) and genuinely unexpected errors — these fire alerts. Safe to call when
-// Sentry is disabled — it becomes a no-op.
+// CaptureWithCtx tags an error with the request_id (and any future
+// per-request fields) and sends it to Sentry. Safe to call when Sentry is
+// disabled — it becomes a no-op.
 func CaptureWithCtx(ctx context.Context, err error) {
-	// A short-lived Postgres connection drop (Railway restart / replica failover)
-	// heals itself on the next poll tick, so a long-running loop — outbox relay,
-	// Kafka consumer, scheduler — must not page Sentry each time (DEV-851). Downgrade
-	// the known self-healing SQLSTATEs to a WARN log and skip the capture. Applied
-	// ONLY on this error path, not the warning/request-scoped ones. 53300
-	// (too_many_connections) is deliberately NOT suppressed — that is the real
-	// capacity signal (DEV-848) and must stay loud.
 	if code, ok := transientPGError(err); ok {
 		slog.Warn("transient Postgres connection dropped — self-healing, not sent to Sentry",
 			"sqlstate", code, "err", err)
 		return
 	}
-	captureWithLevel(ctx, err, sentry.LevelError)
+	if !enabled || err == nil {
+		return
+	}
+	hub := sentry.GetHubFromContext(ctx)
+	if hub == nil {
+		hub = sentry.CurrentHub().Clone()
+	}
+	hub.WithScope(func(scope *sentry.Scope) {
+		if rid := middleware.GetRequestID(ctx); rid != "" {
+			scope.SetTag("request_id", rid)
+		}
+		hub.CaptureException(err)
+	})
 }
 
-// transientSQLStates are the short-lived Postgres connection SQLSTATEs a
-// long-running loop recovers from on its next tick (a restart / failover, not a
-// fault). 53300 (too_many_connections) is intentionally excluded — it is the
-// real capacity signal (DEV-848) and stays loud.
 var transientSQLStates = map[string]struct{}{
-	"57P01": {}, // admin_shutdown        — terminating connection due to administrator command
-	"57P02": {}, // crash_shutdown
-	"57P03": {}, // cannot_connect_now
-	"08006": {}, // connection_failure
-	"08001": {}, // sqlclient_unable_to_establish_sqlconnection
-	"08003": {}, // connection_does_not_exist
-	"08004": {}, // sqlserver_rejected_establishment_of_sqlconnection
+	"57P01": {},
+	"57P02": {},
+	"57P03": {},
+	"08006": {},
+	"08001": {},
+	"08003": {},
+	"08004": {},
 }
 
-// transientPGError reports whether err (anywhere in its wrap chain) is a Postgres
-// error with a known short-lived connection SQLSTATE, returning that code.
 func transientPGError(err error) (string, bool) {
 	var pgErr *pgconn.PgError
 	if errors.As(err, &pgErr) {
@@ -142,137 +136,6 @@ func transientPGError(err error) (string, bool) {
 	return "", false
 }
 
-// CaptureWarningWithCtx sends err to Sentry at Warning level, enriched the same
-// way as CaptureWithCtx. Use for expected user-facing rejections (4xx) — wrong
-// input, permission walls, etc. Warnings appear in the Sentry issues list so
-// the team can query user friction on demand, but they don't fire alerts or
-// page anyone. Safe to call when Sentry is disabled — it becomes a no-op.
-func CaptureWarningWithCtx(ctx context.Context, err error) {
-	captureWithLevel(ctx, err, sentry.LevelWarning)
-}
-
-// captureWithLevel is the shared capture path: it tags the event with the
-// request_id and actor identity, sets the given severity level, and sends it.
-// Keeping both public helpers on one path guarantees warnings and errors carry
-// identical enrichment.
-func captureWithLevel(ctx context.Context, err error, level sentry.Level) {
-	if !enabled || err == nil {
-		return
-	}
-	hub := sentry.GetHubFromContext(ctx)
-	if hub == nil {
-		hub = sentry.CurrentHub().Clone()
-	}
-	hub.WithScope(func(scope *sentry.Scope) {
-		scope.SetLevel(level)
-		// Collapse every routine 401 "Unauthorized!" event into ONE Sentry issue
-		// (DEV-1668). Without a fixed fingerprint Sentry groups by the call site,
-		// so an expired token polling N GraphQL fields opens N issues and buries
-		// real problems. A spike on the single grouped issue still surfaces an
-		// attack or outage. Only pure 401s are grouped; every other 4xx keeps its
-		// default per-site grouping.
-		if isUnauthorized(err) {
-			scope.SetFingerprint(unauthorizedFingerprint)
-		}
-		if rid := middleware.GetRequestID(ctx); rid != "" {
-			scope.SetTag("request_id", rid)
-		}
-		setActorOnScope(ctx, scope)
-		hub.CaptureException(err)
-	})
-}
-
-// unauthorizedFingerprint is the fixed Sentry group key for routine 401s
-// (DEV-1668) — a single, stable value so every "Unauthorized!" event lands in
-// one issue regardless of which field or service emitted it.
-var unauthorizedFingerprint = []string{"unauthorized"}
-
-// isUnauthorized reports whether err is a PURE 401 Unauthorized — the expired/
-// absent-token case that floods Sentry. Two capture paths produce it: a
-// response.PublicError with a 401 status (the direct auth rejection), and a
-// downstream gRPC status carrying codes.Unauthenticated (which the GraphQL
-// presenter maps to 401 and captures with the raw status error). Only 401
-// qualifies: a 403 (permission denied), a 404, or a database-constraint 4xx must
-// keep its own grouping, so they are deliberately not matched here.
-func isUnauthorized(err error) bool {
-	if err == nil {
-		return false
-	}
-	var pe response.PublicError
-	if errors.As(err, &pe) && pe.ErrorStatus() == http.StatusUnauthorized {
-		return true
-	}
-	type grpcStatuser interface{ GRPCStatus() *status.Status }
-	var gs grpcStatuser
-	if errors.As(err, &gs) && gs.GRPCStatus().Code() == codes.Unauthenticated {
-		return true
-	}
-	return false
-}
-
-// setActorOnScope tags a Sentry scope with who triggered the event so events can
-// be filtered by user/company/actor_type in Sentry — and so a BE error and the
-// user's later feedback submission tie together on the same user id. It is the
-// single enrichment path shared by the per-request middleware (SentryUserMiddleware)
-// and the on-capture helpers, so HTTP requests and background captures attribute
-// identically. It never panics on nil/empty fields.
-//
-// actor_type:
-//   - authenticated user  → "user"   (+ user.id, company_id)
-//   - broker actor        → "broker" (Claims.ActorType == consts.ActorBroker)
-//   - guest / share-link  → "guest"  (+ share_resource / share_resource_id tags;
-//     guests have a Nil user id, so the shared resource is what we attribute to)
-//   - system / background  → "system"
-//   - no actor on ctx     → "system" (Kafka consumers, gRPC, pre-auth requests):
-//     the point of the edge case is to never fail the set when there is nothing
-//     to attribute, not to invent a user.
-//
-// The JWT (consts.UserClaims) carries no email/username, so only the user id is
-// set on sentry.User. The FE feedback widget supplies the email on its side and
-// the two events group by id.
-func setActorOnScope(ctx context.Context, scope *sentry.Scope) {
-	actor, err := middleware.GetActor(ctx)
-	if err != nil || actor == nil {
-		scope.SetTag("actor_type", "system")
-		return
-	}
-
-	switch {
-	case actor.IsSystem:
-		scope.SetTag("actor_type", "system")
-	case isBrokerActor(actor):
-		scope.SetTag("actor_type", "broker")
-	case actor.IsGuest:
-		scope.SetTag("actor_type", "guest")
-	default:
-		scope.SetTag("actor_type", "user")
-	}
-
-	if actor.ID != uuid.Nil {
-		scope.SetUser(sentry.User{ID: actor.ID.String()})
-	}
-	if cid := actor.GetCompanyID(); cid != nil {
-		scope.SetTag("company_id", cid.String())
-	}
-
-	// Guest / broker share-link requests have a Nil user id — tag the shared
-	// resource so that traffic is still attributable to something.
-	if actor.Claims != nil {
-		if actor.Claims.Resource != "" {
-			scope.SetTag("share_resource", actor.Claims.Resource)
-		}
-		if actor.Claims.ResourceID != uuid.Nil {
-			scope.SetTag("share_resource_id", actor.Claims.ResourceID.String())
-		}
-	}
-}
-
-// isBrokerActor reports whether the actor authenticated as a broker. Kept aligned
-// with the audit actor work (DEV-678): the canonical signal is Claims.ActorType.
-func isBrokerActor(actor *consts.Actor) bool {
-	return actor.Claims != nil && actor.Claims.ActorType == consts.ActorBroker
-}
-
 // GinMiddleware installs Sentry's request-scoped hub + panic recovery on the
 // router. No-op (returns a passthrough) when Sentry is disabled.
 func GinMiddleware() gin.HandlerFunc {
@@ -280,29 +143,6 @@ func GinMiddleware() gin.HandlerFunc {
 		return func(c *gin.Context) { c.Next() }
 	}
 	return sentrygin.New(sentrygin.Options{Repanic: true})
-}
-
-// SentryUserMiddleware enriches the per-request Sentry hub with the caller's
-// identity so EVERY event emitted while handling the request carries the user
-// and actor_type — not only the ones explicitly sent through CaptureWithCtx. In
-// particular it makes panics recovered by GinMiddleware (sentrygin) show the
-// calling user on the issue, so a BE error and the user's later User Feedback
-// submission tie together by id (see DEV-679).
-//
-// Install it AFTER GinMiddleware (the per-request hub must already exist) and
-// AFTER IdentifyUser + the guest middleware (the actor must already be on the
-// request context). No-op when Sentry is disabled, consistent with the rest of
-// this package — so an empty SENTRY_DSN leaves the request path untouched.
-func SentryUserMiddleware() gin.HandlerFunc {
-	if !enabled {
-		return func(c *gin.Context) { c.Next() }
-	}
-	return func(c *gin.Context) {
-		if hub := sentrygin.GetHubFromContext(c); hub != nil {
-			setActorOnScope(c.Request.Context(), hub.Scope())
-		}
-		c.Next()
-	}
 }
 
 // CaptureRestError reports err to Sentry when the effective HTTP status is

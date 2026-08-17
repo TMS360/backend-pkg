@@ -74,8 +74,10 @@ func (m *GormTransactionManager) writeEvent(ctx context.Context, b *EventBuilder
 	var actorID, companyID *uuid.UUID
 	if actor != nil {
 		actorID = utils.Pointer(actor.ID)
-		if actor.Claims.CompanyID != nil {
-			companyID = utils.Pointer(*actor.Claims.CompanyID)
+		// System actors (cron, scheduler) have Claims == nil — do not deref.
+		// Same guard as notify.go. DEV-1732: this panic crash-looped workspaces.
+		if cid := actor.GetCompanyID(); cid != nil {
+			companyID = utils.Pointer(*cid)
 		}
 	}
 

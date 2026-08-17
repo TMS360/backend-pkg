@@ -100,6 +100,14 @@ const (
 	// CompanySettingsIntegrationKeyGoogleMapsAPIKey is the tenant's Google Maps
 	// Platform key, used only as a fallback after a classified HERE failure.
 	CompanySettingsIntegrationKeyGoogleMapsAPIKey CompanySettingsIntegrationKey = "google_maps_api_key"
+	// CompanySettingsIntegrationKeyGoogleSheetsAPIKey is the tenant's Google API
+	// key for the Sheets connector (DEV-1723): a board reads a spreadsheet range
+	// through it. Deliberately SEPARATE from the Maps key — the two are different
+	// integrations with different lifecycles, and sharing one credential would mean
+	// revoking a spreadsheet also breaks geocoding. The Sheets API reads only
+	// link-shared spreadsheets with an API key; a private sheet needs a service
+	// account, which is a different credential shape and a later ticket.
+	CompanySettingsIntegrationKeyGoogleSheetsAPIKey CompanySettingsIntegrationKey = "google_sheets_api_key"
 )
 
 var AllCompanySettingsIntegrationKey = []CompanySettingsIntegrationKey{
@@ -108,6 +116,7 @@ var AllCompanySettingsIntegrationKey = []CompanySettingsIntegrationKey{
 	CompanySettingsIntegrationKeyRelayAPIKey,
 	CompanySettingsIntegrationKeyUSPSCredentials,
 	CompanySettingsIntegrationKeyGoogleMapsAPIKey,
+	CompanySettingsIntegrationKeyGoogleSheetsAPIKey,
 }
 
 func (e CompanySettingsIntegrationKey) IsValid() bool {
@@ -116,7 +125,8 @@ func (e CompanySettingsIntegrationKey) IsValid() bool {
 		CompanySettingsIntegrationKeySamsaraAPIKey,
 		CompanySettingsIntegrationKeyRelayAPIKey,
 		CompanySettingsIntegrationKeyUSPSCredentials,
-		CompanySettingsIntegrationKeyGoogleMapsAPIKey:
+		CompanySettingsIntegrationKeyGoogleMapsAPIKey,
+		CompanySettingsIntegrationKeyGoogleSheetsAPIKey:
 		return true
 	}
 	return false

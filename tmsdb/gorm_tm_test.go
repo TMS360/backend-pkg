@@ -4,8 +4,16 @@ import (
 	"testing"
 	"time"
 
+	"github.com/TMS360/backend-pkg/consts"
 	"github.com/google/uuid"
 )
+
+func TestSystemActorGetCompanyIDIsNil(t *testing.T) {
+	actor := &consts.Actor{ID: uuid.Nil, IsSystem: true}
+	if actor.GetCompanyID() != nil {
+		t.Fatal("system actor must not expose a company id")
+	}
+}
 
 type changeTestStruct struct {
 	Name  string `json:"name"`

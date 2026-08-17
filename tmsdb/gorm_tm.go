@@ -68,18 +68,31 @@ func (m *GormTransactionManager) Event(aggType, evtType string, aggID uuid.UUID)
 	return &EventBuilder{tm: m, aggType: aggType, evtType: evtType, aggID: aggID}
 }
 
-func (m *GormTransactionManager) writeEvent(ctx context.Context, b *EventBuilder) error {
+// actorIdentity resolves the (actor, company) pair stamped on an event row.
+//
+// It is a separate function so the regression it carries can be tested without a
+// database: DEV-1732 crash-looped backend-workspaces because this resolution read
+// actor.Claims.CompanyID directly, and a system actor (cron, scheduler, seeder)
+// carries no JWT at all — Claims is nil, not empty. The panic killed the whole
+// process, so the HTTP server never stayed up and Apollo could not introspect the
+// subgraph. Both returns are nil-able on purpose: an event emitted by a system
+// actor legitimately has no company.
+func actorIdentity(ctx context.Context) (actorID, companyID *uuid.UUID) {
 	actor, _ := middleware.GetActor(ctx)
-
-	var actorID, companyID *uuid.UUID
-	if actor != nil {
-		actorID = utils.Pointer(actor.ID)
-		// System actors (cron, scheduler) have Claims == nil — do not deref.
-		// Same guard as notify.go. DEV-1732: this panic crash-looped workspaces.
-		if cid := actor.GetCompanyID(); cid != nil {
-			companyID = utils.Pointer(*cid)
-		}
+	if actor == nil {
+		return nil, nil
 	}
+	actorID = utils.Pointer(actor.ID)
+	// GetCompanyID is the nil-safe accessor (same guard notify.go uses); never
+	// reach through Claims here.
+	if cid := actor.GetCompanyID(); cid != nil {
+		companyID = utils.Pointer(*cid)
+	}
+	return actorID, companyID
+}
+
+func (m *GormTransactionManager) writeEvent(ctx context.Context, b *EventBuilder) error {
+	actorID, companyID := actorIdentity(ctx)
 
 	dataBytes, err := json.Marshal(b.data)
 	if err != nil {

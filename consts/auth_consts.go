@@ -38,7 +38,18 @@ type Actor struct {
 	IsGuest  bool
 }
 
+// IsSuperAdmin reports whether the actor carries the super-admin role.
+//
+// A system actor (cron, scheduler, seeder) has no JWT, so Claims is nil and the
+// answer is simply false. The nil check is load-bearing, not defensive: callers
+// evaluate this BEFORE the IsSystem branch — e.g. model/tenant_scoped.go does
+// `if actor.IsSuperAdmin() || actor.IsSystem` — so reaching through Claims here
+// panics on the exact path that is supposed to produce a readable error
+// (DEV-1732, same family as the audit-writer crash).
 func (actor *Actor) IsSuperAdmin() bool {
+	if actor.Claims == nil {
+		return false
+	}
 	for _, role := range actor.Claims.Roles {
 		if role == enums.UserRoleSuperAdmin.String() {
 			return true
@@ -47,7 +58,12 @@ func (actor *Actor) IsSuperAdmin() bool {
 	return false
 }
 
+// IsAdmin reports whether the actor carries the admin role. Nil-safe for the
+// same reason as IsSuperAdmin: a system actor has no claims.
 func (actor *Actor) IsAdmin() bool {
+	if actor.Claims == nil {
+		return false
+	}
 	for _, role := range actor.Claims.Roles {
 		if role == enums.UserRoleAdmin.String() {
 			return true

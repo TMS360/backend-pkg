@@ -108,6 +108,13 @@ const (
 	// link-shared spreadsheets with an API key; a private sheet needs a service
 	// account, which is a different credential shape and a later ticket.
 	CompanySettingsIntegrationKeyGoogleSheetsAPIKey CompanySettingsIntegrationKey = "google_sheets_api_key"
+	// CompanySettingsIntegrationKeyRingCentralCredentials is the tenant's own
+	// RingCentral phone system (DEV-1751). Multi-field like usps_credentials: the
+	// value is a JSON object (client id/secret + the JWT credential, plus an
+	// optional sandbox host) read back through provider.JSONClientProvider, not a
+	// bare API key. One row per company — a RingCentral account is never shared
+	// across tenants.
+	CompanySettingsIntegrationKeyRingCentralCredentials CompanySettingsIntegrationKey = "ringcentral_credentials"
 )
 
 var AllCompanySettingsIntegrationKey = []CompanySettingsIntegrationKey{
@@ -117,6 +124,7 @@ var AllCompanySettingsIntegrationKey = []CompanySettingsIntegrationKey{
 	CompanySettingsIntegrationKeyUSPSCredentials,
 	CompanySettingsIntegrationKeyGoogleMapsAPIKey,
 	CompanySettingsIntegrationKeyGoogleSheetsAPIKey,
+	CompanySettingsIntegrationKeyRingCentralCredentials,
 }
 
 func (e CompanySettingsIntegrationKey) IsValid() bool {
@@ -126,7 +134,8 @@ func (e CompanySettingsIntegrationKey) IsValid() bool {
 		CompanySettingsIntegrationKeyRelayAPIKey,
 		CompanySettingsIntegrationKeyUSPSCredentials,
 		CompanySettingsIntegrationKeyGoogleMapsAPIKey,
-		CompanySettingsIntegrationKeyGoogleSheetsAPIKey:
+		CompanySettingsIntegrationKeyGoogleSheetsAPIKey,
+		CompanySettingsIntegrationKeyRingCentralCredentials:
 		return true
 	}
 	return false

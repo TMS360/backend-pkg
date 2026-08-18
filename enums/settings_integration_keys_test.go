@@ -40,3 +40,17 @@ func TestAllIntegrationKeysAreValidAndUnique(t *testing.T) {
 		seen[string(k)] = true
 	}
 }
+
+// DEV-1751: RingCentral is a per-company phone integration whose credential is a
+// multi-field JSON blob. It must be registered here for the same reason as every
+// other key — tms-auth's audit redaction iterates this list, and
+// deleteCompanySetting (the disconnect path) only accepts keys that validate.
+func TestRingCentralKeyIsARegisteredIntegrationKey(t *testing.T) {
+	key := enums.CompanySettingsIntegrationKeyRingCentralCredentials
+
+	require.Equal(t, "ringcentral_credentials", string(key),
+		"the wire value is the Redis settings suffix consumers read; renaming it orphans every saved credential")
+	assert.True(t, key.IsValid(), "must pass enum validation on the settings save and delete paths")
+	assert.Contains(t, enums.AllCompanySettingsIntegrationKey, key,
+		"must be in the canonical list — audit redaction iterates it, so an absent key leaks the credential")
+}

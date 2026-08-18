@@ -110,6 +110,16 @@ func (p *RTSSFTPProvider) BuildManifest(invoices []InvoiceLine) ([]byte, error) 
 //   - CSV:  invoices_YYYYMMDD_HHMMSS.csv (UTC timestamp from batch.SubmittedAt
 //     — deterministic, so a reclaimed retry overwrites the same file instead
 //     of producing a second manifest; DEV-840)
+func (p *RTSSFTPProvider) TestConnection(ctx context.Context) error {
+	return testSFTPConnection(ctx, p.dialFn, sftpDialer{
+		Host:         p.host,
+		Port:         p.port,
+		Username:     p.username,
+		Password:     p.password,
+		ProviderType: p.providerType,
+	})
+}
+
 func (p *RTSSFTPProvider) SubmitBatch(ctx context.Context, batch Batch, onProgress ProgressFunc) (SubmitResult, error) {
 	if err := batch.validate(); err != nil {
 		return SubmitResult{}, err

@@ -100,6 +100,20 @@ func dialSFTP(ctx context.Context, d sftpDialer) (*sftpClient, error) {
 	return &sftpClient{ssh: sshClient, sftp: sftpConn}, nil
 }
 
+// testSFTPConnection dials and immediately closes. No directory create, no
+// upload — RTS treats a CSV drop as "grab and clear", so a probe must not
+// write anything.
+func testSFTPConnection(ctx context.Context, dial func(context.Context, sftpDialer) (sftpUploader, error), d sftpDialer) error {
+	if dial == nil {
+		dial = defaultSFTPDial
+	}
+	c, err := dial(ctx, d)
+	if err != nil {
+		return err
+	}
+	return c.Close()
+}
+
 func isSSHAuthFailure(err error) bool {
 	if err == nil {
 		return false

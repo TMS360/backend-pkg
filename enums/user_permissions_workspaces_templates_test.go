@@ -99,22 +99,28 @@ func TestPermissionCatalog_NoDuplicatesAndParentsExist(t *testing.T) {
 	}
 }
 
-// Guard: this ticket must not touch the tasks permissions (the task service is
-// alive — DEV-1334). The tasks constants and the tasks.teams entity are intact.
-func TestTasksPermissions_Untouched(t *testing.T) {
-	assert.Equal(t, "tasks.view", string(enums.PermTasksView))
-	assert.Equal(t, "tasks.create", string(enums.PermTasksCreate))
-	assert.Equal(t, "tasks.assign", string(enums.PermTasksAssign))
-	assert.Equal(t, "tasks.transition", string(enums.PermTasksTransition))
-	assert.Equal(t, "tasks.reopen", string(enums.PermTasksReopen))
+// Guard: the tasks permissions are still HERE — the task service is alive
+// (DEV-1334 closed WONT DO), so nothing about tasks was deleted. What DID change
+// in DEV-1335 is their spelling: the work-item leaves moved under the
+// `tasks.tasks` entity so they are grantable at all. `tasks.teams` is untouched.
+func TestTasksPermissions_NotDeletedAndGrantable(t *testing.T) {
+	assert.Equal(t, "tasks.tasks.view", string(enums.PermTasksView))
+	assert.Equal(t, "tasks.tasks.create", string(enums.PermTasksCreate))
+	assert.Equal(t, "tasks.tasks.assign", string(enums.PermTasksAssign))
+	assert.Equal(t, "tasks.tasks.transition", string(enums.PermTasksTransition))
+	assert.Equal(t, "tasks.tasks.reopen", string(enums.PermTasksReopen))
 
-	var hasTeams bool
+	var hasTeams, hasTasks bool
 	for _, e := range enums.PermissionCatalog {
-		if e.Code == "tasks.teams" {
+		switch e.Code {
+		case "tasks.teams":
 			hasTeams = true
+		case "tasks.tasks":
+			hasTasks = true
 		}
 	}
 	assert.True(t, hasTeams, "the tasks.teams entity is left intact")
+	assert.True(t, hasTasks, "the tasks work-item entity is in the catalog")
 }
 
 // AC: the values.edit constant is exactly what the cell mutation enforces

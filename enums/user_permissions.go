@@ -40,15 +40,28 @@ const (
 	PermComplianceView UserPermissionEnum = "settings.compliance.view"
 	PermComplianceEdit UserPermissionEnum = "settings.compliance.edit"
 
-	// Projects/Task-Management module (backend-tasks). The Task work-item
-	// domain is a self-contained page, so its grants hang directly off the
-	// `tasks` module rather than a sub-entity: the leaf codes are tasks.view,
-	// tasks.create, tasks.assign, tasks.transition, tasks.reopen.
-	PermTasksView       UserPermissionEnum = "tasks.view"
-	PermTasksCreate     UserPermissionEnum = "tasks.create"
-	PermTasksAssign     UserPermissionEnum = "tasks.assign"
-	PermTasksTransition UserPermissionEnum = "tasks.transition"
-	PermTasksReopen     UserPermissionEnum = "tasks.reopen"
+	// Projects/Task-Management module (backend-tasks). The work-item leaves live
+	// under a `tasks.tasks` ENTITY, not straight on the module (DEV-1335).
+	//
+	// They used to be spelled `tasks.view` / `tasks.create` / … — two segments,
+	// hanging off the module. Nothing could grant them: the catalog derives a
+	// grantable code from an entry's Code plus its Actions, the `tasks` module
+	// entry carries no actions, so `IsValidPermissionCode("tasks.create")` was
+	// false and assignPermissionsTo{Role,User} refused it. The tasks page worked
+	// only because the whole `tasks` module was granted and HasPermission matches
+	// ancestors — so "read tasks but do not create" could not be expressed at all,
+	// and a per-action deny override was impossible.
+	//
+	// backend-tasks' read queries had already settled on the three-segment
+	// `tasks.tasks.view`, which matches the module.entity.action shape every other
+	// module uses (and `tasks.teams.*` next door). These constants and the
+	// directives now agree with it. Existing grants are unaffected: they are all
+	// the `tasks` module code, which still implies every leaf below it.
+	PermTasksView       UserPermissionEnum = "tasks.tasks.view"
+	PermTasksCreate     UserPermissionEnum = "tasks.tasks.create"
+	PermTasksAssign     UserPermissionEnum = "tasks.tasks.assign"
+	PermTasksTransition UserPermissionEnum = "tasks.tasks.transition"
+	PermTasksReopen     UserPermissionEnum = "tasks.tasks.reopen"
 
 	// Workspaces & custom boards module (backend-workspaces). These grants gate
 	// the GraphQL surface only; board/workspace data visibility additionally
@@ -179,6 +192,10 @@ var PermissionCatalog = []PermissionCatalogEntry{
 	{Code: "workspaces", Label: "Workspaces"},
 
 	// === tasks entities ===
+	// tasks.tasks is the work-item page itself (getTasks/createTask/assign/
+	// transition/reopen in backend-tasks). Without this entry the codes those
+	// operations require were not grantable at all — see the PermTasks* comment.
+	{Code: "tasks.tasks", ParentCode: "tasks", Label: "Tasks", Actions: []string{"view", "create", "assign", "transition", "reopen"}},
 	{Code: "tasks.teams", ParentCode: "tasks", Label: "Task teams", Actions: []string{"view", "create", "edit", "delete"}},
 
 	// === workspaces entities (backend-workspaces custom boards) ===

@@ -148,6 +148,11 @@ type Provider interface {
 	// bookkeeping callers can always obtain the bytes even for a batch that
 	// would be rejected on submission.
 	BuildManifest(invoices []InvoiceLine) ([]byte, error)
+
+	// TestConnection opens the transport and closes it. No files are written.
+	// Auth failures return *AuthError so callers can tell bad login from a
+	// down host without treating this as a live send.
+	TestConnection(ctx context.Context) error
 }
 
 // Batch is the unit of submission: one InvoiceBatch from backend-accounting

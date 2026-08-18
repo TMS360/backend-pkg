@@ -151,6 +151,16 @@ func defaultSFTPDial(ctx context.Context, d sftpDialer) (sftpUploader, error) {
 // File naming:
 //   - PDFs: <INVOICE#>.pdf (InvoiceNumber sanitized for filesystem safety)
 //   - CSV:  invoices_YYYYMMDD_HHMMSS.csv (UTC timestamp from batch.SubmittedAt)
+func (p *TriumphSFTPProvider) TestConnection(ctx context.Context) error {
+	return testSFTPConnection(ctx, p.dialFn, sftpDialer{
+		Host:         p.host,
+		Port:         p.port,
+		Username:     p.username,
+		Password:     p.password,
+		ProviderType: p.providerType,
+	})
+}
+
 func (p *TriumphSFTPProvider) SubmitBatch(ctx context.Context, batch Batch, onProgress ProgressFunc) (SubmitResult, error) {
 	if err := batch.validate(); err != nil {
 		return SubmitResult{}, err

@@ -211,6 +211,26 @@ func TestNewProviderFromCredential_ReturnsRTSTest(t *testing.T) {
 	assert.Equal(t, rtsTestSFTPHost, p.host)
 }
 
+func TestTestConnection_DialsAndClosesWithoutUpload(t *testing.T) {
+	fake := &fakeUploader{}
+	p := newRTSProvider(t, fake)
+	require.NoError(t, p.TestConnection(context.Background()))
+	assert.True(t, fake.closed)
+	assert.Empty(t, fake.uploads)
+	assert.Empty(t, fake.dirs)
+	assert.Empty(t, fake.renames)
+}
+
+func TestTestConnection_PropagatesAuthError(t *testing.T) {
+	p := NewRTSSFTP(Credential{ProviderType: ProviderRTSSFTP, Username: "u", Password: "p"})
+	p.dialFn = func(ctx context.Context, d sftpDialer) (sftpUploader, error) {
+		return nil, &AuthError{ProviderType: d.ProviderType, Cause: errors.New("unable to authenticate")}
+	}
+	err := p.TestConnection(context.Background())
+	require.Error(t, err)
+	assert.True(t, IsAuthError(err))
+}
+
 func TestNewRTSSFTP_ProdHostIgnoresAccessKey(t *testing.T) {
 	t.Setenv("APP_ENV", "")
 	p := NewRTSSFTP(Credential{

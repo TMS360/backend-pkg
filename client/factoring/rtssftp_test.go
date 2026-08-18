@@ -219,7 +219,7 @@ func TestNewRTSSFTP_ProdHostIgnoresAccessKey(t *testing.T) {
 		Password:     "p",
 		AccessKey:    "ftp.evil.example",
 	})
-	assert.Equal(t, rtsSFTPHost, p.host)
+	assert.Equal(t, "ftps.rtsfinancial.com", p.host)
 	assert.Equal(t, ProviderRTSSFTP, p.providerType)
 }
 

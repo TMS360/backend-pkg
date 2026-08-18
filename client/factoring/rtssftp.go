@@ -20,7 +20,7 @@ import (
 // dev / stage / local (same allowlist as Triumph, separate variables so a
 // stage box can point the two providers at different sftpgo users).
 const (
-	rtsSFTPHost       = "ftps.financial.rtspro.com"
+	rtsSFTPHost       = "ftps.rtsfinancial.com"
 	rtsTestSFTPHost   = "ftps.rtsfinancial.com"
 	rtsSFTPPort       = 22
 	rtsSFTPInboundDir = "" // chrooted home dir; EnsureDir("") is a documented no-op

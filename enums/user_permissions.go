@@ -158,6 +158,24 @@ const (
 	// underlying accounting-view sees those columns as "—", never a raw number.
 	PermReportsRun    UserPermissionEnum = "reports_run"
 	PermReportsManage UserPermissionEnum = "reports_manage"
+
+	// PermMailView / PermMailSend / PermMailEdit gate backend-mail: view = read
+	// threads, messages and delivery status; send = compose, send, schedule and
+	// draft; edit = labels, folders, bulk organisation and the company's sending
+	// identity.
+	//
+	// FLAT, for the same reason as PermFileDeleteAny, and here the cost of
+	// getting it wrong is larger. A top-level `mail` module would be swept into
+	// ModulePermissionCodes, which SetDefaultRolePerms grants to EVERY role at
+	// signup — driver included — and HasPermission matches hierarchically, so
+	// holding "mail" would satisfy both "mail_view" and "mail_send". Every
+	// driver in every new tenant would get read access to the company's whole
+	// mailbox and the ability to send as the company. A flat code carries no
+	// dots, resolves by exact match, and is default-deny until someone grants
+	// it deliberately.
+	PermMailView UserPermissionEnum = "mail_view"
+	PermMailSend UserPermissionEnum = "mail_send"
+	PermMailEdit UserPermissionEnum = "mail_edit"
 )
 
 // PermissionCatalogEntry describes one row written to the permissions table.
@@ -307,6 +325,9 @@ var CustomPermissionCatalog = []CustomPermissionEntry{
 	{Code: string(PermFileDeleteAny), Label: "Delete any uploaded file"},
 	{Code: string(PermReportsRun), Label: "Run & export reports"},
 	{Code: string(PermReportsManage), Label: "Manage report configs & view report audit log"},
+	{Code: string(PermMailView), Label: "View mail"},
+	{Code: string(PermMailSend), Label: "Send mail"},
+	{Code: string(PermMailEdit), Label: "Manage mail (labels, folders, sending identity)"},
 }
 
 // CustomPermissionCodes returns just the flat custom permission codes, in

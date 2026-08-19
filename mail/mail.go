@@ -146,8 +146,16 @@ type Message struct {
 	HTML    string `json:"html,omitempty"`
 	Text    string `json:"text,omitempty"`
 
-	TemplateKey  string         `json:"template_key,omitempty"`
-	TemplateData map[string]any `json:"template_data,omitempty"`
+	// TemplateKey LABELS the message; it does not render it. The caller owns its
+	// templates and publishes the rendered Subject and HTML/Text above — the mail
+	// service stores this string so a batch of mail can be recognised later, and
+	// has no renderer of its own.
+	//
+	// There is deliberately no TemplateData beside it. It used to be here and was
+	// serialised into every Kafka payload, but backend-mail has no column for it
+	// and drops it on receipt — the field promised a diagnostic record that never
+	// existed anywhere.
+	TemplateKey string `json:"template_key,omitempty"`
 
 	Attachments []Attachment      `json:"attachments,omitempty"`
 	Links       []Link            `json:"links,omitempty"`
@@ -249,11 +257,18 @@ func (m Message) validate() error {
 			return fmt.Errorf("mail: recipient email is empty")
 		}
 	}
-	if m.Subject == "" && m.TemplateKey == "" {
-		return fmt.Errorf("mail: subject or template_key is required")
+	// TemplateKey does NOT satisfy either of these, despite its name.
+	//
+	// The mail service stores it as a label and renders nothing: the caller owns
+	// its own templates and publishes the rendered result. Accepting a bare
+	// template key here therefore produced a message with no subject and no body
+	// — validated, published, stored, and delivered empty. The name promised a
+	// renderer that does not exist on the other side.
+	if m.Subject == "" {
+		return fmt.Errorf("mail: subject is required")
 	}
-	if m.HTML == "" && m.Text == "" && m.TemplateKey == "" {
-		return fmt.Errorf("mail: html, text or template_key is required")
+	if m.HTML == "" && m.Text == "" {
+		return fmt.Errorf("mail: html or text is required (template_key is a label, not a renderer)")
 	}
 
 	for _, l := range m.Links {

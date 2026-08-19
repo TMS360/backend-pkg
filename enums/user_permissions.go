@@ -176,6 +176,28 @@ const (
 	PermMailView UserPermissionEnum = "mail_view"
 	PermMailSend UserPermissionEnum = "mail_send"
 	PermMailEdit UserPermissionEnum = "mail_edit"
+
+	// PermCallsView / PermCallsPlay gate the RingCentral call log (DEV-1753):
+	// view = the row (who called whom, when, on which company number); play =
+	// the audio RingCentral recorded.
+	//
+	// FLAT, for the same reason as PermMailView, and here the miss would be
+	// worse still. A top-level `calls` module would be swept into
+	// ModulePermissionCodes, which SetDefaultRolePerms grants to EVERY role at
+	// signup — driver included — and HasPermission matches hierarchically, so
+	// holding "calls" would satisfy both "calls_view" and "calls_play". Every
+	// driver in every tenant could listen to every dispatcher's conversations.
+	//
+	// The same trap is why the call log does NOT reuse
+	// settings.office_users.view: `settings` IS a top-level module in
+	// PermissionCatalog, so that code is already satisfied by every role in
+	// every tenant, driver included.
+	//
+	// The two are split on purpose: "Bob called at 15:04" is metadata, while the
+	// recording is a voice recording of a named person, and an office may
+	// reasonably want the first without the second.
+	PermCallsView UserPermissionEnum = "calls_view"
+	PermCallsPlay UserPermissionEnum = "calls_play"
 )
 
 // PermissionCatalogEntry describes one row written to the permissions table.
@@ -328,6 +350,8 @@ var CustomPermissionCatalog = []CustomPermissionEntry{
 	{Code: string(PermMailView), Label: "View mail"},
 	{Code: string(PermMailSend), Label: "Send mail"},
 	{Code: string(PermMailEdit), Label: "Manage mail (labels, folders, sending identity)"},
+	{Code: string(PermCallsView), Label: "View the call log"},
+	{Code: string(PermCallsPlay), Label: "Play call recordings"},
 }
 
 // CustomPermissionCodes returns just the flat custom permission codes, in
@@ -630,8 +654,13 @@ func DefaultRolePermissions() map[UserRoleEnum][]string {
 		// reports_run / reports_manage (BL-22 §22.1): the report builder is an
 		// admin + accounting capability. Both are flat custom perms, so every other
 		// role — including any external/portal (customer) role — is default-deny.
-		UserRoleAdmin:      withExtra(string(PermTripFinancialsEdit), string(PermTripReassignCommitted), string(PermFileDeleteAny), string(PermReportsRun), string(PermReportsManage)),
-		UserRoleManager:    withExtra(string(PermTripReassignCommitted), string(PermFileDeleteAny)),
+		// calls_view / calls_play (DEV-1753): the RingCentral call log is a
+		// dispatch-desk surface, so admin, manager and dispatcher get it. Driver
+		// gets NEITHER, deliberately — the log is a record of the office calling
+		// drivers, and a recording is a named person's voice. Keep it that way; if
+		// a tenant wants a wider audience, that is a custom role, not a default.
+		UserRoleAdmin:      withExtra(string(PermTripFinancialsEdit), string(PermTripReassignCommitted), string(PermFileDeleteAny), string(PermReportsRun), string(PermReportsManage), string(PermCallsView), string(PermCallsPlay)),
+		UserRoleManager:    withExtra(string(PermTripReassignCommitted), string(PermFileDeleteAny), string(PermCallsView), string(PermCallsPlay)),
 		UserRoleAccounting: withExtra(string(PermTripFinancialsEdit), string(PermReportsRun), string(PermReportsManage)),
 		UserRoleFleet:      withExtra(),
 		UserRoleSafety:     withExtra(),
@@ -641,7 +670,7 @@ func DefaultRolePermissions() map[UserRoleEnum][]string {
 		// reading the tenant audit log) are gated by role, not by a permission
 		// code, so there is nothing extra to seed here.
 		UserRoleAuditor:    withExtra(),
-		UserRoleDispatcher: withExtra(),
+		UserRoleDispatcher: withExtra(string(PermCallsView), string(PermCallsPlay)),
 		UserRoleDriver:     withExtra(),
 		UserRoleOther:      withExtra(),
 	}

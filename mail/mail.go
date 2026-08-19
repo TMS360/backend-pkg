@@ -150,10 +150,12 @@ type Message struct {
 	// templates and publishes the rendered Subject and HTML/Text above — the mail
 	// service stores this string so a batch of mail can be recognised later, and
 	// has no renderer of its own.
+	//
+	// There is deliberately no TemplateData beside it. It used to be here and was
+	// serialised into every Kafka payload, but backend-mail has no column for it
+	// and drops it on receipt — the field promised a diagnostic record that never
+	// existed anywhere.
 	TemplateKey string `json:"template_key,omitempty"`
-	// TemplateData travels with the message for the same diagnostic reason: it
-	// records what the caller rendered from. Nothing downstream renders it.
-	TemplateData map[string]any `json:"template_data,omitempty"`
 
 	Attachments []Attachment      `json:"attachments,omitempty"`
 	Links       []Link            `json:"links,omitempty"`

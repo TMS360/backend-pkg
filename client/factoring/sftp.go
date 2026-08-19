@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"os"
 	"path"
 	"strconv"
 	"strings"
@@ -142,7 +143,10 @@ func (c *sftpClient) EnsureDir(remoteDir string) error {
 // Returns the full remote path that was written.
 func (c *sftpClient) Upload(remoteDir, filename string, content []byte) (string, error) {
 	remotePath := path.Join(remoteDir, filename)
-	f, err := c.sftp.Create(remotePath)
+	// O_WRONLY, not sftp.Create (which is O_RDWR): RTS-style write-only drop
+	// boxes reject the READ flag with SSH_FX_OP_UNSUPPORTED. Nothing reads the
+	// handle back, so write-only is correct for every provider.
+	f, err := c.sftp.OpenFile(remotePath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC)
 	if err != nil {
 		return "", fmt.Errorf("factoring/sftp: create %s: %w", remotePath, err)
 	}

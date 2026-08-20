@@ -90,13 +90,13 @@ type NameLang struct {
 
 // RouteSpan is one slice of the polyline with attributes (HERE `return=spans`).
 type RouteSpan struct {
-	Offset           int        `json:"offset"`
-	Length           int        `json:"length,omitempty"`
-	Duration         int        `json:"duration,omitempty"`
-	Names            []NameLang `json:"names,omitempty"`
-	SpeedLimit       float64    `json:"speedLimit,omitempty"` // m/s
-	FunctionalClass  int        `json:"functionalClass,omitempty"`
-	CountryCode      string     `json:"countryCode,omitempty"`
+	Offset          int        `json:"offset"`
+	Length          int        `json:"length,omitempty"`
+	Duration        int        `json:"duration,omitempty"`
+	Names           []NameLang `json:"names,omitempty"`
+	SpeedLimit      float64    `json:"speedLimit,omitempty"` // m/s
+	FunctionalClass int        `json:"functionalClass,omitempty"`
+	CountryCode     string     `json:"countryCode,omitempty"`
 }
 
 // RouteNotice flags constraint violations or warnings (e.g. truck restriction).

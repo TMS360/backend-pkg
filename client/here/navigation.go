@@ -36,16 +36,16 @@ type TruckNavMultiStopRequest struct {
 
 // TruckNavResult is a parsed, navigation-ready route.
 type TruckNavResult struct {
-	RouteID                    string
-	DistanceMeters             int
-	DurationSeconds            int // with traffic
-	BaseDurationSeconds        int // without traffic
-	EstimatedArrival           time.Time
-	PolylineEncoded            string // raw HERE flexible polyline (first section)
-	PolylineDecoded            []DecodedCoordinate
-	Steps                      []NavStep
-	Notices                    []RouteNotice
-	Alternatives               []*TruckNavResult `json:",omitempty"`
+	RouteID             string
+	DistanceMeters      int
+	DurationSeconds     int // with traffic
+	BaseDurationSeconds int // without traffic
+	EstimatedArrival    time.Time
+	PolylineEncoded     string // raw HERE flexible polyline (first section)
+	PolylineDecoded     []DecodedCoordinate
+	Steps               []NavStep
+	Notices             []RouteNotice
+	Alternatives        []*TruckNavResult `json:",omitempty"`
 }
 
 // NavStep is one driver-facing maneuver, ready to render in a UI.

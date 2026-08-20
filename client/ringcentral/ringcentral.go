@@ -47,6 +47,20 @@ const (
 // credentials — a wrong client id/secret, or a JWT that was revoked or expired.
 var ErrInvalidCredentials = errors.New("ringcentral: invalid credentials")
 
+// ErrInsufficientPermissions means the credential authenticates perfectly well
+// but the RingCentral app itself was never granted the scope the call needs
+// (ReadCallLog, ReadCallRecording). It is a different problem from a revoked
+// credential and has a different fix: the app must be re-approved in the
+// RingCentral console with the scope added. Telling the tenant to "reconnect"
+// sends them to rotate secrets that were never wrong.
+//
+// Only FetchRecording distinguishes it today. The shared get helper still maps
+// 403 to ErrInvalidCredentials, because ListPhoneNumbers (DEV-1757) and the
+// Settings screen behind it classify on that sentinel and would fall through to
+// "RingCentral could not be reached" if a new one appeared underneath them.
+// Widening that is a change to DEV-1751/DEV-1757's own surface — its own ticket.
+var ErrInsufficientPermissions = errors.New("ringcentral: app is missing a required permission")
+
 // AuthError carries the rejected response so the caller can log the reason
 // (never the credential) when RingCentral refuses the token exchange.
 type AuthError struct {

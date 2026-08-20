@@ -912,6 +912,18 @@ message TollMatchRow {
   // exit_at is unset. It can be up to 18 days later than the crossing, so a row
   // resolved this way is always flagged in `reason`.
   google.protobuf.Timestamp post_date = 6;
+
+  // Which aggregator issued device_id.
+  //
+  // A transponder id alone does not identify a box — the PAIR does. Two
+  // aggregators can mint the same id string for two physically different
+  // transponders sitting on two different trucks, and a carrier can run both
+  // programmes at once, so matching on the bare id would collapse them.
+  //
+  // Empty means "match the id under any aggregator", which is what a caller
+  // predating this field sends; the server treats it as unconstrained rather
+  // than as no-match, so an older client keeps working.
+  string device_provider = 7;
 }
 
 message MatchTollRowsRequest {

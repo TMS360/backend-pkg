@@ -151,6 +151,23 @@ service LoadsService {
   // gRPC server runs without an AuthServerInterceptor, so there is no actor to
   // scope by), same contract as GetTripIDsByShipment / GetCustomerLoadStats.
   rpc ResolveTruckIDs(ResolveTruckIDsRequest) returns (filters.IDsResponse);
+
+  // ── Toll row → truck / trip matching (backend-accounting, DEV-1793) ──────
+  // Resolves a WHOLE ingested toll file in one call. A weekly PrePass export is
+  // 240-470 rows; a per-row RPC across a service boundary is the thing this
+  // exists to avoid.
+  //
+  // For each row it answers two questions: which truck does this crossing
+  // belong to (by toll device id, or by normalised plate when the plaza
+  // photographed the plate instead), and which trip covered the truck at that
+  // moment. It never guesses: two candidate trucks, or two trips covering the
+  // same moment, come back as "conflict" for a person to settle.
+  //
+  // Read-only — backend-load stores nothing and writes no device onto a truck.
+  // company_id is passed explicitly (backend-load's gRPC server runs without an
+  // AuthServerInterceptor, so there is no actor to scope by), same contract as
+  // ResolveTruckIDs / GetTripIDsByShipment / GetCustomerLoadStats.
+  rpc MatchTollRows(MatchTollRowsRequest) returns (MatchTollRowsResponse);
 }
 
 message DriverHasActiveTripRequest {
@@ -855,3 +872,97 @@ message PayBatchTrip {
   optional bool empty_miles_not_calculated = 29;
 }
 
+
+// ── Toll matching (DEV-1793) ────────────────────────────────────────────────
+
+// TollMatchRow is one toll-road crossing offered for resolution.
+message TollMatchRow {
+  // The caller's own handle for this row (toll_events.id, or the row hash when
+  // suggesting a device). Echoed back untouched — backend-load neither parses
+  // nor stores it.
+  string row_key = 1;
+
+  // The aggregator's transponder id, verbatim from the file. Empty when the
+  // plaza photographed the plate instead of reading a transponder. Leading
+  // zeros are significant: agency tag "01606029503" is not "1606029503".
+  string device_id = 2;
+
+  // The plate, ALREADY normalised by the caller through toll.NormalizePlate
+  // (leading state code and punctuation stripped). Empty unless the file's
+  // Read Type was Plate. Compared against normalize_plate(trucks.license_plate),
+  // the SQL twin of that function.
+  string plate = 3;
+
+  // The carrier's own truck number as printed in the file, already through
+  // toll.NormalizeTruckRef (leading zeros dropped, "N/A" and friends emptied).
+  //
+  // NEVER a match key — aggregators carry stale and foreign numbers here, and
+  // the ticket is explicit that it is a CHECK only. It is sent so the response
+  // can report whether it resolves to a truck, which is one of the four checks
+  // behind proposing a device id for a truck that has none. Matching MUST NOT
+  // consult it.
+  string truck_ref = 4;
+
+  // The plaza crossing time as printed in the file, which carries NO time zone
+  // — it is the PLAZA's wall clock, not the carrier's. Not an instant; the
+  // server widens it into a band. Unset when the file carried no exit time.
+  optional google.protobuf.Timestamp exit_at = 5;
+
+  // The aggregator's billing date. Used as a (far coarser) trip window when
+  // exit_at is unset. It can be up to 18 days later than the crossing, so a row
+  // resolved this way is always flagged in `reason`.
+  google.protobuf.Timestamp post_date = 6;
+}
+
+message MatchTollRowsRequest {
+  string company_id = 1;
+  repeated TollMatchRow rows = 2;
+}
+
+// TollMatchResult is the outcome for one row. `status` mirrors
+// backend-accounting's TollMatchStatus strings exactly, so the caller stores it
+// verbatim instead of keeping a mapping table in step with this file.
+message TollMatchResult {
+  string row_key = 1;
+
+  // Empty when no truck — or more than one — could be identified. Populated
+  // even when status is "unmatched" because no trip covered the crossing: the
+  // truck is still the best fact known about the row, and it is what a person
+  // needs in order to fix it.
+  string truck_id = 2;
+  // The fleet's own unit number for truck_id, so the caller can cross-check the
+  // file's "Truck ID" column. Empty when truck_id is empty. The cross-check
+  // never changes the match.
+  string truck_number = 3;
+
+  // Empty when no trip covers the crossing, or when more than one does.
+  string trip_id = 4;
+  string driver_id = 5;            // trips.main_driver_id
+  string secondary_driver_id = 6;  // trips.secondary_driver_id — team trips only
+
+  // "matched" | "unmatched" | "conflict".
+  string status = 7;
+  // Machine-readable why: "device" | "plate" | "device+plate" | "no_truck" |
+  // "two_trucks" | "no_trip" | "two_trips", suffixed with ";post_date" when the
+  // trip window came from post_date because the file carried no exit time.
+  string reason = 8;
+
+  // ── device-suggestion evidence ──────────────────────────────────────────
+  // Never used to match. These answer the "should we PROPOSE writing this
+  // device onto this truck" question in the same round trip, so the caller
+  // needs neither a second RPC nor a copy of the fleet in its own database.
+
+  // The truck whose unit number equals truck_ref, when EXACTLY one does.
+  // Empty for zero or for several — an ambiguous number is not evidence.
+  string truck_ref_truck_id = 9;
+  // The single trip of THAT truck covering the crossing. Empty for zero or for
+  // several.
+  string truck_ref_trip_id = 10;
+  // The truck device_id is already written on, if any. Non-empty means the
+  // device is taken and nothing should be proposed.
+  string device_owner_truck_id = 11;
+}
+
+message MatchTollRowsResponse {
+  repeated TollMatchResult results = 1;
+}

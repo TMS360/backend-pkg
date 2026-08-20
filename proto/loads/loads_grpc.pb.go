@@ -51,6 +51,7 @@ const (
 	LoadsService_GetTripIDsByShipment_FullMethodName        = "/loads.LoadsService/GetTripIDsByShipment"
 	LoadsService_GetCustomerLoadStats_FullMethodName        = "/loads.LoadsService/GetCustomerLoadStats"
 	LoadsService_ResolveTruckIDs_FullMethodName             = "/loads.LoadsService/ResolveTruckIDs"
+	LoadsService_MatchTollRows_FullMethodName               = "/loads.LoadsService/MatchTollRows"
 )
 
 // LoadsServiceClient is the client API for LoadsService service.
@@ -166,6 +167,22 @@ type LoadsServiceClient interface {
 	// gRPC server runs without an AuthServerInterceptor, so there is no actor to
 	// scope by), same contract as GetTripIDsByShipment / GetCustomerLoadStats.
 	ResolveTruckIDs(ctx context.Context, in *ResolveTruckIDsRequest, opts ...grpc.CallOption) (*filters.IDsResponse, error)
+	// ── Toll row → truck / trip matching (backend-accounting, DEV-1793) ──────
+	// Resolves a WHOLE ingested toll file in one call. A weekly PrePass export is
+	// 240-470 rows; a per-row RPC across a service boundary is the thing this
+	// exists to avoid.
+	//
+	// For each row it answers two questions: which truck does this crossing
+	// belong to (by toll device id, or by normalised plate when the plaza
+	// photographed the plate instead), and which trip covered the truck at that
+	// moment. It never guesses: two candidate trucks, or two trips covering the
+	// same moment, come back as "conflict" for a person to settle.
+	//
+	// Read-only — backend-load stores nothing and writes no device onto a truck.
+	// company_id is passed explicitly (backend-load's gRPC server runs without an
+	// AuthServerInterceptor, so there is no actor to scope by), same contract as
+	// ResolveTruckIDs / GetTripIDsByShipment / GetCustomerLoadStats.
+	MatchTollRows(ctx context.Context, in *MatchTollRowsRequest, opts ...grpc.CallOption) (*MatchTollRowsResponse, error)
 }
 
 type loadsServiceClient struct {
@@ -465,6 +482,16 @@ func (c *loadsServiceClient) ResolveTruckIDs(ctx context.Context, in *ResolveTru
 	return out, nil
 }
 
+func (c *loadsServiceClient) MatchTollRows(ctx context.Context, in *MatchTollRowsRequest, opts ...grpc.CallOption) (*MatchTollRowsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(MatchTollRowsResponse)
+	err := c.cc.Invoke(ctx, LoadsService_MatchTollRows_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // LoadsServiceServer is the server API for LoadsService service.
 // All implementations must embed UnimplementedLoadsServiceServer
 // for forward compatibility.
@@ -578,6 +605,22 @@ type LoadsServiceServer interface {
 	// gRPC server runs without an AuthServerInterceptor, so there is no actor to
 	// scope by), same contract as GetTripIDsByShipment / GetCustomerLoadStats.
 	ResolveTruckIDs(context.Context, *ResolveTruckIDsRequest) (*filters.IDsResponse, error)
+	// ── Toll row → truck / trip matching (backend-accounting, DEV-1793) ──────
+	// Resolves a WHOLE ingested toll file in one call. A weekly PrePass export is
+	// 240-470 rows; a per-row RPC across a service boundary is the thing this
+	// exists to avoid.
+	//
+	// For each row it answers two questions: which truck does this crossing
+	// belong to (by toll device id, or by normalised plate when the plaza
+	// photographed the plate instead), and which trip covered the truck at that
+	// moment. It never guesses: two candidate trucks, or two trips covering the
+	// same moment, come back as "conflict" for a person to settle.
+	//
+	// Read-only — backend-load stores nothing and writes no device onto a truck.
+	// company_id is passed explicitly (backend-load's gRPC server runs without an
+	// AuthServerInterceptor, so there is no actor to scope by), same contract as
+	// ResolveTruckIDs / GetTripIDsByShipment / GetCustomerLoadStats.
+	MatchTollRows(context.Context, *MatchTollRowsRequest) (*MatchTollRowsResponse, error)
 	mustEmbedUnimplementedLoadsServiceServer()
 }
 
@@ -671,6 +714,9 @@ func (UnimplementedLoadsServiceServer) GetCustomerLoadStats(context.Context, *Ge
 }
 func (UnimplementedLoadsServiceServer) ResolveTruckIDs(context.Context, *ResolveTruckIDsRequest) (*filters.IDsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ResolveTruckIDs not implemented")
+}
+func (UnimplementedLoadsServiceServer) MatchTollRows(context.Context, *MatchTollRowsRequest) (*MatchTollRowsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method MatchTollRows not implemented")
 }
 func (UnimplementedLoadsServiceServer) mustEmbedUnimplementedLoadsServiceServer() {}
 func (UnimplementedLoadsServiceServer) testEmbeddedByValue()                      {}
@@ -1190,6 +1236,24 @@ func _LoadsService_ResolveTruckIDs_Handler(srv interface{}, ctx context.Context,
 	return interceptor(ctx, in, info, handler)
 }
 
+func _LoadsService_MatchTollRows_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(MatchTollRowsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(LoadsServiceServer).MatchTollRows(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: LoadsService_MatchTollRows_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(LoadsServiceServer).MatchTollRows(ctx, req.(*MatchTollRowsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // LoadsService_ServiceDesc is the grpc.ServiceDesc for LoadsService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -1304,6 +1368,10 @@ var LoadsService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ResolveTruckIDs",
 			Handler:    _LoadsService_ResolveTruckIDs_Handler,
+		},
+		{
+			MethodName: "MatchTollRows",
+			Handler:    _LoadsService_MatchTollRows_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{

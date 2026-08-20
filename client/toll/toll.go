@@ -34,6 +34,7 @@ import (
 	"fmt"
 	"io"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/shopspring/decimal"
@@ -104,62 +105,146 @@ const (
 	TransportAPI  Transport = "api"
 )
 
+// TLSMode selects how an FTP connection is secured. Only meaningful for
+// TransportFTPS providers.
+type TLSMode string
+
+const (
+	// TLSNone is plain FTP with no encryption.
+	TLSNone TLSMode = ""
+	// TLSExplicit is FTPES: connect in the clear on the normal port, then
+	// upgrade with AUTH TLS. This is what most aggregators mean by "FTPS".
+	TLSExplicit TLSMode = "explicit"
+	// TLSImplicit is FTPS on a dedicated TLS-from-byte-zero port (usually 990).
+	TLSImplicit TLSMode = "implicit"
+)
+
 // Credential is the per-company connection config for one toll aggregator.
 //
 // Unlike factoring.Credential, transport config lives here rather than in
 // package constants: factoring has one endpoint shared by every carrier, while
-// each carrier is given its own host/folder by the toll aggregator. Host, Port
-// and Directory are ignored by providers whose Transport is TransportAPI.
+// each carrier is issued its own host and folder by the toll aggregator.
 //
-// Password is stored plaintext at rest, matching the existing convention for
-// vendor credentials in this project. It is masked on read at the GraphQL
-// layer; it is never logged here.
+// The struct deliberately carries the union of every transport's settings
+// rather than one shape per transport. Aggregators arrive over SFTP, FTP,
+// FTPS and HTTP APIs, and a union keeps the whole thing storable as a single
+// opaque blob: adding FTPS or an API provider later needs no database
+// migration, no new column and no change to the persistence layer. Each field
+// is documented with the transports that read it; everything else is ignored.
+//
+// Secret is stored plaintext at rest, matching the existing convention for
+// vendor credentials in this project. It is masked on read via Redacted() and
+// is never logged here.
 type Credential struct {
-	ProviderType ProviderType `json:"provider_type"`
+	ProviderType ProviderType `json:"provider_type,omitempty"`
+
 	// AccountName is the carrier's account label at the aggregator. Optional,
 	// but when set it is checked against the account printed in the file so a
 	// spreadsheet belonging to another carrier is rejected instead of ingested.
 	AccountName string `json:"account_name,omitempty"`
-	Host        string `json:"host,omitempty"`
-	Port        int    `json:"port,omitempty"`
-	Directory   string `json:"directory,omitempty"`
-	Username    string `json:"username,omitempty"`
-	Password    string `json:"password,omitempty"`
-	// APIKey is used by TransportAPI providers instead of Username/Password.
-	APIKey string `json:"api_key,omitempty"`
-	// HostKey is the expected SSH host key in authorized_keys form. Empty
-	// means "accept any key" — see the warning on sftpDialer.HostKeyCallback.
+
+	// Username is the principal: an SFTP/FTP login, an API key id, or an OAuth
+	// client id. Empty for aggregators that authenticate with a bare key.
+	Username string `json:"username,omitempty"`
+	// Secret is the one confidential field: a password, an API key, or an
+	// OAuth client secret. Whatever the transport calls it, it lives here so
+	// that exactly one field needs masking, rotating and keeping out of logs.
+	Secret string `json:"secret,omitempty"`
+
+	// Host, Port and Directory are read by the file transports — SFTP, FTP
+	// and FTPS. Port 0 means "the transport's default".
+	Host      string `json:"host,omitempty"`
+	Port      int    `json:"port,omitempty"`
+	Directory string `json:"directory,omitempty"`
+
+	// HostKey is read by SFTP only: the expected server key in
+	// authorized_keys form. Empty means "accept any key" — see the warning on
+	// sftpDialer.HostKey.
 	HostKey string `json:"host_key,omitempty"`
+
+	// TLSMode is read by FTPS only.
+	TLSMode TLSMode `json:"tls_mode,omitempty"`
+	// Passive is read by FTP and FTPS. Nil means the transport's default,
+	// which is passive mode — active mode needs an inbound port and almost
+	// never survives a container network.
+	Passive *bool `json:"passive,omitempty"`
+
+	// BaseURL is read by HTTP API transports. Usually left empty so the
+	// provider's own production endpoint is used; set it to point a company at
+	// a sandbox.
+	BaseURL string `json:"base_url,omitempty"`
+}
+
+// Redacted returns a copy safe to log or return over the wire: the secret is
+// replaced with a fixed marker rather than a length-preserving mask, so
+// nothing about it leaks. Presence is still observable — an empty secret stays
+// empty — because "is this configured?" is a legitimate question.
+func (c Credential) Redacted() Credential {
+	if c.Secret != "" {
+		c.Secret = "[REDACTED]"
+	}
+	return c
+}
+
+// Validate checks the credential against its provider's declared rules.
+func (c Credential) Validate() error {
+	if !c.ProviderType.IsValid() {
+		return fmt.Errorf("toll: unknown provider_type %q", c.ProviderType)
+	}
+	r := RulesFor(c.ProviderType)
+	if r.RequiresUsername && strings.TrimSpace(c.Username) == "" {
+		return fmt.Errorf("toll: %s credential missing username", c.ProviderType)
+	}
+	if r.RequiresSecret && c.Secret == "" {
+		return fmt.Errorf("toll: %s credential missing secret", c.ProviderType)
+	}
+	if r.RequiresBaseURL && strings.TrimSpace(c.BaseURL) == "" {
+		return fmt.Errorf("toll: %s credential missing base url", c.ProviderType)
+	}
+	// The host requirement is waived on non-production deployments, where the
+	// TEST_* override supplies our catcher folder instead of the real one.
+	if r.RequiresHost && strings.TrimSpace(c.Host) == "" && !isNonProdAppEnv() {
+		return fmt.Errorf("toll: %s credential missing host", c.ProviderType)
+	}
+	return nil
 }
 
 // Rules declares what a provider needs and what it can do, as data rather than
 // as a type switch at every call site — the same trick factoring/rules.go uses.
 // Callers ask RulesFor(pt) instead of branching on the concrete type.
+//
+// Requirements are per-provider rather than global on purpose. factoring's
+// registry demands a username AND a password from every provider, which would
+// reject an API-key-only aggregator outright; here each type states its own
+// needs, so adding one is a data change rather than surgery on shared code.
 type Rules struct {
-	Transport Transport
-	// RequiresUserPassword gates the username+password precondition. An API
-	// provider sets this false and RequiresAPIKey true instead. factoring's
-	// registry hardcodes the username+password check for every provider, which
-	// would reject a key-only vendor outright; here it is per-type.
-	RequiresUserPassword bool
-	RequiresAPIKey       bool
-	RequiresHost         bool
+	Transport        Transport
+	RequiresUsername bool
+	RequiresSecret   bool
+	RequiresHost     bool
+	RequiresBaseURL  bool
 	// FileExtensions the provider is willing to pick up from the folder,
-	// lowercase and dot-prefixed. Empty means "take anything".
+	// lowercase and dot-prefixed. Empty means "take anything", and is also
+	// what an API transport leaves it as.
 	FileExtensions []string
 }
 
 // RulesFor returns the declared rules for pt. The zero value — no
 // requirements, no transport — is returned for unknown types; callers should
 // have validated with IsValid first.
+//
+// Adding an aggregator: declare its ProviderType, add a case here describing
+// what it needs, write the impl, and register it in registry.go. Nothing else
+// in the stack — storage included — has to change.
 func RulesFor(pt ProviderType) Rules {
 	switch pt {
 	case ProviderPrePassSFTP:
 		return Rules{
-			Transport:            TransportSFTP,
-			RequiresUserPassword: true,
-			RequiresHost:         true,
-			FileExtensions:       []string{".xlsx", ".xls", ".csv"},
+			Transport:        TransportSFTP,
+			RequiresUsername: true,
+			RequiresSecret:   true,
+			RequiresHost:     true,
+			FileExtensions:   []string{".xlsx", ".xls", ".csv"},
 		}
 	default:
 		return Rules{}

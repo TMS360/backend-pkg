@@ -2,6 +2,7 @@ package toll
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"testing"
 	"time"
@@ -67,7 +68,7 @@ func newTestProvider() *PrePassSFTP {
 		ProviderType: ProviderPrePassSFTP,
 		Host:         "sftp.example.test",
 		Username:     "u",
-		Password:     "p",
+		Secret:       "p",
 		Directory:    "/inbound",
 	})
 }
@@ -550,7 +551,7 @@ func TestNewProviderFromCredential(t *testing.T) {
 		ProviderType: ProviderPrePassSFTP,
 		Host:         "sftp.example.test",
 		Username:     "u",
-		Password:     "p",
+		Secret:       "p",
 	})
 	require.NoError(t, err)
 	assert.NotNil(t, p)
@@ -563,10 +564,10 @@ func TestNewProviderFromCredential(t *testing.T) {
 		ProviderType: ProviderPrePassSFTP, Host: "h", Username: "u",
 	})
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "username/password")
+	assert.Contains(t, err.Error(), "missing secret")
 
 	_, err = NewProviderFromCredential(Credential{
-		ProviderType: ProviderPrePassSFTP, Username: "u", Password: "p",
+		ProviderType: ProviderPrePassSFTP, Username: "u", Secret: "p",
 	})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "missing host")
@@ -584,3 +585,79 @@ func TestProviderTypeUnmarshalGQLRejectsUnknown(t *testing.T) {
 // PrePassSFTP must satisfy Provider — the compile-time check that the read
 // contract is actually implemented.
 var _ Provider = (*PrePassSFTP)(nil)
+
+// ---------- credential shape ----------
+
+func TestCredential_RedactedHidesOnlyTheSecret(t *testing.T) {
+	c := Credential{
+		ProviderType: ProviderPrePassSFTP,
+		AccountName:  "516484",
+		Username:     "carrier",
+		Secret:       "hunter2",
+		Host:         "sftp.example.test",
+		Port:         22,
+		Directory:    "/inbound",
+	}
+	r := c.Redacted()
+
+	assert.Equal(t, "[REDACTED]", r.Secret)
+	assert.NotContains(t, r.Secret, "hunter2")
+	assert.Len(t, r.Secret, len("[REDACTED]"), "the marker must not leak the real length")
+	assert.Equal(t, c.Username, r.Username)
+	assert.Equal(t, c.Host, r.Host)
+	assert.Equal(t, "hunter2", c.Secret, "Redacted returns a copy and must not mutate the original")
+
+	// An unset secret stays unset, so callers can still tell "not configured"
+	// from "configured but hidden".
+	assert.Empty(t, Credential{}.Redacted().Secret)
+}
+
+// The credential is persisted as one opaque blob, so a provider on a transport
+// we have not written yet must not need a schema change. Only the fields a
+// transport actually uses may appear.
+func TestCredential_JSONOmitsUnusedTransportFields(t *testing.T) {
+	blob, err := json.Marshal(Credential{
+		ProviderType: ProviderPrePassSFTP,
+		Username:     "carrier",
+		Secret:       "s",
+		Host:         "sftp.example.test",
+		Directory:    "/inbound",
+	})
+	require.NoError(t, err)
+
+	for _, unused := range []string{"base_url", "tls_mode", "passive", "port", "host_key", "account_name"} {
+		assert.NotContains(t, string(blob), unused,
+			"an SFTP credential must not carry other transports' fields")
+	}
+
+	// ...and a future FTPS credential round-trips through the same blob with
+	// no migration: the fields simply appear.
+	passive := true
+	ftps := Credential{
+		ProviderType: ProviderPrePassSFTP,
+		Username:     "u", Secret: "s", Host: "h",
+		TLSMode: TLSExplicit, Passive: &passive,
+	}
+	blob, err = json.Marshal(ftps)
+	require.NoError(t, err)
+
+	var back Credential
+	require.NoError(t, json.Unmarshal(blob, &back))
+	assert.Equal(t, TLSExplicit, back.TLSMode)
+	require.NotNil(t, back.Passive)
+	assert.True(t, *back.Passive)
+}
+
+func TestRulesFor_DrivesValidationPerProvider(t *testing.T) {
+	r := RulesFor(ProviderPrePassSFTP)
+	assert.Equal(t, TransportSFTP, r.Transport)
+	assert.True(t, r.RequiresUsername)
+	assert.True(t, r.RequiresSecret)
+	assert.True(t, r.RequiresHost)
+	assert.False(t, r.RequiresBaseURL, "a folder provider has no base url")
+
+	// An unknown type demands nothing, so callers must gate on IsValid first —
+	// which Validate does.
+	assert.Equal(t, Rules{}, RulesFor("ezpass_ftps"))
+	assert.Error(t, Credential{ProviderType: "ezpass_ftps"}.Validate())
+}

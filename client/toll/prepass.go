@@ -114,7 +114,7 @@ func NewPrePassSFTP(cred Credential) *PrePassSFTP {
 		port:        port,
 		directory:   dir,
 		username:    cred.Username,
-		password:    cred.Password,
+		password:    cred.Secret,
 		hostKey:     cred.HostKey,
 		accountName: strings.TrimSpace(cred.AccountName),
 		dialFn:      defaultSFTPDial,

@@ -5157,9 +5157,20 @@ type TollMatchRow struct {
 	// The aggregator's billing date. Used as a (far coarser) trip window when
 	// exit_at is unset. It can be up to 18 days later than the crossing, so a row
 	// resolved this way is always flagged in `reason`.
-	PostDate      *timestamppb.Timestamp `protobuf:"bytes,6,opt,name=post_date,json=postDate,proto3" json:"post_date,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	PostDate *timestamppb.Timestamp `protobuf:"bytes,6,opt,name=post_date,json=postDate,proto3" json:"post_date,omitempty"`
+	// Which aggregator issued device_id.
+	//
+	// A transponder id alone does not identify a box — the PAIR does. Two
+	// aggregators can mint the same id string for two physically different
+	// transponders sitting on two different trucks, and a carrier can run both
+	// programmes at once, so matching on the bare id would collapse them.
+	//
+	// Empty means "match the id under any aggregator", which is what a caller
+	// predating this field sends; the server treats it as unconstrained rather
+	// than as no-match, so an older client keeps working.
+	DeviceProvider string `protobuf:"bytes,7,opt,name=device_provider,json=deviceProvider,proto3" json:"device_provider,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *TollMatchRow) Reset() {
@@ -5232,6 +5243,13 @@ func (x *TollMatchRow) GetPostDate() *timestamppb.Timestamp {
 		return x.PostDate
 	}
 	return nil
+}
+
+func (x *TollMatchRow) GetDeviceProvider() string {
+	if x != nil {
+		return x.DeviceProvider
+	}
+	return ""
 }
 
 type MatchTollRowsRequest struct {
@@ -5937,14 +5955,15 @@ const file_loads_loads_proto_rawDesc = "" +
 	"\x14_secondary_driver_idB\v\n" +
 	"\t_truck_idB\x11\n" +
 	"\x0f_parent_trip_idB\x1d\n" +
-	"\x1b_empty_miles_not_calculated\"\xf6\x01\n" +
+	"\x1b_empty_miles_not_calculated\"\x9f\x02\n" +
 	"\fTollMatchRow\x12\x17\n" +
 	"\arow_key\x18\x01 \x01(\tR\x06rowKey\x12\x1b\n" +
 	"\tdevice_id\x18\x02 \x01(\tR\bdeviceId\x12\x14\n" +
 	"\x05plate\x18\x03 \x01(\tR\x05plate\x12\x1b\n" +
 	"\ttruck_ref\x18\x04 \x01(\tR\btruckRef\x128\n" +
 	"\aexit_at\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampH\x00R\x06exitAt\x88\x01\x01\x127\n" +
-	"\tpost_date\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\bpostDateB\n" +
+	"\tpost_date\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\bpostDate\x12'\n" +
+	"\x0fdevice_provider\x18\a \x01(\tR\x0edeviceProviderB\n" +
 	"\n" +
 	"\b_exit_at\"^\n" +
 	"\x14MatchTollRowsRequest\x12\x1d\n" +

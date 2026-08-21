@@ -636,7 +636,7 @@ func DefaultRolePermissions() map[UserRoleEnum][]string {
 		out = append(out, extra...)
 		return out
 	}
-	return map[UserRoleEnum][]string{
+	out := map[UserRoleEnum][]string{
 		// DEV-1256 / BL §7.5: hand-editing trip miles & gross rate
 		// (trip_financials_edit) is held by default by admin and accounting only.
 		// A regular dispatcher does NOT get it (a custom role may add it later).
@@ -674,4 +674,14 @@ func DefaultRolePermissions() map[UserRoleEnum][]string {
 		UserRoleDriver:     withExtra(),
 		UserRoleOther:      withExtra(),
 	}
+
+	// DEV-1824 / BL-4 §4.17: Track & Trace is defined as "whatever dispatcher
+	// gets". Deriving it from the dispatcher entry instead of repeating the
+	// literal means the two sets can never drift — a perm added to dispatcher
+	// tomorrow is inherited here for free, which is the whole contract of the
+	// role. (The exclusion from Teams comes from the NAME, not from the perms:
+	// tms-teams matches the literal "dispatcher".)
+	out[UserRoleTrackAndTrace] = append([]string(nil), out[UserRoleDispatcher]...)
+
+	return out
 }

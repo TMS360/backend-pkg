@@ -14,9 +14,16 @@ const (
 	UserRoleHr         UserRoleEnum = "hr"
 	UserRoleAuditor    UserRoleEnum = "auditor"
 	UserRoleDispatcher UserRoleEnum = "dispatcher"
-	UserRoleDriver     UserRoleEnum = "driver"
-	UserRoleCustomer   UserRoleEnum = "customer"
-	UserRoleOther      UserRoleEnum = "other"
+	// UserRoleTrackAndTrace (DEV-1824, BL-4 §4.17) is a dispatcher-equivalent
+	// office role for Track & Trace staff. It exists precisely BECAUSE it is not
+	// named "dispatcher": tms-teams reacts to the dispatcher role name by
+	// creating a team and listing the user in the "add dispatcher to team"
+	// pickers, and Track & Trace staff belong in neither. The name string is
+	// therefore part of the contract — renaming it silently changes access.
+	UserRoleTrackAndTrace UserRoleEnum = "track_and_trace"
+	UserRoleDriver        UserRoleEnum = "driver"
+	UserRoleCustomer      UserRoleEnum = "customer"
+	UserRoleOther         UserRoleEnum = "other"
 )
 
 // String implements the fmt.Stringer interface
@@ -40,6 +47,8 @@ func (s UserRoleEnum) String() string {
 		return "auditor"
 	case UserRoleDispatcher:
 		return "dispatcher"
+	case UserRoleTrackAndTrace:
+		return "track_and_trace"
 	case UserRoleDriver:
 		return "driver"
 	case UserRoleCustomer:
@@ -54,7 +63,7 @@ func (s UserRoleEnum) String() string {
 // IsValid checks if the status is a known value
 func (s UserRoleEnum) IsValid() bool {
 	switch s {
-	case UserRoleSuperAdmin, UserRoleAdmin, UserRoleManager, UserRoleAccounting, UserRoleSafety, UserRoleFleet, UserRoleHr, UserRoleAuditor, UserRoleDispatcher, UserRoleDriver, UserRoleCustomer, UserRoleOther:
+	case UserRoleSuperAdmin, UserRoleAdmin, UserRoleManager, UserRoleAccounting, UserRoleSafety, UserRoleFleet, UserRoleHr, UserRoleAuditor, UserRoleDispatcher, UserRoleTrackAndTrace, UserRoleDriver, UserRoleCustomer, UserRoleOther:
 		return true
 	default:
 		return false
@@ -81,8 +90,13 @@ var UserRoleHierarchy = map[UserRoleEnum]int32{
 	// the separation of duties an auditor should have.
 	UserRoleAuditor:    3,
 	UserRoleDispatcher: 3,
-	UserRoleDriver:     4,
-	UserRoleOther:      4,
+	// DEV-1824: Track & Trace has the dispatcher's authority, so it shares the
+	// dispatcher's band — anything else would make the two roles behave
+	// differently in the strictly-below check of createUser /
+	// assignPermissionsTo*.
+	UserRoleTrackAndTrace: 3,
+	UserRoleDriver:        4,
+	UserRoleOther:         4,
 }
 
 // EffectiveHierarchy returns min(hierarchy) across the given role names.

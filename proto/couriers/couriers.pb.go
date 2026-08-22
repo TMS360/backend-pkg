@@ -489,6 +489,109 @@ func (x *UserInfo) GetPhoneSecond() string {
 	return ""
 }
 
+type GetDriverTypesAtRequest struct {
+	state   protoimpl.MessageState `protogen:"open.v1"`
+	UserIds []string               `protobuf:"bytes,1,rep,name=user_ids,json=userIds,proto3" json:"user_ids,omitempty"`
+	// Calendar day the type is asked about, "YYYY-MM-DD". A DATE, never an
+	// instant: an employment model starts on a day, and shipping a timestamp
+	// would make the answer depend on whose timezone parsed it.
+	Date          string `protobuf:"bytes,2,opt,name=date,proto3" json:"date,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetDriverTypesAtRequest) Reset() {
+	*x = GetDriverTypesAtRequest{}
+	mi := &file_couriers_couriers_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetDriverTypesAtRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetDriverTypesAtRequest) ProtoMessage() {}
+
+func (x *GetDriverTypesAtRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_couriers_couriers_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetDriverTypesAtRequest.ProtoReflect.Descriptor instead.
+func (*GetDriverTypesAtRequest) Descriptor() ([]byte, []int) {
+	return file_couriers_couriers_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *GetDriverTypesAtRequest) GetUserIds() []string {
+	if x != nil {
+		return x.UserIds
+	}
+	return nil
+}
+
+func (x *GetDriverTypesAtRequest) GetDate() string {
+	if x != nil {
+		return x.Date
+	}
+	return ""
+}
+
+type GetDriverTypesAtResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// user_id -> enums.DriverOwnership code (1..6). A driver with no period
+	// covering `date` is ABSENT from the map rather than present as 0: "we do not
+	// know this driver's type that day" and "the type is unset" price
+	// differently, and collapsing them would silently charge someone.
+	DriverTypes   map[string]int32 `protobuf:"bytes,1,rep,name=driver_types,json=driverTypes,proto3" json:"driver_types,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"varint,2,opt,name=value"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetDriverTypesAtResponse) Reset() {
+	*x = GetDriverTypesAtResponse{}
+	mi := &file_couriers_couriers_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetDriverTypesAtResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetDriverTypesAtResponse) ProtoMessage() {}
+
+func (x *GetDriverTypesAtResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_couriers_couriers_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetDriverTypesAtResponse.ProtoReflect.Descriptor instead.
+func (*GetDriverTypesAtResponse) Descriptor() ([]byte, []int) {
+	return file_couriers_couriers_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *GetDriverTypesAtResponse) GetDriverTypes() map[string]int32 {
+	if x != nil {
+		return x.DriverTypes
+	}
+	return nil
+}
+
 type ListOfficeUsersRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	CompanyId     string                 `protobuf:"bytes,1,opt,name=company_id,json=companyId,proto3" json:"company_id,omitempty"`
@@ -498,7 +601,7 @@ type ListOfficeUsersRequest struct {
 
 func (x *ListOfficeUsersRequest) Reset() {
 	*x = ListOfficeUsersRequest{}
-	mi := &file_couriers_couriers_proto_msgTypes[7]
+	mi := &file_couriers_couriers_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -510,7 +613,7 @@ func (x *ListOfficeUsersRequest) String() string {
 func (*ListOfficeUsersRequest) ProtoMessage() {}
 
 func (x *ListOfficeUsersRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_couriers_couriers_proto_msgTypes[7]
+	mi := &file_couriers_couriers_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -523,7 +626,7 @@ func (x *ListOfficeUsersRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListOfficeUsersRequest.ProtoReflect.Descriptor instead.
 func (*ListOfficeUsersRequest) Descriptor() ([]byte, []int) {
-	return file_couriers_couriers_proto_rawDescGZIP(), []int{7}
+	return file_couriers_couriers_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *ListOfficeUsersRequest) GetCompanyId() string {
@@ -542,7 +645,7 @@ type ListOfficeUsersResponse struct {
 
 func (x *ListOfficeUsersResponse) Reset() {
 	*x = ListOfficeUsersResponse{}
-	mi := &file_couriers_couriers_proto_msgTypes[8]
+	mi := &file_couriers_couriers_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -554,7 +657,7 @@ func (x *ListOfficeUsersResponse) String() string {
 func (*ListOfficeUsersResponse) ProtoMessage() {}
 
 func (x *ListOfficeUsersResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_couriers_couriers_proto_msgTypes[8]
+	mi := &file_couriers_couriers_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -567,7 +670,7 @@ func (x *ListOfficeUsersResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListOfficeUsersResponse.ProtoReflect.Descriptor instead.
 func (*ListOfficeUsersResponse) Descriptor() ([]byte, []int) {
-	return file_couriers_couriers_proto_rawDescGZIP(), []int{8}
+	return file_couriers_couriers_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *ListOfficeUsersResponse) GetUserIds() []string {
@@ -592,7 +695,7 @@ type ListDriversRequest struct {
 
 func (x *ListDriversRequest) Reset() {
 	*x = ListDriversRequest{}
-	mi := &file_couriers_couriers_proto_msgTypes[9]
+	mi := &file_couriers_couriers_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -604,7 +707,7 @@ func (x *ListDriversRequest) String() string {
 func (*ListDriversRequest) ProtoMessage() {}
 
 func (x *ListDriversRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_couriers_couriers_proto_msgTypes[9]
+	mi := &file_couriers_couriers_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -617,7 +720,7 @@ func (x *ListDriversRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListDriversRequest.ProtoReflect.Descriptor instead.
 func (*ListDriversRequest) Descriptor() ([]byte, []int) {
-	return file_couriers_couriers_proto_rawDescGZIP(), []int{9}
+	return file_couriers_couriers_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *ListDriversRequest) GetCompanyId() string {
@@ -643,7 +746,7 @@ type ListDriversResponse struct {
 
 func (x *ListDriversResponse) Reset() {
 	*x = ListDriversResponse{}
-	mi := &file_couriers_couriers_proto_msgTypes[10]
+	mi := &file_couriers_couriers_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -655,7 +758,7 @@ func (x *ListDriversResponse) String() string {
 func (*ListDriversResponse) ProtoMessage() {}
 
 func (x *ListDriversResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_couriers_couriers_proto_msgTypes[10]
+	mi := &file_couriers_couriers_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -668,7 +771,7 @@ func (x *ListDriversResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListDriversResponse.ProtoReflect.Descriptor instead.
 func (*ListDriversResponse) Descriptor() ([]byte, []int) {
-	return file_couriers_couriers_proto_rawDescGZIP(), []int{10}
+	return file_couriers_couriers_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *ListDriversResponse) GetUserIds() []string {
@@ -689,7 +792,7 @@ type ListUserFilesRequest struct {
 
 func (x *ListUserFilesRequest) Reset() {
 	*x = ListUserFilesRequest{}
-	mi := &file_couriers_couriers_proto_msgTypes[11]
+	mi := &file_couriers_couriers_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -701,7 +804,7 @@ func (x *ListUserFilesRequest) String() string {
 func (*ListUserFilesRequest) ProtoMessage() {}
 
 func (x *ListUserFilesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_couriers_couriers_proto_msgTypes[11]
+	mi := &file_couriers_couriers_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -714,7 +817,7 @@ func (x *ListUserFilesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListUserFilesRequest.ProtoReflect.Descriptor instead.
 func (*ListUserFilesRequest) Descriptor() ([]byte, []int) {
-	return file_couriers_couriers_proto_rawDescGZIP(), []int{11}
+	return file_couriers_couriers_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *ListUserFilesRequest) GetEntityType() string {
@@ -751,7 +854,7 @@ type UserFile struct {
 
 func (x *UserFile) Reset() {
 	*x = UserFile{}
-	mi := &file_couriers_couriers_proto_msgTypes[12]
+	mi := &file_couriers_couriers_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -763,7 +866,7 @@ func (x *UserFile) String() string {
 func (*UserFile) ProtoMessage() {}
 
 func (x *UserFile) ProtoReflect() protoreflect.Message {
-	mi := &file_couriers_couriers_proto_msgTypes[12]
+	mi := &file_couriers_couriers_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -776,7 +879,7 @@ func (x *UserFile) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UserFile.ProtoReflect.Descriptor instead.
 func (*UserFile) Descriptor() ([]byte, []int) {
-	return file_couriers_couriers_proto_rawDescGZIP(), []int{12}
+	return file_couriers_couriers_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *UserFile) GetId() string {
@@ -865,7 +968,7 @@ type ListUserFilesResponse struct {
 
 func (x *ListUserFilesResponse) Reset() {
 	*x = ListUserFilesResponse{}
-	mi := &file_couriers_couriers_proto_msgTypes[13]
+	mi := &file_couriers_couriers_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -877,7 +980,7 @@ func (x *ListUserFilesResponse) String() string {
 func (*ListUserFilesResponse) ProtoMessage() {}
 
 func (x *ListUserFilesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_couriers_couriers_proto_msgTypes[13]
+	mi := &file_couriers_couriers_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -890,7 +993,7 @@ func (x *ListUserFilesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListUserFilesResponse.ProtoReflect.Descriptor instead.
 func (*ListUserFilesResponse) Descriptor() ([]byte, []int) {
-	return file_couriers_couriers_proto_rawDescGZIP(), []int{13}
+	return file_couriers_couriers_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *ListUserFilesResponse) GetFiles() []*UserFile {
@@ -934,7 +1037,15 @@ const file_couriers_couriers_proto_rawDesc = "" +
 	"\x05email\x18\x03 \x01(\tR\x05email\x12)\n" +
 	"\x10driver_ownership\x18\x04 \x01(\x05R\x0fdriverOwnership\x12\x14\n" +
 	"\x05phone\x18\x05 \x01(\tR\x05phone\x12!\n" +
-	"\fphone_second\x18\x06 \x01(\tR\vphoneSecond\"7\n" +
+	"\fphone_second\x18\x06 \x01(\tR\vphoneSecond\"H\n" +
+	"\x17GetDriverTypesAtRequest\x12\x19\n" +
+	"\buser_ids\x18\x01 \x03(\tR\auserIds\x12\x12\n" +
+	"\x04date\x18\x02 \x01(\tR\x04date\"\xb2\x01\n" +
+	"\x18GetDriverTypesAtResponse\x12V\n" +
+	"\fdriver_types\x18\x01 \x03(\v23.couriers.GetDriverTypesAtResponse.DriverTypesEntryR\vdriverTypes\x1a>\n" +
+	"\x10DriverTypesEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\x05R\x05value:\x028\x01\"7\n" +
 	"\x16ListOfficeUsersRequest\x12\x1d\n" +
 	"\n" +
 	"company_id\x18\x01 \x01(\tR\tcompanyId\"4\n" +
@@ -977,7 +1088,7 @@ const file_couriers_couriers_proto_rawDesc = "" +
 	"\x1dRESOLUTION_SOURCE_NAMED_USERS\x10\x01\x12\"\n" +
 	"\x1eRESOLUTION_SOURCE_ROLE_DEFAULT\x10\x02\x12\"\n" +
 	"\x1eRESOLUTION_SOURCE_TENANT_ADMIN\x10\x03\x12\x1a\n" +
-	"\x16RESOLUTION_SOURCE_NONE\x10\x042\xc0\x04\n" +
+	"\x16RESOLUTION_SOURCE_NONE\x10\x042\x9b\x05\n" +
 	"\x0fCouriersService\x12D\n" +
 	"\vUpdateCache\x12\x16.google.protobuf.Empty\x1a\x1d.couriers.UpdateCacheResponse\x12P\n" +
 	"\rGetUsersByIds\x12\x1e.couriers.GetUsersByIdsRequest\x1a\x1f.couriers.GetUsersByIdsResponse\x128\n" +
@@ -986,7 +1097,8 @@ const file_couriers_couriers_proto_rawDesc = "" +
 	"\x0fListOfficeUsers\x12 .couriers.ListOfficeUsersRequest\x1a!.couriers.ListOfficeUsersResponse\x12J\n" +
 	"\vListDrivers\x12\x1c.couriers.ListDriversRequest\x1a\x1d.couriers.ListDriversResponse\x12P\n" +
 	"\rListUserFiles\x12\x1e.couriers.ListUserFilesRequest\x1a\x1f.couriers.ListUserFilesResponse\x12e\n" +
-	"\x14GetUsersByPermission\x12%.couriers.GetUsersByPermissionRequest\x1a&.couriers.GetUsersByPermissionResponseB.Z,github.com/TMS360/backend-pkg/proto/couriersb\x06proto3"
+	"\x14GetUsersByPermission\x12%.couriers.GetUsersByPermissionRequest\x1a&.couriers.GetUsersByPermissionResponse\x12Y\n" +
+	"\x10GetDriverTypesAt\x12!.couriers.GetDriverTypesAtRequest\x1a\".couriers.GetDriverTypesAtResponseB.Z,github.com/TMS360/backend-pkg/proto/couriersb\x06proto3"
 
 var (
 	file_couriers_couriers_proto_rawDescOnce sync.Once
@@ -1001,7 +1113,7 @@ func file_couriers_couriers_proto_rawDescGZIP() []byte {
 }
 
 var file_couriers_couriers_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_couriers_couriers_proto_msgTypes = make([]protoimpl.MessageInfo, 14)
+var file_couriers_couriers_proto_msgTypes = make([]protoimpl.MessageInfo, 17)
 var file_couriers_couriers_proto_goTypes = []any{
 	(ResolutionSource)(0),                // 0: couriers.ResolutionSource
 	(*GetUsersByPermissionRequest)(nil),  // 1: couriers.GetUsersByPermissionRequest
@@ -1011,44 +1123,50 @@ var file_couriers_couriers_proto_goTypes = []any{
 	(*GetUsersByIdsRequest)(nil),         // 5: couriers.GetUsersByIdsRequest
 	(*GetUsersByIdsResponse)(nil),        // 6: couriers.GetUsersByIdsResponse
 	(*UserInfo)(nil),                     // 7: couriers.UserInfo
-	(*ListOfficeUsersRequest)(nil),       // 8: couriers.ListOfficeUsersRequest
-	(*ListOfficeUsersResponse)(nil),      // 9: couriers.ListOfficeUsersResponse
-	(*ListDriversRequest)(nil),           // 10: couriers.ListDriversRequest
-	(*ListDriversResponse)(nil),          // 11: couriers.ListDriversResponse
-	(*ListUserFilesRequest)(nil),         // 12: couriers.ListUserFilesRequest
-	(*UserFile)(nil),                     // 13: couriers.UserFile
-	(*ListUserFilesResponse)(nil),        // 14: couriers.ListUserFilesResponse
-	(*filters.StringFilter)(nil),         // 15: filters.StringFilter
-	(*emptypb.Empty)(nil),                // 16: google.protobuf.Empty
-	(*filters.IDsResponse)(nil),          // 17: filters.IDsResponse
+	(*GetDriverTypesAtRequest)(nil),      // 8: couriers.GetDriverTypesAtRequest
+	(*GetDriverTypesAtResponse)(nil),     // 9: couriers.GetDriverTypesAtResponse
+	(*ListOfficeUsersRequest)(nil),       // 10: couriers.ListOfficeUsersRequest
+	(*ListOfficeUsersResponse)(nil),      // 11: couriers.ListOfficeUsersResponse
+	(*ListDriversRequest)(nil),           // 12: couriers.ListDriversRequest
+	(*ListDriversResponse)(nil),          // 13: couriers.ListDriversResponse
+	(*ListUserFilesRequest)(nil),         // 14: couriers.ListUserFilesRequest
+	(*UserFile)(nil),                     // 15: couriers.UserFile
+	(*ListUserFilesResponse)(nil),        // 16: couriers.ListUserFilesResponse
+	nil,                                  // 17: couriers.GetDriverTypesAtResponse.DriverTypesEntry
+	(*filters.StringFilter)(nil),         // 18: filters.StringFilter
+	(*emptypb.Empty)(nil),                // 19: google.protobuf.Empty
+	(*filters.IDsResponse)(nil),          // 20: filters.IDsResponse
 }
 var file_couriers_couriers_proto_depIdxs = []int32{
 	0,  // 0: couriers.GetUsersByPermissionResponse.source:type_name -> couriers.ResolutionSource
-	15, // 1: couriers.UserFilter.name:type_name -> filters.StringFilter
-	15, // 2: couriers.UserFilter.email:type_name -> filters.StringFilter
-	15, // 3: couriers.UserFilter.phone:type_name -> filters.StringFilter
-	15, // 4: couriers.UserFilter.role:type_name -> filters.StringFilter
+	18, // 1: couriers.UserFilter.name:type_name -> filters.StringFilter
+	18, // 2: couriers.UserFilter.email:type_name -> filters.StringFilter
+	18, // 3: couriers.UserFilter.phone:type_name -> filters.StringFilter
+	18, // 4: couriers.UserFilter.role:type_name -> filters.StringFilter
 	7,  // 5: couriers.GetUsersByIdsResponse.users:type_name -> couriers.UserInfo
-	13, // 6: couriers.ListUserFilesResponse.files:type_name -> couriers.UserFile
-	16, // 7: couriers.CouriersService.UpdateCache:input_type -> google.protobuf.Empty
-	5,  // 8: couriers.CouriersService.GetUsersByIds:input_type -> couriers.GetUsersByIdsRequest
-	3,  // 9: couriers.CouriersService.ResolveIDs:input_type -> couriers.UserFilter
-	8,  // 10: couriers.CouriersService.ListOfficeUsers:input_type -> couriers.ListOfficeUsersRequest
-	10, // 11: couriers.CouriersService.ListDrivers:input_type -> couriers.ListDriversRequest
-	12, // 12: couriers.CouriersService.ListUserFiles:input_type -> couriers.ListUserFilesRequest
-	1,  // 13: couriers.CouriersService.GetUsersByPermission:input_type -> couriers.GetUsersByPermissionRequest
-	4,  // 14: couriers.CouriersService.UpdateCache:output_type -> couriers.UpdateCacheResponse
-	6,  // 15: couriers.CouriersService.GetUsersByIds:output_type -> couriers.GetUsersByIdsResponse
-	17, // 16: couriers.CouriersService.ResolveIDs:output_type -> filters.IDsResponse
-	9,  // 17: couriers.CouriersService.ListOfficeUsers:output_type -> couriers.ListOfficeUsersResponse
-	11, // 18: couriers.CouriersService.ListDrivers:output_type -> couriers.ListDriversResponse
-	14, // 19: couriers.CouriersService.ListUserFiles:output_type -> couriers.ListUserFilesResponse
-	2,  // 20: couriers.CouriersService.GetUsersByPermission:output_type -> couriers.GetUsersByPermissionResponse
-	14, // [14:21] is the sub-list for method output_type
-	7,  // [7:14] is the sub-list for method input_type
-	7,  // [7:7] is the sub-list for extension type_name
-	7,  // [7:7] is the sub-list for extension extendee
-	0,  // [0:7] is the sub-list for field type_name
+	17, // 6: couriers.GetDriverTypesAtResponse.driver_types:type_name -> couriers.GetDriverTypesAtResponse.DriverTypesEntry
+	15, // 7: couriers.ListUserFilesResponse.files:type_name -> couriers.UserFile
+	19, // 8: couriers.CouriersService.UpdateCache:input_type -> google.protobuf.Empty
+	5,  // 9: couriers.CouriersService.GetUsersByIds:input_type -> couriers.GetUsersByIdsRequest
+	3,  // 10: couriers.CouriersService.ResolveIDs:input_type -> couriers.UserFilter
+	10, // 11: couriers.CouriersService.ListOfficeUsers:input_type -> couriers.ListOfficeUsersRequest
+	12, // 12: couriers.CouriersService.ListDrivers:input_type -> couriers.ListDriversRequest
+	14, // 13: couriers.CouriersService.ListUserFiles:input_type -> couriers.ListUserFilesRequest
+	1,  // 14: couriers.CouriersService.GetUsersByPermission:input_type -> couriers.GetUsersByPermissionRequest
+	8,  // 15: couriers.CouriersService.GetDriverTypesAt:input_type -> couriers.GetDriverTypesAtRequest
+	4,  // 16: couriers.CouriersService.UpdateCache:output_type -> couriers.UpdateCacheResponse
+	6,  // 17: couriers.CouriersService.GetUsersByIds:output_type -> couriers.GetUsersByIdsResponse
+	20, // 18: couriers.CouriersService.ResolveIDs:output_type -> filters.IDsResponse
+	11, // 19: couriers.CouriersService.ListOfficeUsers:output_type -> couriers.ListOfficeUsersResponse
+	13, // 20: couriers.CouriersService.ListDrivers:output_type -> couriers.ListDriversResponse
+	16, // 21: couriers.CouriersService.ListUserFiles:output_type -> couriers.ListUserFilesResponse
+	2,  // 22: couriers.CouriersService.GetUsersByPermission:output_type -> couriers.GetUsersByPermissionResponse
+	9,  // 23: couriers.CouriersService.GetDriverTypesAt:output_type -> couriers.GetDriverTypesAtResponse
+	16, // [16:24] is the sub-list for method output_type
+	8,  // [8:16] is the sub-list for method input_type
+	8,  // [8:8] is the sub-list for extension type_name
+	8,  // [8:8] is the sub-list for extension extendee
+	0,  // [0:8] is the sub-list for field type_name
 }
 
 func init() { file_couriers_couriers_proto_init() }
@@ -1058,14 +1176,14 @@ func file_couriers_couriers_proto_init() {
 	}
 	file_couriers_couriers_proto_msgTypes[0].OneofWrappers = []any{}
 	file_couriers_couriers_proto_msgTypes[2].OneofWrappers = []any{}
-	file_couriers_couriers_proto_msgTypes[9].OneofWrappers = []any{}
+	file_couriers_couriers_proto_msgTypes[11].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_couriers_couriers_proto_rawDesc), len(file_couriers_couriers_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   14,
+			NumMessages:   17,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

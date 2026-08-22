@@ -24,7 +24,43 @@ const (
 	UserRoleDriver        UserRoleEnum = "driver"
 	UserRoleCustomer      UserRoleEnum = "customer"
 	UserRoleOther         UserRoleEnum = "other"
+
+	// UserRoleBrokerAdmin / UserRoleBrokerUser (DEV-1857, BL-20) belong to the
+	// broker portal — the third login surface, next to office web and driver
+	// mobile — and NOT to a carrier office. They are deliberately absent from
+	// UserRoleHierarchy: the hierarchy is the office authority ladder that
+	// createUser and assignPermissionsTo* compare against, and a broker has no
+	// standing on it (a broker admin must never be able to create or
+	// re-permission a carrier's office user, and must never appear in an office
+	// role picker). Use IsBrokerRole to tell the two families apart.
+	UserRoleBrokerAdmin UserRoleEnum = "broker_admin"
+	UserRoleBrokerUser  UserRoleEnum = "broker_user"
 )
+
+// BrokerRoles is the broker-portal role family, in descending authority.
+var BrokerRoles = []UserRoleEnum{UserRoleBrokerAdmin, UserRoleBrokerUser}
+
+// IsBrokerRole reports whether a role name belongs to the broker portal. It
+// takes a plain string because callers usually hold JWT claim strings.
+func IsBrokerRole(name string) bool {
+	for _, r := range BrokerRoles {
+		if string(r) == name {
+			return true
+		}
+	}
+	return false
+}
+
+// HasBrokerRole reports whether any of the given role names is a broker role —
+// the check that decides a session is a broker session.
+func HasBrokerRole(names []string) bool {
+	for _, n := range names {
+		if IsBrokerRole(n) {
+			return true
+		}
+	}
+	return false
+}
 
 // String implements the fmt.Stringer interface
 func (s UserRoleEnum) String() string {
@@ -55,6 +91,10 @@ func (s UserRoleEnum) String() string {
 		return "customer"
 	case UserRoleOther:
 		return "other"
+	case UserRoleBrokerAdmin:
+		return "broker_admin"
+	case UserRoleBrokerUser:
+		return "broker_user"
 	default:
 		return "unknown"
 	}
@@ -63,7 +103,8 @@ func (s UserRoleEnum) String() string {
 // IsValid checks if the status is a known value
 func (s UserRoleEnum) IsValid() bool {
 	switch s {
-	case UserRoleSuperAdmin, UserRoleAdmin, UserRoleManager, UserRoleAccounting, UserRoleSafety, UserRoleFleet, UserRoleHr, UserRoleAuditor, UserRoleDispatcher, UserRoleTrackAndTrace, UserRoleDriver, UserRoleCustomer, UserRoleOther:
+	case UserRoleSuperAdmin, UserRoleAdmin, UserRoleManager, UserRoleAccounting, UserRoleSafety, UserRoleFleet, UserRoleHr, UserRoleAuditor, UserRoleDispatcher, UserRoleTrackAndTrace, UserRoleDriver, UserRoleCustomer, UserRoleOther,
+		UserRoleBrokerAdmin, UserRoleBrokerUser:
 		return true
 	default:
 		return false

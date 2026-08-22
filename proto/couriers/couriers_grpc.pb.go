@@ -30,6 +30,7 @@ const (
 	CouriersService_ListDrivers_FullMethodName          = "/couriers.CouriersService/ListDrivers"
 	CouriersService_ListUserFiles_FullMethodName        = "/couriers.CouriersService/ListUserFiles"
 	CouriersService_GetUsersByPermission_FullMethodName = "/couriers.CouriersService/GetUsersByPermission"
+	CouriersService_GetDriverTypesAt_FullMethodName     = "/couriers.CouriersService/GetDriverTypesAt"
 )
 
 // CouriersServiceClient is the client API for CouriersService service.
@@ -57,6 +58,16 @@ type CouriersServiceClient interface {
 	// tenant admins). Used by DEV-1018 (tms-files compliance reminder cron) to
 	// route document-expiry reminders to the right recipients.
 	GetUsersByPermission(ctx context.Context, in *GetUsersByPermissionRequest, opts ...grpc.CallOption) (*GetUsersByPermissionResponse, error)
+	// GetDriverTypesAt resolves each driver's employment model AS OF a calendar
+	// day, from the driver_type_periods history (DEV-1813) rather than the live
+	// users.driver_ownership column.
+	//
+	// Money that belongs to a period must be priced by the type in force during
+	// that period: a driver who moves Company -> Lease on a Friday still settles
+	// that whole week as Company. Callers that only need "the type right now"
+	// (a profile screen, a picker) should keep using GetUsersByIds — this RPC
+	// exists for the settlement paths (DEV-1815).
+	GetDriverTypesAt(ctx context.Context, in *GetDriverTypesAtRequest, opts ...grpc.CallOption) (*GetDriverTypesAtResponse, error)
 }
 
 type couriersServiceClient struct {
@@ -137,6 +148,16 @@ func (c *couriersServiceClient) GetUsersByPermission(ctx context.Context, in *Ge
 	return out, nil
 }
 
+func (c *couriersServiceClient) GetDriverTypesAt(ctx context.Context, in *GetDriverTypesAtRequest, opts ...grpc.CallOption) (*GetDriverTypesAtResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetDriverTypesAtResponse)
+	err := c.cc.Invoke(ctx, CouriersService_GetDriverTypesAt_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // CouriersServiceServer is the server API for CouriersService service.
 // All implementations must embed UnimplementedCouriersServiceServer
 // for forward compatibility.
@@ -162,6 +183,16 @@ type CouriersServiceServer interface {
 	// tenant admins). Used by DEV-1018 (tms-files compliance reminder cron) to
 	// route document-expiry reminders to the right recipients.
 	GetUsersByPermission(context.Context, *GetUsersByPermissionRequest) (*GetUsersByPermissionResponse, error)
+	// GetDriverTypesAt resolves each driver's employment model AS OF a calendar
+	// day, from the driver_type_periods history (DEV-1813) rather than the live
+	// users.driver_ownership column.
+	//
+	// Money that belongs to a period must be priced by the type in force during
+	// that period: a driver who moves Company -> Lease on a Friday still settles
+	// that whole week as Company. Callers that only need "the type right now"
+	// (a profile screen, a picker) should keep using GetUsersByIds — this RPC
+	// exists for the settlement paths (DEV-1815).
+	GetDriverTypesAt(context.Context, *GetDriverTypesAtRequest) (*GetDriverTypesAtResponse, error)
 	mustEmbedUnimplementedCouriersServiceServer()
 }
 
@@ -192,6 +223,9 @@ func (UnimplementedCouriersServiceServer) ListUserFiles(context.Context, *ListUs
 }
 func (UnimplementedCouriersServiceServer) GetUsersByPermission(context.Context, *GetUsersByPermissionRequest) (*GetUsersByPermissionResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetUsersByPermission not implemented")
+}
+func (UnimplementedCouriersServiceServer) GetDriverTypesAt(context.Context, *GetDriverTypesAtRequest) (*GetDriverTypesAtResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetDriverTypesAt not implemented")
 }
 func (UnimplementedCouriersServiceServer) mustEmbedUnimplementedCouriersServiceServer() {}
 func (UnimplementedCouriersServiceServer) testEmbeddedByValue()                         {}
@@ -340,6 +374,24 @@ func _CouriersService_GetUsersByPermission_Handler(srv interface{}, ctx context.
 	return interceptor(ctx, in, info, handler)
 }
 
+func _CouriersService_GetDriverTypesAt_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetDriverTypesAtRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CouriersServiceServer).GetDriverTypesAt(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: CouriersService_GetDriverTypesAt_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CouriersServiceServer).GetDriverTypesAt(ctx, req.(*GetDriverTypesAtRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // CouriersService_ServiceDesc is the grpc.ServiceDesc for CouriersService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -374,6 +426,10 @@ var CouriersService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetUsersByPermission",
 			Handler:    _CouriersService_GetUsersByPermission_Handler,
+		},
+		{
+			MethodName: "GetDriverTypesAt",
+			Handler:    _CouriersService_GetDriverTypesAt_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

@@ -36,6 +36,17 @@ service CouriersService {
   // tenant admins). Used by DEV-1018 (tms-files compliance reminder cron) to
   // route document-expiry reminders to the right recipients.
   rpc GetUsersByPermission(GetUsersByPermissionRequest) returns (GetUsersByPermissionResponse);
+
+  // GetDriverTypesAt resolves each driver's employment model AS OF a calendar
+  // day, from the driver_type_periods history (DEV-1813) rather than the live
+  // users.driver_ownership column.
+  //
+  // Money that belongs to a period must be priced by the type in force during
+  // that period: a driver who moves Company -> Lease on a Friday still settles
+  // that whole week as Company. Callers that only need "the type right now"
+  // (a profile screen, a picker) should keep using GetUsersByIds — this RPC
+  // exists for the settlement paths (DEV-1815).
+  rpc GetDriverTypesAt(GetDriverTypesAtRequest) returns (GetDriverTypesAtResponse);
 }
 
 // ResolutionSource reports which fallback tier produced the recipient list.
@@ -89,6 +100,22 @@ message UserInfo {
   int32 driver_ownership = 4;   // 0 = unset; 1..6 = enums.DriverOwnership
   string phone = 5;             // primary phone (User.phone); "" = unset
   string phone_second = 6;      // secondary phone (User.phone_second); "" = unset
+}
+
+message GetDriverTypesAtRequest {
+  repeated string user_ids = 1;
+  // Calendar day the type is asked about, "YYYY-MM-DD". A DATE, never an
+  // instant: an employment model starts on a day, and shipping a timestamp
+  // would make the answer depend on whose timezone parsed it.
+  string date = 2;
+}
+
+message GetDriverTypesAtResponse {
+  // user_id -> enums.DriverOwnership code (1..6). A driver with no period
+  // covering `date` is ABSENT from the map rather than present as 0: "we do not
+  // know this driver's type that day" and "the type is unset" price
+  // differently, and collapsing them would silently charge someone.
+  map<string, int32> driver_types = 1;
 }
 
 message ListOfficeUsersRequest {

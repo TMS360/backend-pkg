@@ -50,6 +50,18 @@ func TestClassify_PermissionChangeIsSecurity(t *testing.T) {
 		events.Classify("tms-auth", "user_events", "permission_granted", nil))
 }
 
+// The access-control surfaces tms-auth records (DEV-1867). The role CATALOG is
+// one of them: renaming, hiding or deleting a role decides who can do what just
+// as its permission matrix does, so it must not read as an everyday change any
+// office user can see.
+func TestClassify_AccessControlEntitiesAreSecurity(t *testing.T) {
+	for _, entity := range []string{"roles", "role_permissions", "user_permissions", "ip_rules", "sessions"} {
+		assert.Equalf(t, events.SensitivitySecurity,
+			events.Classify("tms-auth", entity, "updated", nil),
+			"entity_type %q must classify as SECURITY (admin / auditor only)", entity)
+	}
+}
+
 // --- the load-feed regression: money riding on an operational row -----------
 
 // A shipment row is operational until a money field changes on it — then the

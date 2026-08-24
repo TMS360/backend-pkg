@@ -82,6 +82,9 @@ var securityEntities = map[string]bool{
 	"user_permissions": true,
 	"role_permissions": true,
 	"ip_rules":         true,
+	// The role catalog itself: renaming, hiding or deleting a role changes who
+	// can do what just as surely as editing its permission matrix (DEV-1867).
+	"roles": true,
 }
 
 func isSecurityAction(action string) bool {

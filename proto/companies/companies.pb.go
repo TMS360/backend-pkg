@@ -247,7 +247,16 @@ type Company struct {
 	// into the header of Invoice and Driver Pay Statement PDFs (DEV-699). Set
 	// via the saveCompanyLogo mutation. Absent when the tenant has not uploaded
 	// one: the header renders without a logo, never with a placeholder.
-	Logo          *string `protobuf:"bytes,21,opt,name=logo,proto3,oneof" json:"logo,omitempty"`
+	Logo *string `protobuf:"bytes,21,opt,name=logo,proto3,oneof" json:"logo,omitempty"`
+	// status — the tenant's ACCOUNT status (enums.CompanyStatus: ACTIVE /
+	// INACTIVE / BLOCKED), not its FMCSA authority. The two are unrelated: a
+	// carrier can hold perfectly good operating authority and still have a
+	// switched-off TMS360 account.
+	//
+	// Added for DEV-1858: a broker must not be able to offer a load to a carrier
+	// whose account is off, because nobody is there to answer it. Empty means the
+	// producer did not populate it — treat that as unknown, not as inactive.
+	Status        string `protobuf:"bytes,22,opt,name=status,proto3" json:"status,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -429,6 +438,13 @@ func (x *Company) GetLogo() string {
 	return ""
 }
 
+func (x *Company) GetStatus() string {
+	if x != nil {
+		return x.Status
+	}
+	return ""
+}
+
 var File_companies_companies_proto protoreflect.FileDescriptor
 
 const file_companies_companies_proto_rawDesc = "" +
@@ -449,7 +465,7 @@ const file_companies_companies_proto_rawDesc = "" +
 	"\vcompany_ids\x18\x01 \x03(\tR\n" +
 	"companyIds\"M\n" +
 	"\x19GetCompaniesByIDsResponse\x120\n" +
-	"\tcompanies\x18\x01 \x03(\v2\x12.companies.CompanyR\tcompanies\"\xf6\x04\n" +
+	"\tcompanies\x18\x01 \x03(\v2\x12.companies.CompanyR\tcompanies\"\x8e\x05\n" +
 	"\aCompany\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x14\n" +
@@ -475,7 +491,8 @@ const file_companies_companies_proto_rawDesc = "" +
 	"\fmail_country\x18\x12 \x01(\tR\vmailCountry\x12'\n" +
 	"\x0fbilling_address\x18\x13 \x01(\tR\x0ebillingAddress\x12#\n" +
 	"\rbilling_email\x18\x14 \x01(\tR\fbillingEmail\x12\x17\n" +
-	"\x04logo\x18\x15 \x01(\tH\x00R\x04logo\x88\x01\x01B\a\n" +
+	"\x04logo\x18\x15 \x01(\tH\x00R\x04logo\x88\x01\x01\x12\x16\n" +
+	"\x06status\x18\x16 \x01(\tR\x06statusB\a\n" +
 	"\x05_logo2\xae\x01\n" +
 	"\x0eCompanyService\x12<\n" +
 	"\n" +

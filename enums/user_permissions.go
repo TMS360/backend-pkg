@@ -198,6 +198,32 @@ const (
 	// reasonably want the first without the second.
 	PermCallsView UserPermissionEnum = "calls_view"
 	PermCallsPlay UserPermissionEnum = "calls_play"
+
+	// Broker portal (DEV-1858, BL-20). Every one of these is FLAT — no dots —
+	// and the shape is not cosmetic.
+	//
+	// HasPermission splits a required code on "." and matches any prefix, so a
+	// dotted `broker.loads.create` would be satisfied by anyone holding `broker`.
+	// Worse, a top-level `broker` module would be swept into
+	// ModulePermissionCodes() and auto-granted to EVERY built-in role at signup —
+	// driver included — which would hand the whole office the broker portal. A
+	// flat code carries no dots, resolves by exact match, and is default-deny for
+	// every role it is not explicitly seeded to. Same reasoning as
+	// PermFileDeleteAny and PermReportsRun.
+	//
+	// The `broker_` prefix also matters on the way OUT: tms-auth's
+	// FilterBrokerPerms keeps only the `broker` family on a broker session and
+	// discards everything else, so a portal capability named anything other than
+	// `broker*` would be stripped before it ever reached a @hasPerm.
+	PermBrokerLoadsView   UserPermissionEnum = "broker_loads_view"
+	PermBrokerLoadsManage UserPermissionEnum = "broker_loads_manage"
+	PermBrokerOffersSend  UserPermissionEnum = "broker_offers_send"
+	// PermBrokerOffersRevoke covers both withdrawing an offer the carrier has not
+	// answered and uncovering a load they already accepted. One code: from the
+	// broker's side these are the same decision — take the load back — and the
+	// difference in consequence is enforced by state, not by permission.
+	PermBrokerOffersRevoke UserPermissionEnum = "broker_offers_revoke"
+	PermBrokerCarriersFind UserPermissionEnum = "broker_carriers_find"
 )
 
 // PermissionCatalogEntry describes one row written to the permissions table.
@@ -352,6 +378,11 @@ var CustomPermissionCatalog = []CustomPermissionEntry{
 	{Code: string(PermMailEdit), Label: "Manage mail (labels, folders, sending identity)"},
 	{Code: string(PermCallsView), Label: "View the call log"},
 	{Code: string(PermCallsPlay), Label: "Play call recordings"},
+	{Code: string(PermBrokerLoadsView), Label: "Broker portal: view own loads"},
+	{Code: string(PermBrokerLoadsManage), Label: "Broker portal: create & edit own loads"},
+	{Code: string(PermBrokerOffersSend), Label: "Broker portal: offer a load to a carrier"},
+	{Code: string(PermBrokerOffersRevoke), Label: "Broker portal: withdraw an offer or uncover a load"},
+	{Code: string(PermBrokerCarriersFind), Label: "Broker portal: search carriers"},
 }
 
 // CustomPermissionCodes returns just the flat custom permission codes, in
@@ -682,6 +713,27 @@ func DefaultRolePermissions() map[UserRoleEnum][]string {
 	// role. (The exclusion from Teams comes from the NAME, not from the perms:
 	// tms-teams matches the literal "dispatcher".)
 	out[UserRoleTrackAndTrace] = append([]string(nil), out[UserRoleDispatcher]...)
+
+	// Broker portal (DEV-1858). These roles deliberately get NO module baseline:
+	// every code in ModulePermissionCodes() is an office module, and a broker is
+	// not an office user. withExtra() is therefore NOT used here — seeding the
+	// baseline would read like the broker has shipments/settings/reports access,
+	// and would only be invisible because tms-auth strips it on the way out.
+	// Default-deny by construction is the stronger guarantee.
+	//
+	// Both roles hold the same portal capabilities. The admin/user split in
+	// DEV-1857 is about inviting other broker users, which is gated by ROLE, not
+	// by a permission code — so there is nothing to differentiate here, and
+	// inventing a difference would be a rule nobody asked for.
+	brokerPortal := []string{
+		string(PermBrokerLoadsView),
+		string(PermBrokerLoadsManage),
+		string(PermBrokerOffersSend),
+		string(PermBrokerOffersRevoke),
+		string(PermBrokerCarriersFind),
+	}
+	out[UserRoleBrokerAdmin] = append([]string(nil), brokerPortal...)
+	out[UserRoleBrokerUser] = append([]string(nil), brokerPortal...)
 
 	return out
 }

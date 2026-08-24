@@ -74,4 +74,13 @@ message Company {
   // via the saveCompanyLogo mutation. Absent when the tenant has not uploaded
   // one: the header renders without a logo, never with a placeholder.
   optional string logo     = 21;
+  // status — the tenant's ACCOUNT status (enums.CompanyStatus: ACTIVE /
+  // INACTIVE / BLOCKED), not its FMCSA authority. The two are unrelated: a
+  // carrier can hold perfectly good operating authority and still have a
+  // switched-off TMS360 account.
+  //
+  // Added for DEV-1858: a broker must not be able to offer a load to a carrier
+  // whose account is off, because nobody is there to answer it. Empty means the
+  // producer did not populate it — treat that as unknown, not as inactive.
+  string status            = 22;
 }

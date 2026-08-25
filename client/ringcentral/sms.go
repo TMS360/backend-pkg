@@ -203,10 +203,7 @@ func (c *Client) TokenOwnerExtensionID(ctx context.Context) (string, error) {
 	return form.OwnerID, nil
 }
 
-// post performs an authenticated JSON POST. Unlike get, a platform rejection is
-// preserved as *APIError instead of being flattened into a string: a write has
-// far more ways to be refused than a read, and the difference between them is
-// the whole answer to DEV-1895.
+// post performs an authenticated JSON POST.
 func (c *Client) post(ctx context.Context, token, path string, payload any) ([]byte, error) {
 	raw, err := json.Marshal(payload)
 	if err != nil {
@@ -217,8 +214,28 @@ func (c *Client) post(ctx context.Context, token, path string, payload any) ([]b
 	if err != nil {
 		return nil, fmt.Errorf("ringcentral: failed to create request: %w", err)
 	}
-	req.Header.Set("Authorization", "Bearer "+token)
 	req.Header.Set("Content-Type", "application/json")
+	return c.send(req, token)
+}
+
+// postMultipart is post for a body the endpoint wants as multipart. The fax
+// endpoint packages its settings and each document as separate MIME parts, so
+// the Content-Type carries a boundary and cannot be a constant.
+func (c *Client) postMultipart(ctx context.Context, token, path string, body io.Reader, contentType string) ([]byte, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.serverURL+path, body)
+	if err != nil {
+		return nil, fmt.Errorf("ringcentral: failed to create request: %w", err)
+	}
+	req.Header.Set("Content-Type", contentType)
+	return c.send(req, token)
+}
+
+// send performs an authenticated write. Unlike get, a platform rejection is
+// preserved as *APIError instead of being flattened into a string: a write has
+// far more ways to be refused than a read, and the difference between them is
+// the whole answer to DEV-1895.
+func (c *Client) send(req *http.Request, token string) ([]byte, error) {
+	req.Header.Set("Authorization", "Bearer "+token)
 	req.Header.Set("Accept", "application/json")
 
 	resp, err := c.httpClient.Do(req)

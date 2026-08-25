@@ -79,20 +79,32 @@ const EffectiveFromLayout = "2006-01-02"
 // Use FirstDayOfWeekForCompany on gRPC / Kafka / cron paths: without an actor
 // this reads an unprefixed key and silently answers Monday for everyone.
 func FirstDayOfWeekFor(ctx context.Context, ref time.Time) FirstDayOfWeek {
+	return WeekRuleFor(ctx).DayFor(ref)
+}
+
+// WeekRuleFor reads the whole rule — the day AND the date it starts from — for the
+// company of the actor in ctx. Callers that cut or walk weeks want this rather
+// than FirstDayOfWeekFor: only the rule knows the bridge week's real length.
+func WeekRuleFor(ctx context.Context) WeekRule {
 	var day string
 	dayErr := cache.Get(ctx, fmt.Sprintf("setting:%s", enums.CompanySettingsGeneralKeyFirstDayOfWeek), &day)
 	var from string
 	fromErr := cache.Get(ctx, fmt.Sprintf("setting:%s", enums.CompanySettingsGeneralKeyFirstDayOfWeekEffectiveFrom), &from)
-	return ResolveFirstDayOfWeek(day, dayErr, from, fromErr, ref)
+	return ResolveWeekRule(day, dayErr, from, fromErr)
 }
 
 // FirstDayOfWeekForCompany is the actor-less variant for background work: it
 // builds the company-scoped key explicitly and unmarshals the JSON-encoded
 // string, mirroring EmptyMilesWorkflowForCompany.
 func FirstDayOfWeekForCompany(ctx context.Context, companyID string, ref time.Time) FirstDayOfWeek {
+	return WeekRuleForCompany(ctx, companyID).DayFor(ref)
+}
+
+// WeekRuleForCompany is the actor-less rule reader for background work.
+func WeekRuleForCompany(ctx context.Context, companyID string) WeekRule {
 	day, dayErr := rawCompanySetting(ctx, companyID, enums.CompanySettingsGeneralKeyFirstDayOfWeek)
 	from, fromErr := rawCompanySetting(ctx, companyID, enums.CompanySettingsGeneralKeyFirstDayOfWeekEffectiveFrom)
-	return ResolveFirstDayOfWeek(day, dayErr, from, fromErr, ref)
+	return ResolveWeekRule(day, dayErr, from, fromErr)
 }
 
 func rawCompanySetting(ctx context.Context, companyID string, key enums.CompanySettingsGeneralKey) (string, error) {
@@ -108,8 +120,15 @@ func rawCompanySetting(ctx context.Context, companyID string, key enums.CompanyS
 }
 
 // ResolveFirstDayOfWeek turns two raw cache reads plus a reference date into the
-// day that starts ref's week. Exported and free of Redis so the rule itself is
-// unit-tested; the two readers above are the only callers that matter.
+// day that starts ref's week. Kept as the simple question; ResolveWeekRule
+// answers the full one.
+func ResolveFirstDayOfWeek(day string, dayErr error, from string, fromErr error, ref time.Time) FirstDayOfWeek {
+	return ResolveWeekRule(day, dayErr, from, fromErr).DayFor(ref)
+}
+
+// ResolveWeekRule turns two raw cache reads into the company's week rule.
+// Exported and free of Redis so the rule itself is unit-tested; the readers above
+// are the only callers that matter.
 //
 // The rules, in order:
 //   - nothing saved, an unknown word, or an unreadable cache → Monday (with a log
@@ -118,50 +137,55 @@ func rawCompanySetting(ctx context.Context, companyID string, key enums.CompanyS
 //   - a non-Monday day saved WITHOUT its start date → Monday plus an error log.
 //     Half a setting is a broken setting, and guessing a date here would move
 //     weeks nobody asked to move;
-//   - a start date that is not itself the configured weekday → move forward to
-//     the next such weekday and warn. The save path refuses this, so a row like
-//     that means somebody edited the database by hand;
-//   - ref before the (corrected) start date → Monday, the old day. A start date
-//     already in the past is fine — the change is simply already in force.
-func ResolveFirstDayOfWeek(day string, dayErr error, from string, fromErr error, ref time.Time) FirstDayOfWeek {
+//   - a start date that is not itself the configured weekday → moved forward to
+//     the next such weekday, with a warning. The save path refuses this, so a row
+//     like that means somebody edited the database by hand.
+//
+// A start date already in the past is fine — the change is simply already in force.
+func ResolveWeekRule(day string, dayErr error, from string, fromErr error) WeekRule {
+	monday := WeekRule{Day: DefaultFirstDayOfWeek}
+
 	if dayErr != nil {
 		if !errors.Is(dayErr, redis.Nil) {
 			slog.Error("first day of week: cache read failed, defaulting to monday", "error", dayErr)
 		}
-		return DefaultFirstDayOfWeek
+		return monday
 	}
 	configured, ok := ParseFirstDayOfWeek(day)
 	if !ok {
 		if strings.TrimSpace(day) != "" {
 			slog.Error("first day of week: unrecognized value, defaulting to monday", "value", day)
 		}
-		return DefaultFirstDayOfWeek
-	}
-	if configured == DefaultFirstDayOfWeek {
-		return DefaultFirstDayOfWeek // Monday needs no start date: it IS the old day
+		return monday
 	}
 
 	if fromErr != nil {
 		if errors.Is(fromErr, redis.Nil) {
+			if configured == DefaultFirstDayOfWeek {
+				return monday // Monday needs no start date: it IS the old day
+			}
 			slog.Error("first day of week: day is set but its start date is missing, defaulting to monday",
 				"value", day)
 		} else {
 			slog.Error("first day of week: start date read failed, defaulting to monday", "error", fromErr)
 		}
-		return DefaultFirstDayOfWeek
+		return monday
 	}
-	start, err := time.Parse(EffectiveFromLayout, strings.TrimSpace(from))
+	trimmed := strings.TrimSpace(from)
+	if trimmed == "" {
+		if configured == DefaultFirstDayOfWeek {
+			return monday
+		}
+		slog.Error("first day of week: day is set but its start date is empty, defaulting to monday", "value", day)
+		return monday
+	}
+	start, err := time.Parse(EffectiveFromLayout, trimmed)
 	if err != nil {
 		slog.Error("first day of week: unparsable start date, defaulting to monday",
 			"value", from, "error", err)
-		return DefaultFirstDayOfWeek
+		return monday
 	}
-
-	start = nextWeekdayOnOrAfter(start, configured.Weekday())
-	if dateOnly(ref).Before(start) {
-		return DefaultFirstDayOfWeek // this week began under the old day
-	}
-	return configured
+	return NewWeekRule(configured, start)
 }
 
 // nextWeekdayOnOrAfter returns d itself when it already falls on want, else the

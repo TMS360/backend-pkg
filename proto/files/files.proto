@@ -23,6 +23,17 @@ service FilesService {
   // Dedup hits return the existing File with was_duplicate=true (not an error).
   rpc UploadFile (stream UploadFileRequest) returns (UploadFileResponse);
 
+  // CheckDispatchCompliance answers one question for the load service: may this
+  // driver / truck / trailer combination be dispatched right now? (DEV-1879)
+  //
+  // It reads the live document state (never the daily scan output) and only
+  // reports documents whose type is BOTH required for the asset class AND has
+  // tenant enforcement turned ON. Enforcement ships OFF for every tenant, so a
+  // fresh deploy never blocks anything. A document inside its grace window is
+  // not a blocker. Tenant scoping is enforced server-side via the actor in
+  // metadata, so callers cannot probe another tenant's assets.
+  rpc CheckDispatchCompliance (CheckDispatchComplianceRequest) returns (CheckDispatchComplianceResponse);
+
   // DeleteFile removes the File metadata row and the underlying S3 object.
   // Idempotent: deleting a missing id returns ok=false but no error so callers
   // can call it best-effort during cache invalidation / re-export cleanup.
@@ -120,4 +131,42 @@ message DeleteFileResponse {
   // True when the file was found and removed; false when the id did not exist
   // (idempotent, no error). Callers can ignore unless they need exact audit.
   bool deleted = 1;
+}
+
+// ---------------------------------------------------------------------------
+// DEV-1879 dispatch compliance verdict
+// ---------------------------------------------------------------------------
+
+message CheckDispatchComplianceRequest {
+  // Driver account UUID. Empty when the dispatch carries no driver.
+  string driver_id = 1;
+  // Truck UUID. Empty when the dispatch carries no truck.
+  string truck_id = 2;
+  // Trailer UUID. Optional; evaluated only when present.
+  string trailer_id = 3;
+}
+
+// BlockingDocument is one required + enforced document that is missing or
+// lapsed on one of the requested entities.
+message BlockingDocument {
+  // Asset class the document is required for: DRIVER, TRUCK or TRAILER.
+  string entity_type = 1;
+  // UUID of that asset (echoed from the request).
+  string entity_id = 2;
+  string document_type_id = 3;
+  // Human-readable document type name, for the dispatcher-facing message.
+  string document_type_name = 4;
+  // MISSING (nothing acceptable on file) or EXPIRED (past expires_at + the
+  // type's grace days). Nothing else can block.
+  string status = 5;
+  // Expiry date of the lapsed document as YYYY-MM-DD. Empty for MISSING and
+  // for a document with no expiry date on file.
+  string expires_at = 6;
+}
+
+message CheckDispatchComplianceResponse {
+  // True when at least one blocking document was found.
+  bool blocked = 1;
+  // Every blocking document, grouped per entity in a stable order.
+  repeated BlockingDocument blocking = 2;
 }

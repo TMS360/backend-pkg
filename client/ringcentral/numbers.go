@@ -41,6 +41,11 @@ type PhoneNumber struct {
 	Status string
 	// Label is the free-text label set in the RingCentral console, if any.
 	Label string
+	// Features lists what RingCentral will let this number do
+	// (SmsSender, MmsSender, CallerId, ...). A number without FeatureSMSSender
+	// cannot be the sender of a text, whoever asks — checking it is cheaper than
+	// discovering it from a rejected send.
+	Features []string
 	// ExtensionID / ExtensionNumber / ExtensionName describe the extension the
 	// number rings. Empty when the number is not attached to an extension (e.g.
 	// a main company number routed by an IVR).
@@ -59,6 +64,7 @@ type phoneNumberRecord struct {
 	Type        string      `json:"type"`
 	Status      string      `json:"status"`
 	Label       string      `json:"label"`
+	Features    []string    `json:"features"`
 	Extension   *struct {
 		ID              json.Number `json:"id"`
 		ExtensionNumber string      `json:"extensionNumber"`
@@ -124,6 +130,7 @@ func (r phoneNumberRecord) toPhoneNumber() PhoneNumber {
 		Type:        r.Type,
 		Status:      r.Status,
 		Label:       r.Label,
+		Features:    r.Features,
 	}
 	if r.Extension != nil {
 		n.ExtensionID = r.Extension.ID.String()

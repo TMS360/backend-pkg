@@ -152,13 +152,24 @@ func NewClientWithCred(cred Cred) (*Client, error) {
 // here, because the credential can be revoked in the RingCentral console at any
 // moment and a stale token would hide that.
 func (c *Client) AccessToken(ctx context.Context) (string, time.Duration, error) {
+	tok, err := c.tokenExchange(ctx)
+	if err != nil {
+		return "", 0, err
+	}
+	return tok.AccessToken, time.Duration(tok.ExpiresIn) * time.Second, nil
+}
+
+// tokenExchange performs the JWT grant and returns the whole token payload.
+// AccessToken keeps the two fields nearly every caller wants; the full payload
+// also carries owner_id, which is the extension the credential belongs to.
+func (c *Client) tokenExchange(ctx context.Context) (tokenResponse, error) {
 	form := url.Values{}
 	form.Set("grant_type", jwtGrantType)
 	form.Set("assertion", c.cred.JWT)
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.serverURL+tokenPath, strings.NewReader(form.Encode()))
 	if err != nil {
-		return "", 0, fmt.Errorf("ringcentral: failed to create token request: %w", err)
+		return tokenResponse{}, fmt.Errorf("ringcentral: failed to create token request: %w", err)
 	}
 	// Client id/secret go in the Basic header, never in the URL or the body,
 	// so they cannot leak through a proxy access log.
@@ -169,7 +180,7 @@ func (c *Client) AccessToken(ctx context.Context) (string, time.Duration, error)
 
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
-		return "", 0, fmt.Errorf("ringcentral: network error: %w", err)
+		return tokenResponse{}, fmt.Errorf("ringcentral: network error: %w", err)
 	}
 	defer func() { _ = resp.Body.Close() }()
 
@@ -179,21 +190,20 @@ func (c *Client) AccessToken(ctx context.Context) (string, time.Duration, error)
 		var er errorResponse
 		_ = json.Unmarshal(body, &er)
 		if isAuthRejection(resp.StatusCode, er.Error) {
-			return "", 0, &AuthError{StatusCode: resp.StatusCode, Code: er.Error, Body: describe(er, body)}
+			return tokenResponse{}, &AuthError{StatusCode: resp.StatusCode, Code: er.Error, Body: describe(er, body)}
 		}
-		return "", 0, fmt.Errorf("ringcentral: token request failed with status %d: %s", resp.StatusCode, describe(er, body))
+		return tokenResponse{}, fmt.Errorf("ringcentral: token request failed with status %d: %s", resp.StatusCode, describe(er, body))
 	}
 
 	var tok tokenResponse
 	if err := json.Unmarshal(body, &tok); err != nil {
-		return "", 0, fmt.Errorf("ringcentral: failed to decode token response: %w", err)
+		return tokenResponse{}, fmt.Errorf("ringcentral: failed to decode token response: %w", err)
 	}
 	if tok.AccessToken == "" {
-		return "", 0, errors.New("ringcentral: token response missing access_token")
+		return tokenResponse{}, errors.New("ringcentral: token response missing access_token")
 	}
 
-	ttl := time.Duration(tok.ExpiresIn) * time.Second
-	return tok.AccessToken, ttl, nil
+	return tok, nil
 }
 
 // TestConnection reports whether the stored credentials still authenticate.

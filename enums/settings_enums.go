@@ -33,6 +33,16 @@ const (
 	// then gets paid on (DEV-1573/DEV-1577). Missing row reads as "auto": tenants
 	// that predate the setting must not change behaviour on deploy.
 	CompanySettingsGeneralKeyEmptyMilesWorkflow CompanySettingsGeneralKey = "empty_miles_workflow"
+	// CompanySettingsGeneralKeyFirstDayOfWeek is the weekday a company's week
+	// starts on: "monday" (the default, and what every service counted before
+	// DEV-1909) or "sunday". Read it through settings.FirstDayOfWeekFor / the
+	// ForCompany variant — never by counting weekdays locally.
+	CompanySettingsGeneralKeyFirstDayOfWeek CompanySettingsGeneralKey = "first_day_of_week"
+	// CompanySettingsGeneralKeyFirstDayOfWeekEffectiveFrom is the date (YYYY-MM-DD)
+	// the new first day starts to count from. Weeks that begin BEFORE it keep the
+	// old day, which is what keeps already-stored weeks readable: changing the
+	// setting must never re-cut a week that payroll has already been run on.
+	CompanySettingsGeneralKeyFirstDayOfWeekEffectiveFrom CompanySettingsGeneralKey = "first_day_of_week_effective_from"
 )
 
 var AllCompanySettingsGeneralKey = []CompanySettingsGeneralKey{
@@ -45,11 +55,14 @@ var AllCompanySettingsGeneralKey = []CompanySettingsGeneralKey{
 	CompanySettingsGeneralKeySamsaraAssetTrackingEnabled,
 	CompanySettingsGeneralKeyUseHereInRisk,
 	CompanySettingsGeneralKeyEmptyMilesWorkflow,
+	CompanySettingsGeneralKeyFirstDayOfWeek,
+	CompanySettingsGeneralKeyFirstDayOfWeekEffectiveFrom,
 }
 
 func (e CompanySettingsGeneralKey) IsValid() bool {
 	switch e {
-	case CompanySettingsGeneralKeyLogo, CompanySettingsGeneralKeyTimezone, CompanySettingsGeneralKeyHazmatEnabled, CompanySettingsGeneralKeyReeferEnabled, CompanySettingsGeneralKeyBrokerHasVerifyShipments, CompanySettingsGeneralKeyTripAssignmentBufferHours, CompanySettingsGeneralKeySamsaraAssetTrackingEnabled, CompanySettingsGeneralKeyUseHereInRisk, CompanySettingsGeneralKeyEmptyMilesWorkflow:
+	case CompanySettingsGeneralKeyLogo, CompanySettingsGeneralKeyTimezone, CompanySettingsGeneralKeyHazmatEnabled, CompanySettingsGeneralKeyReeferEnabled, CompanySettingsGeneralKeyBrokerHasVerifyShipments, CompanySettingsGeneralKeyTripAssignmentBufferHours, CompanySettingsGeneralKeySamsaraAssetTrackingEnabled, CompanySettingsGeneralKeyUseHereInRisk, CompanySettingsGeneralKeyEmptyMilesWorkflow,
+		CompanySettingsGeneralKeyFirstDayOfWeek, CompanySettingsGeneralKeyFirstDayOfWeekEffectiveFrom:
 		return true
 	}
 	return false

@@ -140,10 +140,19 @@ func (w Window) Resolve(now time.Time, loc *time.Location) (Range, error) {
 
 // StartOfWeek is Monday 00:00 of the week containing t, in loc. Exported
 // because "the week starts on Monday" must have exactly one implementation.
+//
+// Report windows still run Monday-first; a caller that must follow the company's
+// first-day-of-week setting (DEV-1909) uses StartOfWeekOn with
+// settings.FirstDayOfWeekFor(...).Weekday().
 func StartOfWeek(t time.Time, loc *time.Location) time.Time {
+	return StartOfWeekOn(t, loc, time.Monday)
+}
+
+// StartOfWeekOn is firstDay 00:00 of the week containing t, in loc.
+func StartOfWeekOn(t time.Time, loc *time.Location, firstDay time.Weekday) time.Time {
 	local := t.In(loc)
-	// time.Weekday counts Sunday as 0; shift so Monday is 0.
-	offset := (int(local.Weekday()) + 6) % 7
+	// Days elapsed since the week's first day, 0..6 (Go counts Sunday as 0).
+	offset := (int(local.Weekday()) - int(firstDay) + 7) % 7
 	return startOfDay(local, loc).AddDate(0, 0, -offset)
 }
 

@@ -37,6 +37,20 @@ service CouriersService {
   // route document-expiry reminders to the right recipients.
   rpc GetUsersByPermission(GetUsersByPermissionRequest) returns (GetUsersByPermissionResponse);
 
+  // ListCompanyAdmins returns a tenant's admin-role accounts, ACTIVE ones first
+  // and the oldest account first inside each group, so a caller that must hand
+  // an ownerless resource to a human can take admins[0] deterministically.
+  //
+  // Unlike GetUsersByPermission this asks a plain identity question ("who runs
+  // this tenant") with no permission-code tier chain, and it reports each
+  // candidate's activity so the caller never hands the resource to a second dead
+  // account. A tenant with no admin at all falls back to its oldest office
+  // account — the sign-up owner — flagged as fallback=true.
+  //
+  // Consumer: backend-workspaces (DEV-1890), which passes an orphaned workspace
+  // to an admin when its only OWNER is deactivated.
+  rpc ListCompanyAdmins(ListCompanyAdminsRequest) returns (ListCompanyAdminsResponse);
+
   // GetDriverTypesAt resolves each driver's employment model AS OF a calendar
   // day, from the driver_type_periods history (DEV-1813) rather than the live
   // users.driver_ownership column.
@@ -73,6 +87,25 @@ message GetUsersByPermissionResponse {
   ResolutionSource source  = 2; // which tier produced user_ids
 }
 
+message ListCompanyAdminsRequest {
+  string company_id = 1; // tenant UUID (required)
+  // true → only accounts that can still sign in (status = ACTIVE, not
+  // deactivated). false/absent → every admin, active ones listed first.
+  optional bool active_only = 2;
+}
+
+message ListCompanyAdminsResponse {
+  repeated CompanyAdmin admins = 1; // ordered: active first, oldest account first
+}
+
+message CompanyAdmin {
+  string user_id = 1;
+  bool active    = 2; // status = ACTIVE and never deactivated
+  // true when the tenant has no admin at all and this is its oldest office
+  // account instead. The caller can refuse to act on a fallback candidate.
+  bool fallback  = 3;
+}
+
 message UserFilter {
   filters.StringFilter name = 1;
   filters.StringFilter email = 2;
@@ -100,6 +133,11 @@ message UserInfo {
   int32 driver_ownership = 4;   // 0 = unset; 1..6 = enums.DriverOwnership
   string phone = 5;             // primary phone (User.phone); "" = unset
   string phone_second = 6;      // secondary phone (User.phone_second); "" = unset
+  // true when the account can still sign in (status = ACTIVE, never
+  // deactivated). Added for DEV-1890: a caller repairing resources owned by
+  // dead accounts has to tell a live owner from a deactivated one, and every
+  // other field here is identity, not state.
+  bool active = 7;
 }
 
 message GetDriverTypesAtRequest {

@@ -224,6 +224,27 @@ const (
 	// difference in consequence is enforced by state, not by permission.
 	PermBrokerOffersRevoke UserPermissionEnum = "broker_offers_revoke"
 	PermBrokerCarriersFind UserPermissionEnum = "broker_carriers_find"
+
+	// PermShipmentBillingApprove gates approving a completed shipment for billing
+	// — the office "good to go" step (verifyByBroker in tms-loads) and undoing it
+	// (DEV-1885). Held by default by admin, manager and accounting.
+	//
+	// FLAT, and here the shape is the whole ticket (DEV-1884). Two dotted
+	// alternatives both leak:
+	//   - `shipments.*`: every office role already holds the `shipments` module,
+	//     and HasPermission matches ancestors, so a dispatcher would get approve
+	//     for free — which is exactly what today's `shipments.shipments.edit`
+	//     check on verifyByBroker does wrong.
+	//   - the `accounting` module: it is a top-level code in PermissionCatalog and
+	//     therefore in ModulePermissionCodes(), which SetDefaultRolePerms grants to
+	//     EVERY built-in role at signup, driver included.
+	// A flat code carries no dots, resolves by exact match, and is default-deny
+	// for every role it is not explicitly seeded to — so a company can tick it on
+	// for dispatcher or a custom role, and nobody gets it by holding a module.
+	//
+	// Invoice batch and Record payment are unrelated and stay on the accounting
+	// module.
+	PermShipmentBillingApprove UserPermissionEnum = "shipment_billing_approve"
 )
 
 // PermissionCatalogEntry describes one row written to the permissions table.
@@ -383,6 +404,7 @@ var CustomPermissionCatalog = []CustomPermissionEntry{
 	{Code: string(PermBrokerOffersSend), Label: "Broker portal: offer a load to a carrier"},
 	{Code: string(PermBrokerOffersRevoke), Label: "Broker portal: withdraw an offer or uncover a load"},
 	{Code: string(PermBrokerCarriersFind), Label: "Broker portal: search carriers"},
+	{Code: string(PermShipmentBillingApprove), Label: "Approve loads for billing"},
 }
 
 // CustomPermissionCodes returns just the flat custom permission codes, in
@@ -685,14 +707,19 @@ func DefaultRolePermissions() map[UserRoleEnum][]string {
 		// reports_run / reports_manage (BL-22 §22.1): the report builder is an
 		// admin + accounting capability. Both are flat custom perms, so every other
 		// role — including any external/portal (customer) role — is default-deny.
+		// shipment_billing_approve (DEV-1884): approving a completed load for
+		// billing is an admin / manager / accounting decision. Dispatcher does NOT
+		// get it by default — and neither does track_and_trace, which is derived
+		// from dispatcher below. A company that wants it wider ticks it on for a
+		// role in Settings -> Roles; it stays revocable the same way.
 		// calls_view / calls_play (DEV-1753): the RingCentral call log is a
 		// dispatch-desk surface, so admin, manager and dispatcher get it. Driver
 		// gets NEITHER, deliberately — the log is a record of the office calling
 		// drivers, and a recording is a named person's voice. Keep it that way; if
 		// a tenant wants a wider audience, that is a custom role, not a default.
-		UserRoleAdmin:      withExtra(string(PermTripFinancialsEdit), string(PermTripReassignCommitted), string(PermFileDeleteAny), string(PermReportsRun), string(PermReportsManage), string(PermCallsView), string(PermCallsPlay)),
-		UserRoleManager:    withExtra(string(PermTripReassignCommitted), string(PermFileDeleteAny), string(PermCallsView), string(PermCallsPlay)),
-		UserRoleAccounting: withExtra(string(PermTripFinancialsEdit), string(PermReportsRun), string(PermReportsManage)),
+		UserRoleAdmin:      withExtra(string(PermTripFinancialsEdit), string(PermTripReassignCommitted), string(PermFileDeleteAny), string(PermReportsRun), string(PermReportsManage), string(PermCallsView), string(PermCallsPlay), string(PermShipmentBillingApprove)),
+		UserRoleManager:    withExtra(string(PermTripReassignCommitted), string(PermFileDeleteAny), string(PermCallsView), string(PermCallsPlay), string(PermShipmentBillingApprove)),
+		UserRoleAccounting: withExtra(string(PermTripFinancialsEdit), string(PermReportsRun), string(PermReportsManage), string(PermShipmentBillingApprove)),
 		UserRoleFleet:      withExtra(),
 		UserRoleSafety:     withExtra(),
 		UserRoleHr:         withExtra(),

@@ -112,21 +112,52 @@ func (r Range) Contains(t time.Time) bool {
 
 // Resolve turns the relative window into concrete bounds in loc. now is the
 // clock seam (tests pass a fixed instant); a nil loc means UTC.
+//
+// Monday-first. A caller that must follow the company's first-day-of-week
+// setting (DEV-1909) uses ResolveOn — or ResolveWeeks when the company changed
+// the day and the bridge week is not seven days long.
 func (w Window) Resolve(now time.Time, loc *time.Location) (Range, error) {
+	return w.ResolveOn(now, loc, time.Monday)
+}
+
+// ResolveOn is Resolve for a company whose week starts on firstDay.
+func (w Window) ResolveOn(now time.Time, loc *time.Location, firstDay time.Weekday) (Range, error) {
+	if loc == nil {
+		loc = time.UTC
+	}
+	return w.ResolveWeeks(now, loc, func(t time.Time) time.Time {
+		return StartOfWeekOn(t, loc, firstDay)
+	})
+}
+
+// ResolveWeeks is ResolveOn for a company whose weeks are not all one weekday
+// wide. When the first day of the week is changed, one bridge week is six or
+// eight days long (DEV-1909), so "last week" is NOT "seven days before this
+// week" — the caller passes its own cut instead.
+//
+// weekStart must answer the start of the week holding t, in loc. A nil weekStart
+// falls back to Monday, which is what every window did before the setting
+// existed. The windows that do not involve a week ignore it.
+func (w Window) ResolveWeeks(now time.Time, loc *time.Location, weekStart func(time.Time) time.Time) (Range, error) {
 	if err := w.Validate(); err != nil {
 		return Range{}, err
 	}
 	if loc == nil {
 		loc = time.UTC
 	}
+	if weekStart == nil {
+		weekStart = func(t time.Time) time.Time { return StartOfWeekOn(t, loc, time.Monday) }
+	}
 	local := now.In(loc)
 
 	switch w.Kind {
 	case LastWeek:
-		thisMonday := StartOfWeek(local, loc)
-		return Range{From: thisMonday.AddDate(0, 0, -7), To: thisMonday}, nil
+		thisStart := weekStart(local)
+		// Step back ONE INSTANT and ask again — never "minus seven days". Across
+		// the bridge week seven days lands mid-week.
+		return Range{From: weekStart(thisStart.Add(-time.Nanosecond)), To: thisStart}, nil
 	case WeekToDate:
-		return Range{From: StartOfWeek(local, loc), To: local}, nil
+		return Range{From: weekStart(local), To: local}, nil
 	case MonthToDate:
 		return Range{From: startOfDay(local, loc).AddDate(0, 0, 1-local.Day()), To: local}, nil
 	case YearToDate:
@@ -186,10 +217,15 @@ func daysIn(year int, month time.Month, loc *time.Location) int {
 
 // Label is the human wording of the window, used in a column's own label so a
 // reader always sees which period they are looking at.
-func (w Window) Label() string {
+func (w Window) Label() string { return w.LabelOn(time.Monday) }
+
+// LabelOn is Label for a company whose week starts on firstDay: the wording of
+// "last week" names the days the reader actually sees (DEV-1909).
+func (w Window) LabelOn(firstDay time.Weekday) string {
 	switch w.Kind {
 	case LastWeek:
-		return "last week (Mon–Sun)"
+		last := time.Weekday((int(firstDay) + 6) % 7)
+		return fmt.Sprintf("last week (%s–%s)", shortDay(firstDay), shortDay(last))
 	case WeekToDate:
 		return "week to date"
 	case MonthToDate:
@@ -204,3 +240,6 @@ func (w Window) Label() string {
 	}
 	return string(w.Kind)
 }
+
+// shortDay is the three-letter weekday used in a window label.
+func shortDay(d time.Weekday) string { return d.String()[:3] }

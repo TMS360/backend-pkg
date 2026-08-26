@@ -150,6 +150,28 @@ func (r WeekRule) bridgeWeek() (Week, bool) {
 	}, true
 }
 
+// WeekStartIn is the start of the week holding t, stamped at midnight in loc —
+// the cut a report or board window asks for (timewindow.Window.ResolveWeeks).
+//
+// The rule itself answers in naive UTC calendar days on purpose (DEV-1031 /
+// DEV-1148): the digits the user typed decide the week. A window, though, opens
+// at LOCAL midnight, so the calendar day the rule picked is re-stamped in loc
+// rather than converted — no instant is shifted across a day boundary.
+func (r WeekRule) WeekStartIn(t time.Time, loc *time.Location) time.Time {
+	if loc == nil {
+		loc = time.UTC
+	}
+	local := t.In(loc)
+	start := r.WeekOf(dateOnlyIn(local)).Start
+	return time.Date(start.Year(), start.Month(), start.Day(), 0, 0, 0, 0, loc)
+}
+
+// dateOnlyIn is the calendar day of local as a naive UTC date, which is the only
+// shape the rule reasons about.
+func dateOnlyIn(local time.Time) time.Time {
+	return time.Date(local.Year(), local.Month(), local.Day(), 0, 0, 0, 0, time.UTC)
+}
+
 func plainWeek(ref time.Time, firstDay time.Weekday) Week {
 	start := utils.GetWeekStartOn(ref, firstDay)
 	return Week{

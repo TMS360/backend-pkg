@@ -78,6 +78,12 @@ type PrePassSFTP struct {
 	hostKey     string
 	accountName string
 
+	// blocked, when set, refuses every dial. A non-production deployment with
+	// no catcher override configured would otherwise dial whatever host the
+	// database row carries — which on a tenant copied out of production is
+	// PrePass itself (DEV-1799).
+	blocked error
+
 	dialFn dialFunc
 }
 
@@ -92,9 +98,18 @@ func NewPrePassSFTP(cred Credential) *PrePassSFTP {
 	// folder regardless of what the database says. Staging databases are
 	// restored from production, so without this a stage run would reach into
 	// the real PrePass account.
+	var blocked error
 	if isNonProdAppEnv() {
 		if v := firstNonEmptyEnv(envTestPrePassHost); v != "" {
 			host = v
+		} else {
+			// Fail closed, not open. The stored host is the carrier's real
+			// PrePass address, and the whole point of a non-prod deployment is
+			// that it never reaches it. A loud error names the missing variable;
+			// a silent dial reads the carrier's toll statements.
+			blocked = fmt.Errorf(
+				"toll: %s is unset on a non-production deployment (APP_ENV=%s) — refusing to dial the stored PrePass host",
+				envTestPrePassHost, os.Getenv("APP_ENV"))
 		}
 		if v := firstNonEmptyEnv(envTestPrePassPort); v != "" {
 			if n, err := strconv.Atoi(v); err == nil && n > 0 {
@@ -110,6 +125,7 @@ func NewPrePassSFTP(cred Credential) *PrePassSFTP {
 	}
 
 	return &PrePassSFTP{
+		blocked:     blocked,
 		host:        host,
 		port:        port,
 		directory:   dir,
@@ -119,6 +135,15 @@ func NewPrePassSFTP(cred Credential) *PrePassSFTP {
 		accountName: strings.TrimSpace(cred.AccountName),
 		dialFn:      defaultSFTPDial,
 	}
+}
+
+// connect is the one place every dial goes through, so the non-prod guard
+// cannot be bypassed by a new caller.
+func (p *PrePassSFTP) connect(ctx context.Context) (sftpFetcher, error) {
+	if p.blocked != nil {
+		return nil, p.blocked
+	}
+	return p.dialFn(ctx, p.dialer())
 }
 
 func (p *PrePassSFTP) dialer() sftpDialer {
@@ -134,7 +159,7 @@ func (p *PrePassSFTP) dialer() sftpDialer {
 
 // List returns the spreadsheets waiting in the carrier's folder, newest first.
 func (p *PrePassSFTP) List(ctx context.Context) ([]RemoteFile, error) {
-	c, err := p.dialFn(ctx, p.dialer())
+	c, err := p.connect(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -146,7 +171,7 @@ func (p *PrePassSFTP) List(ctx context.Context) ([]RemoteFile, error) {
 // place: it is the carrier's own record with PrePass, and re-reading it is
 // made harmless by row hashing.
 func (p *PrePassSFTP) Fetch(ctx context.Context, name string) ([]byte, error) {
-	c, err := p.dialFn(ctx, p.dialer())
+	c, err := p.connect(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -156,7 +181,7 @@ func (p *PrePassSFTP) Fetch(ctx context.Context, name string) ([]byte, error) {
 
 // TestConnection dials and closes without reading anything.
 func (p *PrePassSFTP) TestConnection(ctx context.Context) error {
-	c, err := p.dialFn(ctx, p.dialer())
+	c, err := p.connect(ctx)
 	if err != nil {
 		return err
 	}

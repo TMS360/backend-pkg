@@ -661,3 +661,60 @@ func TestRulesFor_DrivesValidationPerProvider(t *testing.T) {
 	assert.Equal(t, Rules{}, RulesFor("ezpass_ftps"))
 	assert.Error(t, Credential{ProviderType: "ezpass_ftps"}.Validate())
 }
+
+// DEV-1799: dev and staging must never log into live PrePass. The catcher
+// override is what redirects them, so its absence has to stop the dial rather
+// than fall through to the host the copied tenant brought with it.
+func TestNewPrePassSFTP_NonProdWithoutCatcherOverrideRefusesToDial(t *testing.T) {
+	t.Setenv("APP_ENV", "dev")
+	t.Setenv(envTestPrePassHost, "")
+
+	p := NewPrePassSFTP(Credential{
+		ProviderType: ProviderPrePassSFTP,
+		Host:         "sftp.prepass.com",
+		Username:     "carrier",
+		Secret:       "real",
+		Directory:    "/statements",
+	})
+	dialed := false
+	p.dialFn = func(context.Context, sftpDialer) (sftpFetcher, error) {
+		dialed = true
+		return &fakeFetcher{}, nil
+	}
+
+	_, err := p.List(context.Background())
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), envTestPrePassHost, "the error must name the variable to set")
+	assert.False(t, dialed, "the real PrePass host must not be dialled")
+
+	require.Error(t, p.TestConnection(context.Background()))
+	_, err = p.Fetch(context.Background(), "weekly.xlsx")
+	require.Error(t, err, "every path through the provider is guarded, not just List")
+	assert.False(t, dialed)
+}
+
+func TestNewPrePassSFTP_NonProdWithCatcherOverrideDialsTheCatcher(t *testing.T) {
+	t.Setenv("APP_ENV", "staging")
+	t.Setenv(envTestPrePassHost, "sftp.catcher.internal")
+	t.Setenv(envTestPrePassDir, "/prepass")
+
+	fake := &fakeFetcher{}
+	p := NewPrePassSFTP(Credential{
+		ProviderType: ProviderPrePassSFTP,
+		Host:         "sftp.prepass.com",
+		Username:     "prepass",
+		Secret:       "dummy",
+		Directory:    "/statements",
+	})
+	var got sftpDialer
+	p.dialFn = func(_ context.Context, d sftpDialer) (sftpFetcher, error) {
+		got = d
+		return fake, nil
+	}
+
+	_, err := p.List(context.Background())
+	require.NoError(t, err)
+	assert.Equal(t, "sftp.catcher.internal", got.Host, "host comes from the override")
+	assert.Equal(t, "prepass", got.Username, "username is never overridden — it comes from the stored row")
+	assert.Equal(t, "/prepass", fake.lastDir)
+}

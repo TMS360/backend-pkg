@@ -329,7 +329,12 @@ var PermissionCatalog = []PermissionCatalogEntry{
 	{Code: "shipments.driver_expense", ParentCode: "shipments", Label: "Driver expense", Actions: []string{"view", "create", "edit", "delete"}},
 	{Code: "shipments.rc_files", ParentCode: "shipments", Label: "RC files", Actions: []string{"view", "create"}},
 	{Code: "shipments.share", ParentCode: "shipments", Label: "Share links", Actions: []string{"view", "create", "delete"}},
-	{Code: "shipments.audit", ParentCode: "shipments", Label: "Shipment audit", Actions: []string{"view", "edit"}},
+	// `lock` (DEV-1934) closes a reviewed team-week: it freezes the money and the
+	// Dispatch KPI, and reopening one needs the same right plus a reason. It is a
+	// third ACTION on the audit entity rather than a new entity, so a company that
+	// grants `shipments.audit` keeps getting everything the audit board can do, and
+	// a custom role can hand out view+edit without the sign-off authority.
+	{Code: "shipments.audit", ParentCode: "shipments", Label: "Shipment audit", Actions: []string{"view", "edit", "lock"}},
 
 	// === drivers entities ===
 	{Code: "drivers.drivers", ParentCode: "drivers", Label: "Drivers", Actions: []string{"view", "create", "edit", "delete"}},

@@ -160,6 +160,26 @@ service LoadsService {
   // scope by), same contract as GetTripIDsByShipment / GetCustomerLoadStats.
   rpc ResolveTruckIDs(ResolveTruckIDsRequest) returns (filters.IDsResponse);
 
+  // ── Truck owner lookup (used by backend-accounting pay batch, DEV-1919) ──
+  // Answers "who owns each of these trucks" for a whole batch of trucks in one
+  // call. backend-accounting builds a weekly pay batch from hundreds of trips;
+  // the owner is needed per trip's truck, and a per-truck RPC across a service
+  // boundary is the thing this exists to avoid.
+  //
+  // Only trucks whose ownership is TRUCK_OWNER appear in the response. A truck
+  // the company owns, or leases from a leasing company, is simply ABSENT from
+  // the map — absence is the answer, not an error, and the caller must read it
+  // as "no owner settlement for this truck" rather than retrying.
+  //
+  // backend-load stays the only place that knows whose truck it is; accounting
+  // keeps only a snapshot of what it is told here, on the statement it writes.
+  //
+  // company_id is passed explicitly (backend-load's gRPC server runs without an
+  // AuthServerInterceptor, so there is no actor to scope by), same contract as
+  // ResolveTruckIDs / GetTripIDsByShipment / GetCustomerLoadStats.
+  rpc GetTruckOwnersByTruckIDs(GetTruckOwnersByTruckIDsRequest)
+      returns (GetTruckOwnersByTruckIDsResponse);
+
   // ── Toll row → truck / trip matching (backend-accounting, DEV-1793) ──────
   // Resolves a WHOLE ingested toll file in one call. A weekly PrePass export is
   // 240-470 rows; a per-row RPC across a service boundary is the thing this
@@ -842,6 +862,66 @@ message GetTripIDsByShipmentRequest {
 message ResolveTruckIDsRequest {
   string company_id = 1;
   string search     = 2; // free text matched against unit number / plate / VIN
+}
+
+// ── Truck owner (DEV-1919) ──────────────────────────────────────────────────
+
+message GetTruckOwnersByTruckIDsRequest {
+  // Same semantics as ResolveTruckIDsRequest.company_id.
+  string company_id = 1;
+  // Empty list is a valid request and returns an empty map, not an error: the
+  // caller does not have to special-case a batch that happens to have no trucks.
+  repeated string truck_ids = 2;
+}
+
+message GetTruckOwnersByTruckIDsResponse {
+  // Keyed by truck id. Trucks with COMPANY or LEASED ownership, and truck ids
+  // that belong to another tenant or do not exist, are absent from the map.
+  //
+  // A map rather than a repeated pair because one owner routinely holds several
+  // trucks, and the caller's next move is always a lookup by truck id.
+  map<string, TruckOwner> owners_by_truck_id = 1;
+}
+
+// TruckOwner is the third party that owns a truck our driver drives. It is NOT
+// a driver employment type: a person can be an owner-operator on their own
+// truck A (driver type 6) and the owner of truck B that a company driver runs.
+// Ownership of the equipment and the driver's pay model are independent, and
+// this message describes only the former.
+//
+// Carries exactly what accounting needs to pay them — identity, where the money
+// goes, and how to reach them. Phone, DOT and address stay in backend-load;
+// nothing on the settlement path reads them.
+message TruckOwner {
+  string id   = 1;
+  string name = 2;
+
+  // Who the check is made out to. Often differs from `name` (the operating
+  // name) and is the string that must appear on the settlement PDF.
+  string pay_to_name = 3;
+
+  // May be empty: an owner running under the carrier's authority has no MC of
+  // their own, and refusing to pay them over a blank field would be wrong.
+  string mc_number = 4;
+
+  // May be empty. An owner with no email cannot be sent a statement PDF; that
+  // is the caller's problem to report, not a reason to omit them here.
+  string email = 5;
+
+  // false ⇒ deactivated. Deactivation does NOT unlink their trucks, so an
+  // inactive owner can still legitimately appear here for a past period.
+  bool is_active = 6;
+
+  // Set when this owner is also one of our drivers. Their own trips — the ones
+  // where THEY are the driver — are already paid on their driver statement and
+  // must be excluded from the owner settlement, which is what this field exists
+  // to make possible.
+  optional string driver_user_id = 7;
+
+  // Whether that driver is still active. Absent (not false) when backend-load
+  // could not reach the people service: "unknown" and "inactive" are different
+  // answers, and a money path must not read the first as the second.
+  optional bool driver_is_active = 8;
 }
 
 // Детали trip-а, нужные backend-accounting чтобы создать pay_batch

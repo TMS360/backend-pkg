@@ -245,6 +245,26 @@ const (
 	// Invoice batch and Record payment are unrelated and stay on the accounting
 	// module.
 	PermShipmentBillingApprove UserPermissionEnum = "shipment_billing_approve"
+
+	// PermAuditPlanExclusionEdit gates excluding a time range from a crew's weekly
+	// Dispatch KPI plan base, and revoking that exclusion (DEV-1933). It is a plan
+	// CORRECTION — "the truck was in the shop, do not count Tuesday" — and has no
+	// effect on driver availability, so it is deliberately separate from
+	// `shipments.audit.edit` (the day statuses) and from
+	// `drivers.driver_absences.*`.
+	//
+	// FLAT for the same reason as PermShipmentBillingApprove above, and the ticket's
+	// proposed spelling `shipments.audit.plan_exclusion.edit` cannot express it:
+	//   - as a dotted code it is implied by the `shipments` MODULE, which
+	//     ModulePermissionCodes() hands to every built-in role at signup — so every
+	//     role would hold it and the 403 the ticket asks for could never happen;
+	//   - as a nested PermissionCatalog entry under `shipments.audit` it would make
+	//     `shipments.audit` a MODULE in the catalog index, and ExpandPermissions
+	//     would then expand an existing `shipments.audit` grant to this leaf ONLY,
+	//     silently dropping `shipments.audit.view` / `.edit` from every role holding
+	//     it.
+	// Held by default by admin and manager (the dispatch-manager desk).
+	PermAuditPlanExclusionEdit UserPermissionEnum = "audit_plan_exclusion_edit"
 )
 
 // PermissionCatalogEntry describes one row written to the permissions table.
@@ -405,6 +425,7 @@ var CustomPermissionCatalog = []CustomPermissionEntry{
 	{Code: string(PermBrokerOffersRevoke), Label: "Broker portal: withdraw an offer or uncover a load"},
 	{Code: string(PermBrokerCarriersFind), Label: "Broker portal: search carriers"},
 	{Code: string(PermShipmentBillingApprove), Label: "Approve loads for billing"},
+	{Code: string(PermAuditPlanExclusionEdit), Label: "Exclude a time range from the Dispatch KPI plan"},
 }
 
 // CustomPermissionCodes returns just the flat custom permission codes, in
@@ -712,13 +733,17 @@ func DefaultRolePermissions() map[UserRoleEnum][]string {
 		// get it by default — and neither does track_and_trace, which is derived
 		// from dispatcher below. A company that wants it wider ticks it on for a
 		// role in Settings -> Roles; it stays revocable the same way.
+		// audit_plan_exclusion_edit (DEV-1933): excluding a range from a crew's plan
+		// base is a supervisor correction, so admin and manager hold it. A regular
+		// dispatcher does NOT — they would otherwise be able to shrink the target
+		// they are measured against.
 		// calls_view / calls_play (DEV-1753): the RingCentral call log is a
 		// dispatch-desk surface, so admin, manager and dispatcher get it. Driver
 		// gets NEITHER, deliberately — the log is a record of the office calling
 		// drivers, and a recording is a named person's voice. Keep it that way; if
 		// a tenant wants a wider audience, that is a custom role, not a default.
-		UserRoleAdmin:      withExtra(string(PermTripFinancialsEdit), string(PermTripReassignCommitted), string(PermFileDeleteAny), string(PermReportsRun), string(PermReportsManage), string(PermCallsView), string(PermCallsPlay), string(PermShipmentBillingApprove)),
-		UserRoleManager:    withExtra(string(PermTripReassignCommitted), string(PermFileDeleteAny), string(PermCallsView), string(PermCallsPlay), string(PermShipmentBillingApprove)),
+		UserRoleAdmin:      withExtra(string(PermTripFinancialsEdit), string(PermTripReassignCommitted), string(PermFileDeleteAny), string(PermReportsRun), string(PermReportsManage), string(PermCallsView), string(PermCallsPlay), string(PermShipmentBillingApprove), string(PermAuditPlanExclusionEdit)),
+		UserRoleManager:    withExtra(string(PermTripReassignCommitted), string(PermFileDeleteAny), string(PermCallsView), string(PermCallsPlay), string(PermShipmentBillingApprove), string(PermAuditPlanExclusionEdit)),
 		UserRoleAccounting: withExtra(string(PermTripFinancialsEdit), string(PermReportsRun), string(PermReportsManage), string(PermShipmentBillingApprove)),
 		UserRoleFleet:      withExtra(),
 		UserRoleSafety:     withExtra(),

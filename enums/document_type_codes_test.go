@@ -25,12 +25,20 @@ func TestSystemDocTypeCode_IsValid_CoversAllConstants(t *testing.T) {
 		SystemDocVehicleLeaseAgreement,
 		SystemDocTrailerAnnualInspection,
 		SystemDocTrailerRegistration,
+		SystemDocTrailerInsurance,
+		SystemDocTrailerTitle,
 		SystemDocRC,
 		SystemDocBOL,
 		SystemDocPOD,
 		SystemDocInvoice,
 		SystemDocShipmentOther,
 		SystemPayStatement,
+		SystemDocDriverLicense,
+		SystemDocDriverMedicalCard,
+		SystemDocDriverMVR,
+		SystemDocDriverRoadTest,
+		SystemDocDriverApplication,
+		SystemDocDriverPreviousEmployment,
 	}
 	for _, c := range all {
 		if !c.IsValid() {

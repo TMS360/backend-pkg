@@ -30,6 +30,8 @@ const (
 	// TRAILER
 	SystemDocTrailerAnnualInspection SystemDocTypeCode = "TRAILER_ANNUAL_INSPECTION"
 	SystemDocTrailerRegistration     SystemDocTypeCode = "TRAILER_REGISTRATION"
+	SystemDocTrailerInsurance        SystemDocTypeCode = "TRAILER_INSURANCE"
+	SystemDocTrailerTitle            SystemDocTypeCode = "TRAILER_TITLE"
 
 	// SHIPMENT
 	SystemDocRC            SystemDocTypeCode = "RC"
@@ -38,8 +40,14 @@ const (
 	SystemDocInvoice       SystemDocTypeCode = "INVOICE"
 	SystemDocShipmentOther SystemDocTypeCode = "SHIPMENT_OTHER"
 
-	// DRIVER
-	SystemPayStatement SystemDocTypeCode = "PAY_STATEMENT"
+	// DRIVER — the FMCSA driver qualification file (49 CFR 391.51) plus payroll.
+	SystemPayStatement                SystemDocTypeCode = "PAY_STATEMENT"
+	SystemDocDriverLicense            SystemDocTypeCode = "DRIVER_LICENSE"
+	SystemDocDriverMedicalCard        SystemDocTypeCode = "DRIVER_MEDICAL_CARD"
+	SystemDocDriverMVR                SystemDocTypeCode = "DRIVER_MVR"
+	SystemDocDriverRoadTest           SystemDocTypeCode = "DRIVER_ROAD_TEST"
+	SystemDocDriverApplication        SystemDocTypeCode = "DRIVER_APPLICATION"
+	SystemDocDriverPreviousEmployment SystemDocTypeCode = "DRIVER_PREVIOUS_EMPLOYMENT"
 )
 
 func (c SystemDocTypeCode) String() string { return string(c) }
@@ -64,12 +72,20 @@ func (c SystemDocTypeCode) IsValid() bool {
 		SystemDocVehicleLeaseAgreement,
 		SystemDocTrailerAnnualInspection,
 		SystemDocTrailerRegistration,
+		SystemDocTrailerInsurance,
+		SystemDocTrailerTitle,
 		SystemDocRC,
 		SystemDocBOL,
 		SystemDocPOD,
 		SystemDocInvoice,
 		SystemDocShipmentOther,
-		SystemPayStatement:
+		SystemPayStatement,
+		SystemDocDriverLicense,
+		SystemDocDriverMedicalCard,
+		SystemDocDriverMVR,
+		SystemDocDriverRoadTest,
+		SystemDocDriverApplication,
+		SystemDocDriverPreviousEmployment:
 		return true
 	default:
 		return false

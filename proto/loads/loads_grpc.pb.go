@@ -27,6 +27,7 @@ const (
 	LoadsService_DriverHasActiveTrip_FullMethodName         = "/loads.LoadsService/DriverHasActiveTrip"
 	LoadsService_GetTripsOverlappingWindow_FullMethodName   = "/loads.LoadsService/GetTripsOverlappingWindow"
 	LoadsService_GetRecentBrokerIDs_FullMethodName          = "/loads.LoadsService/GetRecentBrokerIDs"
+	LoadsService_GetBrokerCopyCancelState_FullMethodName    = "/loads.LoadsService/GetBrokerCopyCancelState"
 	LoadsService_GetShipment_FullMethodName                 = "/loads.LoadsService/GetShipment"
 	LoadsService_ListShipments_FullMethodName               = "/loads.LoadsService/ListShipments"
 	LoadsService_GetTrip_FullMethodName                     = "/loads.LoadsService/GetTrip"
@@ -71,6 +72,13 @@ type LoadsServiceClient interface {
 	// and must never block the absence write on this.
 	GetTripsOverlappingWindow(ctx context.Context, in *GetTripsOverlappingWindowRequest, opts ...grpc.CallOption) (*GetTripsOverlappingWindowResponse, error)
 	GetRecentBrokerIDs(ctx context.Context, in *GetRecentBrokerIDsRequest, opts ...grpc.CallOption) (*GetRecentBrokerIDsResponse, error)
+	// DEV-1859: may a broker still pull back the load they covered with this
+	// carrier? tms-mediator asks before it uncovers, because an invoiced load
+	// must not vanish from the carrier's board.
+	//
+	// backend-load answers with the SAME gate that a real cancel runs, so the
+	// rule lives in one place instead of being restated on the broker side.
+	GetBrokerCopyCancelState(ctx context.Context, in *GetBrokerCopyCancelStateRequest, opts ...grpc.CallOption) (*GetBrokerCopyCancelStateResponse, error)
 	// Get shipment by ID
 	GetShipment(ctx context.Context, in *GetShipmentRequest, opts ...grpc.CallOption) (*ShipmentResponse, error)
 	// List shipments with filters
@@ -227,6 +235,16 @@ func (c *loadsServiceClient) GetRecentBrokerIDs(ctx context.Context, in *GetRece
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(GetRecentBrokerIDsResponse)
 	err := c.cc.Invoke(ctx, LoadsService_GetRecentBrokerIDs_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *loadsServiceClient) GetBrokerCopyCancelState(ctx context.Context, in *GetBrokerCopyCancelStateRequest, opts ...grpc.CallOption) (*GetBrokerCopyCancelStateResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetBrokerCopyCancelStateResponse)
+	err := c.cc.Invoke(ctx, LoadsService_GetBrokerCopyCancelState_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -509,6 +527,13 @@ type LoadsServiceServer interface {
 	// and must never block the absence write on this.
 	GetTripsOverlappingWindow(context.Context, *GetTripsOverlappingWindowRequest) (*GetTripsOverlappingWindowResponse, error)
 	GetRecentBrokerIDs(context.Context, *GetRecentBrokerIDsRequest) (*GetRecentBrokerIDsResponse, error)
+	// DEV-1859: may a broker still pull back the load they covered with this
+	// carrier? tms-mediator asks before it uncovers, because an invoiced load
+	// must not vanish from the carrier's board.
+	//
+	// backend-load answers with the SAME gate that a real cancel runs, so the
+	// rule lives in one place instead of being restated on the broker side.
+	GetBrokerCopyCancelState(context.Context, *GetBrokerCopyCancelStateRequest) (*GetBrokerCopyCancelStateResponse, error)
 	// Get shipment by ID
 	GetShipment(context.Context, *GetShipmentRequest) (*ShipmentResponse, error)
 	// List shipments with filters
@@ -642,6 +667,9 @@ func (UnimplementedLoadsServiceServer) GetTripsOverlappingWindow(context.Context
 }
 func (UnimplementedLoadsServiceServer) GetRecentBrokerIDs(context.Context, *GetRecentBrokerIDsRequest) (*GetRecentBrokerIDsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetRecentBrokerIDs not implemented")
+}
+func (UnimplementedLoadsServiceServer) GetBrokerCopyCancelState(context.Context, *GetBrokerCopyCancelStateRequest) (*GetBrokerCopyCancelStateResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetBrokerCopyCancelState not implemented")
 }
 func (UnimplementedLoadsServiceServer) GetShipment(context.Context, *GetShipmentRequest) (*ShipmentResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetShipment not implemented")
@@ -807,6 +835,24 @@ func _LoadsService_GetRecentBrokerIDs_Handler(srv interface{}, ctx context.Conte
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(LoadsServiceServer).GetRecentBrokerIDs(ctx, req.(*GetRecentBrokerIDsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _LoadsService_GetBrokerCopyCancelState_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetBrokerCopyCancelStateRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(LoadsServiceServer).GetBrokerCopyCancelState(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: LoadsService_GetBrokerCopyCancelState_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(LoadsServiceServer).GetBrokerCopyCancelState(ctx, req.(*GetBrokerCopyCancelStateRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1276,6 +1322,10 @@ var LoadsService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetRecentBrokerIDs",
 			Handler:    _LoadsService_GetRecentBrokerIDs_Handler,
+		},
+		{
+			MethodName: "GetBrokerCopyCancelState",
+			Handler:    _LoadsService_GetBrokerCopyCancelState_Handler,
 		},
 		{
 			MethodName: "GetShipment",

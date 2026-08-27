@@ -26,6 +26,14 @@ service LoadsService {
 
   rpc GetRecentBrokerIDs(GetRecentBrokerIDsRequest) returns (GetRecentBrokerIDsResponse);
 
+  // DEV-1859: may a broker still pull back the load they covered with this
+  // carrier? tms-mediator asks before it uncovers, because an invoiced load
+  // must not vanish from the carrier's board.
+  //
+  // backend-load answers with the SAME gate that a real cancel runs, so the
+  // rule lives in one place instead of being restated on the broker side.
+  rpc GetBrokerCopyCancelState (GetBrokerCopyCancelStateRequest) returns (GetBrokerCopyCancelStateResponse);
+
   // Get shipment by ID
   rpc GetShipment(GetShipmentRequest) returns (ShipmentResponse);
 
@@ -259,6 +267,23 @@ message GetRecentBrokerIDsResponse {
 // Request to get a shipment by ID
 message GetShipmentRequest {
   string shipment_id = 1;
+}
+
+// DEV-1859. company_id is the CARRIER's tenant — the copy lives on their board,
+// not the broker's, and backend-load scopes the lookup to it.
+message GetBrokerCopyCancelStateRequest {
+  string company_id      = 1;
+  string broker_offer_id = 2;
+}
+
+message GetBrokerCopyCancelStateResponse {
+  // false when no load was ever copied for this offer. The broker is then free
+  // to uncover: there is nothing on the carrier's board to take away.
+  bool found       = 1;
+  string shipment_id = 2;
+  bool cancellable = 3;
+  // Why not, in words a broker can read. Empty when cancellable.
+  string reason    = 4;
 }
 
 // Shipment response

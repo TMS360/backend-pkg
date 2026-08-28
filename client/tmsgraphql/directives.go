@@ -31,8 +31,12 @@ func AuthDirective(ctx context.Context, obj interface{}, next graphql.Resolver, 
 		}
 
 		if !isAllowed {
-			// Optional: Create a consts.ErrForbidden for cleaner error handling
-			return nil, fmt.Errorf("forbidden: actor type '%s' does not have access", currentType)
+			// A denial, not a crash — same reasoning as HasRoleDirective below
+			// (DEV-1970): a bare error would be presented as
+			// INTERNAL_SERVER_ERROR and page us on every wrong actor type.
+			return nil, deniedError(
+				fmt.Sprintf("forbidden: actor type %q does not have access (allowed: %v)", currentType, actorTypes),
+			)
 		}
 	}
 
@@ -54,7 +58,38 @@ func HasRoleDirective(ctx context.Context, obj interface{}, next graphql.Resolve
 		}
 	}
 
-	return nil, fmt.Errorf("access denied: missing role")
+	// DEV-1970: a role denial is a normal answer, not a server fault. Returned
+	// as a PublicError so the shared presenter emits code "FORBIDDEN" / status
+	// 403 with a sentence a person can read, and reports it to Sentry as a
+	// warning instead of paging on every routine "you are not allowed".
+	// Only the directive's own verdict is converted — an error coming back out
+	// of next(ctx) is still whatever the resolver made it, so a real crash
+	// inside a role-gated field stays a crash.
+	return nil, deniedError(
+		fmt.Sprintf("access denied: missing role (requires one of %v)", roles),
+	)
+}
+
+// AccessDeniedMessage is the single user-facing sentence for every directive
+// denial. Plain words on purpose — the person reading it is not a developer.
+const AccessDeniedMessage = "You are not allowed to do this. Ask an administrator if you need access."
+
+// AccessDeniedCode is the stable machine-readable code clients branch on. It
+// matches the code the shared gRPC mapping already uses for PermissionDenied,
+// so a client has one code for "not allowed" no matter where it came from.
+const AccessDeniedCode = "FORBIDDEN"
+
+// deniedError builds the 403 every directive denial returns. tech is for the
+// log and for Sentry; the caller only ever sees AccessDeniedMessage, so a
+// denial never leaks which roles or actor types would have worked.
+func deniedError(tech string) error {
+	return response.NewCodedError(
+		AccessDeniedCode,
+		tech,
+		AccessDeniedMessage,
+		http.StatusForbidden,
+		nil,
+	)
 }
 
 // HasPermDirective backs `@hasPerm(perms: [...])`. Effective perms are read

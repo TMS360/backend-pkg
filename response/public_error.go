@@ -3,6 +3,7 @@ package response
 import (
 	"fmt"
 	"log/slog"
+	"net/http"
 )
 
 type PublicError interface {
@@ -71,8 +72,22 @@ func (e *publicError) ErrorCodeString() string {
 }
 
 func NewError(tech, user string, status int) PublicError {
-	slog.Error(fmt.Sprintf("[tech=%s,user=%s]", tech, user))
+	logPublicError(status, fmt.Sprintf("[tech=%s,user=%s]", tech, user))
 	return &publicError{Technical: tech, User: user, Status: status}
+}
+
+// logPublicError writes the construction line at the level the status deserves
+// (DEV-1970). A 4xx is a normal answer to the caller — "you are not allowed",
+// "that name is taken" — and logging it at ERROR made every routine denial
+// look like a fault in the logs, next to the real ones. 5xx keeps ERROR.
+// Mirrors the split the GraphQL presenter already makes when it reports to
+// Sentry: 5xx captures as an error, 4xx as a warning.
+func logPublicError(status int, msg string) {
+	if status >= http.StatusInternalServerError || status == 0 {
+		slog.Error(msg)
+		return
+	}
+	slog.Warn(msg)
 }
 
 // NewErrorWithExtensions is the payload-carrying variant of NewError. The
@@ -80,7 +95,7 @@ func NewError(tech, user string, status int) PublicError {
 // attach structured details (e.g. a blocking resource's id) that clients read
 // without parsing the human message. A nil or empty map behaves like NewError.
 func NewErrorWithExtensions(tech, user string, status int, ext map[string]any) PublicError {
-	slog.Error(fmt.Sprintf("[tech=%s,user=%s]", tech, user))
+	logPublicError(status, fmt.Sprintf("[tech=%s,user=%s]", tech, user))
 	return &publicError{Technical: tech, User: user, Status: status, Ext: ext}
 }
 
@@ -92,6 +107,6 @@ func NewErrorWithExtensions(tech, user string, status int, ext map[string]any) P
 // The returned error satisfies CodedError. A nil or empty map behaves like
 // NewError; an empty code behaves like NewErrorWithExtensions.
 func NewCodedError(code, tech, user string, status int, ext map[string]any) PublicError {
-	slog.Error(fmt.Sprintf("[code=%s,tech=%s,user=%s]", code, tech, user))
+	logPublicError(status, fmt.Sprintf("[code=%s,tech=%s,user=%s]", code, tech, user))
 	return &publicError{Technical: tech, User: user, Status: status, CodeStr: code, Ext: ext}
 }

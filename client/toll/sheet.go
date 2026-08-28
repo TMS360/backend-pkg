@@ -158,6 +158,16 @@ func tableAt(s sheet, i int) table {
 		if _, dup := index[key]; !dup {
 			index[key] = c
 		}
+		// The same column under the name the other export spells it with, so a
+		// lookup for "toll $" finds the csv's "Toll_Amount". Registered in the
+		// index and NOT in headers: headers is what rowMap persists as jsonb,
+		// and that has to keep the name the file actually used.
+		if alias, ok := sftpHeaderAliases[key]; ok {
+			k := strings.ToLower(alias)
+			if _, dup := index[k]; !dup {
+				index[k] = c
+			}
+		}
 	}
 	return table{
 		sheet:     s.name,

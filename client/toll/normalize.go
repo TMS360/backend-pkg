@@ -38,6 +38,12 @@ var textDateLayouts = []string{
 	"1/2/2006 15:04:05",
 	"01/02/2006 3:04:05 PM",
 	"1/2/2006 3:04:05 PM",
+	// Two-digit years, as the daily SFTP csv writes them: "8/20/26",
+	// "08/19/26". LAST on purpose — time.Parse must consume the whole string,
+	// so "8/20/2026" cannot reach these, but keeping the four-digit layouts
+	// ahead of them removes the question entirely.
+	"1/2/06",
+	"01/02/06",
 }
 
 // ParseFileTime reads a timestamp in whichever form the file used — an Excel

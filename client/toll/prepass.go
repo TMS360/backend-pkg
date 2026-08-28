@@ -39,6 +39,43 @@ const (
 // the report's cover sheet, when the export includes one.
 const colAccount = "Account"
 
+// sftpHeaderAliases maps the column names of the DAILY csv PrePass drops into
+// the SFTP folder onto the names above, which are the ones the WEEKLY portal
+// spreadsheet prints. Same fields, same order, different spelling — the csv
+// writes "PostingDate" and "Toll_Amount" where the workbook writes "Post Date"
+// and "Toll $".
+//
+// One table, not a second parser: the daily file differs from the weekly one
+// only in how its header row is spelled, and a csv-only reader would have to
+// re-implement the date handling, the money handling and the plate/transponder
+// rule to gain nothing. tableAt registers both spellings against the same
+// column, so everything downstream keeps addressing columns by the portal name.
+//
+// Keys are lower case because that is how table.index is keyed.
+//
+// CustID is deliberately absent: it is the carrier account, and the account
+// check reads ParseResult.Account off a cover SHEET (findAccount), which a csv
+// does not have. Nothing consumes ParseResult.Account today, so mapping it
+// would add a field nobody reads.
+var sftpHeaderAliases = map[string]string{
+	"postingdate":  colPostDate,
+	"invoicedate":  colInvoiceDate,
+	"readtype":     colReadType,
+	"pptagid":      colDeviceID,
+	"etagid_plate": colAgencyRef,
+	"equipid":      colTruckID,
+	"entry_plaza":  colEntryPlaza,
+	"entry_date":   colEntryDate,
+	"entry_time":   colEntryTime,
+	"exit_plaza":   colExitPlaza,
+	"exit_date":    colExitDate,
+	"exit_time":    colExitTime,
+	"toll_class":   colClass,
+	"miles":        colMiles,
+	"toll_amount":  colAmount,
+	// Source and Agency are spelled identically in both files.
+}
+
 // PrePass default SFTP settings. Unlike factoring these are only fallbacks:
 // each carrier is issued its own folder, so host/port/directory normally come
 // from the company's stored credential and these apply when it leaves them

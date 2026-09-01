@@ -156,8 +156,18 @@ func NewErrorPresenter(isDebug bool) graphql.ErrorPresenterFunc {
 			gqlErr.Message = msg
 			gqlErr.Extensions = map[string]any{"code": code, "status": httpStatus}
 			captureWarningFunc(ctx, err)
+		} else if errors.Is(err, context.Canceled) {
+			// 3a. Client disconnected — not a server fault. Skip Sentry error
+			// capture and do not mask as Internal Server Error. Capture as a
+			// warning so disconnects are queryable without paging anyone.
+			captureWarningFunc(ctx, err)
+			gqlErr.Message = "Request canceled"
+			gqlErr.Extensions = map[string]any{
+				"code":   "CLIENT_DISCONNECTED",
+				"status": http.StatusBadRequest,
+			}
 		} else {
-			// 3. Unexpected errors — always treat as 500-class.
+			// 3b. Unexpected errors — always treat as 500-class.
 			slog.Error("GraphQL Internal Error", "err", err, "path", gqlErr.Path, "request_id", requestID)
 			captureFunc(ctx, err)
 

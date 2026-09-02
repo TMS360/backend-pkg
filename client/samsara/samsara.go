@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 	"time"
@@ -20,6 +21,11 @@ import (
 // ErrInvalidCredentials is returned by TestConnection when the Samsara API
 // rejects the configured API key with a 401 or 403 status.
 var ErrInvalidCredentials = errors.New("samsara: invalid credentials")
+
+// ErrNotFound is returned by doRequest when Samsara responds with 404.
+// Deletes treat it as success: the resource is already gone, which is the
+// state the caller wanted anyway.
+var ErrNotFound = errors.New("samsara: not found")
 
 // AuthError is returned by doRequest when Samsara responds with 401 or 403.
 // Callers use IsAuthError to detect this case and stop polling the tenant.
@@ -47,7 +53,8 @@ type VehicleInfo struct {
 }
 
 type VehicleListResponse struct {
-	Data []VehicleInfo `json:"data"`
+	Data       []VehicleInfo `json:"data"`
+	Pagination Pagination    `json:"pagination,omitempty"`
 }
 
 // GpsCoordinates - GPS координаты транспорта
@@ -326,17 +333,23 @@ type AlertEvent struct {
 	} `json:"driver,omitempty"`
 }
 
-// Alert Trigger Type IDs
+// Alert Trigger Type IDs.
+// Значения сверены с developers.samsara.com/reference/getconfigurations (DEV-1989).
+// До этого пять из них были неверными: заказывая "простой двигателя" по id 1020,
+// мы на самом деле просили выезд из геозоны по всему парку.
 const (
-	TriggerTypeInsideGeofence   = 1017 // Внутри геозоны
-	TriggerTypeOutsideGeofence  = 1018 // Вне геозоны
-	TriggerTypeMovement         = 1019 // Начало движения
+	TriggerTypeMovement        = 1013 // Asset starts moving
+	TriggerTypeInsideGeofence  = 1014 // Inside Geofence
+	TriggerTypeEngineIdle      = 1019 // Vehicle Engine Idle
+	TriggerTypeOutsideGeofence = 1020 // Outside Geofence
+	TriggerTypeEngineOn        = 1021 // Asset Engine On
+	TriggerTypeEngineOff       = 1022 // Asset Engine Off
+	TriggerTypeHarshEvent      = 1023 // Harsh Event
+	TriggerTypeFaultCode       = 1029 // Fault Code
+
+	// Ниже — не сверено с документацией (DEV-1989 сверял только список выше).
+	// Ничего из этого мы сейчас в Samsara не отправляем.
 	TriggerTypeSpeedAbove       = 1001 // Превышение скорости
-	TriggerTypeEngineIdle       = 1020 // Простой двигателя
-	TriggerTypeEngineOn         = 1021 // Двигатель включен
-	TriggerTypeEngineOff        = 1022 // Двигатель выключен
-	TriggerTypeHarshEvent       = 1023 // Резкое событие (торможение/ускорение)
-	TriggerTypeFaultCode        = 1031 // Код неисправности
 	TriggerTypeTemperatureAbove = 1033 // Температура выше порога
 	TriggerTypeTemperatureBelow = 1034 // Температура ниже порога
 	TriggerTypeHumidityAbove    = 1035 // Влажность выше порога
@@ -623,6 +636,12 @@ func (c *Client) doRequest(ctx context.Context, method, path string, body io.Rea
 		}
 	}
 
+	if resp.StatusCode == http.StatusNotFound {
+		defer resp.Body.Close()
+		bodyBytes, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("%w: API request failed with status 404: %s", ErrNotFound, string(bodyBytes))
+	}
+
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		defer resp.Body.Close()
 		bodyBytes, _ := io.ReadAll(resp.Body)
@@ -651,6 +670,52 @@ func (c *Client) ListVehicles(ctx context.Context) (vehicles []VehicleInfo, err 
 	}
 
 	return listResponse.Data, nil
+}
+
+// GetAllVehicles проходит все страницы /fleet/vehicles.
+// ListVehicles читает только первую страницу и оставлен как есть ради существующих
+// вызывающих; для парка больше одной страницы нужен этот метод.
+func (c *Client) GetAllVehicles(ctx context.Context) ([]VehicleInfo, error) {
+	var all []VehicleInfo
+	cursor := ""
+
+	for {
+		page, err := c.listVehiclesPage(ctx, cursor)
+		if err != nil {
+			return nil, err
+		}
+
+		all = append(all, page.Data...)
+
+		if !page.Pagination.HasNextPage || page.Pagination.EndCursor == "" {
+			return all, nil
+		}
+		cursor = page.Pagination.EndCursor
+	}
+}
+
+func (c *Client) listVehiclesPage(ctx context.Context, cursor string) (result *VehicleListResponse, err error) {
+	path := "/fleet/vehicles"
+	if cursor != "" {
+		path = fmt.Sprintf("%s?after=%s", path, url.QueryEscape(cursor))
+	}
+
+	resp, err := c.doRequest(ctx, http.MethodGet, path, nil)
+	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		if closeErr := resp.Body.Close(); closeErr != nil && err == nil {
+			err = fmt.Errorf("failed to close response body: %w", closeErr)
+		}
+	}()
+
+	var listResponse VehicleListResponse
+	if decodeErr := json.NewDecoder(resp.Body).Decode(&listResponse); decodeErr != nil {
+		return nil, fmt.Errorf("failed to decode response: %w", decodeErr)
+	}
+
+	return &listResponse, nil
 }
 
 // GetVehiclesStats получает GPS статистику для указанных транспортов (по Samsara ID, НЕ по VIN!)
@@ -1674,11 +1739,16 @@ func (c *Client) UpdateAlertConfiguration(ctx context.Context, alertID string, u
 	return &alertResponse.Data, nil
 }
 
-// DeleteAlertConfiguration удаляет конфигурацию алерта
+// DeleteAlertConfiguration удаляет конфигурацию алерта.
+// 404 не ошибка: конфигурации уже нет, а это и есть нужное состояние, поэтому
+// повторный проход уборки не валится на том, что кто-то удалил алерт руками.
 func (c *Client) DeleteAlertConfiguration(ctx context.Context, alertID string) error {
 	path := fmt.Sprintf("/alerts/configurations/%s", alertID)
 	resp, err := c.doRequest(ctx, http.MethodDelete, path, nil)
 	if err != nil {
+		if errors.Is(err, ErrNotFound) {
+			return nil
+		}
 		return err
 	}
 	defer func() {
@@ -1688,6 +1758,52 @@ func (c *Client) DeleteAlertConfiguration(ctx context.Context, alertID string) e
 	}()
 
 	return nil
+}
+
+// ListAlertConfigurations возвращает одну страницу конфигураций алертов.
+// cursor — pagination.endCursor из предыдущего ответа; пустая строка = первая страница.
+func (c *Client) ListAlertConfigurations(ctx context.Context, cursor string) (result *AlertConfigurationListResponse, err error) {
+	path := "/alerts/configurations"
+	if cursor != "" {
+		path = fmt.Sprintf("%s?after=%s", path, url.QueryEscape(cursor))
+	}
+
+	resp, err := c.doRequest(ctx, http.MethodGet, path, nil)
+	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		if closeErr := resp.Body.Close(); closeErr != nil && err == nil {
+			err = fmt.Errorf("failed to close response body: %w", closeErr)
+		}
+	}()
+
+	var listResponse AlertConfigurationListResponse
+	if decodeErr := json.NewDecoder(resp.Body).Decode(&listResponse); decodeErr != nil {
+		return nil, fmt.Errorf("failed to decode response: %w", decodeErr)
+	}
+
+	return &listResponse, nil
+}
+
+// GetAllAlertConfigurations проходит все страницы и возвращает конфигурации целиком.
+func (c *Client) GetAllAlertConfigurations(ctx context.Context) ([]AlertConfiguration, error) {
+	var all []AlertConfiguration
+	cursor := ""
+
+	for {
+		page, err := c.ListAlertConfigurations(ctx, cursor)
+		if err != nil {
+			return nil, err
+		}
+
+		all = append(all, page.Data...)
+
+		if !page.Pagination.HasNextPage || page.Pagination.EndCursor == "" {
+			return all, nil
+		}
+		cursor = page.Pagination.EndCursor
+	}
 }
 
 // CreateGeofenceAlert создаёт алерт для входа/выхода из геозоны

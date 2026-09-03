@@ -61,6 +61,19 @@ service CouriersService {
   // (a profile screen, a picker) should keep using GetUsersByIds — this RPC
   // exists for the settlement paths (DEV-1815).
   rpc GetDriverTypesAt(GetDriverTypesAtRequest) returns (GetDriverTypesAtResponse);
+
+  // GetUsersByRoles returns the user_ids in a tenant that hold ANY of role_ids.
+  //
+  // Like ListCompanyAdmins this is a plain identity question ("who is in
+  // Safety"), NOT an alert-routing decision: there is no permission-code tier
+  // chain and no fallback, so an empty answer comes back as an empty list and
+  // the CALLER decides what it means.
+  //
+  // Consumer: tms-files (DEV-2009), which routes one document type's expiry
+  // reminders to the roles an admin picked and falls back to the
+  // compliance.receive-alerts holders itself. A fallback inside this RPC would
+  // hide which tier answered and make that routing untestable.
+  rpc GetUsersByRoles(GetUsersByRolesRequest) returns (GetUsersByRolesResponse);
 }
 
 // ResolutionSource reports which fallback tier produced the recipient list.
@@ -85,6 +98,18 @@ message GetUsersByPermissionRequest {
 message GetUsersByPermissionResponse {
   repeated string user_ids = 1; // resolved recipients (UUID strings)
   ResolutionSource source  = 2; // which tier produced user_ids
+}
+
+message GetUsersByRolesRequest {
+  string company_id      = 1; // tenant UUID (required)
+  // Role UUIDs (required, non-empty). Built-in and tenant-custom role ids are
+  // both accepted; a role id belonging to another tenant simply matches nobody,
+  // because membership is read through the requested company's users.
+  repeated string role_ids = 2;
+}
+
+message GetUsersByRolesResponse {
+  repeated string user_ids = 1; // distinct members of any of role_ids
 }
 
 message ListCompanyAdminsRequest {

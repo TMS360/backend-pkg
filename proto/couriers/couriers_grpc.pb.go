@@ -32,6 +32,7 @@ const (
 	CouriersService_GetUsersByPermission_FullMethodName = "/couriers.CouriersService/GetUsersByPermission"
 	CouriersService_ListCompanyAdmins_FullMethodName    = "/couriers.CouriersService/ListCompanyAdmins"
 	CouriersService_GetDriverTypesAt_FullMethodName     = "/couriers.CouriersService/GetDriverTypesAt"
+	CouriersService_GetUsersByRoles_FullMethodName      = "/couriers.CouriersService/GetUsersByRoles"
 )
 
 // CouriersServiceClient is the client API for CouriersService service.
@@ -82,6 +83,18 @@ type CouriersServiceClient interface {
 	// (a profile screen, a picker) should keep using GetUsersByIds — this RPC
 	// exists for the settlement paths (DEV-1815).
 	GetDriverTypesAt(ctx context.Context, in *GetDriverTypesAtRequest, opts ...grpc.CallOption) (*GetDriverTypesAtResponse, error)
+	// GetUsersByRoles returns the user_ids in a tenant that hold ANY of role_ids.
+	//
+	// Like ListCompanyAdmins this is a plain identity question ("who is in
+	// Safety"), NOT an alert-routing decision: there is no permission-code tier
+	// chain and no fallback, so an empty answer comes back as an empty list and
+	// the CALLER decides what it means.
+	//
+	// Consumer: tms-files (DEV-2009), which routes one document type's expiry
+	// reminders to the roles an admin picked and falls back to the
+	// compliance.receive-alerts holders itself. A fallback inside this RPC would
+	// hide which tier answered and make that routing untestable.
+	GetUsersByRoles(ctx context.Context, in *GetUsersByRolesRequest, opts ...grpc.CallOption) (*GetUsersByRolesResponse, error)
 }
 
 type couriersServiceClient struct {
@@ -182,6 +195,16 @@ func (c *couriersServiceClient) GetDriverTypesAt(ctx context.Context, in *GetDri
 	return out, nil
 }
 
+func (c *couriersServiceClient) GetUsersByRoles(ctx context.Context, in *GetUsersByRolesRequest, opts ...grpc.CallOption) (*GetUsersByRolesResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetUsersByRolesResponse)
+	err := c.cc.Invoke(ctx, CouriersService_GetUsersByRoles_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // CouriersServiceServer is the server API for CouriersService service.
 // All implementations must embed UnimplementedCouriersServiceServer
 // for forward compatibility.
@@ -230,6 +253,18 @@ type CouriersServiceServer interface {
 	// (a profile screen, a picker) should keep using GetUsersByIds — this RPC
 	// exists for the settlement paths (DEV-1815).
 	GetDriverTypesAt(context.Context, *GetDriverTypesAtRequest) (*GetDriverTypesAtResponse, error)
+	// GetUsersByRoles returns the user_ids in a tenant that hold ANY of role_ids.
+	//
+	// Like ListCompanyAdmins this is a plain identity question ("who is in
+	// Safety"), NOT an alert-routing decision: there is no permission-code tier
+	// chain and no fallback, so an empty answer comes back as an empty list and
+	// the CALLER decides what it means.
+	//
+	// Consumer: tms-files (DEV-2009), which routes one document type's expiry
+	// reminders to the roles an admin picked and falls back to the
+	// compliance.receive-alerts holders itself. A fallback inside this RPC would
+	// hide which tier answered and make that routing untestable.
+	GetUsersByRoles(context.Context, *GetUsersByRolesRequest) (*GetUsersByRolesResponse, error)
 	mustEmbedUnimplementedCouriersServiceServer()
 }
 
@@ -266,6 +301,9 @@ func (UnimplementedCouriersServiceServer) ListCompanyAdmins(context.Context, *Li
 }
 func (UnimplementedCouriersServiceServer) GetDriverTypesAt(context.Context, *GetDriverTypesAtRequest) (*GetDriverTypesAtResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetDriverTypesAt not implemented")
+}
+func (UnimplementedCouriersServiceServer) GetUsersByRoles(context.Context, *GetUsersByRolesRequest) (*GetUsersByRolesResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetUsersByRoles not implemented")
 }
 func (UnimplementedCouriersServiceServer) mustEmbedUnimplementedCouriersServiceServer() {}
 func (UnimplementedCouriersServiceServer) testEmbeddedByValue()                         {}
@@ -450,6 +488,24 @@ func _CouriersService_GetDriverTypesAt_Handler(srv interface{}, ctx context.Cont
 	return interceptor(ctx, in, info, handler)
 }
 
+func _CouriersService_GetUsersByRoles_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetUsersByRolesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CouriersServiceServer).GetUsersByRoles(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: CouriersService_GetUsersByRoles_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CouriersServiceServer).GetUsersByRoles(ctx, req.(*GetUsersByRolesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // CouriersService_ServiceDesc is the grpc.ServiceDesc for CouriersService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -492,6 +548,10 @@ var CouriersService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetDriverTypesAt",
 			Handler:    _CouriersService_GetDriverTypesAt_Handler,
+		},
+		{
+			MethodName: "GetUsersByRoles",
+			Handler:    _CouriersService_GetUsersByRoles_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

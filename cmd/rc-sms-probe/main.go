@@ -5,7 +5,10 @@
 // It prints a markdown report — verdict, the request that was sent, the answer
 // that came back verbatim — meant to be pasted straight into the ticket.
 //
-// Run it against the RingCentral developer sandbox, never a customer account:
+// RingCentral retired its developer sandbox in December 2024, so there is no
+// free environment left to try this in: the run goes against a real account and
+// spends real (cent-priced) messages. Send to a number the account owns, get the
+// account owner's go-ahead first, and use RC_DRY_RUN=1 to rehearse.
 //
 //	RC_CLIENT_ID=... RC_CLIENT_SECRET=... RC_JWT=... RC_TO=+15551230000 \
 //	  go run ./cmd/rc-sms-probe
@@ -14,7 +17,7 @@
 //
 //	RC_CLIENT_ID, RC_CLIENT_SECRET, RC_JWT   the sandbox app credential (required)
 //	RC_TO                                    recipient, E.164 (required)
-//	RC_SERVER_URL                            default: the sandbox host
+//	RC_SERVER_URL                            default: the production host
 //	RC_TEXT                                  message body
 //	RC_OWN_FROM, RC_SHARED_FROM,
 //	RC_SHARED_EXTENSION_ID                   override the automatic number pick
@@ -40,7 +43,7 @@ func main() {
 			ClientID:     os.Getenv("RC_CLIENT_ID"),
 			ClientSecret: os.Getenv("RC_CLIENT_SECRET"),
 			JWT:          os.Getenv("RC_JWT"),
-			ServerURL:    envOr("RC_SERVER_URL", ringcentral.SandboxServerURL),
+			ServerURL:    envOr("RC_SERVER_URL", ringcentral.DefaultServerURL),
 		},
 		To:                os.Getenv("RC_TO"),
 		Text:              os.Getenv("RC_TEXT"),
@@ -56,8 +59,12 @@ func main() {
 	if strings.TrimSpace(cfg.To) == "" {
 		fail("RC_TO is required: the recipient the probe texts, in E.164 (+15551230000)")
 	}
-	if cfg.Cred.ServerURL == ringcentral.DefaultServerURL {
-		fmt.Fprintln(os.Stderr, "warning: RC_SERVER_URL points at PRODUCTION — this sends real texts from a customer account")
+	switch {
+	case cfg.Cred.ServerURL == ringcentral.SandboxServerURL:
+		fmt.Fprintln(os.Stderr, "warning: RC_SERVER_URL points at the developer sandbox, which RingCentral retired in December 2024 — expect this run to fail")
+	case !cfg.DryRun:
+		fmt.Fprintf(os.Stderr, "warning: live run against %s — three real texts will be sent to %s from this account's own numbers. Ctrl-C now, or rerun with RC_DRY_RUN=1, if that is not what you want.\n",
+			cfg.Cred.ServerURL, cfg.To)
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)

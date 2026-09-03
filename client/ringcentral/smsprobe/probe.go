@@ -18,6 +18,7 @@ package smsprobe
 
 import (
 	"fmt"
+	"net/http"
 	"strings"
 
 	"github.com/TMS360/backend-pkg/client/ringcentral"
@@ -54,6 +55,12 @@ type Attempt struct {
 	From        string
 	To          string
 	Text        string
+
+	// Attempted is true once the request has actually been put on the wire. A
+	// planned-but-unsent attempt (dry run, or a failed precondition) must never
+	// read as a refusal: an empty result rendered as "refused" is a fabricated
+	// answer, and this ticket exists to avoid exactly that.
+	Attempted bool
 
 	// Sent is true only when RingCentral accepted the message.
 	Sent          bool
@@ -93,7 +100,7 @@ func Classify(own Attempt, shared []Attempt) Verdict {
 	case own.Transport != "":
 		return Verdict{AnswerInconclusive, fmt.Sprintf(
 			"the control send never reached RingCentral (%s); nothing was proved", own.Transport)}
-	case !own.Sent && own.StatusCode == 0 && own.ErrorCode == "":
+	case !wasAttempted(own):
 		return Verdict{AnswerInconclusive, "the control send was not performed; nothing was proved"}
 	case !own.Sent && isFeatureUnavailable(own):
 		return Verdict{AnswerInconclusive, fmt.Sprintf(
@@ -132,38 +139,92 @@ func Classify(own Attempt, shared []Attempt) Verdict {
 		}
 	}
 
-	allOwnership := true
+	// A refusal only counts as an answer when it is about the sender. "Your
+	// credential may not act as that extension" is a refusal about the CALLER,
+	// and a plain (non-admin) user gets it whatever number it asks for — so it
+	// is evidence about our RingCentral role, not about number sharing.
+	var ownership, permission, unclassified []Attempt
 	for _, a := range shared {
-		if !isOwnershipRejection(a) {
-			allOwnership = false
-			break
+		switch {
+		case !wasAttempted(a):
+			continue
+		case isPermissionRejection(a):
+			permission = append(permission, a)
+		case isOwnershipRejection(a):
+			ownership = append(ownership, a)
+		default:
+			unclassified = append(unclassified, a)
 		}
 	}
-	if allOwnership {
-		first := shared[0]
+
+	if len(unclassified) > 0 {
+		u := unclassified[0]
+		return Verdict{AnswerInconclusive, fmt.Sprintf(
+			"%s was refused with a code we have not classified (HTTP %d %s: %s) — read the verbatim body below before deciding",
+			u.Label, u.StatusCode, u.ErrorCode, u.Message)}
+	}
+
+	switch {
+	case len(ownership) > 0 && len(permission) == 0:
+		first := ownership[0]
 		return Verdict{AnswerOwnNumberOnly, fmt.Sprintf(
 			"every shared-number attempt was refused as a sender-ownership problem (%s HTTP %d %s: %s): a text can only go out from a number of the extension the credential belongs to",
 			first.Label, first.StatusCode, first.ErrorCode, first.Message)}
+
+	case len(ownership) > 0 && len(permission) > 0:
+		own0, perm0 := ownership[0], permission[0]
+		return Verdict{AnswerInconclusive, fmt.Sprintf(
+			"half the answer: %s was refused as a sender-ownership problem (%s: %s), but %s was refused for lack of permission (HTTP %d %s: %s), so the admin-acting path was never actually tested — rerun with a credential minted under a RingCentral super admin before concluding",
+			own0.Label, own0.ErrorCode, own0.Message,
+			perm0.Label, perm0.StatusCode, perm0.ErrorCode, perm0.Message)}
+
+	case len(permission) > 0:
+		p := permission[0]
+		return Verdict{AnswerInconclusive, fmt.Sprintf(
+			"every shared-number attempt was refused for lack of permission (%s HTTP %d %s: %s) — that is our RingCentral role, not an answer about sharing; rerun with a credential minted under a super admin",
+			p.Label, p.StatusCode, p.ErrorCode, p.Message)}
 	}
 
-	unknown := shared[0]
-	for _, a := range shared {
-		if !isOwnershipRejection(a) {
-			unknown = a
-			break
+	return Verdict{AnswerInconclusive, "no shared-number attempt was performed"}
+}
+
+// wasAttempted reports whether the request actually went out. The explicit flag
+// is what Run sets; the rest is for attempts built by hand (tests, replays),
+// where any trace of a result is proof enough that it happened.
+func wasAttempted(a Attempt) bool {
+	return a.Attempted || a.Sent || a.StatusCode != 0 || a.ErrorCode != "" || a.Transport != ""
+}
+
+// isPermissionRejection reports whether RingCentral refused because the
+// credential is not allowed to call the endpoint at all — CMN-401 / CMN-408 and
+// the "no ... permission granted" wording. It is checked BEFORE ownership: a
+// plain user asking for another extension's SMS path is stopped at the door,
+// long before RingCentral looks at who owns the sender number, and reading that
+// as "sharing is not allowed" would answer the ticket with a fact about our own
+// role instead.
+func isPermissionRejection(a Attempt) bool {
+	if hasCode(a, "CMN-401") || hasCode(a, "CMN-408") {
+		return true
+	}
+	if a.StatusCode != http.StatusForbidden && a.StatusCode != http.StatusUnauthorized {
+		return false
+	}
+	hay := strings.ToLower(a.Message + " " + a.Raw)
+	for _, marker := range []string{"permission", "not allowed", "insufficient", "forbidden"} {
+		if strings.Contains(hay, marker) {
+			return true
 		}
 	}
-	return Verdict{AnswerInconclusive, fmt.Sprintf(
-		"%s was refused with a code we have not classified (HTTP %d %s: %s) — read the verbatim body below before deciding",
-		unknown.Label, unknown.StatusCode, unknown.ErrorCode, unknown.Message)}
+	return false
 }
 
 // isOwnershipRejection reports whether RingCentral refused the send because the
 // sender number is not this extension's. Two shapes are known: HTTP 400
 // CMN-101 "Parameter [from] value is invalid" and the older message "Phone
-// number doesn't belong to extension". A 403 on another extension's SMS path is
-// the same wall from the other side — the credential may not act as that
-// extension — and is counted here for the same reason.
+// number doesn't belong to extension". A bare 403 on another extension's SMS
+// path counts too — the credential may not act as that extension — but only
+// after isPermissionRejection has taken the ones that say so in words, because
+// those describe our role rather than the number.
 func isOwnershipRejection(a Attempt) bool {
 	if a.StatusCode == 403 {
 		return true

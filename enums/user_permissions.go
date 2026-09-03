@@ -265,6 +265,26 @@ const (
 	//     it.
 	// Held by default by admin and manager (the dispatch-manager desk).
 	PermAuditPlanExclusionEdit UserPermissionEnum = "audit_plan_exclusion_edit"
+
+	// PermComplianceDispatchOverride gates dispatching a driver/truck/trailer whose
+	// required compliance document is missing or lapsed while the tenant has
+	// enforcement switched on for that document type (DEV-1880). The holder
+	// overrides ONE dispatch, with a mandatory reason recorded forever; the block
+	// itself stays in place for every later dispatch.
+	//
+	// FLAT for the same reason as PermShipmentBillingApprove above, and the
+	// ticket's proposed spelling `compliance.dispatch.override` cannot express it:
+	// a dotted code introduces a top-level `compliance` MODULE, and
+	// ModulePermissionCodes() hands every module to every built-in role at signup
+	// — so the "user without the permission is refused" acceptance criterion could
+	// never be observed. Reading the compliance dashboard stays
+	// `settings.compliance.view|edit`; this is the governed exception on top.
+	//
+	// Held by default by admin, manager and safety (the compliance desk). A
+	// dispatcher deliberately does NOT hold it: waiving a safety document is a
+	// supervisor decision, not a dispatch-desk one. A company widens it the usual
+	// way, in Settings -> Roles.
+	PermComplianceDispatchOverride UserPermissionEnum = "compliance_dispatch_override"
 )
 
 // PermissionCatalogEntry describes one row written to the permissions table.
@@ -431,6 +451,7 @@ var CustomPermissionCatalog = []CustomPermissionEntry{
 	{Code: string(PermBrokerCarriersFind), Label: "Broker portal: search carriers"},
 	{Code: string(PermShipmentBillingApprove), Label: "Approve loads for billing"},
 	{Code: string(PermAuditPlanExclusionEdit), Label: "Exclude a time range from the Dispatch KPI plan"},
+	{Code: string(PermComplianceDispatchOverride), Label: "Dispatch despite a blocking compliance document"},
 }
 
 // CustomPermissionCodes returns just the flat custom permission codes, in
@@ -747,11 +768,15 @@ func DefaultRolePermissions() map[UserRoleEnum][]string {
 		// gets NEITHER, deliberately — the log is a record of the office calling
 		// drivers, and a recording is a named person's voice. Keep it that way; if
 		// a tenant wants a wider audience, that is a custom role, not a default.
-		UserRoleAdmin:      withExtra(string(PermTripFinancialsEdit), string(PermTripReassignCommitted), string(PermFileDeleteAny), string(PermReportsRun), string(PermReportsManage), string(PermCallsView), string(PermCallsPlay), string(PermShipmentBillingApprove), string(PermAuditPlanExclusionEdit)),
-		UserRoleManager:    withExtra(string(PermTripReassignCommitted), string(PermFileDeleteAny), string(PermCallsView), string(PermCallsPlay), string(PermShipmentBillingApprove), string(PermAuditPlanExclusionEdit)),
+		// compliance_dispatch_override (DEV-1880): waiving a missing or lapsed
+		// safety document for one dispatch is a supervisor decision, so admin,
+		// manager and safety hold it. Dispatcher does NOT — and therefore neither
+		// does track_and_trace, which is derived from dispatcher below.
+		UserRoleAdmin:      withExtra(string(PermTripFinancialsEdit), string(PermTripReassignCommitted), string(PermFileDeleteAny), string(PermReportsRun), string(PermReportsManage), string(PermCallsView), string(PermCallsPlay), string(PermShipmentBillingApprove), string(PermAuditPlanExclusionEdit), string(PermComplianceDispatchOverride)),
+		UserRoleManager:    withExtra(string(PermTripReassignCommitted), string(PermFileDeleteAny), string(PermCallsView), string(PermCallsPlay), string(PermShipmentBillingApprove), string(PermAuditPlanExclusionEdit), string(PermComplianceDispatchOverride)),
 		UserRoleAccounting: withExtra(string(PermTripFinancialsEdit), string(PermReportsRun), string(PermReportsManage), string(PermShipmentBillingApprove)),
 		UserRoleFleet:      withExtra(),
-		UserRoleSafety:     withExtra(),
+		UserRoleSafety:     withExtra(string(PermComplianceDispatchOverride)),
 		UserRoleHr:         withExtra(),
 		// DEV-1409: the auditor gets the same module baseline as its peers. Its
 		// governed powers (locked-statement corrections, revised-invoice voids,

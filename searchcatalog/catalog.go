@@ -88,10 +88,12 @@ var Catalog = []Entity{
 			{Path: "driver.samsaraDriverId", Label: "Samsara ID", Kind: KindCode},
 			{Path: "driver.driverCompanyName", Label: "Driver company", Kind: KindText},
 		},
-		Relations: []Relation{
-			{Path: "driver.crew.partner.name", Label: "Crew partner", Kind: KindText, Target: EntityDriver, Remote: true},
-			{Path: "driver.truck.number", Label: "Truck #", Kind: KindNumber, Target: EntityTruck, Remote: true},
-		},
+		// No relations. A driver could in principle be searched by their crew
+		// partner or their truck number, but tms-auth has no client to
+		// tms-teams or tms-loads, and inverting that dependency to add one
+		// buys nothing the office cannot already get: the TRUCK group answers
+		// "1043" and its row names the driver on it.
+		Relations: nil,
 	},
 
 	// =====================================================================
@@ -234,9 +236,10 @@ var Catalog = []Entity{
 			{Path: "task.description", Label: "Description", Kind: KindText},
 			{Path: "task.status", Label: "Status", Kind: KindStatus},
 		},
-		Relations: []Relation{
-			{Path: "task.assignee.name", Label: "Assignee", Kind: KindText, Target: EntityOfficeUser, Remote: true},
-		},
+		// No relations: backend-tasks holds an assignee id and has no client to
+		// tms-auth, so "tasks assigned to Ann" is not answerable here today.
+		// The task's own title and description are what the office searches.
+		Relations: nil,
 	},
 
 	// =====================================================================

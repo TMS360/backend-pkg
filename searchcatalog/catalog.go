@@ -11,7 +11,13 @@ package searchcatalog
 //	CREW                     tms-teams   internal/domain/{driver_crew,local_driver}.go
 //	TASK                     backend-tasks internal/domain/task.go
 //	FILE                     tms-files   internal/domain/{file,file_link,document_type}.go
-//	INVOICE/PAY_STATEMENT    backend-accounting internal/domain/{invoice,statement}.go
+//
+// backend-accounting is deliberately absent. Invoices and pay statements would
+// fit the shape, but that service exposes no gRPC listener at all — it is a
+// client of the others — so answering a group from it means standing up its
+// first inbound surface. That is a deployment change, not a search change, and
+// it is a separate ticket. Nothing is lost meanwhile: an invoice is reached
+// from the load it bills, and the LOAD group answers a load number directly.
 //
 // Order matters: it is the order the groups come back in, so the entities an
 // office user asks for most often come first.
@@ -216,12 +222,14 @@ var Catalog = []Entity{
 	{
 		Code: EntityCrew, Label: "Crews",
 		Service: ServiceTeams, Permission: "teams.crews.view",
-		Fields:  nil,
+		Fields: nil,
 		Relations: []Relation{
 			{Path: "crew.primaryDriver.name", Label: "Primary driver", Kind: KindText, Target: EntityDriver},
 			{Path: "crew.secondaryDriver.name", Label: "Secondary driver", Kind: KindText, Target: EntityDriver},
-			{Path: "crew.truck.number", Label: "Truck #", Kind: KindNumber, Target: EntityTruck, Remote: true},
-			{Path: "crew.trailer.number", Label: "Trailer #", Kind: KindNumber, Target: EntityTrailer, Remote: true},
+			// Local despite pointing at fleet records: tms-teams denormalises
+			// both numbers onto driver_crew_items, so no resolve is needed.
+			{Path: "crew.truck.number", Label: "Truck #", Kind: KindNumber, Target: EntityTruck},
+			{Path: "crew.trailer.number", Label: "Trailer #", Kind: KindNumber, Target: EntityTrailer},
 		},
 	},
 
@@ -253,39 +261,6 @@ var Catalog = []Entity{
 		},
 		Relations: []Relation{
 			{Path: "file.documentType.name", Label: "Document type", Kind: KindText},
-		},
-	},
-
-	// =====================================================================
-	// INVOICE — backend-accounting. Identifiers only: no amount, subtotal or
-	// total is searchable or shown.
-	// =====================================================================
-	{
-		Code: EntityInvoice, Label: "Invoices",
-		Service: ServiceAccounting, Permission: "accounting.invoices.view",
-		Fields: []Field{
-			{Path: "invoice.invoiceNumber", Label: "Invoice #", Kind: KindNumber},
-			{Path: "invoice.status", Label: "Status", Kind: KindStatus},
-		},
-		Relations: []Relation{
-			{Path: "invoice.customer.companyName", Label: "Customer", Kind: KindText, Target: EntityCustomer, Remote: true},
-			{Path: "invoice.load.shipmentNumber", Label: "Load #", Kind: KindNumber, Target: EntityLoad, Remote: true},
-		},
-	},
-
-	// =====================================================================
-	// PAY_STATEMENT — backend-accounting. Statement number and driver only;
-	// the money on a statement never reaches a search hit.
-	// =====================================================================
-	{
-		Code: EntityPayStatement, Label: "Pay statements",
-		Service: ServiceAccounting, Permission: "accounting.pay_statements.view",
-		Fields: []Field{
-			{Path: "payStatement.number", Label: "Statement #", Kind: KindNumber},
-			{Path: "payStatement.status", Label: "Status", Kind: KindStatus},
-		},
-		Relations: []Relation{
-			{Path: "payStatement.driver.name", Label: "Driver", Kind: KindText, Target: EntityDriver, Remote: true},
 		},
 	},
 }

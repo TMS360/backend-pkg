@@ -19,13 +19,12 @@ package searchcatalog
 // its own name to decide what it can answer in-process and what needs a
 // SearchService gRPC hop.
 const (
-	ServiceLoads      = "tms-loads"
-	ServiceAuth       = "tms-auth"
-	ServiceMediator   = "tms-mediator"
-	ServiceTeams      = "tms-teams"
-	ServiceTasks      = "backend-tasks"
-	ServiceFiles      = "tms-files"
-	ServiceAccounting = "backend-accounting"
+	ServiceLoads    = "tms-loads"
+	ServiceAuth     = "tms-auth"
+	ServiceMediator = "tms-mediator"
+	ServiceTeams    = "tms-teams"
+	ServiceTasks    = "backend-tasks"
+	ServiceFiles    = "tms-files"
 )
 
 // Resolver entity names for ResolverService.ResolveIDs — the vocabulary the
@@ -49,18 +48,16 @@ const (
 // Entity codes. These are the GraphQL enum values the client sees, so they are
 // stable identifiers, not labels.
 const (
-	EntityLoad         = "LOAD"
-	EntityTrip         = "TRIP"
-	EntityTruck        = "TRUCK"
-	EntityTrailer      = "TRAILER"
-	EntityDriver       = "DRIVER"
-	EntityOfficeUser   = "OFFICE_USER"
-	EntityCustomer     = "CUSTOMER"
-	EntityCrew         = "CREW"
-	EntityTask         = "TASK"
-	EntityFile         = "FILE"
-	EntityInvoice      = "INVOICE"
-	EntityPayStatement = "PAY_STATEMENT"
+	EntityLoad       = "LOAD"
+	EntityTrip       = "TRIP"
+	EntityTruck      = "TRUCK"
+	EntityTrailer    = "TRAILER"
+	EntityDriver     = "DRIVER"
+	EntityOfficeUser = "OFFICE_USER"
+	EntityCustomer   = "CUSTOMER"
+	EntityCrew       = "CREW"
+	EntityTask       = "TASK"
+	EntityFile       = "FILE"
 )
 
 // FieldKind tells the query classifier whether a field is worth searching for

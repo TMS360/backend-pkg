@@ -119,6 +119,18 @@ const (
 	// an @hasPerm on updateTrip, because it depends on runtime trip state.
 	PermTripReassignCommitted UserPermissionEnum = "trip_reassign_committed"
 
+	// PermTripDelete (DEV-2024) gates deleting a trip off a load. Until it
+	// existed, deleteTrip asked only that the caller be signed in: any user of
+	// any role — a driver in the mobile app included — could remove a trip that
+	// had already been dispatched, driven and delivered.
+	//
+	// FLAT, and that is the whole point. A dotted "shipments.trips.delete" would
+	// gate nothing: every built-in role is granted the shipments module at
+	// company registration, and HasPermission resolves a dotted code through its
+	// ancestors, so the module grant would imply the leaf for everyone. Same
+	// reasoning as trip_financials_edit and shipment_billing_approve before it.
+	PermTripDelete UserPermissionEnum = "trip_delete"
+
 	// PermFileDeleteAny gates deleting a file attachment the actor did not upload,
 	// or one whose uploader window has closed (deleteUserFile in tms-auth,
 	// deleteOrderFile in tms-loads). Without it an actor may only remove their OWN
@@ -452,6 +464,7 @@ var CustomPermissionCatalog = []CustomPermissionEntry{
 	{Code: string(PermShipmentBillingApprove), Label: "Approve loads for billing"},
 	{Code: string(PermAuditPlanExclusionEdit), Label: "Exclude a time range from the Dispatch KPI plan"},
 	{Code: string(PermComplianceDispatchOverride), Label: "Dispatch despite a blocking compliance document"},
+	{Code: string(PermTripDelete), Label: "Delete a trip from a load"},
 }
 
 // CustomPermissionCodes returns just the flat custom permission codes, in
@@ -772,8 +785,12 @@ func DefaultRolePermissions() map[UserRoleEnum][]string {
 		// safety document for one dispatch is a supervisor decision, so admin,
 		// manager and safety hold it. Dispatcher does NOT — and therefore neither
 		// does track_and_trace, which is derived from dispatcher below.
-		UserRoleAdmin:      withExtra(string(PermTripFinancialsEdit), string(PermTripReassignCommitted), string(PermFileDeleteAny), string(PermReportsRun), string(PermReportsManage), string(PermCallsView), string(PermCallsPlay), string(PermShipmentBillingApprove), string(PermAuditPlanExclusionEdit), string(PermComplianceDispatchOverride)),
-		UserRoleManager:    withExtra(string(PermTripReassignCommitted), string(PermFileDeleteAny), string(PermCallsView), string(PermCallsPlay), string(PermShipmentBillingApprove), string(PermAuditPlanExclusionEdit), string(PermComplianceDispatchOverride)),
+		// trip_delete (DEV-2024): removing a trip destroys the record of who was
+		// sent where, so admin and manager only. A dispatcher who needs a load to
+		// stop already has two paths that keep the history — cancel the load, or
+		// clear a mistaken stop mark with a reason — and the refusal names them.
+		UserRoleAdmin:      withExtra(string(PermTripFinancialsEdit), string(PermTripReassignCommitted), string(PermFileDeleteAny), string(PermReportsRun), string(PermReportsManage), string(PermCallsView), string(PermCallsPlay), string(PermShipmentBillingApprove), string(PermAuditPlanExclusionEdit), string(PermComplianceDispatchOverride), string(PermTripDelete)),
+		UserRoleManager:    withExtra(string(PermTripReassignCommitted), string(PermFileDeleteAny), string(PermCallsView), string(PermCallsPlay), string(PermShipmentBillingApprove), string(PermAuditPlanExclusionEdit), string(PermComplianceDispatchOverride), string(PermTripDelete)),
 		UserRoleAccounting: withExtra(string(PermTripFinancialsEdit), string(PermReportsRun), string(PermReportsManage), string(PermShipmentBillingApprove)),
 		UserRoleFleet:      withExtra(),
 		UserRoleSafety:     withExtra(string(PermComplianceDispatchOverride)),

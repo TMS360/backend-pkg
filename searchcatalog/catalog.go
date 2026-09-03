@@ -11,13 +11,7 @@ package searchcatalog
 //	CREW                     tms-teams   internal/domain/{driver_crew,local_driver}.go
 //	TASK                     backend-tasks internal/domain/task.go
 //	FILE                     tms-files   internal/domain/{file,file_link,document_type}.go
-//
-// backend-accounting is deliberately absent. Invoices and pay statements would
-// fit the shape, but that service exposes no gRPC listener at all — it is a
-// client of the others — so answering a group from it means standing up its
-// first inbound surface. That is a deployment change, not a search change, and
-// it is a separate ticket. Nothing is lost meanwhile: an invoice is reached
-// from the load it bills, and the LOAD group answers a load number directly.
+//	INVOICE/PAY_STATEMENT    backend-accounting internal/domain/{invoice,statement}.go
 //
 // Order matters: it is the order the groups come back in, so the entities an
 // office user asks for most often come first.
@@ -261,6 +255,44 @@ var Catalog = []Entity{
 		},
 		Relations: []Relation{
 			{Path: "file.documentType.name", Label: "Document type", Kind: KindText},
+		},
+	},
+
+	// =====================================================================
+	// INVOICE — backend-accounting. Identifiers only: no amount, subtotal or
+	// total is searchable or returned, so a search row can never leak what a
+	// load pays to someone who may read invoices but not rates.
+	//
+	// There is no load-number relation: matching one would need tms-loads to
+	// resolve shipment numbers to ids, and it exposes no such resolver. The
+	// LOAD group answers a load number directly, and the invoice is reachable
+	// from the load it bills.
+	// =====================================================================
+	{
+		Code: EntityInvoice, Label: "Invoices",
+		Service: ServiceAccounting, Permission: "accounting.invoices.view",
+		Fields: []Field{
+			{Path: "invoice.invoiceNumber", Label: "Invoice #", Kind: KindNumber},
+			{Path: "invoice.status", Label: "Status", Kind: KindStatus},
+		},
+		Relations: []Relation{
+			{Path: "invoice.customer.companyName", Label: "Customer", Kind: KindText, Target: EntityCustomer, Remote: true},
+		},
+	},
+
+	// =====================================================================
+	// PAY_STATEMENT — backend-accounting. The statement number and the driver
+	// it pays; never the money on it.
+	// =====================================================================
+	{
+		Code: EntityPayStatement, Label: "Pay statements",
+		Service: ServiceAccounting, Permission: "accounting.pay_statements.view",
+		Fields: []Field{
+			{Path: "payStatement.number", Label: "Statement #", Kind: KindNumber},
+			{Path: "payStatement.status", Label: "Status", Kind: KindStatus},
+		},
+		Relations: []Relation{
+			{Path: "payStatement.driver.name", Label: "Driver", Kind: KindText, Target: EntityDriver, Remote: true},
 		},
 	},
 }

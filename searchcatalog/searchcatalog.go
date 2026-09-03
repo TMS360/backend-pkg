@@ -25,6 +25,9 @@ const (
 	ServiceTeams    = "tms-teams"
 	ServiceTasks    = "backend-tasks"
 	ServiceFiles    = "tms-files"
+	// ServiceAccounting had no inbound gRPC surface at all before this ticket;
+	// its listener exists to answer these two groups.
+	ServiceAccounting = "backend-accounting"
 )
 
 // Resolver entity names for ResolverService.ResolveIDs — the vocabulary the
@@ -48,16 +51,18 @@ const (
 // Entity codes. These are the GraphQL enum values the client sees, so they are
 // stable identifiers, not labels.
 const (
-	EntityLoad       = "LOAD"
-	EntityTrip       = "TRIP"
-	EntityTruck      = "TRUCK"
-	EntityTrailer    = "TRAILER"
-	EntityDriver     = "DRIVER"
-	EntityOfficeUser = "OFFICE_USER"
-	EntityCustomer   = "CUSTOMER"
-	EntityCrew       = "CREW"
-	EntityTask       = "TASK"
-	EntityFile       = "FILE"
+	EntityLoad         = "LOAD"
+	EntityTrip         = "TRIP"
+	EntityTruck        = "TRUCK"
+	EntityTrailer      = "TRAILER"
+	EntityDriver       = "DRIVER"
+	EntityOfficeUser   = "OFFICE_USER"
+	EntityCustomer     = "CUSTOMER"
+	EntityCrew         = "CREW"
+	EntityTask         = "TASK"
+	EntityFile         = "FILE"
+	EntityInvoice      = "INVOICE"
+	EntityPayStatement = "PAY_STATEMENT"
 )
 
 // FieldKind tells the query classifier whether a field is worth searching for

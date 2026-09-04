@@ -809,7 +809,9 @@ func DefaultRolePermissions() map[UserRoleEnum][]string {
 		// stop already has two paths that keep the history — cancel the load, or
 		// clear a mistaken stop mark with a reason — and the refusal names them.
 		// invoice_unrecord_payment (DEV-2038): taking a recorded payment back off an
-		// invoice is a supervisory correction, so admin and auditor hold it.
+		// invoice is a supervisory correction, so only admin holds it by default.
+		// The auditor does NOT: this repo keeps that role on the module baseline and
+		// gates its powers by @hasRole, never by a seeded flat code.
 		// Accounting deliberately does NOT get it by default even though it records
 		// the payments — that separation is the entire point of a second code.
 		UserRoleAdmin:      withExtra(string(PermTripFinancialsEdit), string(PermTripReassignCommitted), string(PermFileDeleteAny), string(PermReportsRun), string(PermReportsManage), string(PermCallsView), string(PermCallsPlay), string(PermShipmentBillingApprove), string(PermAuditPlanExclusionEdit), string(PermComplianceDispatchOverride), string(PermTripDelete), string(PermInvoiceUnrecordPayment)),
@@ -825,7 +827,7 @@ func DefaultRolePermissions() map[UserRoleEnum][]string {
 		// DEV-2038 gives the auditor its first seeded custom code:
 		// invoice_unrecord_payment. Undoing a recorded payment is exactly the class
 		// of governed correction the auditor role exists for.
-		UserRoleAuditor:    withExtra(string(PermInvoiceUnrecordPayment)),
+		UserRoleAuditor:    withExtra(),
 		UserRoleDispatcher: withExtra(string(PermCallsView), string(PermCallsPlay)),
 		UserRoleDriver:     withExtra(),
 		UserRoleOther:      withExtra(),

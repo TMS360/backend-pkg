@@ -42,11 +42,10 @@ func TestInvoiceUnrecordPayment_IsFlatAndSeparateFromRecording(t *testing.T) {
 		"the `accounting` module must not imply un-recording; the code carries no dots")
 	assert.False(t, middleware.HasPermission([]string{"accounting.invoices"}, code))
 
-	// Seeded to the two supervisory roles.
-	for _, role := range []enums.UserRoleEnum{enums.UserRoleAdmin, enums.UserRoleAuditor} {
-		assert.Truef(t, middleware.HasPermission(defaults[role], code),
-			"%s should hold %s by default", role, code)
-	}
+	// Seeded to admin alone. The auditor is deliberately not here: this repo
+	// keeps that role on the module baseline and gates it by @hasRole.
+	assert.True(t, middleware.HasPermission(defaults[enums.UserRoleAdmin], code),
+		"admin should hold the code by default")
 
 	// Registered, therefore grantable to a custom role by a company that wants
 	// it wider — revocable the same way.
@@ -63,7 +62,7 @@ func TestInvoiceUnrecordPayment_DefaultDenyEverywhereElse(t *testing.T) {
 
 	for _, role := range []enums.UserRoleEnum{
 		enums.UserRoleManager, enums.UserRoleFleet, enums.UserRoleSafety,
-		enums.UserRoleHr, enums.UserRoleDispatcher, enums.UserRoleDriver,
+		enums.UserRoleHr, enums.UserRoleDispatcher, enums.UserRoleDriver, enums.UserRoleAuditor,
 		enums.UserRoleOther,
 	} {
 		assert.Falsef(t, middleware.HasPermission(defaults[role], code),

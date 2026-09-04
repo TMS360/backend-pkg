@@ -133,6 +133,11 @@ var Catalog = []Entity{
 		},
 		Relations: []Relation{
 			{Path: "trailer.ownerCustomer.companyName", Label: "Trailer owner", Kind: KindText, Target: EntityCustomer, Remote: true},
+			// The crew on the trailer's current trip: the SQL has always matched
+			// a trailer through its driver, so the catalog has to be able to say
+			// so — otherwise a row found that way can only report the trailer's
+			// own number, which is not what the office typed (DEV-2044).
+			{Path: "trailer.driver.name", Label: "Driver", Kind: KindText, Target: EntityDriver, Remote: true},
 			{Path: "trailer.trip.load.shipmentNumber", Label: "Load #", Kind: KindNumber, Target: EntityLoad},
 		},
 	},

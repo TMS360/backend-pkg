@@ -57,6 +57,9 @@ func TestListTransactions_HitsTransactionsHost(t *testing.T) {
 	if got := gotQuery.Get("dtend"); got != to.Format(time.RFC3339) {
 		t.Fatalf("dtend = %q, want %q", got, to.Format(time.RFC3339))
 	}
+	if got := gotQuery.Get("driver_id"); got != "" {
+		t.Fatalf("driver_id = %q, want empty on ListTransactions", got)
+	}
 	if len(txns) != 1 || txns[0].TransactionID != "txn_1" {
 		t.Fatalf("decoded txns = %+v, want one txn_1", txns)
 	}
@@ -86,5 +89,28 @@ func TestOtherEndpointsStillUseIntegrationsHost(t *testing.T) {
 	}
 	if gotPath != "/api/integrations/drivers/" {
 		t.Fatalf("drivers path = %q, want %q (must keep /integrations)", gotPath, "/api/integrations/drivers/")
+	}
+}
+
+func TestListTransactionsForDriver_SendsDriverID(t *testing.T) {
+	var gotQuery url.Values
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotQuery = r.URL.Query()
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`[]`))
+	}))
+	defer srv.Close()
+
+	client, err := NewClient(config.RelayConfig{Host: srv.URL + "/api/integrations"}, "test-key")
+	if err != nil {
+		t.Fatalf("NewClient: %v", err)
+	}
+	from := time.Date(2026, 8, 25, 0, 0, 0, 0, time.UTC)
+	to := time.Date(2026, 8, 26, 0, 0, 0, 0, time.UTC)
+	if _, err := client.ListTransactionsForDriver(context.Background(), from, to, "dr_abc"); err != nil {
+		t.Fatalf("ListTransactionsForDriver: %v", err)
+	}
+	if got := gotQuery.Get("driver_id"); got != "dr_abc" {
+		t.Fatalf("driver_id = %q, want dr_abc", got)
 	}
 }

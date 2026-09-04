@@ -53,6 +53,11 @@ func Run(ctx context.Context, cfg Config) (Report, error) {
 	if err != nil {
 		return Report{}, err
 	}
+	// One probe run performs six calls, each of which would otherwise exchange
+	// the JWT again. RingCentral's auth endpoint cuts that off with HTTP 429
+	// partway through, and the attempt it kills is the last one — the very
+	// question the run exists to answer.
+	client.ReuseAccessToken()
 
 	server := strings.TrimSpace(cfg.Cred.ServerURL)
 	if server == "" {

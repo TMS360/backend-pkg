@@ -31,7 +31,7 @@ func TestCatalog_EntityInvariants(t *testing.T) {
 			seenCode[e.Code] = true
 
 			// A group must be findable by something.
-			assert.NotEmpty(t, append(append([]string{}, e.Paths()...)),
+			assert.NotEmpty(t, e.Paths(),
 				"entity %s has neither fields nor relations", e.Code)
 
 			// Codes are client-facing GraphQL enum values: upper snake case.

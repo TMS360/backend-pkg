@@ -128,6 +128,14 @@ const (
 	// bare API key. One row per company — a RingCentral account is never shared
 	// across tenants.
 	CompanySettingsIntegrationKeyRingCentralCredentials CompanySettingsIntegrationKey = "ringcentral_credentials"
+	// CompanySettingsIntegrationKeySamsaraExtraOrgs holds the ADDITIONAL Samsara
+	// organizations of a company that runs more than one Samsara org under one MC
+	// (DEV-2056). The value is a JSON list of samsara.ExtraOrg (id, name, token,
+	// is_active); the company's primary token stays where it always was, in
+	// samsara_api_key, so every existing reader is untouched. Registered here for
+	// the same reason as every other key: tms-auth's audit redaction iterates this
+	// list, so an unregistered key would write live tokens into an audit event.
+	CompanySettingsIntegrationKeySamsaraExtraOrgs CompanySettingsIntegrationKey = "samsara_extra_orgs"
 )
 
 var AllCompanySettingsIntegrationKey = []CompanySettingsIntegrationKey{
@@ -138,6 +146,7 @@ var AllCompanySettingsIntegrationKey = []CompanySettingsIntegrationKey{
 	CompanySettingsIntegrationKeyGoogleMapsAPIKey,
 	CompanySettingsIntegrationKeyGoogleSheetsAPIKey,
 	CompanySettingsIntegrationKeyRingCentralCredentials,
+	CompanySettingsIntegrationKeySamsaraExtraOrgs,
 }
 
 func (e CompanySettingsIntegrationKey) IsValid() bool {
@@ -148,7 +157,8 @@ func (e CompanySettingsIntegrationKey) IsValid() bool {
 		CompanySettingsIntegrationKeyUSPSCredentials,
 		CompanySettingsIntegrationKeyGoogleMapsAPIKey,
 		CompanySettingsIntegrationKeyGoogleSheetsAPIKey,
-		CompanySettingsIntegrationKeyRingCentralCredentials:
+		CompanySettingsIntegrationKeyRingCentralCredentials,
+		CompanySettingsIntegrationKeySamsaraExtraOrgs:
 		return true
 	}
 	return false

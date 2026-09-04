@@ -42,10 +42,16 @@ const (
 	// resolve half a tenant's drivers into one query plan.
 	MaxResolvedIDs = 200
 
-	// FuzzyThreshold is the pg_trgm word_similarity() floor that makes a
-	// one-character typo still find the record ("Marcus" vs "Marcsu"). Chosen
-	// against the default 0.6 similarity floor, which is too strict for a
-	// single transposition in a short word.
+	// FuzzyThreshold is the pg_trgm word-similarity floor that makes a
+	// one-character typo still find the record. Measured against real typos:
+	// "marcsu"→"Marcus Hale" scores 0.57 and "chicgao"→"Chicago" 0.50, so
+	// Postgres's default 0.6 would miss both.
+	//
+	// It is NOT passed per query — `%>` reads
+	// pg_trgm.word_similarity_threshold, and each search-owning database sets
+	// it to this value in its DEV-2044 migration. The constant is the single
+	// place that number is written down, so the migrations and this package
+	// cannot drift.
 	FuzzyThreshold = 0.4
 )
 

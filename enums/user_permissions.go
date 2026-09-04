@@ -297,6 +297,24 @@ const (
 	// supervisor decision, not a dispatch-desk one. A company widens it the usual
 	// way, in Settings -> Roles.
 	PermComplianceDispatchOverride UserPermissionEnum = "compliance_dispatch_override"
+
+	// PermInvoiceUnrecordPayment gates taking a recorded customer payment back off
+	// an invoice (DEV-2038) — the accountant marked the wrong invoice paid, or the
+	// cheque bounced. It is deliberately SEPARATE from the permission that records
+	// the payment: whoever closes an invoice must not be able to reopen it alone,
+	// or one slip of the hand both closes and reopens it with no second pair of
+	// eyes on either move.
+	//
+	// FLAT for the same reason as PermShipmentBillingApprove: HasPermission splits
+	// a required code on "." and matches any prefix, so a dotted
+	// `accounting.invoices.unrecord_payment` would be satisfied by anyone holding
+	// `accounting` — which every accounting-side role already does. The whole
+	// point of a second permission is that the payment-recorder does not have it
+	// by default, and a dotted code would hand it to them silently.
+	//
+	// Seeded to admin and auditor only. Accounting records payments; undoing one
+	// is a supervisory correction.
+	PermInvoiceUnrecordPayment UserPermissionEnum = "invoice_unrecord_payment"
 )
 
 // PermissionCatalogEntry describes one row written to the permissions table.
@@ -465,6 +483,7 @@ var CustomPermissionCatalog = []CustomPermissionEntry{
 	{Code: string(PermAuditPlanExclusionEdit), Label: "Exclude a time range from the Dispatch KPI plan"},
 	{Code: string(PermComplianceDispatchOverride), Label: "Dispatch despite a blocking compliance document"},
 	{Code: string(PermTripDelete), Label: "Delete a trip from a load"},
+	{Code: string(PermInvoiceUnrecordPayment), Label: "Un-record a customer payment on an invoice"},
 }
 
 // CustomPermissionCodes returns just the flat custom permission codes, in
@@ -789,7 +808,13 @@ func DefaultRolePermissions() map[UserRoleEnum][]string {
 		// sent where, so admin and manager only. A dispatcher who needs a load to
 		// stop already has two paths that keep the history — cancel the load, or
 		// clear a mistaken stop mark with a reason — and the refusal names them.
-		UserRoleAdmin:      withExtra(string(PermTripFinancialsEdit), string(PermTripReassignCommitted), string(PermFileDeleteAny), string(PermReportsRun), string(PermReportsManage), string(PermCallsView), string(PermCallsPlay), string(PermShipmentBillingApprove), string(PermAuditPlanExclusionEdit), string(PermComplianceDispatchOverride), string(PermTripDelete)),
+		// invoice_unrecord_payment (DEV-2038): taking a recorded payment back off an
+		// invoice is a supervisory correction, so only admin holds it by default.
+		// The auditor does NOT: this repo keeps that role on the module baseline and
+		// gates its powers by @hasRole, never by a seeded flat code.
+		// Accounting deliberately does NOT get it by default even though it records
+		// the payments — that separation is the entire point of a second code.
+		UserRoleAdmin:      withExtra(string(PermTripFinancialsEdit), string(PermTripReassignCommitted), string(PermFileDeleteAny), string(PermReportsRun), string(PermReportsManage), string(PermCallsView), string(PermCallsPlay), string(PermShipmentBillingApprove), string(PermAuditPlanExclusionEdit), string(PermComplianceDispatchOverride), string(PermTripDelete), string(PermInvoiceUnrecordPayment)),
 		UserRoleManager:    withExtra(string(PermTripReassignCommitted), string(PermFileDeleteAny), string(PermCallsView), string(PermCallsPlay), string(PermShipmentBillingApprove), string(PermAuditPlanExclusionEdit), string(PermComplianceDispatchOverride), string(PermTripDelete)),
 		UserRoleAccounting: withExtra(string(PermTripFinancialsEdit), string(PermReportsRun), string(PermReportsManage), string(PermShipmentBillingApprove)),
 		UserRoleFleet:      withExtra(),
@@ -799,6 +824,9 @@ func DefaultRolePermissions() map[UserRoleEnum][]string {
 		// governed powers (locked-statement corrections, revised-invoice voids,
 		// reading the tenant audit log) are gated by role, not by a permission
 		// code, so there is nothing extra to seed here.
+		// DEV-2038 gives the auditor its first seeded custom code:
+		// invoice_unrecord_payment. Undoing a recorded payment is exactly the class
+		// of governed correction the auditor role exists for.
 		UserRoleAuditor:    withExtra(),
 		UserRoleDispatcher: withExtra(string(PermCallsView), string(PermCallsPlay)),
 		UserRoleDriver:     withExtra(),

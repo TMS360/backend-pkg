@@ -480,3 +480,33 @@ func TestSMSSendingAvailable_ReadsOurOwnExtensionOnly(t *testing.T) {
 	assert.Contains(t, (*paths)[0], "/extension/~/features",
 		"asking about another extension answers 403 for a plain user, which this client reads as a revoked credential")
 }
+
+func TestReuseAccessToken_ExchangesTheJWTOncePerRun(t *testing.T) {
+	var exchanges int
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		if r.URL.Path == tokenPath {
+			exchanges++
+			_, _ = w.Write([]byte(`{"access_token":"tok","expires_in":3600,"owner_id":"777"}`))
+			return
+		}
+		_, _ = w.Write([]byte(`{"records":[]}`))
+	}))
+	t.Cleanup(srv.Close)
+
+	client, err := ringcentral.NewClientWithCred(probeCred(srv.URL))
+	require.NoError(t, err)
+
+	for range 3 {
+		_, _, err := client.AccessToken(context.Background())
+		require.NoError(t, err)
+	}
+	assert.Equal(t, 3, exchanges, "a service must keep exchanging, so a revoked credential surfaces on the next call")
+
+	client.ReuseAccessToken()
+	for range 3 {
+		_, _, err := client.AccessToken(context.Background())
+		require.NoError(t, err)
+	}
+	assert.Equal(t, 4, exchanges, "a one-shot tool exchanges once, or RingCentral's auth rate limit ends the run early")
+}

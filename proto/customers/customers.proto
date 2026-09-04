@@ -46,6 +46,17 @@ message Customer {
   // Absent when not configured — accounting then leaves the invoice's existing
   // terms / due date untouched.
   optional int32 terms_day = 8;
+  // The company this customer belongs to (DEV-2025).
+  //
+  // GetCustomers answers with a system actor on purpose — accounting calls it
+  // for PDF and SFTP work that is not tied to a user session — so the response
+  // is NOT tenant-scoped and a caller that looks a customer up by id alone
+  // cannot tell whether it is even its own. Carrying the owner lets the caller
+  // decide; without it, "customer exists" and "customer exists in MY company"
+  // are the same answer, which is how a load ends up billed to a stranger.
+  //
+  // Empty string only for a row saved before the field existed.
+  string company_id = 9;
 }
 
 message Factoring {

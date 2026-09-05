@@ -15,11 +15,11 @@ type Report struct {
 	// OwnerSMS is what RingCentral says about our own extension's right to text
 	// at all, read before anything is sent. A run that skips this check can burn
 	// three messages only to learn the account has SMS switched off.
-	OwnerSMS         FeatureCheck
-	Numbers          []ringcentral.PhoneNumber
-	Own              Attempt
-	Shared           []Attempt
-	Verdict          Verdict
+	OwnerSMS FeatureCheck
+	Numbers  []ringcentral.PhoneNumber
+	Own      Attempt
+	Shared   []Attempt
+	Verdict  Verdict
 }
 
 // FeatureCheck is one precondition RingCentral was asked about. Known is false

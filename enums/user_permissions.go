@@ -211,6 +211,14 @@ const (
 	PermCallsView UserPermissionEnum = "calls_view"
 	PermCallsPlay UserPermissionEnum = "calls_play"
 
+	// PermSmsView / PermSmsSend gate driver texting (DEV-1897). FLAT for exactly
+	// the calls_view reason above: a top-level `sms` module would be auto-granted
+	// to every role at signup, drivers included, and a dot would let a prefix
+	// satisfy it. Viewing a thread and spending company money on an outbound
+	// text are split the same way metadata and recordings are.
+	PermSmsView UserPermissionEnum = "sms_view"
+	PermSmsSend UserPermissionEnum = "sms_send"
+
 	// Broker portal (DEV-1858, BL-20). Every one of these is FLAT — no dots —
 	// and the shape is not cosmetic.
 	//
@@ -474,6 +482,8 @@ var CustomPermissionCatalog = []CustomPermissionEntry{
 	{Code: string(PermMailEdit), Label: "Manage mail (labels, folders, sending identity)"},
 	{Code: string(PermCallsView), Label: "View the call log"},
 	{Code: string(PermCallsPlay), Label: "Play call recordings"},
+	{Code: string(PermSmsView), Label: "View driver text messages"},
+	{Code: string(PermSmsSend), Label: "Text a driver"},
 	{Code: string(PermBrokerLoadsView), Label: "Broker portal: view own loads"},
 	{Code: string(PermBrokerLoadsManage), Label: "Broker portal: create & edit own loads"},
 	{Code: string(PermBrokerOffersSend), Label: "Broker portal: offer a load to a carrier"},
@@ -795,6 +805,10 @@ func DefaultRolePermissions() map[UserRoleEnum][]string {
 		// base is a supervisor correction, so admin and manager hold it. A regular
 		// dispatcher does NOT — they would otherwise be able to shrink the target
 		// they are measured against.
+		// sms_view / sms_send (DEV-1897): texting a driver is the same
+		// dispatch-desk surface as calling one, so admin, manager and dispatcher
+		// hold both. Driver gets neither — the thread is the office's record of
+		// texting drivers, and sms_send spends company money per message.
 		// calls_view / calls_play (DEV-1753): the RingCentral call log is a
 		// dispatch-desk surface, so admin, manager and dispatcher get it. Driver
 		// gets NEITHER, deliberately — the log is a record of the office calling
@@ -814,8 +828,8 @@ func DefaultRolePermissions() map[UserRoleEnum][]string {
 		// first AC is written for the auditor.
 		// Accounting deliberately does NOT get it by default even though it records
 		// the payments — that separation is the entire point of a second code.
-		UserRoleAdmin:      withExtra(string(PermTripFinancialsEdit), string(PermTripReassignCommitted), string(PermFileDeleteAny), string(PermReportsRun), string(PermReportsManage), string(PermCallsView), string(PermCallsPlay), string(PermShipmentBillingApprove), string(PermAuditPlanExclusionEdit), string(PermComplianceDispatchOverride), string(PermTripDelete), string(PermInvoiceUnrecordPayment)),
-		UserRoleManager:    withExtra(string(PermTripReassignCommitted), string(PermFileDeleteAny), string(PermCallsView), string(PermCallsPlay), string(PermShipmentBillingApprove), string(PermAuditPlanExclusionEdit), string(PermComplianceDispatchOverride), string(PermTripDelete)),
+		UserRoleAdmin:      withExtra(string(PermTripFinancialsEdit), string(PermTripReassignCommitted), string(PermFileDeleteAny), string(PermReportsRun), string(PermReportsManage), string(PermCallsView), string(PermCallsPlay), string(PermSmsView), string(PermSmsSend), string(PermShipmentBillingApprove), string(PermAuditPlanExclusionEdit), string(PermComplianceDispatchOverride), string(PermTripDelete), string(PermInvoiceUnrecordPayment)),
+		UserRoleManager:    withExtra(string(PermTripReassignCommitted), string(PermFileDeleteAny), string(PermCallsView), string(PermCallsPlay), string(PermSmsView), string(PermSmsSend), string(PermShipmentBillingApprove), string(PermAuditPlanExclusionEdit), string(PermComplianceDispatchOverride), string(PermTripDelete)),
 		UserRoleAccounting: withExtra(string(PermTripFinancialsEdit), string(PermReportsRun), string(PermReportsManage), string(PermShipmentBillingApprove)),
 		UserRoleFleet:      withExtra(),
 		UserRoleSafety:     withExtra(string(PermComplianceDispatchOverride)),
@@ -829,7 +843,7 @@ func DefaultRolePermissions() map[UserRoleEnum][]string {
 		// from the start and never actually seeded, so an auditor-only user was
 		// refused on unrecordPayment.)
 		UserRoleAuditor:    withExtra(string(PermInvoiceUnrecordPayment)),
-		UserRoleDispatcher: withExtra(string(PermCallsView), string(PermCallsPlay)),
+		UserRoleDispatcher: withExtra(string(PermCallsView), string(PermCallsPlay), string(PermSmsView), string(PermSmsSend)),
 		UserRoleDriver:     withExtra(),
 		UserRoleOther:      withExtra(),
 	}

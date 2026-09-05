@@ -14,6 +14,14 @@ import (
 const (
 	phoneNumberPath = "/restapi/v1.0/account/~/phone-number"
 
+	// extensionPhoneNumberPathFormat lists ONE extension's numbers. It is not a
+	// convenience over the account listing above — it is the only listing that
+	// carries `features`. The account-wide response omits the field entirely on a
+	// real account (verified on DEV-1895), so "may this number send a text"
+	// (FeatureSMSSender) is answerable here and nowhere else, and only for the
+	// extension the credential may act as.
+	extensionPhoneNumberPathFormat = "/restapi/v1.0/account/~/extension/%s/phone-number"
+
 	// numbersPerPage is RingCentral's maximum page size for the phone-number
 	// listing. Fewer round trips for a large account, and small accounts still
 	// finish in one call.
@@ -88,6 +96,23 @@ type phoneNumberPage struct {
 // instead of "no numbers". Any other error is a transport or platform problem
 // and says nothing about the credential.
 func (c *Client) ListPhoneNumbers(ctx context.Context) ([]PhoneNumber, error) {
+	return c.listNumbers(ctx, phoneNumberPath)
+}
+
+// ListExtensionPhoneNumbers returns the numbers of ONE extension, with the
+// features field populated — including FeatureSMSSender, which the account-wide
+// listing never carries. SelfExtension ("~", the default for an empty id) is the
+// extension the credential belongs to: the only one whose numbers this
+// credential may put in an SMS "from" (DEV-1895).
+func (c *Client) ListExtensionPhoneNumbers(ctx context.Context, extensionID string) ([]PhoneNumber, error) {
+	ext := strings.TrimSpace(extensionID)
+	if ext == "" {
+		ext = SelfExtension
+	}
+	return c.listNumbers(ctx, fmt.Sprintf(extensionPhoneNumberPathFormat, ext))
+}
+
+func (c *Client) listNumbers(ctx context.Context, path string) ([]PhoneNumber, error) {
 	token, _, err := c.AccessToken(ctx)
 	if err != nil {
 		if IsAuthError(err) {
@@ -102,7 +127,7 @@ func (c *Client) ListPhoneNumbers(ctx context.Context) ([]PhoneNumber, error) {
 		q.Set("perPage", strconv.Itoa(numbersPerPage))
 		q.Set("page", strconv.Itoa(page))
 
-		body, err := c.get(ctx, token, phoneNumberPath+"?"+q.Encode())
+		body, err := c.get(ctx, token, path+"?"+q.Encode())
 		if err != nil {
 			return nil, err
 		}

@@ -25,6 +25,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -127,6 +128,30 @@ type Client struct {
 	httpClient *http.Client
 	serverURL  string
 	cred       Cred
+
+	// reuseToken is opt-in and off everywhere in production on purpose (see
+	// AccessToken). ReuseAccessToken turns it on for a short-lived, single-run
+	// tool that would otherwise spend one token exchange per call and be cut off
+	// by RingCentral's auth rate limit mid-run.
+	reuseToken  bool
+	tokenMu     sync.Mutex
+	tokenValue  string
+	tokenExpiry time.Time
+}
+
+// ReuseAccessToken makes this client hold one access token for as long as
+// RingCentral says it is valid, instead of exchanging the JWT on every call.
+//
+// It is deliberately opt-in. A long-running service must keep exchanging: a
+// credential revoked in the RingCentral console has to surface as a failure on
+// the next call, and a cached token would hide that for up to an hour. A tool
+// that performs a handful of calls and exits has the opposite problem — six
+// exchanges in a row hit the auth rate limit (HTTP 429) and the run dies
+// halfway, which is how DEV-1895 lost its third data point.
+func (c *Client) ReuseAccessToken() {
+	c.tokenMu.Lock()
+	defer c.tokenMu.Unlock()
+	c.reuseToken = true
 }
 
 // NewClientWithCred builds a Client for the given company credentials. The
@@ -149,14 +174,45 @@ func NewClientWithCred(cred Cred) (*Client, error) {
 
 // AccessToken exchanges the stored credentials for a short-lived bearer token.
 // Callers that place calls or pull the call log use this; nothing is cached
-// here, because the credential can be revoked in the RingCentral console at any
-// moment and a stale token would hide that.
+// unless ReuseAccessToken was called, because the credential can be revoked in
+// the RingCentral console at any moment and a stale token would hide that.
 func (c *Client) AccessToken(ctx context.Context) (string, time.Duration, error) {
+	if tok, ttl, ok := c.cachedToken(); ok {
+		return tok, ttl, nil
+	}
+
 	tok, err := c.tokenExchange(ctx)
 	if err != nil {
 		return "", 0, err
 	}
-	return tok.AccessToken, time.Duration(tok.ExpiresIn) * time.Second, nil
+	ttl := time.Duration(tok.ExpiresIn) * time.Second
+	c.rememberToken(tok.AccessToken, ttl)
+	return tok.AccessToken, ttl, nil
+}
+
+// cachedToken returns the held token while it has comfortably more than a
+// minute left, so a run cannot hand out a token that expires mid-request.
+func (c *Client) cachedToken() (string, time.Duration, bool) {
+	c.tokenMu.Lock()
+	defer c.tokenMu.Unlock()
+	if !c.reuseToken || c.tokenValue == "" {
+		return "", 0, false
+	}
+	ttl := time.Until(c.tokenExpiry)
+	if ttl <= time.Minute {
+		return "", 0, false
+	}
+	return c.tokenValue, ttl, true
+}
+
+func (c *Client) rememberToken(token string, ttl time.Duration) {
+	c.tokenMu.Lock()
+	defer c.tokenMu.Unlock()
+	if !c.reuseToken {
+		return
+	}
+	c.tokenValue = token
+	c.tokenExpiry = time.Now().Add(ttl)
 }
 
 // tokenExchange performs the JWT grant and returns the whole token payload.

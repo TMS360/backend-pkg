@@ -61,16 +61,26 @@ func TestUserRoleAuditor_GetsTheModuleBaseline(t *testing.T) {
 	perms, ok := defaults[enums.UserRoleAuditor]
 	require.True(t, ok, "auditor must have default grants")
 	assert.Subset(t, perms, enums.ModulePermissionCodes())
-	assert.ElementsMatch(t, enums.ModulePermissionCodes(), perms,
-		"baseline only — the auditor's governed powers are role-gated, not permission-gated")
+	assert.ElementsMatch(t,
+		append(enums.ModulePermissionCodes(), string(enums.PermInvoiceUnrecordPayment)),
+		perms,
+		"baseline plus the one governed correction DEV-2038 seeds; every other "+
+			"auditor power is role-gated, not permission-gated")
 }
 
-// Reading the audit log is gated by @hasRole, so no flat custom permission
-// should have been seeded to the auditor by mistake.
-func TestUserRoleAuditor_HoldsNoCustomPermissionsByDefault(t *testing.T) {
+// Most of the auditor's governed powers are gated by @hasRole, so the seeded
+// flat codes stay a closed list — exactly one today. This fails if a later
+// ticket quietly hands the role another custom permission (DEV-2094).
+func TestUserRoleAuditor_HoldsOnlyTheUnrecordPaymentCustomCode(t *testing.T) {
 	perms := enums.DefaultRolePermissions()[enums.UserRoleAuditor]
 
+	assert.Contains(t, perms, string(enums.PermInvoiceUnrecordPayment),
+		"DEV-2038 seeds invoice_unrecord_payment to admin and auditor")
+
 	for _, code := range enums.CustomPermissionCodes() {
+		if code == string(enums.PermInvoiceUnrecordPayment) {
+			continue
+		}
 		assert.NotContainsf(t, perms, code, "auditor must not be default-seeded %q", code)
 	}
 }

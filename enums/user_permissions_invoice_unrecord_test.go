@@ -42,10 +42,17 @@ func TestInvoiceUnrecordPayment_IsFlatAndSeparateFromRecording(t *testing.T) {
 		"the `accounting` module must not imply un-recording; the code carries no dots")
 	assert.False(t, middleware.HasPermission([]string{"accounting.invoices"}, code))
 
-	// Seeded to admin alone. The auditor is deliberately not here: this repo
-	// keeps that role on the module baseline and gates it by @hasRole.
+	// Seeded to admin AND auditor — the two roles DEV-2038 names ("По умолчанию
+	// — admin и аудитор"), the two the accounting SDL documents on
+	// unrecordPayment, and the pair its first AC is written for. DEV-2094: the
+	// auditor was asserted absent here while three other places said it should
+	// hold the code, so an auditor-only user was refused on a mutation the ticket
+	// gives them.
 	assert.True(t, middleware.HasPermission(defaults[enums.UserRoleAdmin], code),
 		"admin should hold the code by default")
+	assert.True(t, middleware.HasPermission(defaults[enums.UserRoleAuditor], code),
+		"auditor should hold the code by default — undoing a recorded payment is "+
+			"the governed correction the role exists for")
 
 	// Registered, therefore grantable to a custom role by a company that wants
 	// it wider — revocable the same way.
@@ -62,7 +69,7 @@ func TestInvoiceUnrecordPayment_DefaultDenyEverywhereElse(t *testing.T) {
 
 	for _, role := range []enums.UserRoleEnum{
 		enums.UserRoleManager, enums.UserRoleFleet, enums.UserRoleSafety,
-		enums.UserRoleHr, enums.UserRoleDispatcher, enums.UserRoleDriver, enums.UserRoleAuditor,
+		enums.UserRoleHr, enums.UserRoleDispatcher, enums.UserRoleDriver,
 		enums.UserRoleOther,
 	} {
 		assert.Falsef(t, middleware.HasPermission(defaults[role], code),

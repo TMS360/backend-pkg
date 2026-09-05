@@ -9,19 +9,20 @@ import (
 	"strings"
 
 	"github.com/TMS360/backend-pkg/cache"
+	"github.com/TMS360/backend-pkg/companytz"
 	"github.com/TMS360/backend-pkg/enums"
 	"github.com/go-redis/redis/v8"
 )
 
 // GetCompanyTimezone reads the company's timezone setting (default UTC) so the daily
 // cap resets on the company-local day.
+//
+// Deprecated: use companytz.Timezone, or companytz.Location / companytz.Now when
+// what you actually want is a *time.Location or the tenant's wall clock. This
+// shim only remains so existing callers keep compiling across the bump; it reads
+// through the same single implementation.
 func GetCompanyTimezone(ctx context.Context) string {
-	var tz string
-	_ = cache.Get(ctx, fmt.Sprintf("setting:%s", enums.CompanySettingsGeneralKeyTimezone), &tz)
-	if tz == "" {
-		return "UTC"
-	}
-	return tz
+	return companytz.Timezone(ctx)
 }
 
 // SamsaraAssetTrackingOn reports whether the company records Samsara GPS actual

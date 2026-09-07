@@ -42,6 +42,15 @@ service TeamsService {
 
   // Cross-service filtering: returns driver IDs matching the filter
   rpc ResolveDriverIDs(DriverFilter) returns (filters.IDsResponse);
+
+  // DEV-1935: the money accounting pays dispatchers on. Returns every team-week
+  // overlapping the requested period WITH its lock state, not only the closed
+  // ones — accounting has to flag a pay batch whose period still contains an
+  // open week, so it must see the open ones too.
+  //
+  // The figures are the Audit board's own: accounting reads them and never
+  // recomputes a commission of its own.
+  rpc GetTeamWeeksForPayroll(GetTeamWeeksForPayrollRequest) returns (GetTeamWeeksForPayrollResponse);
 }
 
 message DriverCrewFilter {
@@ -171,4 +180,49 @@ message GetActiveCrewByDriverResponse {
   string trailer_id = 3;
   string plan_id = 4;
   string secondary_driver_id = 5;
+}
+
+// GetTeamWeeksForPayrollRequest asks for every team-week that overlaps
+// [from, to]. Week boundaries are the TENANT's, not the caller's: the company's
+// own week cutover decides where a week starts, so accounting must not try to
+// enumerate weeks itself.
+message GetTeamWeeksForPayrollRequest {
+  string company_id = 1;
+  string from = 2; // YYYY-MM-DD, inclusive
+  string to = 3;   // YYYY-MM-DD, inclusive
+}
+
+// TeamWeekPayroll is one team's one week as the Audit board reports it.
+message TeamWeekPayroll {
+  string team_id = 1;
+  string team_name = 2;
+  string week_start = 3; // YYYY-MM-DD, the tenant's week cutover
+
+  // is_management_locked is true only when EVERY crew-week under the team is
+  // frozen — that is the sign-off accounting is allowed to pay on. An open week
+  // is still returned, with this false, so the caller can refuse to approve.
+  bool is_management_locked = 4;
+  // management_locked_at is RFC3339, empty while the week is open.
+  string management_locked_at = 5;
+
+  // commission and bonus are the week's own money.
+  double commission = 6;
+  double bonus = 7;
+  // prior_week_adjustment_commission is money carried in from earlier closed
+  // weeks. Deliberately a separate figure and NOT part of commission: the week
+  // is measured on its own work (DEV-1934), and a dispatcher statement shows the
+  // carry-forward as its own line.
+  double prior_week_adjustment_commission = 8;
+  // total_gross is the team's billed revenue for the week — context for the
+  // statement, not a payable.
+  double total_gross = 9;
+
+  // dispatcher_ids are the team's dispatchers for that week. Empty means the
+  // team has none, which is not an error: accounting flags the commission line
+  // for a human instead of dropping it.
+  repeated string dispatcher_ids = 10;
+}
+
+message GetTeamWeeksForPayrollResponse {
+  repeated TeamWeekPayroll data = 1;
 }

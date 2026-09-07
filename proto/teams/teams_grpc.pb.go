@@ -33,6 +33,7 @@ const (
 	TeamsService_ResolveTruckIDs_FullMethodName               = "/teams.TeamsService/ResolveTruckIDs"
 	TeamsService_ResolveTrailerIDs_FullMethodName             = "/teams.TeamsService/ResolveTrailerIDs"
 	TeamsService_ResolveDriverIDs_FullMethodName              = "/teams.TeamsService/ResolveDriverIDs"
+	TeamsService_GetTeamWeeksForPayroll_FullMethodName        = "/teams.TeamsService/GetTeamWeeksForPayroll"
 )
 
 // TeamsServiceClient is the client API for TeamsService service.
@@ -63,6 +64,14 @@ type TeamsServiceClient interface {
 	ResolveTrailerIDs(ctx context.Context, in *TrailerFilter, opts ...grpc.CallOption) (*filters.IDsResponse, error)
 	// Cross-service filtering: returns driver IDs matching the filter
 	ResolveDriverIDs(ctx context.Context, in *DriverFilter, opts ...grpc.CallOption) (*filters.IDsResponse, error)
+	// DEV-1935: the money accounting pays dispatchers on. Returns every team-week
+	// overlapping the requested period WITH its lock state, not only the closed
+	// ones — accounting has to flag a pay batch whose period still contains an
+	// open week, so it must see the open ones too.
+	//
+	// The figures are the Audit board's own: accounting reads them and never
+	// recomputes a commission of its own.
+	GetTeamWeeksForPayroll(ctx context.Context, in *GetTeamWeeksForPayrollRequest, opts ...grpc.CallOption) (*GetTeamWeeksForPayrollResponse, error)
 }
 
 type teamsServiceClient struct {
@@ -183,6 +192,16 @@ func (c *teamsServiceClient) ResolveDriverIDs(ctx context.Context, in *DriverFil
 	return out, nil
 }
 
+func (c *teamsServiceClient) GetTeamWeeksForPayroll(ctx context.Context, in *GetTeamWeeksForPayrollRequest, opts ...grpc.CallOption) (*GetTeamWeeksForPayrollResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetTeamWeeksForPayrollResponse)
+	err := c.cc.Invoke(ctx, TeamsService_GetTeamWeeksForPayroll_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // TeamsServiceServer is the server API for TeamsService service.
 // All implementations must embed UnimplementedTeamsServiceServer
 // for forward compatibility.
@@ -211,6 +230,14 @@ type TeamsServiceServer interface {
 	ResolveTrailerIDs(context.Context, *TrailerFilter) (*filters.IDsResponse, error)
 	// Cross-service filtering: returns driver IDs matching the filter
 	ResolveDriverIDs(context.Context, *DriverFilter) (*filters.IDsResponse, error)
+	// DEV-1935: the money accounting pays dispatchers on. Returns every team-week
+	// overlapping the requested period WITH its lock state, not only the closed
+	// ones — accounting has to flag a pay batch whose period still contains an
+	// open week, so it must see the open ones too.
+	//
+	// The figures are the Audit board's own: accounting reads them and never
+	// recomputes a commission of its own.
+	GetTeamWeeksForPayroll(context.Context, *GetTeamWeeksForPayrollRequest) (*GetTeamWeeksForPayrollResponse, error)
 	mustEmbedUnimplementedTeamsServiceServer()
 }
 
@@ -253,6 +280,9 @@ func (UnimplementedTeamsServiceServer) ResolveTrailerIDs(context.Context, *Trail
 }
 func (UnimplementedTeamsServiceServer) ResolveDriverIDs(context.Context, *DriverFilter) (*filters.IDsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ResolveDriverIDs not implemented")
+}
+func (UnimplementedTeamsServiceServer) GetTeamWeeksForPayroll(context.Context, *GetTeamWeeksForPayrollRequest) (*GetTeamWeeksForPayrollResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetTeamWeeksForPayroll not implemented")
 }
 func (UnimplementedTeamsServiceServer) mustEmbedUnimplementedTeamsServiceServer() {}
 func (UnimplementedTeamsServiceServer) testEmbeddedByValue()                      {}
@@ -473,6 +503,24 @@ func _TeamsService_ResolveDriverIDs_Handler(srv interface{}, ctx context.Context
 	return interceptor(ctx, in, info, handler)
 }
 
+func _TeamsService_GetTeamWeeksForPayroll_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetTeamWeeksForPayrollRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(TeamsServiceServer).GetTeamWeeksForPayroll(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: TeamsService_GetTeamWeeksForPayroll_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(TeamsServiceServer).GetTeamWeeksForPayroll(ctx, req.(*GetTeamWeeksForPayrollRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // TeamsService_ServiceDesc is the grpc.ServiceDesc for TeamsService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -523,6 +571,10 @@ var TeamsService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ResolveDriverIDs",
 			Handler:    _TeamsService_ResolveDriverIDs_Handler,
+		},
+		{
+			MethodName: "GetTeamWeeksForPayroll",
+			Handler:    _TeamsService_GetTeamWeeksForPayroll_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

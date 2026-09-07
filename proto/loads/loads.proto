@@ -196,6 +196,18 @@ service LoadsService {
   // AuthServerInterceptor, so there is no actor to scope by), same contract as
   // ResolveTruckIDs / GetTripIDsByShipment / GetCustomerLoadStats.
   rpc MatchTollRows(MatchTollRowsRequest) returns (MatchTollRowsResponse);
+
+  // DEV-1935: the late-trailer-return charges a dispatcher is accountable for,
+  // for a pay period. Accounting puts them on the dispatcher's pay statement.
+  //
+  // The only existing read is getLotChargebacks(trailerId) over GraphQL, gated
+  // on a fleet permission — keyed by trailer, which is the wrong axis for
+  // payroll and the wrong gate for accounting.
+  //
+  // company_id is passed explicitly, same contract as MatchTollRows /
+  // ResolveTruckIDs: backend-load's gRPC server runs without an
+  // AuthServerInterceptor, so there is no actor to scope by.
+  rpc GetLotChargebacksByDispatchers(GetLotChargebacksByDispatchersRequest) returns (GetLotChargebacksByDispatchersResponse);
 }
 
 message DriverHasActiveTripRequest {
@@ -1097,4 +1109,38 @@ message TollMatchResult {
 
 message MatchTollRowsResponse {
   repeated TollMatchResult results = 1;
+}
+
+// GetLotChargebacksByDispatchersRequest asks for the charges attributed to the
+// named dispatchers whose accrual day falls in [from, to].
+message GetLotChargebacksByDispatchersRequest {
+  string company_id = 1;
+  repeated string dispatcher_ids = 2;
+  string from = 3; // YYYY-MM-DD, inclusive, against accrual_date
+  string to = 4;   // YYYY-MM-DD, inclusive
+}
+
+// LotChargebackForDispatcher is one late day charged to one dispatcher.
+//
+// Only the DISPATCHER kind is reported. The sibling BROKER rows are the fine the
+// broker bills the carrier and belong to no dispatcher's pay. And only ACTIVE
+// rows: a voided charge has been forgiven by a manager, so it must not reach a
+// pay statement.
+message LotChargebackForDispatcher {
+  string id = 1;
+  string dispatcher_id = 2;
+  string trailer_id = 3;
+  // trip_id is empty when the trailer's LOT clock was started without a trip —
+  // e.g. lot_pickup_at corrected by hand.
+  string trip_id = 4;
+  string accrual_date = 5; // YYYY-MM-DD, the single late day this row charges for
+
+  // amount_cents is CENTS, not dollars. backend-load stores this column as an
+  // integer number of cents while accounting works in NUMERIC(14,4) — the name
+  // says so on purpose, because reading it as dollars overcharges by 100x.
+  int32 amount_cents = 6;
+}
+
+message GetLotChargebacksByDispatchersResponse {
+  repeated LotChargebackForDispatcher data = 1;
 }

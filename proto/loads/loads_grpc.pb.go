@@ -23,37 +23,38 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	LoadsService_GetDriverTripDetails_FullMethodName        = "/loads.LoadsService/GetDriverTripDetails"
-	LoadsService_DriverHasActiveTrip_FullMethodName         = "/loads.LoadsService/DriverHasActiveTrip"
-	LoadsService_GetTripsOverlappingWindow_FullMethodName   = "/loads.LoadsService/GetTripsOverlappingWindow"
-	LoadsService_GetRecentBrokerIDs_FullMethodName          = "/loads.LoadsService/GetRecentBrokerIDs"
-	LoadsService_GetBrokerCopyCancelState_FullMethodName    = "/loads.LoadsService/GetBrokerCopyCancelState"
-	LoadsService_GetShipment_FullMethodName                 = "/loads.LoadsService/GetShipment"
-	LoadsService_ListShipments_FullMethodName               = "/loads.LoadsService/ListShipments"
-	LoadsService_GetTrip_FullMethodName                     = "/loads.LoadsService/GetTrip"
-	LoadsService_ListTrips_FullMethodName                   = "/loads.LoadsService/ListTrips"
-	LoadsService_GetVehicleAssignments_FullMethodName       = "/loads.LoadsService/GetVehicleAssignments"
-	LoadsService_UpdateVehicleLocation_FullMethodName       = "/loads.LoadsService/UpdateVehicleLocation"
-	LoadsService_StreamVehicleLocations_FullMethodName      = "/loads.LoadsService/StreamVehicleLocations"
-	LoadsService_ResolveShipmentIDs_FullMethodName          = "/loads.LoadsService/ResolveShipmentIDs"
-	LoadsService_ResolveTripIDs_FullMethodName              = "/loads.LoadsService/ResolveTripIDs"
-	LoadsService_GetShipmentChatMembers_FullMethodName      = "/loads.LoadsService/GetShipmentChatMembers"
-	LoadsService_GetDriverActiveLoads_FullMethodName        = "/loads.LoadsService/GetDriverActiveLoads"
-	LoadsService_GetDriverUnsettledLoads_FullMethodName     = "/loads.LoadsService/GetDriverUnsettledLoads"
-	LoadsService_GetDriverDocIssueLoads_FullMethodName      = "/loads.LoadsService/GetDriverDocIssueLoads"
-	LoadsService_GetTripChatInfo_FullMethodName             = "/loads.LoadsService/GetTripChatInfo"
-	LoadsService_GetTripsForPayBatch_FullMethodName         = "/loads.LoadsService/GetTripsForPayBatch"
-	LoadsService_GetTripsByIDs_FullMethodName               = "/loads.LoadsService/GetTripsByIDs"
-	LoadsService_GetUnbilledDriverTrips_FullMethodName      = "/loads.LoadsService/GetUnbilledDriverTrips"
-	LoadsService_GetShipmentsReadyForBilling_FullMethodName = "/loads.LoadsService/GetShipmentsReadyForBilling"
-	LoadsService_GetShipmentsByIDs_FullMethodName           = "/loads.LoadsService/GetShipmentsByIDs"
-	LoadsService_GetShipmentFiles_FullMethodName            = "/loads.LoadsService/GetShipmentFiles"
-	LoadsService_AttachShipmentFile_FullMethodName          = "/loads.LoadsService/AttachShipmentFile"
-	LoadsService_GetTripIDsByShipment_FullMethodName        = "/loads.LoadsService/GetTripIDsByShipment"
-	LoadsService_GetCustomerLoadStats_FullMethodName        = "/loads.LoadsService/GetCustomerLoadStats"
-	LoadsService_ResolveTruckIDs_FullMethodName             = "/loads.LoadsService/ResolveTruckIDs"
-	LoadsService_GetTruckOwnersByTruckIDs_FullMethodName    = "/loads.LoadsService/GetTruckOwnersByTruckIDs"
-	LoadsService_MatchTollRows_FullMethodName               = "/loads.LoadsService/MatchTollRows"
+	LoadsService_GetDriverTripDetails_FullMethodName           = "/loads.LoadsService/GetDriverTripDetails"
+	LoadsService_DriverHasActiveTrip_FullMethodName            = "/loads.LoadsService/DriverHasActiveTrip"
+	LoadsService_GetTripsOverlappingWindow_FullMethodName      = "/loads.LoadsService/GetTripsOverlappingWindow"
+	LoadsService_GetRecentBrokerIDs_FullMethodName             = "/loads.LoadsService/GetRecentBrokerIDs"
+	LoadsService_GetBrokerCopyCancelState_FullMethodName       = "/loads.LoadsService/GetBrokerCopyCancelState"
+	LoadsService_GetShipment_FullMethodName                    = "/loads.LoadsService/GetShipment"
+	LoadsService_ListShipments_FullMethodName                  = "/loads.LoadsService/ListShipments"
+	LoadsService_GetTrip_FullMethodName                        = "/loads.LoadsService/GetTrip"
+	LoadsService_ListTrips_FullMethodName                      = "/loads.LoadsService/ListTrips"
+	LoadsService_GetVehicleAssignments_FullMethodName          = "/loads.LoadsService/GetVehicleAssignments"
+	LoadsService_UpdateVehicleLocation_FullMethodName          = "/loads.LoadsService/UpdateVehicleLocation"
+	LoadsService_StreamVehicleLocations_FullMethodName         = "/loads.LoadsService/StreamVehicleLocations"
+	LoadsService_ResolveShipmentIDs_FullMethodName             = "/loads.LoadsService/ResolveShipmentIDs"
+	LoadsService_ResolveTripIDs_FullMethodName                 = "/loads.LoadsService/ResolveTripIDs"
+	LoadsService_GetShipmentChatMembers_FullMethodName         = "/loads.LoadsService/GetShipmentChatMembers"
+	LoadsService_GetDriverActiveLoads_FullMethodName           = "/loads.LoadsService/GetDriverActiveLoads"
+	LoadsService_GetDriverUnsettledLoads_FullMethodName        = "/loads.LoadsService/GetDriverUnsettledLoads"
+	LoadsService_GetDriverDocIssueLoads_FullMethodName         = "/loads.LoadsService/GetDriverDocIssueLoads"
+	LoadsService_GetTripChatInfo_FullMethodName                = "/loads.LoadsService/GetTripChatInfo"
+	LoadsService_GetTripsForPayBatch_FullMethodName            = "/loads.LoadsService/GetTripsForPayBatch"
+	LoadsService_GetTripsByIDs_FullMethodName                  = "/loads.LoadsService/GetTripsByIDs"
+	LoadsService_GetUnbilledDriverTrips_FullMethodName         = "/loads.LoadsService/GetUnbilledDriverTrips"
+	LoadsService_GetShipmentsReadyForBilling_FullMethodName    = "/loads.LoadsService/GetShipmentsReadyForBilling"
+	LoadsService_GetShipmentsByIDs_FullMethodName              = "/loads.LoadsService/GetShipmentsByIDs"
+	LoadsService_GetShipmentFiles_FullMethodName               = "/loads.LoadsService/GetShipmentFiles"
+	LoadsService_AttachShipmentFile_FullMethodName             = "/loads.LoadsService/AttachShipmentFile"
+	LoadsService_GetTripIDsByShipment_FullMethodName           = "/loads.LoadsService/GetTripIDsByShipment"
+	LoadsService_GetCustomerLoadStats_FullMethodName           = "/loads.LoadsService/GetCustomerLoadStats"
+	LoadsService_ResolveTruckIDs_FullMethodName                = "/loads.LoadsService/ResolveTruckIDs"
+	LoadsService_GetTruckOwnersByTruckIDs_FullMethodName       = "/loads.LoadsService/GetTruckOwnersByTruckIDs"
+	LoadsService_MatchTollRows_FullMethodName                  = "/loads.LoadsService/MatchTollRows"
+	LoadsService_GetLotChargebacksByDispatchers_FullMethodName = "/loads.LoadsService/GetLotChargebacksByDispatchers"
 )
 
 // LoadsServiceClient is the client API for LoadsService service.
@@ -210,6 +211,17 @@ type LoadsServiceClient interface {
 	// AuthServerInterceptor, so there is no actor to scope by), same contract as
 	// ResolveTruckIDs / GetTripIDsByShipment / GetCustomerLoadStats.
 	MatchTollRows(ctx context.Context, in *MatchTollRowsRequest, opts ...grpc.CallOption) (*MatchTollRowsResponse, error)
+	// DEV-1935: the late-trailer-return charges a dispatcher is accountable for,
+	// for a pay period. Accounting puts them on the dispatcher's pay statement.
+	//
+	// The only existing read is getLotChargebacks(trailerId) over GraphQL, gated
+	// on a fleet permission — keyed by trailer, which is the wrong axis for
+	// payroll and the wrong gate for accounting.
+	//
+	// company_id is passed explicitly, same contract as MatchTollRows /
+	// ResolveTruckIDs: backend-load's gRPC server runs without an
+	// AuthServerInterceptor, so there is no actor to scope by.
+	GetLotChargebacksByDispatchers(ctx context.Context, in *GetLotChargebacksByDispatchersRequest, opts ...grpc.CallOption) (*GetLotChargebacksByDispatchersResponse, error)
 }
 
 type loadsServiceClient struct {
@@ -539,6 +551,16 @@ func (c *loadsServiceClient) MatchTollRows(ctx context.Context, in *MatchTollRow
 	return out, nil
 }
 
+func (c *loadsServiceClient) GetLotChargebacksByDispatchers(ctx context.Context, in *GetLotChargebacksByDispatchersRequest, opts ...grpc.CallOption) (*GetLotChargebacksByDispatchersResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetLotChargebacksByDispatchersResponse)
+	err := c.cc.Invoke(ctx, LoadsService_GetLotChargebacksByDispatchers_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // LoadsServiceServer is the server API for LoadsService service.
 // All implementations must embed UnimplementedLoadsServiceServer
 // for forward compatibility.
@@ -693,6 +715,17 @@ type LoadsServiceServer interface {
 	// AuthServerInterceptor, so there is no actor to scope by), same contract as
 	// ResolveTruckIDs / GetTripIDsByShipment / GetCustomerLoadStats.
 	MatchTollRows(context.Context, *MatchTollRowsRequest) (*MatchTollRowsResponse, error)
+	// DEV-1935: the late-trailer-return charges a dispatcher is accountable for,
+	// for a pay period. Accounting puts them on the dispatcher's pay statement.
+	//
+	// The only existing read is getLotChargebacks(trailerId) over GraphQL, gated
+	// on a fleet permission — keyed by trailer, which is the wrong axis for
+	// payroll and the wrong gate for accounting.
+	//
+	// company_id is passed explicitly, same contract as MatchTollRows /
+	// ResolveTruckIDs: backend-load's gRPC server runs without an
+	// AuthServerInterceptor, so there is no actor to scope by.
+	GetLotChargebacksByDispatchers(context.Context, *GetLotChargebacksByDispatchersRequest) (*GetLotChargebacksByDispatchersResponse, error)
 	mustEmbedUnimplementedLoadsServiceServer()
 }
 
@@ -795,6 +828,9 @@ func (UnimplementedLoadsServiceServer) GetTruckOwnersByTruckIDs(context.Context,
 }
 func (UnimplementedLoadsServiceServer) MatchTollRows(context.Context, *MatchTollRowsRequest) (*MatchTollRowsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method MatchTollRows not implemented")
+}
+func (UnimplementedLoadsServiceServer) GetLotChargebacksByDispatchers(context.Context, *GetLotChargebacksByDispatchersRequest) (*GetLotChargebacksByDispatchersResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetLotChargebacksByDispatchers not implemented")
 }
 func (UnimplementedLoadsServiceServer) mustEmbedUnimplementedLoadsServiceServer() {}
 func (UnimplementedLoadsServiceServer) testEmbeddedByValue()                      {}
@@ -1368,6 +1404,24 @@ func _LoadsService_MatchTollRows_Handler(srv interface{}, ctx context.Context, d
 	return interceptor(ctx, in, info, handler)
 }
 
+func _LoadsService_GetLotChargebacksByDispatchers_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetLotChargebacksByDispatchersRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(LoadsServiceServer).GetLotChargebacksByDispatchers(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: LoadsService_GetLotChargebacksByDispatchers_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(LoadsServiceServer).GetLotChargebacksByDispatchers(ctx, req.(*GetLotChargebacksByDispatchersRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // LoadsService_ServiceDesc is the grpc.ServiceDesc for LoadsService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -1494,6 +1548,10 @@ var LoadsService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "MatchTollRows",
 			Handler:    _LoadsService_MatchTollRows_Handler,
+		},
+		{
+			MethodName: "GetLotChargebacksByDispatchers",
+			Handler:    _LoadsService_GetLotChargebacksByDispatchers_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{

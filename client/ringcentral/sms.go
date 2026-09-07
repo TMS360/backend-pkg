@@ -9,6 +9,7 @@ import (
 	"io"
 	"net/http"
 	"strings"
+	"time"
 )
 
 const (
@@ -270,4 +271,96 @@ func truncate(s string) string {
 		return s[:max]
 	}
 	return s
+}
+
+// SMS message statuses, RingCentral's own words, read back from the message
+// store. They are the same vocabulary the fax constants carry, declared under
+// their own names so SMS code does not read as if it were about paper.
+//
+// Queued and Sent are NOT endings. RingCentral answered "accepted", nothing
+// more; a screen that shows either as "delivered" is lying to a dispatcher
+// about whether a driver was reached (DEV-1895 recorded exactly that: one
+// accepted send later came back DeliveryFailed).
+const (
+	SMSStatusQueued         = "Queued"
+	SMSStatusSent           = "Sent"
+	SMSStatusDelivered      = "Delivered"
+	SMSStatusDeliveryFailed = "DeliveryFailed"
+	SMSStatusSendingFailed  = "SendingFailed"
+)
+
+// SMSMessageStatus is what the message store currently says about one sent
+// text. MessageStatus is verbatim; ErrorCode is filled only when RingCentral
+// names a reason, which for plain SMS it often does not — a DeliveryFailed with
+// no code is still a failure, and the status word is then the only reason there
+// is.
+type SMSMessageStatus struct {
+	ID               string
+	MessageStatus    string
+	ErrorCode        string
+	CreationTime     time.Time
+	LastModifiedTime time.Time
+}
+
+// smsMessageRecord mirrors the message-store payload for an SMS.
+type smsMessageRecord struct {
+	ID               json.Number `json:"id"`
+	MessageStatus    string      `json:"messageStatus"`
+	ErrorCode        string      `json:"errorCode"`
+	CreationTime     time.Time   `json:"creationTime"`
+	LastModifiedTime time.Time   `json:"lastModifiedTime"`
+	To               []struct {
+		MessageStatus string `json:"messageStatus"`
+		ErrorCode     string `json:"errorCode"`
+	} `json:"to"`
+}
+
+// SMSMessage reads one sent text back from the message store. This is how a
+// message that was Queued becomes Delivered — or names its failure. The send
+// response alone can never do that: it is written before the carrier answers.
+func (c *Client) SMSMessage(ctx context.Context, extensionID, messageID string) (*SMSMessageStatus, error) {
+	ext := strings.TrimSpace(extensionID)
+	if ext == "" {
+		ext = SelfExtension
+	}
+	if strings.TrimSpace(messageID) == "" {
+		return nil, fmt.Errorf("ringcentral: sms message id is required")
+	}
+
+	token, _, err := c.AccessToken(ctx)
+	if err != nil {
+		if IsAuthError(err) {
+			return nil, ErrInvalidCredentials
+		}
+		return nil, err
+	}
+
+	body, err := c.get(ctx, token, fmt.Sprintf(messageStorePathFormat, ext, messageID))
+	if err != nil {
+		return nil, err
+	}
+
+	var rec smsMessageRecord
+	if err := json.Unmarshal(body, &rec); err != nil {
+		return nil, fmt.Errorf("ringcentral: failed to decode sms message: %w", err)
+	}
+
+	out := &SMSMessageStatus{
+		ID:               rec.ID.String(),
+		MessageStatus:    rec.MessageStatus,
+		ErrorCode:        strings.TrimSpace(rec.ErrorCode),
+		CreationTime:     rec.CreationTime,
+		LastModifiedTime: rec.LastModifiedTime,
+	}
+	// A per-recipient error is more specific than the record's own; a plain SMS
+	// has one recipient, so the first named one wins.
+	if out.ErrorCode == "" {
+		for _, t := range rec.To {
+			if code := strings.TrimSpace(t.ErrorCode); code != "" {
+				out.ErrorCode = code
+				break
+			}
+		}
+	}
+	return out, nil
 }

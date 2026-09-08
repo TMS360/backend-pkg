@@ -53,6 +53,11 @@ func Run(ctx context.Context, cfg Config) (Report, error) {
 	if err != nil {
 		return Report{}, err
 	}
+	// One probe run performs six calls, each of which would otherwise exchange
+	// the JWT again. RingCentral's auth endpoint cuts that off with HTTP 429
+	// partway through, and the attempt it kills is the last one — the very
+	// question the run exists to answer.
+	client.ReuseAccessToken()
 
 	server := strings.TrimSpace(cfg.Cred.ServerURL)
 	if server == "" {
@@ -62,6 +67,12 @@ func Run(ctx context.Context, cfg Config) (Report, error) {
 	owner, err := client.TokenOwnerExtensionID(ctx)
 	if err != nil {
 		return Report{}, fmt.Errorf("smsprobe: token exchange failed: %w", err)
+	}
+
+	smsOK, smsKnown, smsReason, smsErr := client.SMSSendingAvailable(ctx)
+	ownerSMS := FeatureCheck{Known: smsKnown, Available: smsOK, Reason: smsReason}
+	if smsErr != nil {
+		ownerSMS = FeatureCheck{Error: smsErr.Error()}
 	}
 
 	numbers, err := client.ListPhoneNumbers(ctx)
@@ -80,6 +91,7 @@ func Run(ctx context.Context, cfg Config) (Report, error) {
 	report := Report{
 		ServerURL:        server,
 		OwnerExtensionID: owner,
+		OwnerSMS:         ownerSMS,
 		Numbers:          numbers,
 	}
 
@@ -114,6 +126,17 @@ func Run(ctx context.Context, cfg Config) (Report, error) {
 		return report, nil
 	}
 
+	// Refusing to send when our own extension cannot text is the same rule the
+	// verdict already applies, moved one step earlier: the control send would
+	// fail for a reason that has nothing to do with sharing, and three real
+	// messages would be spent to learn it.
+	if ownerSMS.Known && !ownerSMS.Available {
+		report.Verdict = Verdict{AnswerInconclusive, fmt.Sprintf(
+			"RingCentral reports that our own extension (%s) may not send SMS at all (%s) — nothing was sent; enable texting for this extension, then rerun",
+			owner, ownerSMS.Reason)}
+		return report, nil
+	}
+
 	send(ctx, client, &report.Own)
 	for i := range report.Shared {
 		send(ctx, client, &report.Shared[i])
@@ -126,6 +149,7 @@ func Run(ctx context.Context, cfg Config) (Report, error) {
 // refusal is copied in verbatim; anything that never reached the platform lands
 // in Transport so it cannot be mistaken for an answer.
 func send(ctx context.Context, client *ringcentral.Client, a *Attempt) {
+	a.Attempted = true
 	res, err := client.SendSMS(ctx, ringcentral.SMSRequest{
 		ExtensionID: a.ExtensionID,
 		From:        a.From,

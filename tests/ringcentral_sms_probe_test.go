@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/TMS360/backend-pkg/client/ringcentral"
 	"github.com/TMS360/backend-pkg/client/ringcentral/smsprobe"
@@ -185,15 +186,60 @@ func TestClassify_OwnNumberOnly(t *testing.T) {
 	assert.Equal(t, smsprobe.AnswerOwnNumberOnly, v.Answer)
 }
 
-func TestClassify_ForbiddenOnAnotherExtensionIsAlsoOwnNumberOnly(t *testing.T) {
+func TestClassify_PermissionRefusalIsNotAnAnswerAboutSharing(t *testing.T) {
 	shared := []smsprobe.Attempt{{
 		Label:      "shared through its own extension",
 		StatusCode: http.StatusForbidden,
 		ErrorCode:  "CMN-408",
-		Message:    "In order to call this API endpoint, user needs to have [Meetings] permission",
+		Message:    "In order to call this API endpoint, user needs to have [SMS] permission",
 	}}
 	v := smsprobe.Classify(okAttempt("control"), shared)
-	assert.Equal(t, smsprobe.AnswerOwnNumberOnly, v.Answer)
+	assert.Equal(t, smsprobe.AnswerInconclusive, v.Answer,
+		"a plain user is stopped at the door whatever number it asks for — that says nothing about who owns the sender")
+	assert.Contains(t, v.Reason, "super admin", "the reason must name the fix, not just the failure")
+}
+
+func TestClassify_BareForbiddenIsStillAnOwnershipWall(t *testing.T) {
+	shared := []smsprobe.Attempt{{
+		Label:      "shared through its own extension",
+		StatusCode: http.StatusForbidden,
+		ErrorCode:  "CMN-102",
+		Message:    "Resource for parameter [extensionId] is not found",
+	}}
+	v := smsprobe.Classify(okAttempt("control"), shared)
+	assert.Equal(t, smsprobe.AnswerOwnNumberOnly, v.Answer,
+		"a 403 that does not blame our permissions is the same wall from the other side")
+}
+
+func TestClassify_OwnershipPlusPermissionIsOnlyHalfAnAnswer(t *testing.T) {
+	shared := []smsprobe.Attempt{
+		{
+			Label:      "shared through our extension",
+			StatusCode: http.StatusBadRequest,
+			ErrorCode:  "InvalidParameter",
+			SubCodes:   []string{"CMN-101"},
+			Message:    "Parameter [from] value is invalid",
+		},
+		{
+			Label:      "shared through its own extension",
+			StatusCode: http.StatusForbidden,
+			ErrorCode:  "CMN-408",
+			Message:    "user needs to have [SMS] permission",
+		},
+	}
+	v := smsprobe.Classify(okAttempt("control"), shared)
+	assert.Equal(t, smsprobe.AnswerInconclusive, v.Answer,
+		"the admin-acting leg never ran, so OWN_NUMBER_ONLY would overstate what was proved")
+	assert.Contains(t, v.Reason, "never actually tested")
+}
+
+func TestClassify_PlannedButUnsentAttemptsProveNothing(t *testing.T) {
+	own := smsprobe.Attempt{Label: "control", From: "+15551110000", To: "+15552220000"}
+	shared := []smsprobe.Attempt{{Label: "shared", From: "+15559990000", To: "+15552220000"}}
+
+	v := smsprobe.Classify(own, shared)
+	assert.Equal(t, smsprobe.AnswerInconclusive, v.Answer)
+	assert.Contains(t, v.Reason, "not performed")
 }
 
 func TestClassify_HighVolumeProductWins(t *testing.T) {
@@ -337,4 +383,226 @@ func TestRun_DryRunReadsTheAccountAndSendsNothing(t *testing.T) {
 	for _, p := range *paths {
 		assert.NotContains(t, p, "/sms")
 	}
+}
+
+func TestRender_UnsentAttemptIsNotPrintedAsARefusal(t *testing.T) {
+	r := refusedReport()
+	r.Shared = []smsprobe.Attempt{{
+		Label:       "shared number, sent through OUR extension (the question)",
+		ExtensionID: "~",
+		From:        "+15559990000",
+		To:          "+15552220000",
+		Text:        "probe",
+	}}
+	r.Own = smsprobe.Attempt{Label: "control", ExtensionID: "~", From: "+15551110000", To: "+15552220000"}
+	r.Verdict = smsprobe.Classify(r.Own, r.Shared)
+
+	out := smsprobe.Render(r)
+
+	assert.Contains(t, out, "not attempted")
+	assert.NotContains(t, out, "**refused**",
+		"a dry run that reads as a refusal would put an invented RingCentral answer into the ticket")
+}
+
+func TestRender_ExtensionColumnHasNoEmptyBrackets(t *testing.T) {
+	r := refusedReport()
+	r.Numbers = []ringcentral.PhoneNumber{
+		{PhoneNumber: "+15551110000", UsageType: "DirectNumber", Type: "VoiceFax",
+			ExtensionID: "775117052", ExtensionNumber: "143"},
+	}
+	r.Verdict = smsprobe.Classify(r.Own, r.Shared)
+
+	out := smsprobe.Render(r)
+
+	assert.Contains(t, out, "143 (id 775117052)")
+	assert.NotContains(t, out, "(, id", "a nameless extension must not print a dangling comma")
+}
+
+func TestRender_SaysWhetherOurExtensionMaySendSMS(t *testing.T) {
+	r := refusedReport()
+	r.OwnerSMS = smsprobe.FeatureCheck{Known: true, Available: false, Reason: "AccountLimitation The feature is turned off for the current account"}
+	r.Verdict = smsprobe.Classify(r.Own, r.Shared)
+
+	out := smsprobe.Render(r)
+
+	assert.Contains(t, out, "SMSSending")
+	assert.Contains(t, out, "turned off for the current account")
+}
+
+// featureServer answers the extension-features endpoint with one SMSSending
+// record and the phone-number listing with two numbers on two extensions.
+func featureServer(t *testing.T, smsAvailable bool) (*httptest.Server, *[]string) {
+	t.Helper()
+	srv, paths, _ := probeServer(t, func(w http.ResponseWriter, r *http.Request, _ []byte) {
+		w.Header().Set("Content-Type", "application/json")
+		if strings.HasSuffix(r.URL.Path, "/features") {
+			reason := ""
+			if !smsAvailable {
+				reason = `,"reason":{"code":"AccountLimitation","message":"The feature is turned off for the current account"}`
+			}
+			_, _ = w.Write([]byte(`{"records":[{"id":"SMSSending","available":` +
+				map[bool]string{true: "true", false: "false"}[smsAvailable] + reason + `}]}`))
+			return
+		}
+		_, _ = w.Write([]byte(`{"records":[
+			{"id":1,"phoneNumber":"+15551110000","usageType":"DirectNumber","type":"VoiceFax","extension":{"id":777,"extensionNumber":"101","name":"Alice"}},
+			{"id":2,"phoneNumber":"+15559990000","usageType":"DirectNumber","type":"VoiceFax","extension":{"id":888,"extensionNumber":"102","name":"Bob"}}
+		],"paging":{"page":1,"totalPages":1}}`))
+	})
+	return srv, paths
+}
+
+func TestRun_StopsBeforeSendingWhenOurExtensionMayNotText(t *testing.T) {
+	srv, paths := featureServer(t, false)
+
+	report, err := smsprobe.Run(context.Background(), smsprobe.Config{
+		Cred: probeCred(srv.URL), To: "+15552220000",
+	})
+	require.NoError(t, err)
+
+	assert.Equal(t, smsprobe.AnswerInconclusive, report.Verdict.Answer)
+	assert.Contains(t, report.Verdict.Reason, "may not send SMS")
+	for _, p := range *paths {
+		assert.NotContains(t, p, "/sms", "no message may be spent to discover a switched-off account")
+	}
+}
+
+func TestSMSSendingAvailable_ReadsOurOwnExtensionOnly(t *testing.T) {
+	srv, paths := featureServer(t, true)
+
+	client, err := ringcentral.NewClientWithCred(probeCred(srv.URL))
+	require.NoError(t, err)
+
+	available, found, reason, err := client.SMSSendingAvailable(context.Background())
+	require.NoError(t, err)
+	assert.True(t, available)
+	assert.True(t, found)
+	assert.Empty(t, reason)
+	assert.Contains(t, (*paths)[0], "/extension/~/features",
+		"asking about another extension answers 403 for a plain user, which this client reads as a revoked credential")
+}
+
+func TestReuseAccessToken_ExchangesTheJWTOncePerRun(t *testing.T) {
+	var exchanges int
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		if r.URL.Path == tokenPath {
+			exchanges++
+			_, _ = w.Write([]byte(`{"access_token":"tok","expires_in":3600,"owner_id":"777"}`))
+			return
+		}
+		_, _ = w.Write([]byte(`{"records":[]}`))
+	}))
+	t.Cleanup(srv.Close)
+
+	client, err := ringcentral.NewClientWithCred(probeCred(srv.URL))
+	require.NoError(t, err)
+
+	for range 3 {
+		_, _, err := client.AccessToken(context.Background())
+		require.NoError(t, err)
+	}
+	assert.Equal(t, 3, exchanges, "a service must keep exchanging, so a revoked credential surfaces on the next call")
+
+	client.ReuseAccessToken()
+	for range 3 {
+		_, _, err := client.AccessToken(context.Background())
+		require.NoError(t, err)
+	}
+	assert.Equal(t, 4, exchanges, "a one-shot tool exchanges once, or RingCentral's auth rate limit ends the run early")
+}
+
+// DEV-1898 — the inbound half needs a webhook subscription (the fast path) and
+// a message-store read (the safety net). Both are thin; what these tests pin is
+// the shape a caller depends on: an expiry it can act on, and SMS-only reads.
+
+func TestCreateSubscription_SendsWebhookModeAndReportsExpiry(t *testing.T) {
+	var gotBody string
+	srv, paths, bodies := probeServer(t, func(w http.ResponseWriter, _ *http.Request, body []byte) {
+		gotBody = string(body)
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"id":"sub-1","status":"Active","expirationTime":"2026-09-14T10:00:00.000Z",
+			"eventFilters":["/restapi/v1.0/account/~/extension/~/message-store/instant?type=SMS"],
+			"deliveryMode":{"transport":"WebHook","address":"https://tms.test/api/ringcentral/webhook"}}`))
+	})
+
+	client, err := ringcentral.NewClientWithCred(probeCred(srv.URL))
+	require.NoError(t, err)
+
+	sub, err := client.CreateSubscription(context.Background(), ringcentral.SubscriptionRequest{
+		Address: "https://tms.test/api/ringcentral/webhook", VerificationToken: "shh",
+	})
+	require.NoError(t, err)
+
+	assert.Equal(t, "sub-1", sub.ID)
+	assert.True(t, sub.Deliverable(), "an Active subscription with a future expiry is delivering")
+	assert.False(t, sub.Expired())
+	assert.Contains(t, (*paths)[0], "/restapi/v1.0/subscription")
+	assert.Contains(t, gotBody, `"transport":"WebHook"`)
+	assert.Contains(t, gotBody, `"verificationToken":"shh"`, "the token is how the receiver tells a real post from a guessed URL")
+	assert.Contains(t, (*bodies)[0], "message-store/instant?type=SMS", "the default filter is the fast lane, not the batched store")
+}
+
+func TestSubscription_ExpiredIsNotDeliverable(t *testing.T) {
+	srv, _, _ := probeServer(t, func(w http.ResponseWriter, _ *http.Request, _ []byte) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"records":[{"id":"old","status":"Active","expirationTime":"2020-01-01T00:00:00.000Z"}]}`))
+	})
+
+	client, err := ringcentral.NewClientWithCred(probeCred(srv.URL))
+	require.NoError(t, err)
+
+	subs, err := client.ListSubscriptions(context.Background())
+	require.NoError(t, err)
+	require.Len(t, subs, 1)
+	assert.True(t, subs[0].Expired())
+	assert.False(t, subs[0].Deliverable(),
+		"an expired subscription still reads as Active — believing the status alone is how inbound dies silently")
+}
+
+func TestRenewSubscription_PushesTheExpiryOut(t *testing.T) {
+	srv, paths, _ := probeServer(t, func(w http.ResponseWriter, _ *http.Request, _ []byte) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"id":"sub-1","status":"Active","expiresIn":604800}`))
+	})
+
+	client, err := ringcentral.NewClientWithCred(probeCred(srv.URL))
+	require.NoError(t, err)
+
+	sub, err := client.RenewSubscription(context.Background(), "sub-1")
+	require.NoError(t, err)
+	assert.True(t, sub.ExpiresAt.After(time.Now().Add(6*24*time.Hour)),
+		"expiresIn must be turned into a moment so no caller does the arithmetic")
+	assert.Contains(t, (*paths)[0], "/subscription/sub-1/renew")
+}
+
+func TestListSMSMessages_ReadsOnlySMSAndKeepsTheBody(t *testing.T) {
+	var gotQuery string
+	srv, paths, _ := probeServer(t, func(w http.ResponseWriter, r *http.Request, _ []byte) {
+		gotQuery = r.URL.RawQuery
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"records":[
+			{"id":11,"type":"SMS","direction":"Inbound","subject":"blew a tyre","creationTime":"2026-09-07T10:00:00.000Z",
+			 "readStatus":"Unread","from":{"phoneNumber":"+18134400358"},"to":[{"phoneNumber":"+16305664862"}]},
+			{"id":12,"type":"Fax","direction":"Inbound","subject":"cover page"}
+		],"paging":{"page":1,"totalPages":1}}`))
+	})
+
+	client, err := ringcentral.NewClientWithCred(probeCred(srv.URL))
+	require.NoError(t, err)
+
+	msgs, err := client.ListSMSMessages(context.Background(), ringcentral.SMSQuery{
+		Direction: ringcentral.DirectionInbound, DateFrom: time.Now().Add(-time.Hour),
+	})
+	require.NoError(t, err)
+
+	require.Len(t, msgs, 1, "a fax in the same store must not arrive as a driver's text")
+	assert.Equal(t, "11", msgs[0].ID)
+	assert.Equal(t, "blew a tyre", msgs[0].Text, "RingCentral calls the body 'subject'; it is not a subject line")
+	assert.Equal(t, "+18134400358", msgs[0].From)
+	assert.Equal(t, []string{"+16305664862"}, msgs[0].To)
+	assert.Contains(t, (*paths)[0], "/message-store")
+	assert.Contains(t, gotQuery, "messageType=SMS", "the store also holds voicemail and faxes")
+	assert.Contains(t, gotQuery, "direction=Inbound")
+	assert.Contains(t, gotQuery, "dateFrom=", "a sweep must bound its window or it re-reads history")
 }

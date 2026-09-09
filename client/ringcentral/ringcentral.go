@@ -137,6 +137,15 @@ type Client struct {
 	tokenMu     sync.Mutex
 	tokenValue  string
 	tokenExpiry time.Time
+
+	// bearer holds a token obtained elsewhere — a person's own access token
+	// from the authorization-code flow (DEV-2111). When it is set there is no
+	// credential to exchange: this client IS that person for as long as the
+	// token lives, and renewing it is the caller's job, because only the caller
+	// holds the refresh token and the row to write the rotated one back to.
+	bearer      string
+	bearerOwner string
+	bearerTTL   time.Duration
 }
 
 // ReuseAccessToken makes this client hold one access token for as long as
@@ -172,11 +181,46 @@ func NewClientWithCred(cred Cred) (*Client, error) {
 	}, nil
 }
 
+// NewClientWithBearer builds a Client that authenticates as an already-issued
+// access token instead of exchanging a company credential (DEV-2111).
+//
+// This is what makes "Nancy texts from Nancy's number" possible at all: every
+// read and write in this package asks AccessToken for a bearer, so handing it
+// one issued to Nancy turns the whole client into Nancy without duplicating a
+// single endpoint.
+//
+// ownerExtensionID is the owner_id RingCentral returned with the token. It is
+// passed in rather than discovered because a bearer client has no token
+// exchange to read it back from.
+//
+// ttl is how much life the token has left; it is reported by AccessToken so a
+// caller minting a short-lived token for the browser can say when it dies.
+func NewClientWithBearer(serverURL, accessToken, ownerExtensionID string, ttl time.Duration) (*Client, error) {
+	if strings.TrimSpace(accessToken) == "" {
+		return nil, errors.New("ringcentral: access token is required")
+	}
+	server := strings.TrimSpace(serverURL)
+	if server == "" {
+		server = DefaultServerURL
+	}
+	return &Client{
+		httpClient:  &http.Client{Timeout: defaultTimeout},
+		serverURL:   strings.TrimRight(server, "/"),
+		bearer:      accessToken,
+		bearerOwner: ownerExtensionID,
+		bearerTTL:   ttl,
+	}, nil
+}
+
 // AccessToken exchanges the stored credentials for a short-lived bearer token.
 // Callers that place calls or pull the call log use this; nothing is cached
 // unless ReuseAccessToken was called, because the credential can be revoked in
 // the RingCentral console at any moment and a stale token would hide that.
 func (c *Client) AccessToken(ctx context.Context) (string, time.Duration, error) {
+	// A bearer client has nothing to exchange — it was handed the token.
+	if c.bearer != "" {
+		return c.bearer, c.bearerTTL, nil
+	}
 	if tok, ttl, ok := c.cachedToken(); ok {
 		return tok, ttl, nil
 	}

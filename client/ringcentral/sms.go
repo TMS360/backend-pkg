@@ -191,6 +191,16 @@ func (c *Client) SendSMS(ctx context.Context, req SMSRequest) (*SMSResult, error
 // only reliable way to tell "our own number" from "somebody else's number" —
 // the credential itself says nothing about which extension minted it.
 func (c *Client) TokenOwnerExtensionID(ctx context.Context) (string, error) {
+	// A bearer client (DEV-2111) carries the owner it was built with: the
+	// authorization-code exchange already reported it, and there is no
+	// credential here to exchange a second time.
+	if c.bearer != "" {
+		if c.bearerOwner == "" {
+			return "", fmt.Errorf("ringcentral: this access token was stored without an owner extension")
+		}
+		return c.bearerOwner, nil
+	}
+
 	form, err := c.tokenExchange(ctx)
 	if err != nil {
 		if IsAuthError(err) {

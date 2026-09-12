@@ -1,6 +1,7 @@
 package search
 
 import (
+	"sort"
 	"strings"
 
 	searchpb "github.com/TMS360/backend-pkg/proto/search"
@@ -148,4 +149,40 @@ func ToProto(matches []*Match) []*searchpb.SearchMatch {
 		})
 	}
 	return out
+}
+
+// RankWindow is how many rows a group loads before it ranks them.
+//
+// The score bands live in Go (ScoreValue), not in SQL, so the database cannot
+// order by them. A group that pages first and scores second can leave the best
+// answer off the page entirely: a full VIN scores 100, sixteen trigram matches
+// score 25, and with an alphabetical ORDER BY the exact truck is the
+// seventeenth row (DEV-111).
+//
+// Set to MaxGroupTotal, the cap the candidate set already carries: ranking
+// therefore sees every row the group would ever report, and the cost is one
+// hundred rows loaded instead of the five a group shows.
+const RankWindow = MaxGroupTotal
+
+// Rank orders items by score, strongest first, and cuts the result to limit.
+//
+// The sort is stable, so rows that score the same keep the order they were
+// loaded in — the query's own ORDER BY (truck number, customer name). Ranking
+// only ever moves a better answer up; equal answers still read alphabetically.
+//
+// A limit of zero or less means "no cut": rank everything.
+func Rank[T any](items []T, score func(T) float64, limit int) []T {
+	sort.SliceStable(items, func(i, j int) bool {
+		return score(items[i]) > score(items[j])
+	})
+	if limit > 0 && len(items) > limit {
+		items = items[:limit]
+	}
+	return items
+}
+
+// RankHits is Rank over the wire type every provider builds, so a provider
+// ranks its group with one call instead of its own comparison.
+func RankHits(hits []*searchpb.SearchHit, limit int) []*searchpb.SearchHit {
+	return Rank(hits, func(h *searchpb.SearchHit) float64 { return h.GetScore() }, limit)
 }

@@ -1,5 +1,6 @@
 // Package timewindow defines the relative reporting windows the whole platform
-// shares: "last week", "last N months", week/month/year to date.
+// shares: today so far, yesterday, "last N days", "last week", "last N weeks",
+// "last N months", week/month/year to date.
 //
 // It exists so a board column and a report mean the SAME thing by "last week"
 // (decision D-6, DEV-1383). Every window is relative — never a pair of calendar
@@ -9,7 +10,14 @@
 // Conventions, once, here:
 //
 //   - A week runs Monday 00:00 through Sunday 24:00. "Last week" is the last
-//     COMPLETE such week, never a trailing seven days.
+//     COMPLETE such week, never a trailing seven days. "Last N weeks" is the
+//     same rule N times over.
+//   - A day runs from local midnight to local midnight, so "yesterday" is the
+//     last COMPLETE local day. The windows that end AT READ TIME ("today so
+//     far", "last N days") deliberately include today's partial day — that is
+//     what a dispatcher means by "the last 7 days".
+//   - There are no minute or hour windows: a figure that moves while someone
+//     reads it is noise, not a total.
 //   - Every boundary is computed in the company's own timezone, not the
 //     server's, and the range is half-open: [From, To). A record stamped
 //     exactly at To belongs to the next window, so two adjacent windows can
@@ -24,6 +32,7 @@ package timewindow
 
 import (
 	"fmt"
+	"strings"
 	"time"
 )
 
@@ -42,14 +51,52 @@ const (
 	MonthToDate Kind = "MONTH_TO_DATE"
 	// YearToDate starts at January 1st, 00:00.
 	YearToDate Kind = "YEAR_TO_DATE"
+	// TodaySoFar is the local day so far: today's midnight until now. It is the
+	// day-sized counterpart of WEEK_TO_DATE, and like every to-date window it
+	// has exactly one instance.
+	TodaySoFar Kind = "TODAY_SO_FAR"
+	// Yesterday is the last COMPLETE local day.
+	Yesterday Kind = "YESTERDAY"
+	// LastNDays is the last Days calendar days ENDING AT NOW: today so far plus
+	// the Days-1 complete days before it — the way a sheet covers "the last 7
+	// days". It therefore always includes a partial day.
+	LastNDays Kind = "LAST_N_DAYS"
+	// LastNWeeks is the last Weeks COMPLETE weeks, ending where this week
+	// starts. LAST_N_WEEKS with one week is exactly LAST_WEEK; like it, it is
+	// never a trailing 7xN days (the bridge week is six or eight days long).
+	LastNWeeks Kind = "LAST_N_WEEKS"
 )
 
-// MaxMonths caps LAST_N_MONTHS. A window longer than five years is a report,
-// not a board column, and would blow the page read budget.
-const MaxMonths = 60
+// The counted windows are capped. A window wider than these is a report, not a
+// board column, and would blow the page read budget. The caps are part of the
+// refusal message, so a client is told the allowed range instead of guessing.
+const (
+	// MaxMonths caps LAST_N_MONTHS: longer than five years is a report.
+	MaxMonths = 60
+	// MaxDays caps LAST_N_DAYS: a month of days. Beyond that, ask in weeks.
+	MaxDays = 31
+	// MaxWeeks caps LAST_N_WEEKS: a quarter of weeks. Beyond that, ask in months.
+	MaxWeeks = 12
+)
 
-// AllKinds is the complete whitelist, in menu order.
-var AllKinds = []Kind{LastWeek, LastNMonths, WeekToDate, MonthToDate, YearToDate}
+// AllKinds is the complete whitelist, in menu order (shortest period first).
+// Minute- and hour-sized windows are deliberately absent: a board figure that
+// moves while it is read is noise, not a total.
+var AllKinds = []Kind{
+	TodaySoFar, Yesterday, LastNDays,
+	LastWeek, LastNWeeks, LastNMonths,
+	WeekToDate, MonthToDate, YearToDate,
+}
+
+// KindNames lists the whitelist for a refusal message: an unknown window is
+// always answered with what IS allowed, never coerced into a default.
+func KindNames() string {
+	names := make([]string, len(AllKinds))
+	for i, k := range AllKinds {
+		names[i] = string(k)
+	}
+	return strings.Join(names, ", ")
+}
 
 func (k Kind) Valid() bool {
 	for _, v := range AllKinds {
@@ -66,37 +113,66 @@ func (k Kind) Valid() bool {
 func ParseKind(s string) (Kind, error) {
 	k := Kind(s)
 	if !k.Valid() {
-		return "", fmt.Errorf("unknown time window %q (known: %v)", s, AllKinds)
+		return "", fmt.Errorf("unknown time window %q (known: %s)", s, KindNames())
 	}
 	return k, nil
 }
 
-// Window is a relative window: a Kind plus, for LAST_N_MONTHS only, how many
-// months back it reaches.
+// Window is a relative window: a Kind plus, for a counted kind, how far back it
+// reaches. Exactly one count belongs to a window and only to the kind that
+// names it (LAST_N_DAYS carries Days, never Weeks), so a stored window can
+// never be read two ways.
+//
+// The JSON form is the wire/stored form: {"kind":"LAST_N_DAYS","days":7}.
 type Window struct {
-	Kind   Kind
-	Months int
+	Kind   Kind `json:"kind"`
+	Days   int  `json:"days,omitempty"`
+	Weeks  int  `json:"weeks,omitempty"`
+	Months int  `json:"months,omitempty"`
 }
 
-// Months-carrying constructor for the common case.
+// Count-carrying constructors for the common cases.
+func LastDays(n int) Window   { return Window{Kind: LastNDays, Days: n} }
+func LastWeeks(n int) Window  { return Window{Kind: LastNWeeks, Weeks: n} }
 func LastMonths(n int) Window { return Window{Kind: LastNMonths, Months: n} }
 
 // Validate reports whether the window is well formed. It is meant to run at
 // startup over every declared entry, so a bad window can never reach a query.
 func (w Window) Validate() error {
 	if !w.Kind.Valid() {
-		return fmt.Errorf("unknown time window %q", w.Kind)
+		return fmt.Errorf("unknown time window %q (known: %s)", w.Kind, KindNames())
 	}
-	if w.Kind == LastNMonths {
-		if w.Months < 1 || w.Months > MaxMonths {
-			return fmt.Errorf("%s needs months between 1 and %d, got %d", LastNMonths, MaxMonths, w.Months)
+	for _, c := range w.counts() {
+		if w.Kind == c.kind {
+			if c.got < 1 || c.got > c.max {
+				return fmt.Errorf("%s needs a %s count between 1 and %d, got %d",
+					c.kind, c.unit, c.max, c.got)
+			}
+			continue
 		}
-		return nil
-	}
-	if w.Months != 0 {
-		return fmt.Errorf("%s takes no month count, got %d", w.Kind, w.Months)
+		// A count that belongs to another kind is refused rather than ignored:
+		// {"kind":"YESTERDAY","days":7} means two different things to two readers.
+		if c.got != 0 {
+			return fmt.Errorf("%s takes no %s count, got %d", w.Kind, c.unit, c.got)
+		}
 	}
 	return nil
+}
+
+// countSpec pairs a counted kind with the field that carries its count.
+type countSpec struct {
+	kind Kind
+	unit string
+	got  int
+	max  int
+}
+
+func (w Window) counts() []countSpec {
+	return []countSpec{
+		{LastNDays, "day", w.Days, MaxDays},
+		{LastNWeeks, "week", w.Weeks, MaxWeeks},
+		{LastNMonths, "month", w.Months, MaxMonths},
+	}
 }
 
 // Range is the resolved half-open interval [From, To).
@@ -164,6 +240,27 @@ func (w Window) ResolveWeeks(now time.Time, loc *time.Location, weekStart func(t
 		return Range{From: time.Date(local.Year(), time.January, 1, 0, 0, 0, 0, loc), To: local}, nil
 	case LastNMonths:
 		return Range{From: monthsBefore(local, w.Months, loc), To: local}, nil
+	case TodaySoFar:
+		return Range{From: startOfDay(local, loc), To: local}, nil
+	case Yesterday:
+		start := startOfDay(local, loc)
+		// AddDate on a local midnight lands on the next local midnight, so a DST
+		// day (23 or 25 hours long) is still exactly one day.
+		return Range{From: start.AddDate(0, 0, -1), To: start}, nil
+	case LastNDays:
+		// N CALENDAR days ending at read time: today so far plus the N-1 whole
+		// days before it. "Last 1 day" is therefore today so far, not yesterday.
+		return Range{From: startOfDay(local, loc).AddDate(0, 0, -(w.Days - 1)), To: local}, nil
+	case LastNWeeks:
+		// The last N COMPLETE weeks, cut the same way LAST_WEEK is cut: step back
+		// one week at a time instead of subtracting 7xN days, so a bridge week
+		// (six or eight days, DEV-1909) cannot land the range mid-week.
+		thisStart := weekStart(local)
+		from := thisStart
+		for i := 0; i < w.Weeks; i++ {
+			from = weekStart(from.Add(-time.Nanosecond))
+		}
+		return Range{From: from, To: thisStart}, nil
 	}
 	// Unreachable: Validate has already rejected every other kind.
 	return Range{}, fmt.Errorf("unknown time window %q", w.Kind)
@@ -237,6 +334,22 @@ func (w Window) LabelOn(firstDay time.Weekday) string {
 			return "last month"
 		}
 		return fmt.Sprintf("last %d months", w.Months)
+	case TodaySoFar:
+		return "today so far"
+	case Yesterday:
+		return "yesterday"
+	case LastNDays:
+		if w.Days == 1 {
+			// The same window as TODAY_SO_FAR, so it is named the same way.
+			return "today so far"
+		}
+		return fmt.Sprintf("last %d days", w.Days)
+	case LastNWeeks:
+		if w.Weeks == 1 {
+			return Window{Kind: LastWeek}.LabelOn(firstDay)
+		}
+		// "complete" is the point: this week is not in it.
+		return fmt.Sprintf("last %d complete weeks", w.Weeks)
 	}
 	return string(w.Kind)
 }

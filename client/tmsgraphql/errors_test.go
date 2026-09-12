@@ -252,3 +252,77 @@ func TestErrorPresenter_UnknownErrorCaptures(t *testing.T) {
 		t.Errorf("captures = (err:%d, warn:%d), want (1, 0)", spy.errors, spy.warnings)
 	}
 }
+
+// DEV-2222: a rejection marked response.Unreported must reach the client
+// unchanged — same status, same user message, same extensions.code — but must
+// NOT be reported to Sentry at any severity. This is the optimistic-concurrency
+// conflict case: one working user produced 17 Sentry warnings in two hours for
+// a refusal the client already resolves with a toast and a refetch.
+func TestErrorPresenter_UnreportedSkipsSentry(t *testing.T) {
+	spy := withCaptureSpy(t)
+
+	present := NewErrorPresenter(false)
+	err := response.Unreported(response.NewCodedConflict(
+		"CELL_STALE_WRITE", "stale cell write", "the cell was modified by someone else",
+		map[string]any{"currentValue": "winner"},
+	))
+	gqlErr := present(context.Background(), err)
+
+	if spy.errors != 0 || spy.warnings != 0 {
+		t.Errorf("captures = (err:%d, warn:%d), want (0, 0)", spy.errors, spy.warnings)
+	}
+	if got := gqlErr.Extensions["status"]; got != http.StatusConflict {
+		t.Errorf("Extensions[status] = %v, want %d", got, http.StatusConflict)
+	}
+	if got := gqlErr.Extensions["code"]; got != "CELL_STALE_WRITE" {
+		t.Errorf("Extensions[code] = %v, want CELL_STALE_WRITE", got)
+	}
+	if got := gqlErr.Extensions["currentValue"]; got != "winner" {
+		t.Errorf("Extensions[currentValue] = %v, want winner", got)
+	}
+	if gqlErr.Message != "the cell was modified by someone else" {
+		t.Errorf("Message = %q, want the unchanged user message", gqlErr.Message)
+	}
+}
+
+// The opt-out is per-error, not per-status: an unmarked conflict of the same
+// shape still warns, so only the path that asked for silence is silent.
+func TestErrorPresenter_UnmarkedConflictStillWarns(t *testing.T) {
+	spy := withCaptureSpy(t)
+
+	present := NewErrorPresenter(false)
+	present(context.Background(), response.NewCodedConflict(
+		"SOME_OTHER_CONFLICT", "tech", "user", nil,
+	))
+
+	if spy.warnings != 1 || spy.errors != 0 {
+		t.Errorf("captures = (err:%d, warn:%d), want (0, 1)", spy.errors, spy.warnings)
+	}
+}
+
+// A wrapped Unreported error must still be recognised: services return errors
+// through layers that add context with fmt.Errorf("%w").
+func TestErrorPresenter_UnreportedSurvivesWrapping(t *testing.T) {
+	spy := withCaptureSpy(t)
+
+	present := NewErrorPresenter(false)
+	inner := response.Unreported(response.NewCodedConflict("CELL_STALE_WRITE", "tech", "user", nil))
+	present(context.Background(), fmt.Errorf("write cell: %w", inner))
+
+	if spy.errors != 0 || spy.warnings != 0 {
+		t.Errorf("captures = (err:%d, warn:%d), want (0, 0)", spy.errors, spy.warnings)
+	}
+}
+
+// The opt-out must never silence a server fault: 5xx is reported even if a
+// caller wraps it in Unreported by mistake.
+func TestErrorPresenter_UnreportedNeverSilences5xx(t *testing.T) {
+	spy := withCaptureSpy(t)
+
+	present := NewErrorPresenter(false)
+	present(context.Background(), response.Unreported(response.NewInternalError("boom")))
+
+	if spy.errors != 1 || spy.warnings != 0 {
+		t.Errorf("captures = (err:%d, warn:%d), want (1, 0)", spy.errors, spy.warnings)
+	}
+}

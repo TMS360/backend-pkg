@@ -256,8 +256,11 @@ func TestScore_Bands(t *testing.T) {
 	assert.Equal(t, search.ScoreExact, search.ScoreValue(q, "1043", false))
 	assert.Equal(t, search.ScorePrefix, search.ScoreValue(q, "10435", false))
 	assert.Equal(t, search.ScoreSubstring, search.ScoreValue(q, "T-1043-A", false))
-	assert.Equal(t, search.ScoreFuzzy, search.ScoreValue(q, "1053", false),
-		"a trigram-only match scores at the fuzzy band")
+	// A trigram-only match lands INSIDE the fuzzy band, graded by how close it
+	// is — never at or above an explainable one (DEV-111).
+	fuzzy := search.ScoreValue(q, "1053", false)
+	assert.Greater(t, fuzzy, 0.0)
+	assert.LessOrEqual(t, fuzzy, search.ScoreFuzzy)
 
 	// Case is irrelevant.
 	assert.Equal(t, search.ScoreExact, search.ScoreValue(search.Parse("marcus"), "Marcus", false))

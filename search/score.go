@@ -15,7 +15,16 @@ const (
 	ScoreExact     = 100.0
 	ScorePrefix    = 80.0
 	ScoreSubstring = 60.0
-	ScoreFuzzy     = 25.0
+
+	// ScoreFuzzy is the CEILING of the typo band, not a flat value. A match the
+	// text comparison cannot explain was found by trigram similarity, and how
+	// close it actually is decides where inside the band it lands: a row scores
+	// ScoreFuzzy × its similarity to the query.
+	//
+	// The band was flat until DEV-111: "MAP TRANST" gave every trigram match
+	// the same 25, so the page fell back to the query's alphabetical order and
+	// MAP TRANSIT LLC — the record the office was typing — was not on it.
+	ScoreFuzzy = 25.0
 
 	// RelationFactor discounts a match that happened on a related record: the
 	// office typed a driver's name, so the driver is the better answer and the
@@ -29,7 +38,8 @@ const (
 // Comparison is case-insensitive, and the query's own separators are kept:
 // "1043" against truck number "1043" is exact, "104" is a prefix, and "043" a
 // substring. Anything the SQL matched but the text comparison cannot explain
-// was a trigram (fuzzy) match.
+// was a trigram (fuzzy) match, and is graded inside the typo band by how much
+// of the query the value actually covers.
 func ScoreValue(q Query, value string, relation bool) float64 {
 	base := ScoreFuzzy
 
@@ -37,13 +47,19 @@ func ScoreValue(q Query, value string, relation bool) float64 {
 	t := strings.ToLower(q.Text)
 	switch {
 	case v == "" || t == "":
-		base = ScoreFuzzy
+		base = 0
 	case v == t:
 		base = ScoreExact
 	case strings.HasPrefix(v, t):
 		base = ScorePrefix
 	case strings.Contains(v, t):
 		base = ScoreSubstring
+	default:
+		// Nothing in the text explains the match, so Postgres found it by
+		// trigram similarity. Grade it by that same measure: the closest row
+		// tops the band, and two rows only tie when they really are equally
+		// close (the stable sort then keeps the query's own order).
+		base = ScoreFuzzy * Similarity(t, v)
 	}
 
 	if relation {

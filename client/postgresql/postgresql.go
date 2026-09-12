@@ -23,21 +23,21 @@ const (
 	defaultPostgresMaxIdleConns = 2
 )
 
-// tcpKeepaliveDSN makes a dead peer detectable.
+// connDSNOptions are the connection settings appended to every DSN.
 //
-// Without it a pooled connection whose TCP peer has gone away stays in the pool
-// looking healthy: the next query writes into it and blocks until the caller's
-// context deadline — 30s on a request behind the router. Postgres never sees
-// that query, so the incident looks like a database problem while pg_locks and
-// pg_stat_activity are perfectly clean. That is exactly how it presented: a
-// SET LOCAL — a statement that cannot block on anything — hung for 30 seconds.
+// connect_timeout only: this driver is pgx, not libpq. pgx does not recognise
+// libpq's keepalives / keepalives_idle / keepalives_interval / keepalives_count
+// and forwards anything it does not know to the server as a runtime parameter,
+// where Postgres answers FATAL: unrecognized configuration parameter. Adding
+// them took the whole service down on start — the connection could not be
+// opened at all.
 //
-// Platform private networks drop idle connections silently and without a FIN,
-// which is precisely the case TCP keepalives exist for. 30s idle + 3 probes
-// 10s apart surfaces a dead peer in about a minute instead of at the next
-// write, and connect_timeout stops a fresh dial from inheriting the same
-// open-ended wait.
-const tcpKeepaliveDSN = "connect_timeout=5 keepalives=1 keepalives_idle=30 keepalives_interval=10 keepalives_count=3"
+// pgx already keeps TCP alive through its default dialer (5 minute period);
+// what closes the real gap is recycling idle connections faster than the
+// network reaps them — see SetConnMaxIdleTime below. Tightening the TCP period
+// is possible, but it belongs in the dialer (net.Dialer.KeepAlive via
+// pgx.ConnConfig.DialFunc), not in the DSN.
+const connDSNOptions = "connect_timeout=5"
 
 type Client struct {
 }
@@ -77,7 +77,7 @@ func NewClient(cfg config.PostgresSQLConfig) (*gorm.DB, error) {
 	}
 
 	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%s sslmode=%s TimeZone=%s %s",
-		cfg.Host, cfg.User, cfg.Password, cfg.DBName, cfg.Port, cfg.SSLMode, cfg.TimeZone, tcpKeepaliveDSN)
+		cfg.Host, cfg.User, cfg.Password, cfg.DBName, cfg.Port, cfg.SSLMode, cfg.TimeZone, connDSNOptions)
 
 	db, err := openGorm(dsn)
 	if err != nil {

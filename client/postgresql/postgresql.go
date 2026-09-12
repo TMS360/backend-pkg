@@ -23,6 +23,22 @@ const (
 	defaultPostgresMaxIdleConns = 2
 )
 
+// tcpKeepaliveDSN makes a dead peer detectable.
+//
+// Without it a pooled connection whose TCP peer has gone away stays in the pool
+// looking healthy: the next query writes into it and blocks until the caller's
+// context deadline — 30s on a request behind the router. Postgres never sees
+// that query, so the incident looks like a database problem while pg_locks and
+// pg_stat_activity are perfectly clean. That is exactly how it presented: a
+// SET LOCAL — a statement that cannot block on anything — hung for 30 seconds.
+//
+// Platform private networks drop idle connections silently and without a FIN,
+// which is precisely the case TCP keepalives exist for. 30s idle + 3 probes
+// 10s apart surfaces a dead peer in about a minute instead of at the next
+// write, and connect_timeout stops a fresh dial from inheriting the same
+// open-ended wait.
+const tcpKeepaliveDSN = "connect_timeout=5 keepalives=1 keepalives_idle=30 keepalives_interval=10 keepalives_count=3"
+
 type Client struct {
 }
 
@@ -60,8 +76,8 @@ func NewClient(cfg config.PostgresSQLConfig) (*gorm.DB, error) {
 		log.Fatalf("%v", err)
 	}
 
-	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%s sslmode=%s TimeZone=%s",
-		cfg.Host, cfg.User, cfg.Password, cfg.DBName, cfg.Port, cfg.SSLMode, cfg.TimeZone)
+	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%s sslmode=%s TimeZone=%s %s",
+		cfg.Host, cfg.User, cfg.Password, cfg.DBName, cfg.Port, cfg.SSLMode, cfg.TimeZone, tcpKeepaliveDSN)
 
 	db, err := openGorm(dsn)
 	if err != nil {
@@ -86,7 +102,11 @@ func NewClient(cfg config.PostgresSQLConfig) (*gorm.DB, error) {
 		}
 		sqlDB.SetMaxOpenConns(maxOpen)
 		sqlDB.SetMaxIdleConns(maxIdle)
-		sqlDB.SetConnMaxIdleTime(5 * time.Minute)
+		// Shorter than the idle window a private network will silently reap.
+		// Five minutes was long enough for a connection to die in the pool and
+		// be handed out afterwards; a minute keeps the pool warm without
+		// keeping corpses in it.
+		sqlDB.SetConnMaxIdleTime(time.Minute)
 		sqlDB.SetConnMaxLifetime(30 * time.Minute)
 		log.Printf("postgres pool: max_open=%d max_idle=%d", maxOpen, maxIdle)
 	}
@@ -100,7 +120,8 @@ func NewClient(cfg config.PostgresSQLConfig) (*gorm.DB, error) {
 // из протухшего плана на дренящемся поде. Держим это здесь, чтобы контракт был
 // тестируемым (см. postgresql_test.go).
 func openGorm(dsn string) (*gorm.DB, error) {
-	fmt.Println("dsn: ", dsn)
+	// The DSN carries the database password. It used to be printed here on
+	// every start, which put the credential in the logs of every service.
 	return gorm.Open(
 		postgres.New(postgres.Config{
 			DSN:                  dsn,

@@ -306,6 +306,28 @@ const (
 	// way, in Settings -> Roles.
 	PermComplianceDispatchOverride UserPermissionEnum = "compliance_dispatch_override"
 
+	// PermAssetOutOfServiceOverride gates sending a trip to the driver when the
+	// truck or trailer on it is OUT_OF_SERVICE (DEV-2254). Like its compliance
+	// sibling above it waives ONE dispatch, with a mandatory reason recorded in
+	// dispatch_compliance_overrides; the asset stays out of service for the next
+	// dispatch. RETIRED is NOT waivable by anyone — the way back is unretireAsset
+	// or another asset — so no permission unlocks it.
+	//
+	// FLAT, and the ticket's proposed spelling `fleet.assets.out_of_service_override`
+	// cannot express it, for exactly the reason spelled out above: a dotted code
+	// hangs off the `fleet` MODULE, ModulePermissionCodes() hands every module to
+	// every built-in role at signup, and HasPermission() prefix-matches — so every
+	// holder of `fleet` would pass and the "user without the permission is refused"
+	// acceptance criterion could never be observed. Putting an out-of-service truck
+	// ON the road stays governed here; putting it out of service is ordinary fleet
+	// work under `fleet.maintenance.manage`.
+	//
+	// Held by default by admin and manager. Fleet and dispatcher deliberately do
+	// NOT hold it: a broken truck is taken off the road by the maintenance desk,
+	// and overruling that is a supervisor decision. A company widens it the usual
+	// way, in Settings -> Roles.
+	PermAssetOutOfServiceOverride UserPermissionEnum = "asset_out_of_service_override"
+
 	// PermInvoiceUnrecordPayment gates taking a recorded customer payment back off
 	// an invoice (DEV-2038) — the accountant marked the wrong invoice paid, or the
 	// cheque bounced. It is deliberately SEPARATE from the permission that records
@@ -513,6 +535,7 @@ var CustomPermissionCatalog = []CustomPermissionEntry{
 	{Code: string(PermShipmentBillingApprove), Label: "Approve loads for billing"},
 	{Code: string(PermAuditPlanExclusionEdit), Label: "Exclude a time range from the Dispatch KPI plan"},
 	{Code: string(PermComplianceDispatchOverride), Label: "Dispatch despite a blocking compliance document"},
+	{Code: string(PermAssetOutOfServiceOverride), Label: "Dispatch an out-of-service truck or trailer"},
 	{Code: string(PermTripDelete), Label: "Delete a trip from a load"},
 	{Code: string(PermInvoiceUnrecordPayment), Label: "Un-record a customer payment on an invoice"},
 	{Code: string(PermAuditLogView), Label: "View the company activity log"},
@@ -856,8 +879,8 @@ func DefaultRolePermissions() map[UserRoleEnum][]string {
 		// manager (the role the ticket adds). Dispatcher does NOT get it — the log
 		// carries every desk's moves; a tenant that wants it wider ticks it on in
 		// Settings -> Roles. Reading one's OWN actions needs no code at all.
-		UserRoleAdmin:      withExtra(string(PermTripFinancialsEdit), string(PermTripReassignCommitted), string(PermFileDeleteAny), string(PermReportsRun), string(PermReportsManage), string(PermCallsView), string(PermCallsPlay), string(PermSmsView), string(PermSmsSend), string(PermShipmentBillingApprove), string(PermAuditPlanExclusionEdit), string(PermComplianceDispatchOverride), string(PermTripDelete), string(PermInvoiceUnrecordPayment), string(PermAuditLogView)),
-		UserRoleManager:    withExtra(string(PermTripReassignCommitted), string(PermFileDeleteAny), string(PermCallsView), string(PermCallsPlay), string(PermSmsView), string(PermSmsSend), string(PermShipmentBillingApprove), string(PermAuditPlanExclusionEdit), string(PermComplianceDispatchOverride), string(PermTripDelete), string(PermAuditLogView)),
+		UserRoleAdmin:      withExtra(string(PermTripFinancialsEdit), string(PermTripReassignCommitted), string(PermFileDeleteAny), string(PermReportsRun), string(PermReportsManage), string(PermCallsView), string(PermCallsPlay), string(PermSmsView), string(PermSmsSend), string(PermShipmentBillingApprove), string(PermAuditPlanExclusionEdit), string(PermComplianceDispatchOverride), string(PermAssetOutOfServiceOverride), string(PermTripDelete), string(PermInvoiceUnrecordPayment), string(PermAuditLogView)),
+		UserRoleManager:    withExtra(string(PermTripReassignCommitted), string(PermFileDeleteAny), string(PermCallsView), string(PermCallsPlay), string(PermSmsView), string(PermSmsSend), string(PermShipmentBillingApprove), string(PermAuditPlanExclusionEdit), string(PermComplianceDispatchOverride), string(PermAssetOutOfServiceOverride), string(PermTripDelete), string(PermAuditLogView)),
 		UserRoleAccounting: withExtra(string(PermTripFinancialsEdit), string(PermReportsRun), string(PermReportsManage), string(PermShipmentBillingApprove)),
 		UserRoleFleet:      withExtra(),
 		UserRoleSafety:     withExtra(string(PermComplianceDispatchOverride)),

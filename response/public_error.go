@@ -1,6 +1,7 @@
 package response
 
 import (
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -109,4 +110,43 @@ func NewErrorWithExtensions(tech, user string, status int, ext map[string]any) P
 func NewCodedError(code, tech, user string, status int, ext map[string]any) PublicError {
 	logPublicError(status, fmt.Sprintf("[code=%s,tech=%s,user=%s]", code, tech, user))
 	return &publicError{Technical: tech, User: user, Status: status, CodeStr: code, Ext: ext}
+}
+
+// unreportedMarker is the optional opt-out from Sentry reporting. The GraphQL
+// presenter reports every 4xx PublicError as a Sentry warning so user friction
+// stays queryable; a handful of rejections are not friction at all but the
+// designed answer to a normal race (e.g. an optimistic-concurrency conflict the
+// client resolves by itself with a toast and a refetch). Those would otherwise
+// fill Sentry with one event per keystroke of a single working user.
+type unreportedMarker interface{ Unreported() bool }
+
+type unreportedError struct {
+	PublicError
+}
+
+func (e unreportedError) Unreported() bool { return true }
+
+// Unwrap exposes the wrapped error so errors.As still finds CodedError and any
+// other interface the original satisfies — wrapping changes reporting only, not
+// the status, message, code or extensions the client receives.
+func (e unreportedError) Unwrap() error { return e.PublicError }
+
+// Unreported marks an expected rejection so the GraphQL presenter does NOT send
+// it to Sentry. Everything else about the error is unchanged: same status, same
+// user message, same extensions.code — the client cannot tell the difference.
+//
+// Use it only for a rejection the client is expected to handle on its own and
+// that says nothing about the health of the service. Do not use it to hide real
+// failures: the construction line is still logged by logPublicError.
+func Unreported(err PublicError) PublicError {
+	if err == nil {
+		return nil
+	}
+	return unreportedError{PublicError: err}
+}
+
+// IsUnreported reports whether any error in the chain was marked Unreported.
+func IsUnreported(err error) bool {
+	var m unreportedMarker
+	return errors.As(err, &m) && m.Unreported()
 }

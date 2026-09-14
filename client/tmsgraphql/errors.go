@@ -142,10 +142,16 @@ func NewErrorPresenter(isDebug bool) graphql.ErrorPresenterFunc {
 			}
 			// 5xx are server faults — capture as errors (they alert). 4xx are
 			// user-facing rejections — capture as warnings so friction is
-			// queryable in Sentry without paging anyone.
-			if customErr.ErrorStatus() >= http.StatusInternalServerError {
+			// queryable in Sentry without paging anyone, unless the rejection
+			// opted out via response.Unreported: an expected race the client
+			// resolves on its own (DEV-2222) is noise, not friction. The opt-out
+			// never applies to 5xx — a server fault is always reported.
+			switch {
+			case customErr.ErrorStatus() >= http.StatusInternalServerError:
 				captureFunc(ctx, err)
-			} else {
+			case response.IsUnreported(err):
+				// Deliberately silent: the construction line is already in the logs.
+			default:
 				captureWarningFunc(ctx, err)
 			}
 		} else if msg, code, httpStatus, ok := grpcPublicError(err); ok {

@@ -23,6 +23,22 @@ const (
 	defaultPostgresMaxIdleConns = 2
 )
 
+// connDSNOptions are the connection settings appended to every DSN.
+//
+// connect_timeout only: this driver is pgx, not libpq. pgx does not recognise
+// libpq's keepalives / keepalives_idle / keepalives_interval / keepalives_count
+// and forwards anything it does not know to the server as a runtime parameter,
+// where Postgres answers FATAL: unrecognized configuration parameter. Adding
+// them took the whole service down on start — the connection could not be
+// opened at all.
+//
+// pgx already keeps TCP alive through its default dialer (5 minute period);
+// what closes the real gap is recycling idle connections faster than the
+// network reaps them — see SetConnMaxIdleTime below. Tightening the TCP period
+// is possible, but it belongs in the dialer (net.Dialer.KeepAlive via
+// pgx.ConnConfig.DialFunc), not in the DSN.
+const connDSNOptions = "connect_timeout=5"
+
 type Client struct {
 }
 
@@ -60,8 +76,8 @@ func NewClient(cfg config.PostgresSQLConfig) (*gorm.DB, error) {
 		log.Fatalf("%v", err)
 	}
 
-	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%s sslmode=%s TimeZone=%s",
-		cfg.Host, cfg.User, cfg.Password, cfg.DBName, cfg.Port, cfg.SSLMode, cfg.TimeZone)
+	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%s sslmode=%s TimeZone=%s %s",
+		cfg.Host, cfg.User, cfg.Password, cfg.DBName, cfg.Port, cfg.SSLMode, cfg.TimeZone, connDSNOptions)
 
 	db, err := openGorm(dsn)
 	if err != nil {
@@ -86,7 +102,11 @@ func NewClient(cfg config.PostgresSQLConfig) (*gorm.DB, error) {
 		}
 		sqlDB.SetMaxOpenConns(maxOpen)
 		sqlDB.SetMaxIdleConns(maxIdle)
-		sqlDB.SetConnMaxIdleTime(5 * time.Minute)
+		// Shorter than the idle window a private network will silently reap.
+		// Five minutes was long enough for a connection to die in the pool and
+		// be handed out afterwards; a minute keeps the pool warm without
+		// keeping corpses in it.
+		sqlDB.SetConnMaxIdleTime(time.Minute)
 		sqlDB.SetConnMaxLifetime(30 * time.Minute)
 		log.Printf("postgres pool: max_open=%d max_idle=%d", maxOpen, maxIdle)
 	}
@@ -100,7 +120,8 @@ func NewClient(cfg config.PostgresSQLConfig) (*gorm.DB, error) {
 // из протухшего плана на дренящемся поде. Держим это здесь, чтобы контракт был
 // тестируемым (см. postgresql_test.go).
 func openGorm(dsn string) (*gorm.DB, error) {
-	fmt.Println("dsn: ", dsn)
+	// The DSN carries the database password. It used to be printed here on
+	// every start, which put the credential in the logs of every service.
 	return gorm.Open(
 		postgres.New(postgres.Config{
 			DSN:                  dsn,

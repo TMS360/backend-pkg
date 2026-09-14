@@ -323,6 +323,27 @@ const (
 	// Seeded to admin and auditor only. Accounting records payments; undoing one
 	// is a supervisory correction.
 	PermInvoiceUnrecordPayment UserPermissionEnum = "invoice_unrecord_payment"
+
+	// PermAuditLogView gates reading the COMPANY activity log — tms-audit's
+	// `getAudits` (DEV-2220). Until this code existed the tenant log was gated by
+	// ROLE (`@hasRole(roles: ["admin", "auditor"])`), so there was no checkbox an
+	// admin could tick: a manager who needed the log could only be made an admin.
+	// That is the bug — the Roles page must be able to say yes.
+	//
+	// FLAT for the PermSmsView / PermShipmentBillingApprove reason: a dotted
+	// `audit.log.view` (or any `<module>.…` spelling) would be swept into
+	// ModulePermissionCodes(), auto-granted to EVERY built-in role at signup, and
+	// HasPermission matches hierarchically — so holding the module would satisfy
+	// the leaf and every driver would read the company log. A flat code carries no
+	// dots, resolves by exact match, and is default-deny until granted.
+	//
+	// Deliberately NOT `shipments.audit.view`: that one gates the dispatcher Audit
+	// BOARD (a different page, and one every dispatch role already holds).
+	//
+	// Seeded to admin, manager and auditor. It does NOT gate the cross-tenant
+	// `getAuditsAll` (super_admin only, unchanged), and it is not required to read
+	// one's OWN actions — a self-scoped read passes without it.
+	PermAuditLogView UserPermissionEnum = "audit_log_view"
 )
 
 // PermissionCatalogEntry describes one row written to the permissions table.
@@ -494,6 +515,7 @@ var CustomPermissionCatalog = []CustomPermissionEntry{
 	{Code: string(PermComplianceDispatchOverride), Label: "Dispatch despite a blocking compliance document"},
 	{Code: string(PermTripDelete), Label: "Delete a trip from a load"},
 	{Code: string(PermInvoiceUnrecordPayment), Label: "Un-record a customer payment on an invoice"},
+	{Code: string(PermAuditLogView), Label: "View the company activity log"},
 }
 
 // CustomPermissionCodes returns just the flat custom permission codes, in
@@ -828,8 +850,14 @@ func DefaultRolePermissions() map[UserRoleEnum][]string {
 		// first AC is written for the auditor.
 		// Accounting deliberately does NOT get it by default even though it records
 		// the payments — that separation is the entire point of a second code.
-		UserRoleAdmin:      withExtra(string(PermTripFinancialsEdit), string(PermTripReassignCommitted), string(PermFileDeleteAny), string(PermReportsRun), string(PermReportsManage), string(PermCallsView), string(PermCallsPlay), string(PermSmsView), string(PermSmsSend), string(PermShipmentBillingApprove), string(PermAuditPlanExclusionEdit), string(PermComplianceDispatchOverride), string(PermTripDelete), string(PermInvoiceUnrecordPayment)),
-		UserRoleManager:    withExtra(string(PermTripReassignCommitted), string(PermFileDeleteAny), string(PermCallsView), string(PermCallsPlay), string(PermSmsView), string(PermSmsSend), string(PermShipmentBillingApprove), string(PermAuditPlanExclusionEdit), string(PermComplianceDispatchOverride), string(PermTripDelete)),
+		// audit_log_view (DEV-2220): reading the company activity log used to be a
+		// ROLE check, so an admin had no checkbox to hand it to a manager who needed
+		// it. Seeded to admin, auditor (the two the role gate already let in) and
+		// manager (the role the ticket adds). Dispatcher does NOT get it — the log
+		// carries every desk's moves; a tenant that wants it wider ticks it on in
+		// Settings -> Roles. Reading one's OWN actions needs no code at all.
+		UserRoleAdmin:      withExtra(string(PermTripFinancialsEdit), string(PermTripReassignCommitted), string(PermFileDeleteAny), string(PermReportsRun), string(PermReportsManage), string(PermCallsView), string(PermCallsPlay), string(PermSmsView), string(PermSmsSend), string(PermShipmentBillingApprove), string(PermAuditPlanExclusionEdit), string(PermComplianceDispatchOverride), string(PermTripDelete), string(PermInvoiceUnrecordPayment), string(PermAuditLogView)),
+		UserRoleManager:    withExtra(string(PermTripReassignCommitted), string(PermFileDeleteAny), string(PermCallsView), string(PermCallsPlay), string(PermSmsView), string(PermSmsSend), string(PermShipmentBillingApprove), string(PermAuditPlanExclusionEdit), string(PermComplianceDispatchOverride), string(PermTripDelete), string(PermAuditLogView)),
 		UserRoleAccounting: withExtra(string(PermTripFinancialsEdit), string(PermReportsRun), string(PermReportsManage), string(PermShipmentBillingApprove)),
 		UserRoleFleet:      withExtra(),
 		UserRoleSafety:     withExtra(string(PermComplianceDispatchOverride)),
@@ -842,7 +870,7 @@ func DefaultRolePermissions() map[UserRoleEnum][]string {
 		// auditor role exists for. (DEV-2094: the code was named in the comments
 		// from the start and never actually seeded, so an auditor-only user was
 		// refused on unrecordPayment.)
-		UserRoleAuditor:    withExtra(string(PermInvoiceUnrecordPayment)),
+		UserRoleAuditor:    withExtra(string(PermInvoiceUnrecordPayment), string(PermAuditLogView)),
 		UserRoleDispatcher: withExtra(string(PermCallsView), string(PermCallsPlay), string(PermSmsView), string(PermSmsSend)),
 		UserRoleDriver:     withExtra(),
 		UserRoleOther:      withExtra(),

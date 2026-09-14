@@ -80,6 +80,13 @@ type FuelPercent struct {
 	Time  string  `json:"time"`
 }
 
+// OdometerSample - одно показание одометра {time, value} в метрах.
+// Samsara отдаёт его на том же /fleet/vehicles/stats, что и GPS (DEV-2251).
+type OdometerSample struct {
+	Value float64 `json:"value"`
+	Time  string  `json:"time"`
+}
+
 // VehicleLocation - местоположение транспорта с GPS
 type VehicleLocation struct {
 	ID           string                 `json:"id"`
@@ -88,6 +95,9 @@ type VehicleLocation struct {
 	ExternalIDs  map[string]interface{} `json:"externalIds,omitempty"`
 	Gps          *GpsCoordinates        `json:"gps"`
 	FuelPercents *FuelPercent           `json:"fuelPercents"`
+	// Одометр: obd точнее, gps — расчётный запасной вариант.
+	ObdOdometerMeters *OdometerSample `json:"obdOdometerMeters,omitempty"`
+	GpsOdometerMeters *OdometerSample `json:"gpsOdometerMeters,omitempty"`
 }
 
 type VehicleLocationResponse struct {
@@ -102,6 +112,9 @@ type VehicleLocationFeed struct {
 	ExternalIDs  map[string]interface{} `json:"externalIds,omitempty"`
 	Gps          []GpsCoordinates       `json:"gps"`          // feed returns array
 	FuelPercents []FuelPercent          `json:"fuelPercents"` // feed returns array
+	// feed returns odometer as an array too
+	ObdOdometerMeters []OdometerSample `json:"obdOdometerMeters,omitempty"`
+	GpsOdometerMeters []OdometerSample `json:"gpsOdometerMeters,omitempty"`
 }
 
 type VehicleLocationFeedResponse struct {
@@ -847,10 +860,15 @@ func (c *Client) GetAllVehiclesLocationsWithTime(ctx context.Context, startTime,
 	return response.Data, nil
 }
 
+// locationStatTypes — типы статистики, которые тянет позиционный цикл. Одометр
+// едет тем же запросом, что и GPS: отдельный опрос стоил бы второй сети на
+// компанию за тик и разъехался бы по времени с позицией (DEV-2251).
+const locationStatTypes = "gps,fuelPercents,obdOdometerMeters,gpsOdometerMeters"
+
 // GetAllVehiclesStats получает GPS статистику для ВСЕХ транспортных средств сразу.
 // Использует endpoint /fleet/vehicles/stats?types=gps без фильтрации по ID.
 func (c *Client) GetAllVehiclesStats(ctx context.Context) ([]VehicleLocation, error) {
-	path := "/fleet/vehicles/stats?types=gps,fuelPercents"
+	path := "/fleet/vehicles/stats?types=" + locationStatTypes
 
 	resp, err := c.doRequest(ctx, http.MethodGet, path, nil)
 	if err != nil {
@@ -906,7 +924,7 @@ func (c *Client) GetVehicleStatsFeed(ctx context.Context, cursor string) (*Vehic
 // Feed returns gps as array (not single object like snapshot), so we parse
 // with VehicleLocationFeedResponse and convert to VehicleLocationResponse.
 func (c *Client) fetchStatsFeedPage(ctx context.Context, cursor string) (*VehicleLocationResponse, error) {
-	path := "/fleet/vehicles/stats/feed?types=gps,fuelPercents"
+	path := "/fleet/vehicles/stats/feed?types=" + locationStatTypes
 	if cursor != "" {
 		path += "&after=" + cursor
 	}
@@ -929,10 +947,6 @@ func (c *Client) fetchStatsFeedPage(ctx context.Context, cursor string) (*Vehicl
 		Pagination: feedResponse.Pagination,
 	}
 	for _, v := range feedResponse.Data {
-		if len(v.Gps) == 0 {
-			continue
-		}
-
 		// Take latest fuel percent reading for this vehicle
 		var fuelPercent *FuelPercent
 		if len(v.FuelPercents) > 0 {
@@ -940,19 +954,53 @@ func (c *Client) fetchStatsFeedPage(ctx context.Context, cursor string) (*Vehicl
 			fuelPercent = &fp
 		}
 
+		obd := lastOdometerSample(v.ObdOdometerMeters)
+		gpsOdo := lastOdometerSample(v.GpsOdometerMeters)
+
+		// A truck parked in a yard reports an odometer without a fresh GPS point.
+		// Dropping the whole vehicle here used to lose that reading; emit one
+		// entry with a nil Gps instead — position consumers already skip those
+		// (DEV-2251).
+		if len(v.Gps) == 0 {
+			if obd == nil && gpsOdo == nil {
+				continue
+			}
+			result.Data = append(result.Data, VehicleLocation{
+				ID:                v.ID,
+				Name:              v.Name,
+				ExternalIDs:       v.ExternalIDs,
+				FuelPercents:      fuelPercent,
+				ObdOdometerMeters: obd,
+				GpsOdometerMeters: gpsOdo,
+			})
+			continue
+		}
+
 		for i := range v.Gps {
 			gps := v.Gps[i]
 			result.Data = append(result.Data, VehicleLocation{
-				ID:           v.ID,
-				Name:         v.Name,
-				ExternalIDs:  v.ExternalIDs,
-				Gps:          &gps,
-				FuelPercents: fuelPercent,
+				ID:                v.ID,
+				Name:              v.Name,
+				ExternalIDs:       v.ExternalIDs,
+				Gps:               &gps,
+				FuelPercents:      fuelPercent,
+				ObdOdometerMeters: obd,
+				GpsOdometerMeters: gpsOdo,
 			})
 		}
 	}
 
 	return result, nil
+}
+
+// lastOdometerSample returns the newest reading of a feed window, or nil when
+// the window is empty. The feed is chronological, so the tail is the newest.
+func lastOdometerSample(samples []OdometerSample) *OdometerSample {
+	if len(samples) == 0 {
+		return nil
+	}
+	s := samples[len(samples)-1]
+	return &s
 }
 
 // ============================================================================

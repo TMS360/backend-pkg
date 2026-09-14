@@ -217,3 +217,35 @@ func TestReportsPermissions_FlatAndAdminAccountingOnly(t *testing.T) {
 	assert.False(t, middleware.HasPermission([]string{run}, manage))
 	assert.False(t, middleware.HasPermission([]string{manage}, run))
 }
+
+// DEV-2254: overriding the out-of-service gate is a supervisor decision, and the
+// ticket's proposed spelling `fleet.assets.out_of_service_override` could not
+// express it — `fleet` is a module every built-in role is granted at signup, and
+// HasPermission prefix-matches, so the dotted code would be held by everyone and
+// the "refused without the permission" criterion could never be observed. This
+// test is that argument, executable: if anyone re-dots the code, the module loop
+// below goes red.
+func TestAssetOutOfServiceOverride_IsFlatAndSupervisorOnly(t *testing.T) {
+	code := string(enums.PermAssetOutOfServiceOverride)
+	assert.Equal(t, "asset_out_of_service_override", code)
+	assert.NotContains(t, code, ".", "a dotted code is implied by its module and can never be refused")
+	assert.True(t, enums.IsValidPermissionCode(code), "must validate so custom roles can grant it")
+	assert.True(t, enums.IsCustomPermissionCode(code))
+
+	defaults := enums.DefaultRolePermissions()
+	assert.Contains(t, defaults[enums.UserRoleAdmin], code, "admin holds it by default")
+	assert.Contains(t, defaults[enums.UserRoleManager], code, "manager holds it by default")
+	for _, role := range []enums.UserRoleEnum{
+		enums.UserRoleDispatcher, enums.UserRoleFleet, enums.UserRoleDriver, enums.UserRoleOther,
+	} {
+		assert.NotContainsf(t, defaults[role], code, "role %s must NOT hold %s by default", role, code)
+	}
+
+	// The point of the flat spelling: no module grant may imply it.
+	for _, m := range enums.ModulePermissionCodes() {
+		assert.Falsef(t, middleware.HasPermission([]string{m}, code), "module %q must not imply %q", m, code)
+	}
+	assert.False(t, middleware.HasPermission(defaults[enums.UserRoleDispatcher], code),
+		"the dispatcher default grant set must not imply %q", code)
+	assert.True(t, middleware.HasPermission([]string{code}, code))
+}

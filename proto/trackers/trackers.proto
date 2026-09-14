@@ -28,6 +28,13 @@ service TrackersService {
   // reports the company's Samsara setting and, when OFF, the truck's previous
   // delivered trip's final drop-off coordinates (DEV-1196).
   rpc GetDeadheadOrigin(GetDeadheadOriginRequest) returns (GetDeadheadOriginResponse);
+
+  // RecordOdometerReadings writes odometer readings for trucks and trailers
+  // through the same service method the manual GraphQL mutation uses, so the
+  // no-rollback rule and the audit entry exist once (DEV-2250). One reading per
+  // asset per call is the normal case; a batch answers per reading, because a
+  // rejected reading is an ordinary outcome here and must not fail the others.
+  rpc RecordOdometerReadings(RecordOdometerReadingsRequest) returns (RecordOdometerReadingsResponse);
 }
 
 // Request to stream vehicle VINs
@@ -254,4 +261,39 @@ message GetDeadheadOriginResponse {
   bool has_fallback = 2;         // previous delivered trip with drop-off coordinates exists
   double lat = 3;
   double lng = 4;
+}
+
+// Odometer readings written into backend-load (DEV-2250). The company is taken
+// from the asset row, not from the request: this service carries no actor.
+
+message OdometerReadingInput {
+  string asset_id = 1;                      // UUID of the truck or trailer
+  VehicleType type = 2;                     // VEHICLE_TYPE_TRUCK | VEHICLE_TYPE_TRAILER
+  double miles = 3;
+  google.protobuf.Timestamp read_at = 4;    // when the meter was read; empty means now
+  string source = 5;                        // SAMSARA | TRIP_ESTIMATE
+}
+
+message OdometerReadingResult {
+  string asset_id = 1;
+
+  enum Status {
+    ACCEPTED = 0;             // stored and it is now the asset's current reading
+    IGNORED_OLDER = 1;        // stored in history only: read_at is older than the current one
+    REJECTED_REGRESSION = 2;  // not stored: miles below the current reading, no reason given
+    NOT_FOUND = 3;            // unknown, soft-deleted, or wrong-type asset
+    ERROR = 4;                // anything else; message carries the detail
+  }
+
+  Status status = 2;
+  string message = 3;
+  double stored_miles = 4;    // the asset's current reading after this call
+}
+
+message RecordOdometerReadingsRequest {
+  repeated OdometerReadingInput readings = 1;
+}
+
+message RecordOdometerReadingsResponse {
+  repeated OdometerReadingResult results = 1;  // one per request reading, in order
 }

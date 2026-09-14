@@ -180,6 +180,22 @@ service LoadsService {
   rpc GetTruckOwnersByTruckIDs(GetTruckOwnersByTruckIDsRequest)
       returns (GetTruckOwnersByTruckIDsResponse);
 
+  // ── Vehicle unit numbers by id (used by tms-teams crew save, DEV-2273) ──
+  // Answers "what unit number do these trucks / trailers carry" for a whole
+  // batch in one call. tms-teams stores the number next to the id on the
+  // crew-week slice, so its Planning Board search stays a local SQL predicate
+  // instead of a call into backend-load on every keystroke.
+  //
+  // Ids that belong to another tenant, do not exist, or carry a blank number
+  // are ABSENT from the maps — absence is the answer, not an error, and the
+  // caller must read it as "no number known" rather than retrying.
+  //
+  // company_id is passed explicitly (backend-load's gRPC server runs without an
+  // AuthServerInterceptor, so there is no actor to scope by), same contract as
+  // ResolveTruckIDs / GetTruckOwnersByTruckIDs.
+  rpc GetVehicleNumbersByIDs(GetVehicleNumbersByIDsRequest)
+      returns (GetVehicleNumbersByIDsResponse);
+
   // ── Toll row → truck / trip matching (backend-accounting, DEV-1793) ──────
   // Resolves a WHOLE ingested toll file in one call. A weekly PrePass export is
   // 240-470 rows; a per-row RPC across a service boundary is the thing this
@@ -893,6 +909,26 @@ message GetTruckOwnersByTruckIDsResponse {
   // A map rather than a repeated pair because one owner routinely holds several
   // trucks, and the caller's next move is always a lookup by truck id.
   map<string, TruckOwner> owners_by_truck_id = 1;
+}
+
+// ── Vehicle unit numbers (DEV-2273) ─────────────────────────────────────────
+
+message GetVehicleNumbersByIDsRequest {
+  // Same semantics as ResolveTruckIDsRequest.company_id.
+  string company_id = 1;
+  // Either list may be empty, and so may both: an empty request returns empty
+  // maps, not an error, so a caller with only trailers to resolve does not have
+  // to special-case the truck half.
+  repeated string truck_ids = 2;
+  repeated string trailer_ids = 3;
+}
+
+message GetVehicleNumbersByIDsResponse {
+  // Keyed by truck / trailer id. An id from another tenant, an id that does not
+  // exist, and a vehicle whose unit number is blank are all absent: the caller
+  // writes down "the number I was told", and a blank is not a number.
+  map<string, string> truck_numbers_by_id = 1;
+  map<string, string> trailer_numbers_by_id = 2;
 }
 
 // TruckOwner is the third party that owns a truck our driver drives. It is NOT

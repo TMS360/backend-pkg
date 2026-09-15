@@ -51,6 +51,17 @@ service TeamsService {
   // The figures are the Audit board's own: accounting reads them and never
   // recomputes a commission of its own.
   rpc GetTeamWeeksForPayroll(GetTeamWeeksForPayrollRequest) returns (GetTeamWeeksForPayrollResponse);
+
+  // DEV-2240: who held a truck or trailer over a DATE RANGE. Every other crew
+  // read on this service answers "right now" / "on this day" for one instant;
+  // an asset charge (truck payment, trailer rent) is split between the drivers
+  // who held the asset on each day of a period, so the caller needs the whole
+  // period in one answer — polling the instant read day by day would still miss
+  // an intra-day swap.
+  //
+  // The GraphQL query crewAssignmentsHistory serves the same rows to the office
+  // UI from the same service method, so the two doors cannot disagree.
+  rpc GetCrewAssignmentsHistory(GetCrewAssignmentsHistoryRequest) returns (GetCrewAssignmentsHistoryResponse);
 }
 
 message DriverCrewFilter {
@@ -230,4 +241,41 @@ message TeamWeekPayroll {
 
 message GetTeamWeeksForPayrollResponse {
   repeated TeamWeekPayroll data = 1;
+}
+
+// CrewAssetType names which column of driver_crew_items the asset id is matched
+// against. UNSPECIFIED is rejected: guessing the asset kind from the id would
+// silently answer for the wrong vehicle.
+enum CrewAssetType {
+  CREW_ASSET_TYPE_UNSPECIFIED = 0;
+  CREW_ASSET_TYPE_TRUCK = 1;
+  CREW_ASSET_TYPE_TRAILER = 2;
+}
+
+// GetCrewAssignmentsHistoryRequest asks "who held this asset between from and
+// to". Both bounds are INCLUSIVE calendar days; the tenant is mandatory and
+// arrives as company_id because this listener has no auth interceptor.
+message GetCrewAssignmentsHistoryRequest {
+  string company_id = 1;
+  CrewAssetType asset_type = 2;
+  string asset_id = 3;
+  string from = 4; // YYYY-MM-DD, inclusive
+  string to = 5;   // YYYY-MM-DD, inclusive
+}
+
+// CrewAssignmentHistoryRow is one crew's unbroken hold of the asset, already
+// CLIPPED to the requested window: a crew that still holds it (valid_to is null)
+// ends at the request's `to`, and one that started earlier begins at `from`.
+// A day nobody held the asset produces no row at all — absence is the answer,
+// and the caller posts those days where its own rules say (e.g. to the company).
+message CrewAssignmentHistoryRow {
+  string crew_id = 1;
+  string primary_driver_id = 2;
+  string secondary_driver_id = 3; // empty when the crew ran solo
+  string from = 4; // YYYY-MM-DD, inclusive, first day this crew held the asset
+  string to = 5;   // YYYY-MM-DD, inclusive, last day this crew held the asset
+}
+
+message GetCrewAssignmentsHistoryResponse {
+  repeated CrewAssignmentHistoryRow data = 1;
 }

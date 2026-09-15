@@ -40,6 +40,41 @@ const (
 	PermComplianceView UserPermissionEnum = "settings.compliance.view"
 	PermComplianceEdit UserPermissionEnum = "settings.compliance.edit"
 
+	// DEV-2240 asset charges — the money a truck or trailer costs (truck payment,
+	// trailer rent, a damage bill) and the case work around it. Hierarchical under
+	// the `fleet` module, exactly like fleet.trucks / fleet.trailers next door, so
+	// getPermissions renders them inside Fleet and Settings -> Roles can hand one
+	// action to a custom role without the others.
+	//
+	//   fleet.asset_charges.view       — read an asset's schedules, one-time
+	//                                    charges, and the who-held-it timeline.
+	//   fleet.asset_charges.manage     — create/edit/cancel a schedule or charge.
+	//   fleet.asset_charges.adjudicate — the case-handler powers on a disputed
+	//                                    charge: acknowledge on a driver's behalf,
+	//                                    change who is at fault, route a charge
+	//                                    that has no addressee yet.
+	//
+	// NOTE for callers: these are ordinary hierarchical codes, so a holder of the
+	// whole `fleet` module satisfies them (HasPermission matches ancestors), which
+	// is how every fleet leaf already behaves. The one asset permission that must
+	// escape that — dispatching an OUT_OF_SERVICE asset — is deliberately FLAT and
+	// already shipped as PermAssetOutOfServiceOverride (DEV-2254); do not add a
+	// dotted `fleet.assets.out_of_service_override` beside it.
+	PermAssetChargesView       UserPermissionEnum = "fleet.asset_charges.view"
+	PermAssetChargesManage     UserPermissionEnum = "fleet.asset_charges.manage"
+	PermAssetChargesAdjudicate UserPermissionEnum = "fleet.asset_charges.adjudicate"
+
+	// DEV-2240 maintenance — the shop side of an asset: service records, the work
+	// that takes a truck off the road, and the bills that come with it.
+	PermFleetMaintenanceView   UserPermissionEnum = "fleet.maintenance.view"
+	PermFleetMaintenanceManage UserPermissionEnum = "fleet.maintenance.manage"
+
+	// DEV-2240 incident resolution — closing the task an asset incident opened
+	// (damage, a violation) with an outcome. A separate leaf from the ordinary
+	// task transitions (PermTasksTransition) because an incident closes a MONEY
+	// case, not just a work item.
+	PermTaskIncidentsResolve UserPermissionEnum = "tasks.incidents.resolve"
+
 	// Projects/Task-Management module (backend-tasks). The work-item leaves live
 	// under a `tasks.tasks` ENTITY, not straight on the module (DEV-1335).
 	//
@@ -405,6 +440,11 @@ var PermissionCatalog = []PermissionCatalogEntry{
 	// operations require were not grantable at all — see the PermTasks* comment.
 	{Code: "tasks.tasks", ParentCode: "tasks", Label: "Tasks", Actions: []string{"view", "create", "assign", "transition", "reopen"}},
 	{Code: "tasks.teams", ParentCode: "tasks", Label: "Task teams", Actions: []string{"view", "create", "edit", "delete"}},
+	// DEV-2240: resolving an incident closes a money case (a damage charge, a
+	// violation), so it is its own entity rather than a sixth action on
+	// tasks.tasks — a company can hand incident closure to its case handlers
+	// without handing them every task transition.
+	{Code: "tasks.incidents", ParentCode: "tasks", Label: "Incidents", Actions: []string{"resolve"}},
 
 	// === workspaces entities (backend-workspaces custom boards) ===
 	{Code: "workspaces.workspaces", ParentCode: "workspaces", Label: "Workspaces", Actions: []string{"view", "create", "edit", "delete"}},
@@ -454,6 +494,16 @@ var PermissionCatalog = []PermissionCatalogEntry{
 	// === fleet entities ===
 	{Code: "fleet.trucks", ParentCode: "fleet", Label: "Trucks", Actions: []string{"view", "create", "edit", "delete"}},
 	{Code: "fleet.trailers", ParentCode: "fleet", Label: "Trailers", Actions: []string{"view", "create", "edit"}},
+	// DEV-2240: what an asset costs. `adjudicate` is a third action rather than a
+	// separate entity so a company that grants `fleet.asset_charges` keeps getting
+	// everything the Finances tab can do, while a custom role can be handed
+	// view-only or view+adjudicate without the power to create schedules.
+	{Code: "fleet.asset_charges", ParentCode: "fleet", Label: "Asset charges", Actions: []string{"view", "manage", "adjudicate"}},
+	// DEV-2240: the shop side of an asset — service records and the work orders
+	// that take a truck off the road. Putting an asset OUT_OF_SERVICE is ordinary
+	// work under `manage`; dispatching one anyway is the flat, governed
+	// asset_out_of_service_override (DEV-2254), not a leaf here.
+	{Code: "fleet.maintenance", ParentCode: "fleet", Label: "Maintenance", Actions: []string{"view", "manage"}},
 
 	// === accounting entities ===
 	{Code: "accounting.invoices", ParentCode: "accounting", Label: "Invoices", Actions: []string{"view", "create", "edit"}},

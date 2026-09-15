@@ -62,23 +62,32 @@ func TestUserRoleAuditor_GetsTheModuleBaseline(t *testing.T) {
 	require.True(t, ok, "auditor must have default grants")
 	assert.Subset(t, perms, enums.ModulePermissionCodes())
 	assert.ElementsMatch(t,
-		append(enums.ModulePermissionCodes(), string(enums.PermInvoiceUnrecordPayment)),
+		append(enums.ModulePermissionCodes(),
+			string(enums.PermInvoiceUnrecordPayment),
+			string(enums.PermAuditLogView)),
 		perms,
-		"baseline plus the one governed correction DEV-2038 seeds; every other "+
-			"auditor power is role-gated, not permission-gated")
+		"baseline plus the governed codes seeded to the auditor: DEV-2038's "+
+			"correction and DEV-2220's activity-log read; every other auditor "+
+			"power is role-gated, not permission-gated")
 }
 
 // Most of the auditor's governed powers are gated by @hasRole, so the seeded
-// flat codes stay a closed list — exactly one today. This fails if a later
-// ticket quietly hands the role another custom permission (DEV-2094).
-func TestUserRoleAuditor_HoldsOnlyTheUnrecordPaymentCustomCode(t *testing.T) {
+// flat codes stay a closed list. This fails if a later ticket quietly hands the
+// role another custom permission (DEV-2094) — extend the list here, in the same
+// commit, so the widening is deliberate and reviewable.
+func TestUserRoleAuditor_HoldsOnlyTheSeededCustomCodes(t *testing.T) {
 	perms := enums.DefaultRolePermissions()[enums.UserRoleAuditor]
 
-	assert.Contains(t, perms, string(enums.PermInvoiceUnrecordPayment),
-		"DEV-2038 seeds invoice_unrecord_payment to admin and auditor")
+	seeded := map[string]struct{}{
+		string(enums.PermInvoiceUnrecordPayment): {}, // DEV-2038
+		string(enums.PermAuditLogView):           {}, // DEV-2220
+	}
+	for code := range seeded {
+		assert.Contains(t, perms, code)
+	}
 
 	for _, code := range enums.CustomPermissionCodes() {
-		if code == string(enums.PermInvoiceUnrecordPayment) {
+		if _, ok := seeded[code]; ok {
 			continue
 		}
 		assert.NotContainsf(t, perms, code, "auditor must not be default-seeded %q", code)

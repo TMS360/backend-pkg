@@ -518,10 +518,14 @@ func TestReuseAccessToken_ExchangesTheJWTOncePerRun(t *testing.T) {
 
 func TestCreateSubscription_SendsWebhookModeAndReportsExpiry(t *testing.T) {
 	var gotBody string
+	// The expiry is relative to now on purpose: Deliverable()/Expired() compare it
+	// against the clock, so a literal date turns this into a time bomb that goes
+	// red the day it passes (it did).
+	expiry := time.Now().Add(24 * time.Hour).UTC().Format("2006-01-02T15:04:05.000Z")
 	srv, paths, bodies := probeServer(t, func(w http.ResponseWriter, _ *http.Request, body []byte) {
 		gotBody = string(body)
 		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(`{"id":"sub-1","status":"Active","expirationTime":"2026-09-14T10:00:00.000Z",
+		_, _ = w.Write([]byte(`{"id":"sub-1","status":"Active","expirationTime":"` + expiry + `",
 			"eventFilters":["/restapi/v1.0/account/~/extension/~/message-store/instant?type=SMS"],
 			"deliveryMode":{"transport":"WebHook","address":"https://tms.test/api/ringcentral/webhook"}}`))
 	})

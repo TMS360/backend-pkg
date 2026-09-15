@@ -139,6 +139,11 @@ message DriverCrewInfo {
   string truck_id = 4;
   string trailer_id = 5;
   string plan_id = 6;
+  // DEV-2263: the dispatchers' standing note about this crew's driver
+  // (driver_crews.planning_note, DEV-2089) — "won't run into New Jersey".
+  // Empty when the crew carries no note; clearing the note empties it again.
+  // A hint for the caller to show, never a rule: tms-teams does not act on it.
+  string planning_note = 7;
 }
 
 message TrailerInfo {

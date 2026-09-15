@@ -1462,6 +1462,215 @@ func (x *GetTeamWeeksForPayrollResponse) GetData() []*TeamWeekPayroll {
 	return nil
 }
 
+// DEV-2240: crew history for one asset over a date range.
+//
+// Dates are YYYY-MM-DD in the tenant's own calendar, inclusive on both ends —
+// the same shape GetTeamWeeksForPayroll uses, and the same shape the caller's
+// charge period is cut in.
+type GetCrewAssignmentsHistoryRequest struct {
+	state     protoimpl.MessageState `protogen:"open.v1"`
+	CompanyId string                 `protobuf:"bytes,1,opt,name=company_id,json=companyId,proto3" json:"company_id,omitempty"`
+	// asset_type is "TRUCK" or "TRAILER". Anything else is an error, not an
+	// empty list: a typo must not read as "nobody held it".
+	AssetType     string `protobuf:"bytes,2,opt,name=asset_type,json=assetType,proto3" json:"asset_type,omitempty"`
+	AssetId       string `protobuf:"bytes,3,opt,name=asset_id,json=assetId,proto3" json:"asset_id,omitempty"`
+	From          string `protobuf:"bytes,4,opt,name=from,proto3" json:"from,omitempty"` // YYYY-MM-DD, inclusive
+	To            string `protobuf:"bytes,5,opt,name=to,proto3" json:"to,omitempty"`     // YYYY-MM-DD, inclusive
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetCrewAssignmentsHistoryRequest) Reset() {
+	*x = GetCrewAssignmentsHistoryRequest{}
+	mi := &file_teams_teams_proto_msgTypes[22]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetCrewAssignmentsHistoryRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetCrewAssignmentsHistoryRequest) ProtoMessage() {}
+
+func (x *GetCrewAssignmentsHistoryRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_teams_teams_proto_msgTypes[22]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetCrewAssignmentsHistoryRequest.ProtoReflect.Descriptor instead.
+func (*GetCrewAssignmentsHistoryRequest) Descriptor() ([]byte, []int) {
+	return file_teams_teams_proto_rawDescGZIP(), []int{22}
+}
+
+func (x *GetCrewAssignmentsHistoryRequest) GetCompanyId() string {
+	if x != nil {
+		return x.CompanyId
+	}
+	return ""
+}
+
+func (x *GetCrewAssignmentsHistoryRequest) GetAssetType() string {
+	if x != nil {
+		return x.AssetType
+	}
+	return ""
+}
+
+func (x *GetCrewAssignmentsHistoryRequest) GetAssetId() string {
+	if x != nil {
+		return x.AssetId
+	}
+	return ""
+}
+
+func (x *GetCrewAssignmentsHistoryRequest) GetFrom() string {
+	if x != nil {
+		return x.From
+	}
+	return ""
+}
+
+func (x *GetCrewAssignmentsHistoryRequest) GetTo() string {
+	if x != nil {
+		return x.To
+	}
+	return ""
+}
+
+// CrewAssignmentHistoryItem is one crew's hold on the asset, already clipped to
+// the requested window.
+type CrewAssignmentHistoryItem struct {
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	CrewId          string                 `protobuf:"bytes,1,opt,name=crew_id,json=crewId,proto3" json:"crew_id,omitempty"`
+	PrimaryDriverId string                 `protobuf:"bytes,2,opt,name=primary_driver_id,json=primaryDriverId,proto3" json:"primary_driver_id,omitempty"`
+	// secondary_driver_id is empty when the crew is a single driver.
+	SecondaryDriverId string `protobuf:"bytes,3,opt,name=secondary_driver_id,json=secondaryDriverId,proto3" json:"secondary_driver_id,omitempty"`
+	// held_from / held_to are YYYY-MM-DD, inclusive, and never fall outside the
+	// request: a hold that is still open ends at `to` rather than at null, and one
+	// that started earlier starts at `from`. The caller counts days between them.
+	HeldFrom      string `protobuf:"bytes,4,opt,name=held_from,json=heldFrom,proto3" json:"held_from,omitempty"`
+	HeldTo        string `protobuf:"bytes,5,opt,name=held_to,json=heldTo,proto3" json:"held_to,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CrewAssignmentHistoryItem) Reset() {
+	*x = CrewAssignmentHistoryItem{}
+	mi := &file_teams_teams_proto_msgTypes[23]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CrewAssignmentHistoryItem) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CrewAssignmentHistoryItem) ProtoMessage() {}
+
+func (x *CrewAssignmentHistoryItem) ProtoReflect() protoreflect.Message {
+	mi := &file_teams_teams_proto_msgTypes[23]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CrewAssignmentHistoryItem.ProtoReflect.Descriptor instead.
+func (*CrewAssignmentHistoryItem) Descriptor() ([]byte, []int) {
+	return file_teams_teams_proto_rawDescGZIP(), []int{23}
+}
+
+func (x *CrewAssignmentHistoryItem) GetCrewId() string {
+	if x != nil {
+		return x.CrewId
+	}
+	return ""
+}
+
+func (x *CrewAssignmentHistoryItem) GetPrimaryDriverId() string {
+	if x != nil {
+		return x.PrimaryDriverId
+	}
+	return ""
+}
+
+func (x *CrewAssignmentHistoryItem) GetSecondaryDriverId() string {
+	if x != nil {
+		return x.SecondaryDriverId
+	}
+	return ""
+}
+
+func (x *CrewAssignmentHistoryItem) GetHeldFrom() string {
+	if x != nil {
+		return x.HeldFrom
+	}
+	return ""
+}
+
+func (x *CrewAssignmentHistoryItem) GetHeldTo() string {
+	if x != nil {
+		return x.HeldTo
+	}
+	return ""
+}
+
+type GetCrewAssignmentsHistoryResponse struct {
+	state         protoimpl.MessageState       `protogen:"open.v1"`
+	Items         []*CrewAssignmentHistoryItem `protobuf:"bytes,1,rep,name=items,proto3" json:"items,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetCrewAssignmentsHistoryResponse) Reset() {
+	*x = GetCrewAssignmentsHistoryResponse{}
+	mi := &file_teams_teams_proto_msgTypes[24]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetCrewAssignmentsHistoryResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetCrewAssignmentsHistoryResponse) ProtoMessage() {}
+
+func (x *GetCrewAssignmentsHistoryResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_teams_teams_proto_msgTypes[24]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetCrewAssignmentsHistoryResponse.ProtoReflect.Descriptor instead.
+func (*GetCrewAssignmentsHistoryResponse) Descriptor() ([]byte, []int) {
+	return file_teams_teams_proto_rawDescGZIP(), []int{24}
+}
+
+func (x *GetCrewAssignmentsHistoryResponse) GetItems() []*CrewAssignmentHistoryItem {
+	if x != nil {
+		return x.Items
+	}
+	return nil
+}
+
 var File_teams_teams_proto protoreflect.FileDescriptor
 
 const file_teams_teams_proto_rawDesc = "" +
@@ -1589,7 +1798,23 @@ const file_teams_teams_proto_rawDesc = "" +
 	"\x0edispatcher_ids\x18\n" +
 	" \x03(\tR\rdispatcherIds\"L\n" +
 	"\x1eGetTeamWeeksForPayrollResponse\x12*\n" +
-	"\x04data\x18\x01 \x03(\v2\x16.teams.TeamWeekPayrollR\x04data2\xbb\b\n" +
+	"\x04data\x18\x01 \x03(\v2\x16.teams.TeamWeekPayrollR\x04data\"\x9f\x01\n" +
+	" GetCrewAssignmentsHistoryRequest\x12\x1d\n" +
+	"\n" +
+	"company_id\x18\x01 \x01(\tR\tcompanyId\x12\x1d\n" +
+	"\n" +
+	"asset_type\x18\x02 \x01(\tR\tassetType\x12\x19\n" +
+	"\basset_id\x18\x03 \x01(\tR\aassetId\x12\x12\n" +
+	"\x04from\x18\x04 \x01(\tR\x04from\x12\x0e\n" +
+	"\x02to\x18\x05 \x01(\tR\x02to\"\xc6\x01\n" +
+	"\x19CrewAssignmentHistoryItem\x12\x17\n" +
+	"\acrew_id\x18\x01 \x01(\tR\x06crewId\x12*\n" +
+	"\x11primary_driver_id\x18\x02 \x01(\tR\x0fprimaryDriverId\x12.\n" +
+	"\x13secondary_driver_id\x18\x03 \x01(\tR\x11secondaryDriverId\x12\x1b\n" +
+	"\theld_from\x18\x04 \x01(\tR\bheldFrom\x12\x17\n" +
+	"\aheld_to\x18\x05 \x01(\tR\x06heldTo\"[\n" +
+	"!GetCrewAssignmentsHistoryResponse\x126\n" +
+	"\x05items\x18\x01 \x03(\v2 .teams.CrewAssignmentHistoryItemR\x05items2\xab\t\n" +
 	"\fTeamsService\x12J\n" +
 	"\rGetDriverCrew\x12\x1b.teams.GetDriverCrewRequest\x1a\x1c.teams.GetDriverCrewResponse\x12h\n" +
 	"\x1cGetDriverCrewWithDispatchers\x12\x1b.teams.GetDriverCrewRequest\x1a+.teams.GetDriverCrewWithDispatchersResponse\x12P\n" +
@@ -1602,7 +1827,8 @@ const file_teams_teams_proto_rawDesc = "" +
 	"\x0fResolveTruckIDs\x12\x12.teams.TruckFilter\x1a\x14.filters.IDsResponse\x12?\n" +
 	"\x11ResolveTrailerIDs\x12\x14.teams.TrailerFilter\x1a\x14.filters.IDsResponse\x12=\n" +
 	"\x10ResolveDriverIDs\x12\x13.teams.DriverFilter\x1a\x14.filters.IDsResponse\x12e\n" +
-	"\x16GetTeamWeeksForPayroll\x12$.teams.GetTeamWeeksForPayrollRequest\x1a%.teams.GetTeamWeeksForPayrollResponseB+Z)github.com/TMS360/backend-pkg/proto/teamsb\x06proto3"
+	"\x16GetTeamWeeksForPayroll\x12$.teams.GetTeamWeeksForPayrollRequest\x1a%.teams.GetTeamWeeksForPayrollResponse\x12n\n" +
+	"\x19GetCrewAssignmentsHistory\x12'.teams.GetCrewAssignmentsHistoryRequest\x1a(.teams.GetCrewAssignmentsHistoryResponseB+Z)github.com/TMS360/backend-pkg/proto/teamsb\x06proto3"
 
 var (
 	file_teams_teams_proto_rawDescOnce sync.Once
@@ -1616,7 +1842,7 @@ func file_teams_teams_proto_rawDescGZIP() []byte {
 	return file_teams_teams_proto_rawDescData
 }
 
-var file_teams_teams_proto_msgTypes = make([]protoimpl.MessageInfo, 22)
+var file_teams_teams_proto_msgTypes = make([]protoimpl.MessageInfo, 25)
 var file_teams_teams_proto_goTypes = []any{
 	(*DriverCrewFilter)(nil),                      // 0: teams.DriverCrewFilter
 	(*TruckFilter)(nil),                           // 1: teams.TruckFilter
@@ -1640,70 +1866,76 @@ var file_teams_teams_proto_goTypes = []any{
 	(*GetTeamWeeksForPayrollRequest)(nil),         // 19: teams.GetTeamWeeksForPayrollRequest
 	(*TeamWeekPayroll)(nil),                       // 20: teams.TeamWeekPayroll
 	(*GetTeamWeeksForPayrollResponse)(nil),        // 21: teams.GetTeamWeeksForPayrollResponse
-	(*filters.IDFilter)(nil),                      // 22: filters.IDFilter
-	(*filters.StringFilter)(nil),                  // 23: filters.StringFilter
-	(*filters.IntFilter)(nil),                     // 24: filters.IntFilter
-	(*timestamppb.Timestamp)(nil),                 // 25: google.protobuf.Timestamp
-	(*filters.IDsResponse)(nil),                   // 26: filters.IDsResponse
+	(*GetCrewAssignmentsHistoryRequest)(nil),      // 22: teams.GetCrewAssignmentsHistoryRequest
+	(*CrewAssignmentHistoryItem)(nil),             // 23: teams.CrewAssignmentHistoryItem
+	(*GetCrewAssignmentsHistoryResponse)(nil),     // 24: teams.GetCrewAssignmentsHistoryResponse
+	(*filters.IDFilter)(nil),                      // 25: filters.IDFilter
+	(*filters.StringFilter)(nil),                  // 26: filters.StringFilter
+	(*filters.IntFilter)(nil),                     // 27: filters.IntFilter
+	(*timestamppb.Timestamp)(nil),                 // 28: google.protobuf.Timestamp
+	(*filters.IDsResponse)(nil),                   // 29: filters.IDsResponse
 }
 var file_teams_teams_proto_depIdxs = []int32{
-	22, // 0: teams.DriverCrewFilter.primary_driver_id:type_name -> filters.IDFilter
-	22, // 1: teams.DriverCrewFilter.truck_id:type_name -> filters.IDFilter
-	22, // 2: teams.DriverCrewFilter.trailer_id:type_name -> filters.IDFilter
-	23, // 3: teams.TruckFilter.number:type_name -> filters.StringFilter
-	23, // 4: teams.TruckFilter.vin:type_name -> filters.StringFilter
-	23, // 5: teams.TruckFilter.make:type_name -> filters.StringFilter
-	23, // 6: teams.TruckFilter.model:type_name -> filters.StringFilter
-	23, // 7: teams.TruckFilter.status:type_name -> filters.StringFilter
-	24, // 8: teams.TruckFilter.year:type_name -> filters.IntFilter
-	23, // 9: teams.TrailerFilter.number:type_name -> filters.StringFilter
-	23, // 10: teams.TrailerFilter.vin:type_name -> filters.StringFilter
-	23, // 11: teams.TrailerFilter.make:type_name -> filters.StringFilter
-	23, // 12: teams.TrailerFilter.model:type_name -> filters.StringFilter
-	23, // 13: teams.TrailerFilter.status:type_name -> filters.StringFilter
-	23, // 14: teams.TrailerFilter.trailer_type:type_name -> filters.StringFilter
-	23, // 15: teams.DriverFilter.first_name:type_name -> filters.StringFilter
-	23, // 16: teams.DriverFilter.last_name:type_name -> filters.StringFilter
-	23, // 17: teams.DriverFilter.email:type_name -> filters.StringFilter
-	23, // 18: teams.DriverFilter.phone:type_name -> filters.StringFilter
-	23, // 19: teams.DriverFilter.status:type_name -> filters.StringFilter
-	23, // 20: teams.DriverFilter.license_number:type_name -> filters.StringFilter
+	25, // 0: teams.DriverCrewFilter.primary_driver_id:type_name -> filters.IDFilter
+	25, // 1: teams.DriverCrewFilter.truck_id:type_name -> filters.IDFilter
+	25, // 2: teams.DriverCrewFilter.trailer_id:type_name -> filters.IDFilter
+	26, // 3: teams.TruckFilter.number:type_name -> filters.StringFilter
+	26, // 4: teams.TruckFilter.vin:type_name -> filters.StringFilter
+	26, // 5: teams.TruckFilter.make:type_name -> filters.StringFilter
+	26, // 6: teams.TruckFilter.model:type_name -> filters.StringFilter
+	26, // 7: teams.TruckFilter.status:type_name -> filters.StringFilter
+	27, // 8: teams.TruckFilter.year:type_name -> filters.IntFilter
+	26, // 9: teams.TrailerFilter.number:type_name -> filters.StringFilter
+	26, // 10: teams.TrailerFilter.vin:type_name -> filters.StringFilter
+	26, // 11: teams.TrailerFilter.make:type_name -> filters.StringFilter
+	26, // 12: teams.TrailerFilter.model:type_name -> filters.StringFilter
+	26, // 13: teams.TrailerFilter.status:type_name -> filters.StringFilter
+	26, // 14: teams.TrailerFilter.trailer_type:type_name -> filters.StringFilter
+	26, // 15: teams.DriverFilter.first_name:type_name -> filters.StringFilter
+	26, // 16: teams.DriverFilter.last_name:type_name -> filters.StringFilter
+	26, // 17: teams.DriverFilter.email:type_name -> filters.StringFilter
+	26, // 18: teams.DriverFilter.phone:type_name -> filters.StringFilter
+	26, // 19: teams.DriverFilter.status:type_name -> filters.StringFilter
+	26, // 20: teams.DriverFilter.license_number:type_name -> filters.StringFilter
 	13, // 21: teams.GetDriverCrewResponse.data:type_name -> teams.DriverCrewInfo
 	13, // 22: teams.GetDriverCrewWithDispatchersResponse.data:type_name -> teams.DriverCrewInfo
-	25, // 23: teams.GetBusyVehiclesRequest.from:type_name -> google.protobuf.Timestamp
-	25, // 24: teams.GetBusyVehiclesRequest.to:type_name -> google.protobuf.Timestamp
+	28, // 23: teams.GetBusyVehiclesRequest.from:type_name -> google.protobuf.Timestamp
+	28, // 24: teams.GetBusyVehiclesRequest.to:type_name -> google.protobuf.Timestamp
 	13, // 25: teams.GetCurrentDriversByTruckIdsResponse.data:type_name -> teams.DriverCrewInfo
 	13, // 26: teams.GetCurrentDriversByTrailerIdsResponse.data:type_name -> teams.DriverCrewInfo
 	20, // 27: teams.GetTeamWeeksForPayrollResponse.data:type_name -> teams.TeamWeekPayroll
-	4,  // 28: teams.TeamsService.GetDriverCrew:input_type -> teams.GetDriverCrewRequest
-	4,  // 29: teams.TeamsService.GetDriverCrewWithDispatchers:input_type -> teams.GetDriverCrewRequest
-	7,  // 30: teams.TeamsService.GetBusyVehicles:input_type -> teams.GetBusyVehiclesRequest
-	9,  // 31: teams.TeamsService.GetCurrentDriversByTruckIds:input_type -> teams.GetCurrentDriversByTruckIdsRequest
-	11, // 32: teams.TeamsService.GetCurrentDriversByTrailerIds:input_type -> teams.GetCurrentDriversByTrailerIdsRequest
-	17, // 33: teams.TeamsService.GetActiveCrewByDriver:input_type -> teams.GetActiveCrewByDriverRequest
-	15, // 34: teams.TeamsService.IsDriverCrewAvailable:input_type -> teams.IsDriverCrewAvailableRequest
-	0,  // 35: teams.TeamsService.ResolveDriverCrewIDs:input_type -> teams.DriverCrewFilter
-	1,  // 36: teams.TeamsService.ResolveTruckIDs:input_type -> teams.TruckFilter
-	2,  // 37: teams.TeamsService.ResolveTrailerIDs:input_type -> teams.TrailerFilter
-	3,  // 38: teams.TeamsService.ResolveDriverIDs:input_type -> teams.DriverFilter
-	19, // 39: teams.TeamsService.GetTeamWeeksForPayroll:input_type -> teams.GetTeamWeeksForPayrollRequest
-	5,  // 40: teams.TeamsService.GetDriverCrew:output_type -> teams.GetDriverCrewResponse
-	6,  // 41: teams.TeamsService.GetDriverCrewWithDispatchers:output_type -> teams.GetDriverCrewWithDispatchersResponse
-	8,  // 42: teams.TeamsService.GetBusyVehicles:output_type -> teams.GetBusyVehiclesResponse
-	10, // 43: teams.TeamsService.GetCurrentDriversByTruckIds:output_type -> teams.GetCurrentDriversByTruckIdsResponse
-	12, // 44: teams.TeamsService.GetCurrentDriversByTrailerIds:output_type -> teams.GetCurrentDriversByTrailerIdsResponse
-	18, // 45: teams.TeamsService.GetActiveCrewByDriver:output_type -> teams.GetActiveCrewByDriverResponse
-	16, // 46: teams.TeamsService.IsDriverCrewAvailable:output_type -> teams.IsDriverCrewAvailableResponse
-	26, // 47: teams.TeamsService.ResolveDriverCrewIDs:output_type -> filters.IDsResponse
-	26, // 48: teams.TeamsService.ResolveTruckIDs:output_type -> filters.IDsResponse
-	26, // 49: teams.TeamsService.ResolveTrailerIDs:output_type -> filters.IDsResponse
-	26, // 50: teams.TeamsService.ResolveDriverIDs:output_type -> filters.IDsResponse
-	21, // 51: teams.TeamsService.GetTeamWeeksForPayroll:output_type -> teams.GetTeamWeeksForPayrollResponse
-	40, // [40:52] is the sub-list for method output_type
-	28, // [28:40] is the sub-list for method input_type
-	28, // [28:28] is the sub-list for extension type_name
-	28, // [28:28] is the sub-list for extension extendee
-	0,  // [0:28] is the sub-list for field type_name
+	23, // 28: teams.GetCrewAssignmentsHistoryResponse.items:type_name -> teams.CrewAssignmentHistoryItem
+	4,  // 29: teams.TeamsService.GetDriverCrew:input_type -> teams.GetDriverCrewRequest
+	4,  // 30: teams.TeamsService.GetDriverCrewWithDispatchers:input_type -> teams.GetDriverCrewRequest
+	7,  // 31: teams.TeamsService.GetBusyVehicles:input_type -> teams.GetBusyVehiclesRequest
+	9,  // 32: teams.TeamsService.GetCurrentDriversByTruckIds:input_type -> teams.GetCurrentDriversByTruckIdsRequest
+	11, // 33: teams.TeamsService.GetCurrentDriversByTrailerIds:input_type -> teams.GetCurrentDriversByTrailerIdsRequest
+	17, // 34: teams.TeamsService.GetActiveCrewByDriver:input_type -> teams.GetActiveCrewByDriverRequest
+	15, // 35: teams.TeamsService.IsDriverCrewAvailable:input_type -> teams.IsDriverCrewAvailableRequest
+	0,  // 36: teams.TeamsService.ResolveDriverCrewIDs:input_type -> teams.DriverCrewFilter
+	1,  // 37: teams.TeamsService.ResolveTruckIDs:input_type -> teams.TruckFilter
+	2,  // 38: teams.TeamsService.ResolveTrailerIDs:input_type -> teams.TrailerFilter
+	3,  // 39: teams.TeamsService.ResolveDriverIDs:input_type -> teams.DriverFilter
+	19, // 40: teams.TeamsService.GetTeamWeeksForPayroll:input_type -> teams.GetTeamWeeksForPayrollRequest
+	22, // 41: teams.TeamsService.GetCrewAssignmentsHistory:input_type -> teams.GetCrewAssignmentsHistoryRequest
+	5,  // 42: teams.TeamsService.GetDriverCrew:output_type -> teams.GetDriverCrewResponse
+	6,  // 43: teams.TeamsService.GetDriverCrewWithDispatchers:output_type -> teams.GetDriverCrewWithDispatchersResponse
+	8,  // 44: teams.TeamsService.GetBusyVehicles:output_type -> teams.GetBusyVehiclesResponse
+	10, // 45: teams.TeamsService.GetCurrentDriversByTruckIds:output_type -> teams.GetCurrentDriversByTruckIdsResponse
+	12, // 46: teams.TeamsService.GetCurrentDriversByTrailerIds:output_type -> teams.GetCurrentDriversByTrailerIdsResponse
+	18, // 47: teams.TeamsService.GetActiveCrewByDriver:output_type -> teams.GetActiveCrewByDriverResponse
+	16, // 48: teams.TeamsService.IsDriverCrewAvailable:output_type -> teams.IsDriverCrewAvailableResponse
+	29, // 49: teams.TeamsService.ResolveDriverCrewIDs:output_type -> filters.IDsResponse
+	29, // 50: teams.TeamsService.ResolveTruckIDs:output_type -> filters.IDsResponse
+	29, // 51: teams.TeamsService.ResolveTrailerIDs:output_type -> filters.IDsResponse
+	29, // 52: teams.TeamsService.ResolveDriverIDs:output_type -> filters.IDsResponse
+	21, // 53: teams.TeamsService.GetTeamWeeksForPayroll:output_type -> teams.GetTeamWeeksForPayrollResponse
+	24, // 54: teams.TeamsService.GetCrewAssignmentsHistory:output_type -> teams.GetCrewAssignmentsHistoryResponse
+	42, // [42:55] is the sub-list for method output_type
+	29, // [29:42] is the sub-list for method input_type
+	29, // [29:29] is the sub-list for extension type_name
+	29, // [29:29] is the sub-list for extension extendee
+	0,  // [0:29] is the sub-list for field type_name
 }
 
 func init() { file_teams_teams_proto_init() }
@@ -1722,7 +1954,7 @@ func file_teams_teams_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_teams_teams_proto_rawDesc), len(file_teams_teams_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   22,
+			NumMessages:   25,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

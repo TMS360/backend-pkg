@@ -212,6 +212,23 @@ service LoadsService {
   rpc GetTrailerOwnershipByIDs(GetTrailerOwnershipByIDsRequest)
       returns (GetTrailerOwnershipByIDsResponse);
 
+  // ── Trucks of an owner (used by backend-accounting rehome, DEV-2257) ──────
+  // The forward direction of GetTruckOwnersByTruckIDs: "which trucks does each
+  // of these owners hold". The rehome preview starts from an owner's contract
+  // line and has to name the truck the money moves onto, so inverting the
+  // existing map would mean asking for every truck in the fleet first.
+  //
+  // An owner with no live truck is ABSENT from the map — absence is the answer
+  // ("nothing to move this line onto"), not an error. An owner with several
+  // trucks returns all of them; accounting refuses to guess which one and makes
+  // the operator pick.
+  //
+  // company_id is passed explicitly (backend-load's gRPC server runs without an
+  // AuthServerInterceptor, so there is no actor to scope by), same contract as
+  // GetTruckOwnersByTruckIDs / GetVehicleNumbersByIDs.
+  rpc GetTruckIDsByOwnerIDs(GetTruckIDsByOwnerIDsRequest)
+      returns (GetTruckIDsByOwnerIDsResponse);
+
   // ── Toll row → truck / trip matching (backend-accounting, DEV-1793) ──────
   // Resolves a WHOLE ingested toll file in one call. A weekly PrePass export is
   // 240-470 rows; a per-row RPC across a service boundary is the thing this
@@ -959,6 +976,26 @@ message GetTrailerOwnershipByIDsResponse {
   // is ABSENT — absence is "unknown", never "not ours": the caller must refuse
   // to guess rather than silently charging or silently refusing.
   map<string, bool> is_company_by_id = 1;
+}
+
+message GetTruckIDsByOwnerIDsRequest {
+  string company_id = 1;
+  // Empty list is a valid request and returns an empty map, not an error.
+  repeated string owner_ids = 2;
+}
+
+message GetTruckIDsByOwnerIDsResponse {
+  // Keyed by owner id. Owners with no live truck are absent from the map.
+  map<string, TruckIDList> truck_ids_by_owner_id = 1;
+}
+
+// TruckIDList exists only because proto3 maps cannot hold a repeated value.
+message TruckIDList {
+  repeated string truck_ids = 1;
+  // Unit numbers, index-aligned with truck_ids. The preview names the truck the
+  // operator will pick ("Truck 301"), and a second round-trip for the numbers
+  // would be one call per owner.
+  repeated string numbers = 2;
 }
 
 // TruckOwner is the third party that owns a truck our driver drives. It is NOT

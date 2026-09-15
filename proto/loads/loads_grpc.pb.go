@@ -55,6 +55,7 @@ const (
 	LoadsService_GetTruckOwnersByTruckIDs_FullMethodName       = "/loads.LoadsService/GetTruckOwnersByTruckIDs"
 	LoadsService_GetVehicleNumbersByIDs_FullMethodName         = "/loads.LoadsService/GetVehicleNumbersByIDs"
 	LoadsService_GetTrailerOwnershipByIDs_FullMethodName       = "/loads.LoadsService/GetTrailerOwnershipByIDs"
+	LoadsService_GetTruckIDsByOwnerIDs_FullMethodName          = "/loads.LoadsService/GetTruckIDsByOwnerIDs"
 	LoadsService_MatchTollRows_FullMethodName                  = "/loads.LoadsService/MatchTollRows"
 	LoadsService_GetLotChargebacksByDispatchers_FullMethodName = "/loads.LoadsService/GetLotChargebacksByDispatchers"
 )
@@ -225,6 +226,21 @@ type LoadsServiceClient interface {
 	// AuthServerInterceptor, so there is no actor to scope by), same contract as
 	// GetTruckOwnersByTruckIDs / GetVehicleNumbersByIDs.
 	GetTrailerOwnershipByIDs(ctx context.Context, in *GetTrailerOwnershipByIDsRequest, opts ...grpc.CallOption) (*GetTrailerOwnershipByIDsResponse, error)
+	// ── Trucks of an owner (used by backend-accounting rehome, DEV-2257) ──────
+	// The forward direction of GetTruckOwnersByTruckIDs: "which trucks does each
+	// of these owners hold". The rehome preview starts from an owner's contract
+	// line and has to name the truck the money moves onto, so inverting the
+	// existing map would mean asking for every truck in the fleet first.
+	//
+	// An owner with no live truck is ABSENT from the map — absence is the answer
+	// ("nothing to move this line onto"), not an error. An owner with several
+	// trucks returns all of them; accounting refuses to guess which one and makes
+	// the operator pick.
+	//
+	// company_id is passed explicitly (backend-load's gRPC server runs without an
+	// AuthServerInterceptor, so there is no actor to scope by), same contract as
+	// GetTruckOwnersByTruckIDs / GetVehicleNumbersByIDs.
+	GetTruckIDsByOwnerIDs(ctx context.Context, in *GetTruckIDsByOwnerIDsRequest, opts ...grpc.CallOption) (*GetTruckIDsByOwnerIDsResponse, error)
 	// ── Toll row → truck / trip matching (backend-accounting, DEV-1793) ──────
 	// Resolves a WHOLE ingested toll file in one call. A weekly PrePass export is
 	// 240-470 rows; a per-row RPC across a service boundary is the thing this
@@ -591,6 +607,16 @@ func (c *loadsServiceClient) GetTrailerOwnershipByIDs(ctx context.Context, in *G
 	return out, nil
 }
 
+func (c *loadsServiceClient) GetTruckIDsByOwnerIDs(ctx context.Context, in *GetTruckIDsByOwnerIDsRequest, opts ...grpc.CallOption) (*GetTruckIDsByOwnerIDsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetTruckIDsByOwnerIDsResponse)
+	err := c.cc.Invoke(ctx, LoadsService_GetTruckIDsByOwnerIDs_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *loadsServiceClient) MatchTollRows(ctx context.Context, in *MatchTollRowsRequest, opts ...grpc.CallOption) (*MatchTollRowsResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(MatchTollRowsResponse)
@@ -777,6 +803,21 @@ type LoadsServiceServer interface {
 	// AuthServerInterceptor, so there is no actor to scope by), same contract as
 	// GetTruckOwnersByTruckIDs / GetVehicleNumbersByIDs.
 	GetTrailerOwnershipByIDs(context.Context, *GetTrailerOwnershipByIDsRequest) (*GetTrailerOwnershipByIDsResponse, error)
+	// ── Trucks of an owner (used by backend-accounting rehome, DEV-2257) ──────
+	// The forward direction of GetTruckOwnersByTruckIDs: "which trucks does each
+	// of these owners hold". The rehome preview starts from an owner's contract
+	// line and has to name the truck the money moves onto, so inverting the
+	// existing map would mean asking for every truck in the fleet first.
+	//
+	// An owner with no live truck is ABSENT from the map — absence is the answer
+	// ("nothing to move this line onto"), not an error. An owner with several
+	// trucks returns all of them; accounting refuses to guess which one and makes
+	// the operator pick.
+	//
+	// company_id is passed explicitly (backend-load's gRPC server runs without an
+	// AuthServerInterceptor, so there is no actor to scope by), same contract as
+	// GetTruckOwnersByTruckIDs / GetVehicleNumbersByIDs.
+	GetTruckIDsByOwnerIDs(context.Context, *GetTruckIDsByOwnerIDsRequest) (*GetTruckIDsByOwnerIDsResponse, error)
 	// ── Toll row → truck / trip matching (backend-accounting, DEV-1793) ──────
 	// Resolves a WHOLE ingested toll file in one call. A weekly PrePass export is
 	// 240-470 rows; a per-row RPC across a service boundary is the thing this
@@ -909,6 +950,9 @@ func (UnimplementedLoadsServiceServer) GetVehicleNumbersByIDs(context.Context, *
 }
 func (UnimplementedLoadsServiceServer) GetTrailerOwnershipByIDs(context.Context, *GetTrailerOwnershipByIDsRequest) (*GetTrailerOwnershipByIDsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetTrailerOwnershipByIDs not implemented")
+}
+func (UnimplementedLoadsServiceServer) GetTruckIDsByOwnerIDs(context.Context, *GetTruckIDsByOwnerIDsRequest) (*GetTruckIDsByOwnerIDsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetTruckIDsByOwnerIDs not implemented")
 }
 func (UnimplementedLoadsServiceServer) MatchTollRows(context.Context, *MatchTollRowsRequest) (*MatchTollRowsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method MatchTollRows not implemented")
@@ -1506,6 +1550,24 @@ func _LoadsService_GetTrailerOwnershipByIDs_Handler(srv interface{}, ctx context
 	return interceptor(ctx, in, info, handler)
 }
 
+func _LoadsService_GetTruckIDsByOwnerIDs_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetTruckIDsByOwnerIDsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(LoadsServiceServer).GetTruckIDsByOwnerIDs(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: LoadsService_GetTruckIDsByOwnerIDs_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(LoadsServiceServer).GetTruckIDsByOwnerIDs(ctx, req.(*GetTruckIDsByOwnerIDsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _LoadsService_MatchTollRows_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(MatchTollRowsRequest)
 	if err := dec(in); err != nil {
@@ -1672,6 +1734,10 @@ var LoadsService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetTrailerOwnershipByIDs",
 			Handler:    _LoadsService_GetTrailerOwnershipByIDs_Handler,
+		},
+		{
+			MethodName: "GetTruckIDsByOwnerIDs",
+			Handler:    _LoadsService_GetTruckIDsByOwnerIDs_Handler,
 		},
 		{
 			MethodName: "MatchTollRows",

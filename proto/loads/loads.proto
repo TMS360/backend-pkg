@@ -196,6 +196,22 @@ service LoadsService {
   rpc GetVehicleNumbersByIDs(GetVehicleNumbersByIDsRequest)
       returns (GetVehicleNumbersByIDsResponse);
 
+  // ── Trailer ownership (used by backend-accounting asset charges, DEV-2241) ──
+  // Answers "is this trailer ours" for a batch of trailers. A LOT trailer
+  // (loaner / customer-owned) is not ours to put a recurring charge on, and
+  // accounting has no trailer table of its own to check.
+  //
+  // Deliberately NOT folded into GetVehicleNumbersByIDs: that map drops a
+  // trailer whose unit number is blank, and reading "absent" as "not ours"
+  // would refuse a company trailer somebody forgot to number. Here absence
+  // means only "no such trailer in this tenant".
+  //
+  // company_id is passed explicitly (backend-load's gRPC server runs without an
+  // AuthServerInterceptor, so there is no actor to scope by), same contract as
+  // GetTruckOwnersByTruckIDs / GetVehicleNumbersByIDs.
+  rpc GetTrailerOwnershipByIDs(GetTrailerOwnershipByIDsRequest)
+      returns (GetTrailerOwnershipByIDsResponse);
+
   // ── Toll row → truck / trip matching (backend-accounting, DEV-1793) ──────
   // Resolves a WHOLE ingested toll file in one call. A weekly PrePass export is
   // 240-470 rows; a per-row RPC across a service boundary is the thing this
@@ -929,6 +945,20 @@ message GetVehicleNumbersByIDsResponse {
   // writes down "the number I was told", and a blank is not a number.
   map<string, string> truck_numbers_by_id = 1;
   map<string, string> trailer_numbers_by_id = 2;
+}
+
+// DEV-2241: which of these trailers the company owns.
+message GetTrailerOwnershipByIDsRequest {
+  string company_id = 1;
+  repeated string trailer_ids = 2;
+}
+
+message GetTrailerOwnershipByIDsResponse {
+  // Keyed by trailer id. true = company trailer, false = LOT (loaner /
+  // customer-owned). A trailer of another tenant, or one that does not exist,
+  // is ABSENT — absence is "unknown", never "not ours": the caller must refuse
+  // to guess rather than silently charging or silently refusing.
+  map<string, bool> is_company_by_id = 1;
 }
 
 // TruckOwner is the third party that owns a truck our driver drives. It is NOT

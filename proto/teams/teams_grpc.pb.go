@@ -34,6 +34,7 @@ const (
 	TeamsService_ResolveTrailerIDs_FullMethodName             = "/teams.TeamsService/ResolveTrailerIDs"
 	TeamsService_ResolveDriverIDs_FullMethodName              = "/teams.TeamsService/ResolveDriverIDs"
 	TeamsService_GetTeamWeeksForPayroll_FullMethodName        = "/teams.TeamsService/GetTeamWeeksForPayroll"
+	TeamsService_GetCrewAssignmentsHistory_FullMethodName     = "/teams.TeamsService/GetCrewAssignmentsHistory"
 )
 
 // TeamsServiceClient is the client API for TeamsService service.
@@ -72,6 +73,20 @@ type TeamsServiceClient interface {
 	// The figures are the Audit board's own: accounting reads them and never
 	// recomputes a commission of its own.
 	GetTeamWeeksForPayroll(ctx context.Context, in *GetTeamWeeksForPayrollRequest, opts ...grpc.CallOption) (*GetTeamWeeksForPayrollResponse, error)
+	// DEV-2240: who held this truck or trailer on each day of a range.
+	//
+	// Every other crew read here answers for ONE instant (a target_date). Asset
+	// charges are prorated by days held, so accounting has to ask "who had truck
+	// 118 from Monday to Sunday" and get every holder of the window back in one
+	// call — a per-day loop over GetCurrentDriversByTruckIds is seven round trips
+	// per asset per period.
+	//
+	// A day with no crew has NO row: absence is the answer (accounting posts
+	// those days to the company), and zero-filling would hide it.
+	//
+	// company_id is passed explicitly — this listener has no auth interceptor,
+	// same contract as GetTeamWeeksForPayroll.
+	GetCrewAssignmentsHistory(ctx context.Context, in *GetCrewAssignmentsHistoryRequest, opts ...grpc.CallOption) (*GetCrewAssignmentsHistoryResponse, error)
 }
 
 type teamsServiceClient struct {
@@ -202,6 +217,16 @@ func (c *teamsServiceClient) GetTeamWeeksForPayroll(ctx context.Context, in *Get
 	return out, nil
 }
 
+func (c *teamsServiceClient) GetCrewAssignmentsHistory(ctx context.Context, in *GetCrewAssignmentsHistoryRequest, opts ...grpc.CallOption) (*GetCrewAssignmentsHistoryResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetCrewAssignmentsHistoryResponse)
+	err := c.cc.Invoke(ctx, TeamsService_GetCrewAssignmentsHistory_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // TeamsServiceServer is the server API for TeamsService service.
 // All implementations must embed UnimplementedTeamsServiceServer
 // for forward compatibility.
@@ -238,6 +263,20 @@ type TeamsServiceServer interface {
 	// The figures are the Audit board's own: accounting reads them and never
 	// recomputes a commission of its own.
 	GetTeamWeeksForPayroll(context.Context, *GetTeamWeeksForPayrollRequest) (*GetTeamWeeksForPayrollResponse, error)
+	// DEV-2240: who held this truck or trailer on each day of a range.
+	//
+	// Every other crew read here answers for ONE instant (a target_date). Asset
+	// charges are prorated by days held, so accounting has to ask "who had truck
+	// 118 from Monday to Sunday" and get every holder of the window back in one
+	// call — a per-day loop over GetCurrentDriversByTruckIds is seven round trips
+	// per asset per period.
+	//
+	// A day with no crew has NO row: absence is the answer (accounting posts
+	// those days to the company), and zero-filling would hide it.
+	//
+	// company_id is passed explicitly — this listener has no auth interceptor,
+	// same contract as GetTeamWeeksForPayroll.
+	GetCrewAssignmentsHistory(context.Context, *GetCrewAssignmentsHistoryRequest) (*GetCrewAssignmentsHistoryResponse, error)
 	mustEmbedUnimplementedTeamsServiceServer()
 }
 
@@ -283,6 +322,9 @@ func (UnimplementedTeamsServiceServer) ResolveDriverIDs(context.Context, *Driver
 }
 func (UnimplementedTeamsServiceServer) GetTeamWeeksForPayroll(context.Context, *GetTeamWeeksForPayrollRequest) (*GetTeamWeeksForPayrollResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetTeamWeeksForPayroll not implemented")
+}
+func (UnimplementedTeamsServiceServer) GetCrewAssignmentsHistory(context.Context, *GetCrewAssignmentsHistoryRequest) (*GetCrewAssignmentsHistoryResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetCrewAssignmentsHistory not implemented")
 }
 func (UnimplementedTeamsServiceServer) mustEmbedUnimplementedTeamsServiceServer() {}
 func (UnimplementedTeamsServiceServer) testEmbeddedByValue()                      {}
@@ -521,6 +563,24 @@ func _TeamsService_GetTeamWeeksForPayroll_Handler(srv interface{}, ctx context.C
 	return interceptor(ctx, in, info, handler)
 }
 
+func _TeamsService_GetCrewAssignmentsHistory_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetCrewAssignmentsHistoryRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(TeamsServiceServer).GetCrewAssignmentsHistory(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: TeamsService_GetCrewAssignmentsHistory_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(TeamsServiceServer).GetCrewAssignmentsHistory(ctx, req.(*GetCrewAssignmentsHistoryRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // TeamsService_ServiceDesc is the grpc.ServiceDesc for TeamsService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -575,6 +635,10 @@ var TeamsService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetTeamWeeksForPayroll",
 			Handler:    _TeamsService_GetTeamWeeksForPayroll_Handler,
+		},
+		{
+			MethodName: "GetCrewAssignmentsHistory",
+			Handler:    _TeamsService_GetCrewAssignmentsHistory_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

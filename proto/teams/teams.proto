@@ -51,6 +51,21 @@ service TeamsService {
   // The figures are the Audit board's own: accounting reads them and never
   // recomputes a commission of its own.
   rpc GetTeamWeeksForPayroll(GetTeamWeeksForPayrollRequest) returns (GetTeamWeeksForPayrollResponse);
+
+  // DEV-2240: who held this truck or trailer on each day of a range.
+  //
+  // Every other crew read here answers for ONE instant (a target_date). Asset
+  // charges are prorated by days held, so accounting has to ask "who had truck
+  // 118 from Monday to Sunday" and get every holder of the window back in one
+  // call — a per-day loop over GetCurrentDriversByTruckIds is seven round trips
+  // per asset per period.
+  //
+  // A day with no crew has NO row: absence is the answer (accounting posts
+  // those days to the company), and zero-filling would hide it.
+  //
+  // company_id is passed explicitly — this listener has no auth interceptor,
+  // same contract as GetTeamWeeksForPayroll.
+  rpc GetCrewAssignmentsHistory(GetCrewAssignmentsHistoryRequest) returns (GetCrewAssignmentsHistoryResponse);
 }
 
 message DriverCrewFilter {
@@ -230,4 +245,37 @@ message TeamWeekPayroll {
 
 message GetTeamWeeksForPayrollResponse {
   repeated TeamWeekPayroll data = 1;
+}
+
+// DEV-2240: crew history for one asset over a date range.
+//
+// Dates are YYYY-MM-DD in the tenant's own calendar, inclusive on both ends —
+// the same shape GetTeamWeeksForPayroll uses, and the same shape the caller's
+// charge period is cut in.
+message GetCrewAssignmentsHistoryRequest {
+  string company_id = 1;
+  // asset_type is "TRUCK" or "TRAILER". Anything else is an error, not an
+  // empty list: a typo must not read as "nobody held it".
+  string asset_type = 2;
+  string asset_id = 3;
+  string from = 4; // YYYY-MM-DD, inclusive
+  string to = 5;   // YYYY-MM-DD, inclusive
+}
+
+// CrewAssignmentHistoryItem is one crew's hold on the asset, already clipped to
+// the requested window.
+message CrewAssignmentHistoryItem {
+  string crew_id = 1;
+  string primary_driver_id = 2;
+  // secondary_driver_id is empty when the crew is a single driver.
+  string secondary_driver_id = 3;
+  // held_from / held_to are YYYY-MM-DD, inclusive, and never fall outside the
+  // request: a hold that is still open ends at `to` rather than at null, and one
+  // that started earlier starts at `from`. The caller counts days between them.
+  string held_from = 4;
+  string held_to = 5;
+}
+
+message GetCrewAssignmentsHistoryResponse {
+  repeated CrewAssignmentHistoryItem items = 1;
 }

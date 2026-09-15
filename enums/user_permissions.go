@@ -366,6 +366,25 @@ const (
 	// `getAuditsAll` (super_admin only, unchanged), and it is not required to read
 	// one's OWN actions — a self-scoped read passes without it.
 	PermAuditLogView UserPermissionEnum = "audit_log_view"
+
+	// PermAssetChargesView / PermAssetChargesManage gate the Finances tab of a
+	// truck or trailer — the recurring charges that live on the asset itself
+	// (truck payment, trailer rent, ELD) and the day-share they bill to whoever
+	// held it (DEV-2241, consumed by DEV-2244).
+	//
+	// FLAT, and this one is not a style preference. DEV-2244 asks for dotted
+	// `fleet.asset_charges.view` / `.manage`, which would be a hole rather than a
+	// gate: `fleet` IS a top-level module, so it lands in ModulePermissionCodes()
+	// and is granted to every built-in office role at signup, and HasPermission
+	// matches by prefix — the very first prefix tried for `fleet.asset_charges.view`
+	// is `fleet`, which everyone holds. Worse, `fleet.asset_charges` exists in no
+	// catalog at all, so the code could be neither granted nor revoked. Flat codes
+	// carry no dots, resolve by exact match, and are default-deny until granted.
+	//
+	// Seeded to admin and manager (see DefaultRolePermissions) and backfilled onto
+	// existing companies by tms360-backend's grant migration.
+	PermAssetChargesView   UserPermissionEnum = "asset_charges_view"
+	PermAssetChargesManage UserPermissionEnum = "asset_charges_manage"
 )
 
 // PermissionCatalogEntry describes one row written to the permissions table.
@@ -539,6 +558,8 @@ var CustomPermissionCatalog = []CustomPermissionEntry{
 	{Code: string(PermTripDelete), Label: "Delete a trip from a load"},
 	{Code: string(PermInvoiceUnrecordPayment), Label: "Un-record a customer payment on an invoice"},
 	{Code: string(PermAuditLogView), Label: "View the company activity log"},
+	{Code: string(PermAssetChargesView), Label: "View recurring charges on a truck or trailer"},
+	{Code: string(PermAssetChargesManage), Label: "Manage recurring charges on a truck or trailer"},
 }
 
 // CustomPermissionCodes returns just the flat custom permission codes, in
@@ -879,8 +900,8 @@ func DefaultRolePermissions() map[UserRoleEnum][]string {
 		// manager (the role the ticket adds). Dispatcher does NOT get it — the log
 		// carries every desk's moves; a tenant that wants it wider ticks it on in
 		// Settings -> Roles. Reading one's OWN actions needs no code at all.
-		UserRoleAdmin:      withExtra(string(PermTripFinancialsEdit), string(PermTripReassignCommitted), string(PermFileDeleteAny), string(PermReportsRun), string(PermReportsManage), string(PermCallsView), string(PermCallsPlay), string(PermSmsView), string(PermSmsSend), string(PermShipmentBillingApprove), string(PermAuditPlanExclusionEdit), string(PermComplianceDispatchOverride), string(PermAssetOutOfServiceOverride), string(PermTripDelete), string(PermInvoiceUnrecordPayment), string(PermAuditLogView)),
-		UserRoleManager:    withExtra(string(PermTripReassignCommitted), string(PermFileDeleteAny), string(PermCallsView), string(PermCallsPlay), string(PermSmsView), string(PermSmsSend), string(PermShipmentBillingApprove), string(PermAuditPlanExclusionEdit), string(PermComplianceDispatchOverride), string(PermAssetOutOfServiceOverride), string(PermTripDelete), string(PermAuditLogView)),
+		UserRoleAdmin:      withExtra(string(PermTripFinancialsEdit), string(PermTripReassignCommitted), string(PermFileDeleteAny), string(PermReportsRun), string(PermReportsManage), string(PermCallsView), string(PermCallsPlay), string(PermSmsView), string(PermSmsSend), string(PermShipmentBillingApprove), string(PermAuditPlanExclusionEdit), string(PermComplianceDispatchOverride), string(PermAssetOutOfServiceOverride), string(PermTripDelete), string(PermInvoiceUnrecordPayment), string(PermAuditLogView), string(PermAssetChargesView), string(PermAssetChargesManage)),
+		UserRoleManager:    withExtra(string(PermTripReassignCommitted), string(PermFileDeleteAny), string(PermCallsView), string(PermCallsPlay), string(PermSmsView), string(PermSmsSend), string(PermShipmentBillingApprove), string(PermAuditPlanExclusionEdit), string(PermComplianceDispatchOverride), string(PermAssetOutOfServiceOverride), string(PermTripDelete), string(PermAuditLogView), string(PermAssetChargesView), string(PermAssetChargesManage)),
 		UserRoleAccounting: withExtra(string(PermTripFinancialsEdit), string(PermReportsRun), string(PermReportsManage), string(PermShipmentBillingApprove)),
 		UserRoleFleet:      withExtra(),
 		UserRoleSafety:     withExtra(string(PermComplianceDispatchOverride)),

@@ -408,6 +408,27 @@ const (
 	// `getAuditsAll` (super_admin only, unchanged), and it is not required to read
 	// one's OWN actions — a self-scoped read passes without it.
 	PermAuditLogView UserPermissionEnum = "audit_log_view"
+
+	// PermGeneralLedgerView gates reading the general ledger (DEV-177): journal
+	// entries, an account's ledger and the trial balance. The ledger exposes
+	// payroll, loans, equity and bank balances in one place, so reading it must
+	// be refusable.
+	//
+	// PermJournalEntryManage gates hand-made journal entries: create, edit,
+	// delete, post and reverse. Automated entries (pay batches, invoices,
+	// payments) carry no GL gate of their own — they inherit the gate of the
+	// business mutation that posts them, so an accountant without this code can
+	// still post payroll.
+	//
+	// FLAT for the PermAuditLogView reason: a dotted `accounting.general_ledger.*`
+	// hangs off the `accounting` module every built-in role (driver included)
+	// holds at signup, and HasPermission prefix-matches, so it would refuse
+	// nobody.
+	//
+	// general_ledger_view is seeded to admin, accounting and auditor;
+	// journal_entry_manage to admin and accounting.
+	PermGeneralLedgerView  UserPermissionEnum = "general_ledger_view"
+	PermJournalEntryManage UserPermissionEnum = "journal_entry_manage"
 )
 
 // PermissionCatalogEntry describes one row written to the permissions table.
@@ -597,6 +618,8 @@ var CustomPermissionCatalog = []CustomPermissionEntry{
 	{Code: string(PermTripDelete), Label: "Delete a trip from a load"},
 	{Code: string(PermInvoiceUnrecordPayment), Label: "Un-record a customer payment on an invoice"},
 	{Code: string(PermAuditLogView), Label: "View the company activity log"},
+	{Code: string(PermGeneralLedgerView), Label: "View the general ledger and trial balance"},
+	{Code: string(PermJournalEntryManage), Label: "Create, post and reverse manual journal entries"},
 }
 
 // CustomPermissionCodes returns just the flat custom permission codes, in
@@ -937,9 +960,13 @@ func DefaultRolePermissions() map[UserRoleEnum][]string {
 		// manager (the role the ticket adds). Dispatcher does NOT get it — the log
 		// carries every desk's moves; a tenant that wants it wider ticks it on in
 		// Settings -> Roles. Reading one's OWN actions needs no code at all.
-		UserRoleAdmin:      withExtra(string(PermTripFinancialsEdit), string(PermTripReassignCommitted), string(PermFileDeleteAny), string(PermReportsRun), string(PermReportsManage), string(PermCallsView), string(PermCallsPlay), string(PermSmsView), string(PermSmsSend), string(PermShipmentBillingApprove), string(PermAuditPlanExclusionEdit), string(PermComplianceDispatchOverride), string(PermAssetOutOfServiceOverride), string(PermTripDelete), string(PermInvoiceUnrecordPayment), string(PermAuditLogView)),
+		// general_ledger_view / journal_entry_manage (DEV-177): the ledger is read
+		// by admin, accounting and auditor (the auditor reviews the books) and
+		// written by hand by admin and accounting only. Manager and dispatcher get
+		// neither — payroll and bank balances are not a dispatch-desk read.
+		UserRoleAdmin:      withExtra(string(PermTripFinancialsEdit), string(PermTripReassignCommitted), string(PermFileDeleteAny), string(PermReportsRun), string(PermReportsManage), string(PermCallsView), string(PermCallsPlay), string(PermSmsView), string(PermSmsSend), string(PermShipmentBillingApprove), string(PermAuditPlanExclusionEdit), string(PermComplianceDispatchOverride), string(PermAssetOutOfServiceOverride), string(PermTripDelete), string(PermInvoiceUnrecordPayment), string(PermAuditLogView), string(PermGeneralLedgerView), string(PermJournalEntryManage)),
 		UserRoleManager:    withExtra(string(PermTripReassignCommitted), string(PermFileDeleteAny), string(PermCallsView), string(PermCallsPlay), string(PermSmsView), string(PermSmsSend), string(PermShipmentBillingApprove), string(PermAuditPlanExclusionEdit), string(PermComplianceDispatchOverride), string(PermAssetOutOfServiceOverride), string(PermTripDelete), string(PermAuditLogView)),
-		UserRoleAccounting: withExtra(string(PermTripFinancialsEdit), string(PermReportsRun), string(PermReportsManage), string(PermShipmentBillingApprove)),
+		UserRoleAccounting: withExtra(string(PermTripFinancialsEdit), string(PermReportsRun), string(PermReportsManage), string(PermShipmentBillingApprove), string(PermGeneralLedgerView), string(PermJournalEntryManage)),
 		UserRoleFleet:      withExtra(),
 		UserRoleSafety:     withExtra(string(PermComplianceDispatchOverride)),
 		UserRoleHr:         withExtra(),
@@ -951,7 +978,7 @@ func DefaultRolePermissions() map[UserRoleEnum][]string {
 		// auditor role exists for. (DEV-2094: the code was named in the comments
 		// from the start and never actually seeded, so an auditor-only user was
 		// refused on unrecordPayment.)
-		UserRoleAuditor:    withExtra(string(PermInvoiceUnrecordPayment), string(PermAuditLogView)),
+		UserRoleAuditor:    withExtra(string(PermInvoiceUnrecordPayment), string(PermAuditLogView), string(PermGeneralLedgerView)),
 		UserRoleDispatcher: withExtra(string(PermCallsView), string(PermCallsPlay), string(PermSmsView), string(PermSmsSend)),
 		UserRoleDriver:     withExtra(),
 		UserRoleOther:      withExtra(),

@@ -47,6 +47,21 @@ const (
 	PermChartOfAccountsView UserPermissionEnum = "settings.chart_of_accounts.view"
 	PermChartOfAccountsEdit UserPermissionEnum = "settings.chart_of_accounts.edit"
 
+	// DEV-174 accounts payable — vendors and the bills they send. Hierarchical
+	// under `accounting` like accounting.invoices: CRUD refuses only a custom
+	// role. `pay` records and voids a bill payment. Approving a bill is NOT a
+	// leaf here — it is the flat vendor_bill_approve_level_1..3 below, because an
+	// approval must be refusable to a built-in role.
+	PermVendorsView       UserPermissionEnum = "accounting.vendors.view"
+	PermVendorsCreate     UserPermissionEnum = "accounting.vendors.create"
+	PermVendorsEdit       UserPermissionEnum = "accounting.vendors.edit"
+	PermVendorsDelete     UserPermissionEnum = "accounting.vendors.delete"
+	PermVendorBillsView   UserPermissionEnum = "accounting.vendor_bills.view"
+	PermVendorBillsCreate UserPermissionEnum = "accounting.vendor_bills.create"
+	PermVendorBillsEdit   UserPermissionEnum = "accounting.vendor_bills.edit"
+	PermVendorBillsDelete UserPermissionEnum = "accounting.vendor_bills.delete"
+	PermVendorBillsPay    UserPermissionEnum = "accounting.vendor_bills.pay"
+
 	// DEV-2240 asset charges — the money a truck or trailer costs (truck payment,
 	// trailer rent, a damage bill) and the case work around it. Hierarchical under
 	// the `fleet` module, exactly like fleet.trucks / fleet.trailers next door, so
@@ -429,6 +444,27 @@ const (
 	// journal_entry_manage to admin and accounting.
 	PermGeneralLedgerView  UserPermissionEnum = "general_ledger_view"
 	PermJournalEntryManage UserPermissionEnum = "journal_entry_manage"
+
+	// PermVendorBillApproveLevel1..3 gate approving a vendor bill at one level of
+	// the approval chain (DEV-174). Level 1 is always required; levels 2 and 3
+	// are required once the bill amount crosses the company threshold. Level N
+	// is checked by exactly code N — the service knows which level a bill is on,
+	// so holding level 3 does not approve level 1. Level 3 also guards editing
+	// the thresholds: lowering them is the same power as approving.
+	//
+	// PermVendorBillPaymentVoid gates voiding a recorded bill payment — the AP
+	// twin of PermInvoiceUnrecordPayment, seeded to the same roles for the same
+	// reason: whoever records a payment must not reverse it unaided.
+	//
+	// FLAT for the PermInvoiceUnrecordPayment reason: every built-in role holds
+	// the `accounting` module, so a dotted approval would refuse nobody.
+	//
+	// Seeded: level 1 — admin, manager, accounting; level 2 — admin, manager;
+	// level 3 — admin; payment void — admin, auditor.
+	PermVendorBillApproveLevel1 UserPermissionEnum = "vendor_bill_approve_level_1"
+	PermVendorBillApproveLevel2 UserPermissionEnum = "vendor_bill_approve_level_2"
+	PermVendorBillApproveLevel3 UserPermissionEnum = "vendor_bill_approve_level_3"
+	PermVendorBillPaymentVoid   UserPermissionEnum = "vendor_bill_payment_void"
 )
 
 // PermissionCatalogEntry describes one row written to the permissions table.
@@ -545,6 +581,10 @@ var PermissionCatalog = []PermissionCatalogEntry{
 	{Code: "accounting.statement_other_pay", ParentCode: "accounting", Label: "Statement other pay", Actions: []string{"create", "edit", "delete"}},
 	{Code: "accounting.statement_balance_entries", ParentCode: "accounting", Label: "Statement balance entries", Actions: []string{"create", "edit", "delete"}},
 	{Code: "accounting.comments", ParentCode: "accounting", Label: "Statement comments", Actions: []string{"view", "create"}},
+	// DEV-174: accounts payable. Approval is the flat vendor_bill_approve_level_N,
+	// not an action here.
+	{Code: "accounting.vendors", ParentCode: "accounting", Label: "Vendors", Actions: []string{"view", "create", "edit", "delete"}},
+	{Code: "accounting.vendor_bills", ParentCode: "accounting", Label: "Vendor bills", Actions: []string{"view", "create", "edit", "delete", "pay"}},
 
 	// === customers entities ===
 	{Code: "customers.brokers", ParentCode: "customers", Label: "Brokers", Actions: []string{"view", "create"}},
@@ -620,6 +660,10 @@ var CustomPermissionCatalog = []CustomPermissionEntry{
 	{Code: string(PermAuditLogView), Label: "View the company activity log"},
 	{Code: string(PermGeneralLedgerView), Label: "View the general ledger and trial balance"},
 	{Code: string(PermJournalEntryManage), Label: "Create, post and reverse manual journal entries"},
+	{Code: string(PermVendorBillApproveLevel1), Label: "Approve vendor bills: level 1"},
+	{Code: string(PermVendorBillApproveLevel2), Label: "Approve vendor bills: level 2"},
+	{Code: string(PermVendorBillApproveLevel3), Label: "Approve vendor bills: level 3 and edit approval thresholds"},
+	{Code: string(PermVendorBillPaymentVoid), Label: "Void a payment on a vendor bill"},
 }
 
 // CustomPermissionCodes returns just the flat custom permission codes, in
@@ -964,9 +1008,14 @@ func DefaultRolePermissions() map[UserRoleEnum][]string {
 		// by admin, accounting and auditor (the auditor reviews the books) and
 		// written by hand by admin and accounting only. Manager and dispatcher get
 		// neither — payroll and bank balances are not a dispatch-desk read.
-		UserRoleAdmin:      withExtra(string(PermTripFinancialsEdit), string(PermTripReassignCommitted), string(PermFileDeleteAny), string(PermReportsRun), string(PermReportsManage), string(PermCallsView), string(PermCallsPlay), string(PermSmsView), string(PermSmsSend), string(PermShipmentBillingApprove), string(PermAuditPlanExclusionEdit), string(PermComplianceDispatchOverride), string(PermAssetOutOfServiceOverride), string(PermTripDelete), string(PermInvoiceUnrecordPayment), string(PermAuditLogView), string(PermGeneralLedgerView), string(PermJournalEntryManage)),
-		UserRoleManager:    withExtra(string(PermTripReassignCommitted), string(PermFileDeleteAny), string(PermCallsView), string(PermCallsPlay), string(PermSmsView), string(PermSmsSend), string(PermShipmentBillingApprove), string(PermAuditPlanExclusionEdit), string(PermComplianceDispatchOverride), string(PermAssetOutOfServiceOverride), string(PermTripDelete), string(PermAuditLogView)),
-		UserRoleAccounting: withExtra(string(PermTripFinancialsEdit), string(PermReportsRun), string(PermReportsManage), string(PermShipmentBillingApprove), string(PermGeneralLedgerView), string(PermJournalEntryManage)),
+		// vendor_bill_approve_level_1..3 (DEV-174): each higher level narrows the
+		// holders — level 1 admin, manager, accounting; level 2 admin, manager;
+		// level 3 admin only. vendor_bill_payment_void mirrors
+		// invoice_unrecord_payment: admin and auditor, not accounting, which
+		// records the payment.
+		UserRoleAdmin:      withExtra(string(PermTripFinancialsEdit), string(PermTripReassignCommitted), string(PermFileDeleteAny), string(PermReportsRun), string(PermReportsManage), string(PermCallsView), string(PermCallsPlay), string(PermSmsView), string(PermSmsSend), string(PermShipmentBillingApprove), string(PermAuditPlanExclusionEdit), string(PermComplianceDispatchOverride), string(PermAssetOutOfServiceOverride), string(PermTripDelete), string(PermInvoiceUnrecordPayment), string(PermAuditLogView), string(PermGeneralLedgerView), string(PermJournalEntryManage), string(PermVendorBillApproveLevel1), string(PermVendorBillApproveLevel2), string(PermVendorBillApproveLevel3), string(PermVendorBillPaymentVoid)),
+		UserRoleManager:    withExtra(string(PermTripReassignCommitted), string(PermFileDeleteAny), string(PermCallsView), string(PermCallsPlay), string(PermSmsView), string(PermSmsSend), string(PermShipmentBillingApprove), string(PermAuditPlanExclusionEdit), string(PermComplianceDispatchOverride), string(PermAssetOutOfServiceOverride), string(PermTripDelete), string(PermAuditLogView), string(PermVendorBillApproveLevel1), string(PermVendorBillApproveLevel2)),
+		UserRoleAccounting: withExtra(string(PermTripFinancialsEdit), string(PermReportsRun), string(PermReportsManage), string(PermShipmentBillingApprove), string(PermGeneralLedgerView), string(PermJournalEntryManage), string(PermVendorBillApproveLevel1)),
 		UserRoleFleet:      withExtra(),
 		UserRoleSafety:     withExtra(string(PermComplianceDispatchOverride)),
 		UserRoleHr:         withExtra(),
@@ -978,7 +1027,7 @@ func DefaultRolePermissions() map[UserRoleEnum][]string {
 		// auditor role exists for. (DEV-2094: the code was named in the comments
 		// from the start and never actually seeded, so an auditor-only user was
 		// refused on unrecordPayment.)
-		UserRoleAuditor:    withExtra(string(PermInvoiceUnrecordPayment), string(PermAuditLogView), string(PermGeneralLedgerView)),
+		UserRoleAuditor:    withExtra(string(PermInvoiceUnrecordPayment), string(PermAuditLogView), string(PermGeneralLedgerView), string(PermVendorBillPaymentVoid)),
 		UserRoleDispatcher: withExtra(string(PermCallsView), string(PermCallsPlay), string(PermSmsView), string(PermSmsSend)),
 		UserRoleDriver:     withExtra(),
 		UserRoleOther:      withExtra(),

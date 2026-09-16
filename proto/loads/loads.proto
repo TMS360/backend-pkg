@@ -257,6 +257,44 @@ service LoadsService {
   // ResolveTruckIDs: backend-load's gRPC server runs without an
   // AuthServerInterceptor, so there is no actor to scope by.
   rpc GetLotChargebacksByDispatchers(GetLotChargebacksByDispatchersRequest) returns (GetLotChargebacksByDispatchersResponse);
+
+  // ── Fleet maintenance (backend-tasks, DEV-2252) ──────────────────────────
+  // A maintenance work order is a Task in backend-tasks, but everything it has
+  // to read or move about the equipment lives here: the odometer (DEV-2250),
+  // the ACTIVE / OUT_OF_SERVICE status (DEV-2254) and the recorded trip miles.
+  // These four RPCs are that seam. There is no GraphQL client between services,
+  // so the work order cannot reach the mutations a person uses.
+  //
+  // PERMISSIONS ARE CHECKED BY THE CALLER. backend-load's gRPC server runs
+  // without an AuthServerInterceptor, so these calls carry no actor and no
+  // perms: backend-tasks gates the work-order mutation on
+  // fleet.maintenance.manage before it ever gets here. company_id and actor_id
+  // are therefore passed explicitly on every one of them — same contract as
+  // MatchTollRows / GetLotChargebacksByDispatchers.
+
+  // The asset's current odometer, for the due calculation and the maintenance
+  // tab. An asset that has never been read is NOT an error — has_reading comes
+  // back false and the caller falls back to trip miles.
+  rpc GetAssetOdometer(GetAssetOdometerRequest) returns (GetAssetOdometerResponse);
+
+  // Record the odometer read off the meter when a work order is completed.
+  // It goes through the same guarded path as the manual recordOdometer, so a
+  // reading BELOW the one on record is refused with ODOMETER_REGRESSION unless
+  // a reason is given — the work-order form carries that reason.
+  rpc RecordAssetOdometer(RecordAssetOdometerRequest) returns (RecordAssetOdometerResponse);
+
+  // Take the asset off the road, or put it back. Called when a work order is
+  // blocked out-of-service and when the last such order clears. Calling it
+  // twice with the same status is safe and silent, exactly as the mutation is.
+  //
+  // Refuses a RETIRED asset: that one comes back through unretireAsset, and no
+  // work order may quietly resurrect it.
+  rpc SetAssetStatus(SetAssetStatusRequest) returns (SetAssetStatusResponse);
+
+  // Recorded trip miles for an asset since a date — the mileage fallback for a
+  // truck no telematics feed reaches, or whose feed has gone quiet (BL-7 §7.5).
+  // The caller adds this to the last service record's odometer.
+  rpc GetAssetTripMiles(GetAssetTripMilesRequest) returns (GetAssetTripMilesResponse);
 }
 
 message DriverHasActiveTripRequest {
@@ -1246,4 +1284,109 @@ message LotChargebackForDispatcher {
 
 message GetLotChargebacksByDispatchersResponse {
   repeated LotChargebackForDispatcher data = 1;
+}
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Fleet maintenance (DEV-2252)
+// ─────────────────────────────────────────────────────────────────────────────
+
+// MaintenanceAssetType names which kind of equipment an id refers to. Spelled
+// as the enum rather than a string so a truck id can never be read as a trailer.
+enum MaintenanceAssetType {
+  MAINTENANCE_ASSET_TYPE_UNSPECIFIED = 0;
+  MAINTENANCE_ASSET_TYPE_TRUCK = 1;
+  MAINTENANCE_ASSET_TYPE_TRAILER = 2;
+}
+
+// AssetStatus mirrors backend-load's AssetStatus. RETIRED is deliberately
+// absent from the SET direction (see SetAssetStatusRequest) but present here so
+// the response can report an asset that is already retired.
+enum AssetStatus {
+  ASSET_STATUS_UNSPECIFIED = 0;
+  ASSET_STATUS_ACTIVE = 1;
+  ASSET_STATUS_OUT_OF_SERVICE = 2;
+  ASSET_STATUS_RETIRED = 3;
+}
+
+message GetAssetOdometerRequest {
+  string company_id = 1;
+  MaintenanceAssetType asset_type = 2;
+  string asset_id = 3;
+}
+
+message GetAssetOdometerResponse {
+  // False when the asset has no reading at all. The other fields are then zero
+  // — a caller must check this rather than treat 0 miles as a real odometer.
+  bool has_reading = 1;
+  double miles = 2;
+  // When the meter was read, not when the row was written.
+  google.protobuf.Timestamp read_at = 3;
+  // Where it came from: "samsara", "manual", "trip_estimate".
+  string source = 4;
+  // True when the reading came from a gateway that has been quiet for over 48
+  // hours, i.e. the mileage is a guess and the caller should prefer trip miles.
+  bool stale = 5;
+}
+
+message RecordAssetOdometerRequest {
+  string company_id = 1;
+  string actor_id = 2;
+  MaintenanceAssetType asset_type = 3;
+  string asset_id = 4;
+  double miles = 5;
+  // When the meter was read. Empty means now; it may not be in the future.
+  google.protobuf.Timestamp read_at = 6;
+  // Why this reading is lower than the one on record. Required ONLY for a
+  // reading that goes backwards; without it such a reading is refused.
+  string reason = 7;
+}
+
+message RecordAssetOdometerResponse {
+  // The asset's CURRENT reading after the write, which is not necessarily the
+  // one just sent: a reading older than the one on record is kept in the
+  // history without becoming current.
+  double current_miles = 1;
+  // True when the write was refused because it went backwards with no reason.
+  // The caller turns this into ODOMETER_REGRESSION for the user; it is not a
+  // transport error, so it is reported in-band rather than as a gRPC status.
+  bool regression_refused = 2;
+}
+
+message SetAssetStatusRequest {
+  string company_id = 1;
+  string actor_id = 2;
+  MaintenanceAssetType asset_type = 3;
+  string asset_id = 4;
+  // ACTIVE or OUT_OF_SERVICE only. RETIRED is refused — retiring ends somebody's
+  // recurring charges and has rules of its own.
+  AssetStatus status = 5;
+  // Mandatory, recorded in the asset's history, and shown to the dispatcher who
+  // is later refused because of it. The work order names itself here.
+  string reason = 6;
+}
+
+message SetAssetStatusResponse {
+  AssetStatus status = 1;
+  // False when the asset was already in the requested status: nothing was
+  // written, no history entry added and no event published.
+  bool changed = 2;
+  // Set when the change was refused rather than applied — a retired asset. The
+  // caller decides what to tell the user; the work order itself still stands.
+  string refusal_code = 3;
+}
+
+message GetAssetTripMilesRequest {
+  string company_id = 1;
+  MaintenanceAssetType asset_type = 2;
+  string asset_id = 3;
+  // Miles are summed over trips from this instant (inclusive) to now.
+  google.protobuf.Timestamp since = 4;
+}
+
+message GetAssetTripMilesResponse {
+  double miles = 1;
+  // How many trips the figure came from. Zero trips is a legitimate answer of
+  // zero miles, not a missing one.
+  int32 trip_count = 2;
 }

@@ -1,0 +1,112 @@
+// pkg/proto/accounting/accounting.proto
+syntax = "proto3";
+
+package accounting;
+
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/TMS360/backend-pkg/proto/accounting";
+
+// AccountingService is backend-accounting's internal API.
+//
+// It exists because money has no other door: createAssetCharge and its siblings
+// are GraphQL mutations meant for a person, and there is no GraphQL client
+// between services in this fleet. The first caller is the maintenance work
+// order (backend-tasks, DEV-2252), which owes a repair charge the moment it
+// closes.
+//
+// PERMISSIONS ARE CHECKED BY THE CALLER, the same contract backend-load's gRPC
+// server carries: these calls arrive with an internal token rather than a user
+// JWT, so company_id and actor_id are passed explicitly and the calling service
+// has already gated the user action that led here.
+service AccountingService {
+  // Charge a truck or a trailer once — a repair bill, a tyre, a mirror.
+  //
+  // Where the money goes is decided by the FAULT, not by the caller: fault
+  // "driver" reaches the holder on that day and waits to be acknowledged,
+  // "dispatcher" reaches the named dispatcher, and the other three reach the
+  // company and the truck's P&L. Nobody to bill is never silently the company —
+  // it goes to the unrouted queue with a reason.
+  //
+  // NOT IDEMPOTENT. Accounting deliberately allows two identical charges (two
+  // tyres on one day is a real thing), so calling this twice posts twice. The
+  // caller owns the key: backend-tasks stores the returned charge_id on the
+  // work order and never calls again once it has one.
+  rpc CreateAssetCharge(CreateAssetChargeRequest) returns (CreateAssetChargeResponse);
+}
+
+// AssetKind names which kind of equipment carries the charge.
+enum AssetKind {
+  ASSET_KIND_UNSPECIFIED = 0;
+  ASSET_KIND_TRUCK = 1;
+  ASSET_KIND_TRAILER = 2;
+}
+
+// ChargeFault is accounting's PayEventFault, the same five words tasks uses for
+// an incident resolution. It decides the payer.
+enum ChargeFault {
+  CHARGE_FAULT_UNSPECIFIED = 0;
+  CHARGE_FAULT_EQUIPMENT = 1;
+  CHARGE_FAULT_DRIVER = 2;
+  CHARGE_FAULT_DISPATCHER = 3;
+  CHARGE_FAULT_CUSTOMER = 4;
+  CHARGE_FAULT_NONE = 5;
+}
+
+// ChargeSourceKind records where a charge came from, so a row can always be
+// walked back to the thing that caused it.
+enum ChargeSourceKind {
+  CHARGE_SOURCE_KIND_UNSPECIFIED = 0;
+  CHARGE_SOURCE_KIND_MANUAL = 1;
+  CHARGE_SOURCE_KIND_TASK = 2;
+  CHARGE_SOURCE_KIND_WORK_ORDER = 3;
+}
+
+message CreateAssetChargeRequest {
+  string company_id = 1;
+  string actor_id = 2;
+
+  AssetKind asset_type = 3;
+  string asset_id = 4;
+
+  // The accounting type by CODE, not by id: the id is per-tenant and tasks has
+  // no business knowing accounting's chart of accounts. A repair charge sends
+  // "MAINTENANCE", which the seeded catalog already carries for every tenant.
+  // An unknown code is refused rather than invented.
+  string type_code = 5;
+
+  // Must be greater than zero. A work order that cost nothing (warranty) posts
+  // no charge at all rather than a zero one.
+  double amount = 6;
+
+  // The day the money belongs to — the service date, not the day the row was
+  // written. It decides which driver held the asset and which pay period pays.
+  google.protobuf.Timestamp charge_date = 7;
+
+  ChargeFault fault = 8;
+  ChargeSourceKind source_kind = 9;
+  // The work order (or task) this came from. Required unless source_kind is
+  // manual; it is how the charge is walked back and how the caller recognises
+  // its own row.
+  string source_id = 10;
+
+  // Who was blamed, when accounting cannot work it out — that is fault
+  // "dispatcher". For fault "driver" the holder on that day is the answer and
+  // this is ignored.
+  string fault_party_id = 11;
+
+  string note = 12;
+}
+
+message CreateAssetChargeResponse {
+  // The created row. The caller stores it and treats its presence as "this work
+  // order has been charged", which is what makes a retry safe.
+  string charge_id = 1;
+  // Where the row landed: "draft", "pending_ack", "posted" or "unrouted".
+  // A driver-fault charge waits in pending_ack until somebody acknowledges it.
+  string status = 2;
+  // Set when the charge found nobody to bill and went to the unrouted queue —
+  // no crew on the asset that day, or a dispatcher with no open statement. The
+  // charge exists either way; this says a person has to route it.
+  string unrouted_reason = 3;
+}

@@ -81,6 +81,15 @@ const (
 	PermOverheadAllocationView UserPermissionEnum = "settings.overhead_allocation.view"
 	PermOverheadAllocationEdit UserPermissionEnum = "settings.overhead_allocation.edit"
 
+	// DEV-183 tax — jurisdictions, rates, customer tax profiles and IFTA rates
+	// (settings.tax), and the filings, liabilities and IFTA returns built on
+	// them (accounting.tax_filings). Hierarchical: they refuse only a custom
+	// role.
+	PermTaxSettingsView UserPermissionEnum = "settings.tax.view"
+	PermTaxSettingsEdit UserPermissionEnum = "settings.tax.edit"
+	PermTaxFilingsView  UserPermissionEnum = "accounting.tax_filings.view"
+	PermTaxFilingsEdit  UserPermissionEnum = "accounting.tax_filings.edit"
+
 	// DEV-2240 asset charges — the money a truck or trailer costs (truck payment,
 	// trailer rent, a damage bill) and the case work around it. Hierarchical under
 	// the `fleet` module, exactly like fleet.trucks / fleet.trailers next door, so
@@ -617,6 +626,7 @@ var PermissionCatalog = []PermissionCatalogEntry{
 	// DEV-181: approval is the flat expense_approve, not an action here.
 	{Code: "accounting.expenses", ParentCode: "accounting", Label: "Expenses", Actions: []string{"view", "create", "edit", "delete"}},
 	{Code: "accounting.profitability", ParentCode: "accounting", Label: "Load profitability", Actions: []string{"view", "edit"}},
+	{Code: "accounting.tax_filings", ParentCode: "accounting", Label: "Tax filings & IFTA", Actions: []string{"view", "edit"}},
 
 	// === customers entities ===
 	{Code: "customers.brokers", ParentCode: "customers", Label: "Brokers", Actions: []string{"view", "create"}},
@@ -636,6 +646,7 @@ var PermissionCatalog = []PermissionCatalogEntry{
 	{Code: "settings.chart_of_accounts", ParentCode: "settings", Label: "Chart of accounts", Actions: []string{"view", "edit"}},
 	{Code: "settings.company_cards", ParentCode: "settings", Label: "Company credit cards", Actions: []string{"view", "edit"}},
 	{Code: "settings.overhead_allocation", ParentCode: "settings", Label: "Overhead allocation", Actions: []string{"view", "edit"}},
+	{Code: "settings.tax", ParentCode: "settings", Label: "Tax", Actions: []string{"view", "edit"}},
 	{Code: "settings.office_users", ParentCode: "settings", Label: "Office users", Actions: []string{"view", "create", "edit"}},
 	{Code: "settings.office_roles", ParentCode: "settings", Label: "Office roles", Actions: []string{"view", "edit"}},
 	{Code: "settings.pdf_layouts", ParentCode: "settings", Label: "PDF layouts", Actions: []string{"view", "edit"}},

@@ -57,6 +57,14 @@ message Customer {
   //
   // Empty string only for a row saved before the field existed.
   string company_id = 9;
+  // CustomerBilling.billing_type as the enums.BillingType string
+  // (FACTORING_COMPANY / EMAIL / MANUAL / WEB_PORTAL / EDI) (DEV-2282).
+  //
+  // Absent when the customer has NO billing row yet — nobody has confirmed how
+  // this broker is billed. `factoring` alone cannot say that: it is nil both for
+  // a direct-pay broker and for an unreviewed one, and accounting must not send
+  // an unreviewed broker to the factor or park it in the direct queue.
+  optional string billing_type = 10;
 }
 
 message Factoring {

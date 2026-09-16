@@ -40,6 +40,13 @@ const (
 	PermComplianceView UserPermissionEnum = "settings.compliance.view"
 	PermComplianceEdit UserPermissionEnum = "settings.compliance.edit"
 
+	// DEV-176 chart of accounts — the company's GL account tree and the
+	// operation → account mappings automated journal entries post through.
+	// Hierarchical under `settings`, like settings.accounting_types: the module
+	// grant covers existing tenants, the leaves let a custom role narrow it.
+	PermChartOfAccountsView UserPermissionEnum = "settings.chart_of_accounts.view"
+	PermChartOfAccountsEdit UserPermissionEnum = "settings.chart_of_accounts.edit"
+
 	// DEV-2240 asset charges — the money a truck or trailer costs (truck payment,
 	// trailer rent, a damage bill) and the case work around it. Hierarchical under
 	// the `fleet` module, exactly like fleet.trucks / fleet.trailers next door, so
@@ -533,6 +540,7 @@ var PermissionCatalog = []PermissionCatalogEntry{
 	{Code: "settings.reassignment", ParentCode: "settings", Label: "Reassignment", Actions: []string{"view", "create", "edit", "delete"}},
 	{Code: "settings.reward_plans", ParentCode: "settings", Label: "Reward plans", Actions: []string{"view", "edit"}},
 	{Code: "settings.accounting_types", ParentCode: "settings", Label: "Accounting types", Actions: []string{"view", "create", "edit"}},
+	{Code: "settings.chart_of_accounts", ParentCode: "settings", Label: "Chart of accounts", Actions: []string{"view", "edit"}},
 	{Code: "settings.office_users", ParentCode: "settings", Label: "Office users", Actions: []string{"view", "create", "edit"}},
 	{Code: "settings.office_roles", ParentCode: "settings", Label: "Office roles", Actions: []string{"view", "edit"}},
 	{Code: "settings.pdf_layouts", ParentCode: "settings", Label: "PDF layouts", Actions: []string{"view", "edit"}},

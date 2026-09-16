@@ -43,6 +43,12 @@ const (
 	// old day, which is what keeps already-stored weeks readable: changing the
 	// setting must never re-cut a week that payroll has already been run on.
 	CompanySettingsGeneralKeyFirstDayOfWeekEffectiveFrom CompanySettingsGeneralKey = "first_day_of_week_effective_from"
+	// CompanySettingsGeneralKeyBrokerDefaultBillingType is the billing type a new
+	// broker's CustomerBilling starts from, so the accountant isn't asked every
+	// time. One of enums.BillingType's five values, or empty (no default — ask
+	// each time). Never backfilled and never written at broker create: the
+	// invoice-batch review reads it only as a prefill (DEV-2281).
+	CompanySettingsGeneralKeyBrokerDefaultBillingType CompanySettingsGeneralKey = "broker_default_billing_type"
 )
 
 var AllCompanySettingsGeneralKey = []CompanySettingsGeneralKey{
@@ -57,12 +63,13 @@ var AllCompanySettingsGeneralKey = []CompanySettingsGeneralKey{
 	CompanySettingsGeneralKeyEmptyMilesWorkflow,
 	CompanySettingsGeneralKeyFirstDayOfWeek,
 	CompanySettingsGeneralKeyFirstDayOfWeekEffectiveFrom,
+	CompanySettingsGeneralKeyBrokerDefaultBillingType,
 }
 
 func (e CompanySettingsGeneralKey) IsValid() bool {
 	switch e {
 	case CompanySettingsGeneralKeyLogo, CompanySettingsGeneralKeyTimezone, CompanySettingsGeneralKeyHazmatEnabled, CompanySettingsGeneralKeyReeferEnabled, CompanySettingsGeneralKeyBrokerHasVerifyShipments, CompanySettingsGeneralKeyTripAssignmentBufferHours, CompanySettingsGeneralKeySamsaraAssetTrackingEnabled, CompanySettingsGeneralKeyUseHereInRisk, CompanySettingsGeneralKeyEmptyMilesWorkflow,
-		CompanySettingsGeneralKeyFirstDayOfWeek, CompanySettingsGeneralKeyFirstDayOfWeekEffectiveFrom:
+		CompanySettingsGeneralKeyFirstDayOfWeek, CompanySettingsGeneralKeyFirstDayOfWeekEffectiveFrom, CompanySettingsGeneralKeyBrokerDefaultBillingType:
 		return true
 	}
 	return false

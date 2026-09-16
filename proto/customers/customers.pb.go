@@ -148,7 +148,15 @@ type Customer struct {
 	// are the same answer, which is how a load ends up billed to a stranger.
 	//
 	// Empty string only for a row saved before the field existed.
-	CompanyId     string `protobuf:"bytes,9,opt,name=company_id,json=companyId,proto3" json:"company_id,omitempty"`
+	CompanyId string `protobuf:"bytes,9,opt,name=company_id,json=companyId,proto3" json:"company_id,omitempty"`
+	// CustomerBilling.billing_type as the enums.BillingType string
+	// (FACTORING_COMPANY / EMAIL / MANUAL / WEB_PORTAL / EDI) (DEV-2282).
+	//
+	// Absent when the customer has NO billing row yet — nobody has confirmed how
+	// this broker is billed. `factoring` alone cannot say that: it is nil both for
+	// a direct-pay broker and for an unreviewed one, and accounting must not send
+	// an unreviewed broker to the factor or park it in the direct queue.
+	BillingType   *string `protobuf:"bytes,10,opt,name=billing_type,json=billingType,proto3,oneof" json:"billing_type,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -246,6 +254,13 @@ func (x *Customer) GetCompanyId() string {
 	return ""
 }
 
+func (x *Customer) GetBillingType() string {
+	if x != nil && x.BillingType != nil {
+		return *x.BillingType
+	}
+	return ""
+}
+
 type Factoring struct {
 	state       protoimpl.MessageState `protogen:"open.v1"`
 	CompanyName string                 `protobuf:"bytes,1,opt,name=company_name,json=companyName,proto3" json:"company_name,omitempty"`
@@ -308,7 +323,7 @@ const file_customers_customers_proto_rawDesc = "" +
 	"\x13GetCustomersRequest\x12!\n" +
 	"\fcustomer_ids\x18\x01 \x03(\tR\vcustomerIds\"I\n" +
 	"\x14GetCustomersResponse\x121\n" +
-	"\tcustomers\x18\x01 \x03(\v2\x13.customers.CustomerR\tcustomers\"\xd4\x02\n" +
+	"\tcustomers\x18\x01 \x03(\v2\x13.customers.CustomerR\tcustomers\"\x8d\x03\n" +
 	"\bCustomer\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12!\n" +
 	"\fcompany_name\x18\x02 \x01(\tR\vcompanyName\x12\x1b\n" +
@@ -319,11 +334,14 @@ const file_customers_customers_proto_rawDesc = "" +
 	"\rbilling_email\x18\a \x01(\tR\fbillingEmail\x12 \n" +
 	"\tterms_day\x18\b \x01(\x05H\x01R\btermsDay\x88\x01\x01\x12\x1d\n" +
 	"\n" +
-	"company_id\x18\t \x01(\tR\tcompanyIdB\f\n" +
+	"company_id\x18\t \x01(\tR\tcompanyId\x12&\n" +
+	"\fbilling_type\x18\n" +
+	" \x01(\tH\x02R\vbillingType\x88\x01\x01B\f\n" +
 	"\n" +
 	"_factoringB\f\n" +
 	"\n" +
-	"_terms_day\"I\n" +
+	"_terms_dayB\x0f\n" +
+	"\r_billing_type\"I\n" +
 	"\tFactoring\x12!\n" +
 	"\fcompany_name\x18\x01 \x01(\tR\vcompanyName\x12\x19\n" +
 	"\bremit_to\x18\x02 \x01(\tR\aremitTo2b\n" +

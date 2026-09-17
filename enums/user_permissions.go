@@ -47,6 +47,15 @@ const (
 	PermChartOfAccountsView UserPermissionEnum = "settings.chart_of_accounts.view"
 	PermChartOfAccountsEdit UserPermissionEnum = "settings.chart_of_accounts.edit"
 
+	// DEV-180 load profitability — per-load cost, profit and margin (view) and
+	// the manual cost lines added to a load (edit); the overhead allocation
+	// rules live under settings. Hierarchical: they refuse only a custom role,
+	// so margin and driver pay are visible to every built-in office role.
+	PermLoadProfitabilityView  UserPermissionEnum = "accounting.profitability.view"
+	PermLoadProfitabilityEdit  UserPermissionEnum = "accounting.profitability.edit"
+	PermOverheadAllocationView UserPermissionEnum = "settings.overhead_allocation.view"
+	PermOverheadAllocationEdit UserPermissionEnum = "settings.overhead_allocation.edit"
+
 	// DEV-2240 asset charges — the money a truck or trailer costs (truck payment,
 	// trailer rent, a damage bill) and the case work around it. Hierarchical under
 	// the `fleet` module, exactly like fleet.trucks / fleet.trailers next door, so
@@ -524,6 +533,7 @@ var PermissionCatalog = []PermissionCatalogEntry{
 	{Code: "accounting.statement_other_pay", ParentCode: "accounting", Label: "Statement other pay", Actions: []string{"create", "edit", "delete"}},
 	{Code: "accounting.statement_balance_entries", ParentCode: "accounting", Label: "Statement balance entries", Actions: []string{"create", "edit", "delete"}},
 	{Code: "accounting.comments", ParentCode: "accounting", Label: "Statement comments", Actions: []string{"view", "create"}},
+	{Code: "accounting.profitability", ParentCode: "accounting", Label: "Load profitability", Actions: []string{"view", "edit"}},
 
 	// === customers entities ===
 	{Code: "customers.brokers", ParentCode: "customers", Label: "Brokers", Actions: []string{"view", "create"}},
@@ -541,6 +551,7 @@ var PermissionCatalog = []PermissionCatalogEntry{
 	{Code: "settings.reward_plans", ParentCode: "settings", Label: "Reward plans", Actions: []string{"view", "edit"}},
 	{Code: "settings.accounting_types", ParentCode: "settings", Label: "Accounting types", Actions: []string{"view", "create", "edit"}},
 	{Code: "settings.chart_of_accounts", ParentCode: "settings", Label: "Chart of accounts", Actions: []string{"view", "edit"}},
+	{Code: "settings.overhead_allocation", ParentCode: "settings", Label: "Overhead allocation", Actions: []string{"view", "edit"}},
 	{Code: "settings.office_users", ParentCode: "settings", Label: "Office users", Actions: []string{"view", "create", "edit"}},
 	{Code: "settings.office_roles", ParentCode: "settings", Label: "Office roles", Actions: []string{"view", "edit"}},
 	{Code: "settings.pdf_layouts", ParentCode: "settings", Label: "PDF layouts", Actions: []string{"view", "edit"}},

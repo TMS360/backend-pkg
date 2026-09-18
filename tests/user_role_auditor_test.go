@@ -64,10 +64,12 @@ func TestUserRoleAuditor_GetsTheModuleBaseline(t *testing.T) {
 	assert.ElementsMatch(t,
 		append(enums.ModulePermissionCodes(),
 			string(enums.PermInvoiceUnrecordPayment),
-			string(enums.PermAuditLogView)),
+			string(enums.PermAuditLogView),
+			string(enums.PermGeneralLedgerView),
+			string(enums.PermVendorBillPaymentVoid)),
 		perms,
 		"baseline plus the governed codes seeded to the auditor: DEV-2038's "+
-			"correction and DEV-2220's activity-log read; every other auditor "+
+			"correction, DEV-2220's activity-log read and DEV-177's ledger read, DEV-174's bill payment void; every other auditor "+
 			"power is role-gated, not permission-gated")
 }
 
@@ -81,6 +83,8 @@ func TestUserRoleAuditor_HoldsOnlyTheSeededCustomCodes(t *testing.T) {
 	seeded := map[string]struct{}{
 		string(enums.PermInvoiceUnrecordPayment): {}, // DEV-2038
 		string(enums.PermAuditLogView):           {}, // DEV-2220
+		string(enums.PermGeneralLedgerView):      {}, // DEV-177
+		string(enums.PermVendorBillPaymentVoid):  {}, // DEV-174
 	}
 	for code := range seeded {
 		assert.Contains(t, perms, code)

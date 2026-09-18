@@ -4181,8 +4181,16 @@ type ShipmentBillingItem struct {
 	McNumber             string `protobuf:"bytes,18,opt,name=mc_number,json=mcNumber,proto3" json:"mc_number,omitempty"`
 	FactoringCompanyName string `protobuf:"bytes,19,opt,name=factoring_company_name,json=factoringCompanyName,proto3" json:"factoring_company_name,omitempty"`
 	FactoringRemitTo     string `protobuf:"bytes,20,opt,name=factoring_remit_to,json=factoringRemitTo,proto3" json:"factoring_remit_to,omitempty"`
-	unknownFields        protoimpl.UnknownFields
-	sizeCache            protoimpl.SizeCache
+	// DEV-2301. Set when the load was copied from a broker offer; "" when the
+	// office created it. Accounting refuses to take a load back out of TONU in
+	// that case — the broker has to offer it again, and reviving the carrier's
+	// copy on its own would leave the two systems disagreeing about who has it.
+	// Empty on older backend-load payloads, which reads as "not from a broker":
+	// the guard then lets the restore through, which is the pre-DEV-2301
+	// behaviour rather than a new false refusal.
+	BrokerOfferId string `protobuf:"bytes,24,opt,name=broker_offer_id,json=brokerOfferId,proto3" json:"broker_offer_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *ShipmentBillingItem) Reset() {
@@ -4372,6 +4380,13 @@ func (x *ShipmentBillingItem) GetFactoringCompanyName() string {
 func (x *ShipmentBillingItem) GetFactoringRemitTo() string {
 	if x != nil {
 		return x.FactoringRemitTo
+	}
+	return ""
+}
+
+func (x *ShipmentBillingItem) GetBrokerOfferId() string {
+	if x != nil {
+		return x.BrokerOfferId
 	}
 	return ""
 }
@@ -7450,7 +7465,7 @@ const file_loads_loads_proto_rawDesc = "" +
 	"company_id\x18\x01 \x01(\tR\tcompanyId\x12!\n" +
 	"\fshipment_ids\x18\x02 \x03(\tR\vshipmentIds\"U\n" +
 	"\x19GetShipmentsByIDsResponse\x128\n" +
-	"\tshipments\x18\x01 \x03(\v2\x1a.loads.ShipmentBillingItemR\tshipments\"\xe3\a\n" +
+	"\tshipments\x18\x01 \x03(\v2\x1a.loads.ShipmentBillingItemR\tshipments\"\x8b\b\n" +
 	"\x13ShipmentBillingItem\x12\x1f\n" +
 	"\vshipment_id\x18\x01 \x01(\tR\n" +
 	"shipmentId\x12\x1c\n" +
@@ -7480,7 +7495,8 @@ const file_loads_loads_proto_rawDesc = "" +
 	"\fbilling_type\x18\x11 \x01(\tR\vbillingType\x12\x1b\n" +
 	"\tmc_number\x18\x12 \x01(\tR\bmcNumber\x124\n" +
 	"\x16factoring_company_name\x18\x13 \x01(\tR\x14factoringCompanyName\x12,\n" +
-	"\x12factoring_remit_to\x18\x14 \x01(\tR\x10factoringRemitToB\n" +
+	"\x12factoring_remit_to\x18\x14 \x01(\tR\x10factoringRemitTo\x12&\n" +
+	"\x0fbroker_offer_id\x18\x18 \x01(\tR\rbrokerOfferIdB\n" +
 	"\n" +
 	"\b_load_idB\f\n" +
 	"\n" +

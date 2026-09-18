@@ -857,6 +857,15 @@ message ShipmentBillingItem {
   string mc_number              = 18;
   string factoring_company_name = 19;
   string factoring_remit_to     = 20;
+
+  // DEV-2301. Set when the load was copied from a broker offer; "" when the
+  // office created it. Accounting refuses to take a load back out of TONU in
+  // that case — the broker has to offer it again, and reviving the carrier's
+  // copy on its own would leave the two systems disagreeing about who has it.
+  // Empty on older backend-load payloads, which reads as "not from a broker":
+  // the guard then lets the restore through, which is the pre-DEV-2301
+  // behaviour rather than a new false refusal.
+  string broker_offer_id        = 24;
 }
 
 // One stop of a shipment's route (one leg), for the full multi-stop invoice

@@ -525,6 +525,14 @@ var PermissionCatalog = []PermissionCatalogEntry{
 	{Code: "accounting.invoices", ParentCode: "accounting", Label: "Invoices", Actions: []string{"view", "create", "edit"}},
 	{Code: "accounting.invoice_batches", ParentCode: "accounting", Label: "Invoice batches", Actions: []string{"view", "create", "edit"}},
 	{Code: "accounting.credit_memos", ParentCode: "accounting", Label: "Credit memos", Actions: []string{"view", "create"}},
+	// accounting.credit (DEV-178): the customer credit profile — limit, manual
+	// hold, collections escalation, write-off and the collections log. `edit`
+	// changes the profile and appends to the log; `override` lifts an active
+	// credit hold for a bounded number of days (an approval-level power kept
+	// apart from `edit` so an AR clerk can flag risk without being able to wave
+	// freight through). Reads ride accounting.invoices.view — the credit panel
+	// sits on the same customer card as the invoice stats.
+	{Code: "accounting.credit", ParentCode: "accounting", Label: "Customer credit", Actions: []string{"edit", "override"}},
 	{Code: "accounting.billing", ParentCode: "accounting", Label: "Billing", Actions: []string{"view"}},
 	{Code: "accounting.pay_batches", ParentCode: "accounting", Label: "Pay batches", Actions: []string{"view", "create", "edit", "delete"}},
 	{Code: "accounting.pay_statements", ParentCode: "accounting", Label: "Pay statements", Actions: []string{"view", "create", "edit", "delete"}},

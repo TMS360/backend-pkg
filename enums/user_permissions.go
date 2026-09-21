@@ -40,6 +40,21 @@ const (
 	PermComplianceView UserPermissionEnum = "settings.compliance.view"
 	PermComplianceEdit UserPermissionEnum = "settings.compliance.edit"
 
+	// DEV-2349 truck & trailer status dictionary — who may edit the company's own
+	// list of asset statuses (DEV-2350 owns the list itself). Hierarchical under
+	// `settings`, deliberately the same shape as settings.load_status: the module
+	// row every existing tenant already holds implies all four leaves, so an
+	// existing company's admin sees the family ticked on the Roles page with no
+	// back-fill, and a custom role can still be narrowed leaf by leaf.
+	//
+	// Setting a status ON a truck stays fleet.maintenance.manage, and dispatching
+	// an out-of-service asset anyway stays asset_out_of_service_override
+	// (DEV-2254) — neither moves here.
+	PermAssetStatusView   UserPermissionEnum = "settings.asset_status.view"
+	PermAssetStatusCreate UserPermissionEnum = "settings.asset_status.create"
+	PermAssetStatusEdit   UserPermissionEnum = "settings.asset_status.edit"
+	PermAssetStatusDelete UserPermissionEnum = "settings.asset_status.delete"
+
 	// DEV-176 chart of accounts — the company's GL account tree and the
 	// operation → account mappings automated journal entries post through.
 	// Hierarchical under `settings`, like settings.accounting_types: the module
@@ -647,6 +662,10 @@ var PermissionCatalog = []PermissionCatalogEntry{
 	{Code: "settings.driver_app", ParentCode: "settings", Label: "Driver app config", Actions: []string{"view", "edit"}},
 	{Code: "settings.driver_tariffs", ParentCode: "settings", Label: "Driver tariffs", Actions: []string{"view", "create", "edit", "delete"}},
 	{Code: "settings.load_status", ParentCode: "settings", Label: "Load status settings", Actions: []string{"view", "create", "edit", "delete"}},
+	// DEV-2349: the company-editable truck & trailer status list (DEV-2350).
+	// Same shape as the load status list above; see PermAssetStatus* for why no
+	// per-role seeding or back-fill is needed.
+	{Code: "settings.asset_status", ParentCode: "settings", Label: "Truck & trailer status settings", Actions: []string{"view", "create", "edit", "delete"}},
 	{Code: "settings.integration", ParentCode: "settings", Label: "Integrations", Actions: []string{"view", "edit"}},
 	{Code: "settings.reassignment", ParentCode: "settings", Label: "Reassignment", Actions: []string{"view", "create", "edit", "delete"}},
 	{Code: "settings.reward_plans", ParentCode: "settings", Label: "Reward plans", Actions: []string{"view", "edit"}},

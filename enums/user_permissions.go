@@ -446,6 +446,27 @@ const (
 	// is a supervisory correction.
 	PermInvoiceUnrecordPayment UserPermissionEnum = "invoice_unrecord_payment"
 
+	// PermInvoiceRecordPayment gates recording that the customer paid a SENT
+	// invoice (DEV-2366) — the single recordPayment and the bulk recordPayments,
+	// which share one internal path. It is the twin of PermInvoiceUnrecordPayment
+	// above: recording closes an invoice, un-recording reopens it, and the two
+	// stay separate codes so neither move is one person's unilateral round trip.
+	//
+	// FLAT, and this one is a FIX rather than a fresh design. The mutation shipped
+	// gated on `accounting.invoices.record_payment`, which is not a leaf of the
+	// `accounting.invoices` catalog entry (its Actions are view/create/edit) and is
+	// therefore not even grantable — yet it never refused anyone, because
+	// HasPermission splits the required code on "." and matches any prefix, so the
+	// bare `accounting` module satisfied it. ModulePermissionCodes() hands that
+	// module to every built-in role at signup, so in practice every office user
+	// could close an invoice, dispatcher included. A flat code carries no dots,
+	// degenerates to exact match, and is default-deny until granted.
+	//
+	// Seeded to admin, manager and accounting — the desks that collect money.
+	// Dispatcher deliberately does NOT hold it; a tenant that wants it wider ticks
+	// it on in Settings -> Roles.
+	PermInvoiceRecordPayment UserPermissionEnum = "invoice_record_payment"
+
 	// PermAuditLogView gates reading the COMPANY activity log — tms-audit's
 	// `getAudits` (DEV-2220). Until this code existed the tenant log was gated by
 	// ROLE (`@hasRole(roles: ["admin", "auditor"])`), so there was no checkbox an
@@ -729,6 +750,7 @@ var CustomPermissionCatalog = []CustomPermissionEntry{
 	{Code: string(PermAssetOutOfServiceOverride), Label: "Dispatch an out-of-service truck or trailer"},
 	{Code: string(PermTripDelete), Label: "Delete a trip from a load"},
 	{Code: string(PermInvoiceUnrecordPayment), Label: "Un-record a customer payment on an invoice"},
+	{Code: string(PermInvoiceRecordPayment), Label: "Record a customer payment on an invoice"},
 	{Code: string(PermAuditLogView), Label: "View the company activity log"},
 	{Code: string(PermGeneralLedgerView), Label: "View the general ledger and trial balance"},
 	{Code: string(PermJournalEntryManage), Label: "Create, post and reverse manual journal entries"},
@@ -1088,9 +1110,14 @@ func DefaultRolePermissions() map[UserRoleEnum][]string {
 		// records the payment.
 		// expense_approve (DEV-181): admin and accounting. Manager and dispatcher
 		// enter expenses but do not approve them.
-		UserRoleAdmin:      withExtra(string(PermTripFinancialsEdit), string(PermTripReassignCommitted), string(PermFileDeleteAny), string(PermReportsRun), string(PermReportsManage), string(PermCallsView), string(PermCallsPlay), string(PermSmsView), string(PermSmsSend), string(PermShipmentBillingApprove), string(PermAuditPlanExclusionEdit), string(PermComplianceDispatchOverride), string(PermAssetOutOfServiceOverride), string(PermTripDelete), string(PermInvoiceUnrecordPayment), string(PermAuditLogView), string(PermGeneralLedgerView), string(PermJournalEntryManage), string(PermVendorBillApproveLevel1), string(PermVendorBillApproveLevel2), string(PermVendorBillApproveLevel3), string(PermVendorBillPaymentVoid), string(PermExpenseApprove)),
-		UserRoleManager:    withExtra(string(PermTripReassignCommitted), string(PermFileDeleteAny), string(PermCallsView), string(PermCallsPlay), string(PermSmsView), string(PermSmsSend), string(PermShipmentBillingApprove), string(PermAuditPlanExclusionEdit), string(PermComplianceDispatchOverride), string(PermAssetOutOfServiceOverride), string(PermTripDelete), string(PermAuditLogView), string(PermVendorBillApproveLevel1), string(PermVendorBillApproveLevel2)),
-		UserRoleAccounting: withExtra(string(PermTripFinancialsEdit), string(PermReportsRun), string(PermReportsManage), string(PermShipmentBillingApprove), string(PermGeneralLedgerView), string(PermJournalEntryManage), string(PermVendorBillApproveLevel1), string(PermExpenseApprove)),
+		// invoice_record_payment (DEV-2366): admin, manager and accounting — the
+		// desks that collect money. NOT dispatcher: the mutation was effectively
+		// open to every office role until this code existed, because its old dotted
+		// spelling was satisfied by the `accounting` module. NOT auditor either;
+		// the auditor's move is the reverse one, invoice_unrecord_payment.
+		UserRoleAdmin:      withExtra(string(PermTripFinancialsEdit), string(PermTripReassignCommitted), string(PermFileDeleteAny), string(PermReportsRun), string(PermReportsManage), string(PermCallsView), string(PermCallsPlay), string(PermSmsView), string(PermSmsSend), string(PermShipmentBillingApprove), string(PermAuditPlanExclusionEdit), string(PermComplianceDispatchOverride), string(PermAssetOutOfServiceOverride), string(PermTripDelete), string(PermInvoiceUnrecordPayment), string(PermAuditLogView), string(PermGeneralLedgerView), string(PermJournalEntryManage), string(PermVendorBillApproveLevel1), string(PermVendorBillApproveLevel2), string(PermVendorBillApproveLevel3), string(PermVendorBillPaymentVoid), string(PermExpenseApprove), string(PermInvoiceRecordPayment)),
+		UserRoleManager:    withExtra(string(PermTripReassignCommitted), string(PermFileDeleteAny), string(PermCallsView), string(PermCallsPlay), string(PermSmsView), string(PermSmsSend), string(PermShipmentBillingApprove), string(PermAuditPlanExclusionEdit), string(PermComplianceDispatchOverride), string(PermAssetOutOfServiceOverride), string(PermTripDelete), string(PermAuditLogView), string(PermVendorBillApproveLevel1), string(PermVendorBillApproveLevel2), string(PermInvoiceRecordPayment)),
+		UserRoleAccounting: withExtra(string(PermTripFinancialsEdit), string(PermReportsRun), string(PermReportsManage), string(PermShipmentBillingApprove), string(PermGeneralLedgerView), string(PermJournalEntryManage), string(PermVendorBillApproveLevel1), string(PermExpenseApprove), string(PermInvoiceRecordPayment)),
 		UserRoleFleet:      withExtra(),
 		UserRoleSafety:     withExtra(string(PermComplianceDispatchOverride)),
 		UserRoleHr:         withExtra(),

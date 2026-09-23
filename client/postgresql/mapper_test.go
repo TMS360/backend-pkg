@@ -15,20 +15,37 @@ func TestAsPublicError(t *testing.T) {
 	const constraintName = "orders_customer_id_fkey"
 
 	cases := []struct {
-		name       string
-		code       string
-		wantStatus int
+		name        string
+		code        string
+		detail      string
+		wantStatus  int
+		wantMessage string
 	}{
-		{"foreign key", PgForeignKeyViolationCode, http.StatusBadRequest},
-		{"unique", PgUniqueViolationCode, http.StatusConflict},
-		{"exclusion", PgExclusionViolationCode, http.StatusConflict},
-		{"check", PgCheckViolationCode, http.StatusBadRequest},
-		{"not null", PgNotNullViolationCode, http.StatusBadRequest},
+		// Insert-side FK: the referenced parent row does not exist.
+		{
+			name:        "foreign key insert-side (not present)",
+			code:        PgForeignKeyViolationCode,
+			detail:      "Key (customer_id)=(99) is not present in table \"customers\".",
+			wantStatus:  http.StatusBadRequest,
+			wantMessage: "A referenced record was not found.",
+		},
+		// Delete-side FK: the row being deleted is still referenced by a child row.
+		{
+			name:        "foreign key delete-side (still referenced)",
+			code:        PgForeignKeyViolationCode,
+			detail:      "Key (id)=(1) is still referenced from table \"external_fuel_applications\".",
+			wantStatus:  http.StatusBadRequest,
+			wantMessage: "This record cannot be deleted because it is still in use.",
+		},
+		{"unique", PgUniqueViolationCode, "", http.StatusConflict, ""},
+		{"exclusion", PgExclusionViolationCode, "", http.StatusConflict, ""},
+		{"check", PgCheckViolationCode, "", http.StatusBadRequest, ""},
+		{"not null", PgNotNullViolationCode, "", http.StatusBadRequest, ""},
 	}
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			pub, ok := AsPublicError(&pgconn.PgError{Code: tc.code, ConstraintName: constraintName})
+			pub, ok := AsPublicError(&pgconn.PgError{Code: tc.code, ConstraintName: constraintName, Detail: tc.detail})
 			if !ok {
 				t.Fatalf("AsPublicError(code=%s) ok = false, want true", tc.code)
 			}
@@ -45,6 +62,9 @@ func TestAsPublicError(t *testing.T) {
 			}
 			if strings.Contains(msg, constraintName) {
 				t.Errorf("UserMessage() = %q leaks constraint name %q", msg, constraintName)
+			}
+			if tc.wantMessage != "" && msg != tc.wantMessage {
+				t.Errorf("UserMessage() = %q, want %q", msg, tc.wantMessage)
 			}
 
 			// The constraint name must still be available for ops in the technical message.

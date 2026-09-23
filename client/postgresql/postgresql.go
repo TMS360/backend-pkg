@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"strings"
 	"time"
 
 	"github.com/TMS360/backend-pkg/config"
@@ -174,6 +175,15 @@ func AsPublicError(err error) (response.PublicError, bool) {
 
 	switch pgErr.Code {
 	case PgForeignKeyViolationCode:
+		// PostgreSQL populates Detail with "... is still referenced from table X"
+		// for delete-side violations and "... is not present in table X" for
+		// insert-side violations. Return a semantically correct message for each.
+		if strings.Contains(pgErr.Detail, "still referenced from") {
+			return response.NewBadRequest(
+				"foreign key violation: "+pgErr.ConstraintName,
+				"This record cannot be deleted because it is still in use.",
+			), true
+		}
 		return response.NewBadRequest(
 			"foreign key violation: "+pgErr.ConstraintName,
 			"A referenced record was not found.",

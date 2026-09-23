@@ -163,6 +163,17 @@ const (
 	PermTasksTransition UserPermissionEnum = "tasks.tasks.transition"
 	PermTasksReopen     UserPermissionEnum = "tasks.tasks.reopen"
 
+	// PermTasksDutiesManage gates the ROUTINE template (DEV-2385): create, edit,
+	// pause and resume of the standing duties a company repeats ("check ELD
+	// violations every weekday morning"). Reading routines needs only
+	// PermTasksView — a duty nobody may edit is still a duty everybody sees.
+	//
+	// Its own entity rather than a sixth action on tasks.tasks, for the same
+	// reason tasks.incidents is: writing the rule that opens work for a whole
+	// team every morning is a supervisor decision, not the same authority as
+	// creating one task.
+	PermTasksDutiesManage UserPermissionEnum = "tasks.duties.manage"
+
 	// Workspaces & custom boards module (backend-workspaces). These grants gate
 	// the GraphQL surface only; board/workspace data visibility additionally
 	// requires workspace membership (workspace_members roles, enforced in the
@@ -583,6 +594,11 @@ var PermissionCatalog = []PermissionCatalogEntry{
 	// tasks.tasks — a company can hand incident closure to its case handlers
 	// without handing them every task transition.
 	{Code: "tasks.incidents", ParentCode: "tasks", Label: "Incidents", Actions: []string{"resolve"}},
+	// DEV-2385: routines ("standing duties") are templates that open one task per
+	// period. Managing them is a dotted entity under the `tasks` module, so every
+	// tenant's admin/manager already holds it through the module baseline and no
+	// back-fill migration is needed — only FLAT custom codes are default-deny.
+	{Code: "tasks.duties", ParentCode: "tasks", Label: "Routines", Actions: []string{"manage"}},
 
 	// === workspaces entities (backend-workspaces custom boards) ===
 	{Code: "workspaces.workspaces", ParentCode: "workspaces", Label: "Workspaces", Actions: []string{"view", "create", "edit", "delete"}},

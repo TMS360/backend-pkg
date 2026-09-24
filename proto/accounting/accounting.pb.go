@@ -401,6 +401,231 @@ func (x *CreateAssetChargeResponse) GetUnroutedReason() string {
 	return ""
 }
 
+type ListTruckWeeklyPnLRequest struct {
+	state     protoimpl.MessageState `protogen:"open.v1"`
+	CompanyId string                 `protobuf:"bytes,1,opt,name=company_id,json=companyId,proto3" json:"company_id,omitempty"`
+	// The window is [from, to): a statement belongs to it by the day its period
+	// starts, a truck charge by its charge date.
+	From *timestamppb.Timestamp `protobuf:"bytes,2,opt,name=from,proto3" json:"from,omitempty"`
+	To   *timestamppb.Timestamp `protobuf:"bytes,3,opt,name=to,proto3" json:"to,omitempty"`
+	// Empty = every truck of the company.
+	TruckIds      []string `protobuf:"bytes,4,rep,name=truck_ids,json=truckIds,proto3" json:"truck_ids,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListTruckWeeklyPnLRequest) Reset() {
+	*x = ListTruckWeeklyPnLRequest{}
+	mi := &file_accounting_accounting_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListTruckWeeklyPnLRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListTruckWeeklyPnLRequest) ProtoMessage() {}
+
+func (x *ListTruckWeeklyPnLRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_accounting_accounting_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListTruckWeeklyPnLRequest.ProtoReflect.Descriptor instead.
+func (*ListTruckWeeklyPnLRequest) Descriptor() ([]byte, []int) {
+	return file_accounting_accounting_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *ListTruckWeeklyPnLRequest) GetCompanyId() string {
+	if x != nil {
+		return x.CompanyId
+	}
+	return ""
+}
+
+func (x *ListTruckWeeklyPnLRequest) GetFrom() *timestamppb.Timestamp {
+	if x != nil {
+		return x.From
+	}
+	return nil
+}
+
+func (x *ListTruckWeeklyPnLRequest) GetTo() *timestamppb.Timestamp {
+	if x != nil {
+		return x.To
+	}
+	return nil
+}
+
+func (x *ListTruckWeeklyPnLRequest) GetTruckIds() []string {
+	if x != nil {
+		return x.TruckIds
+	}
+	return nil
+}
+
+// TruckWeekPnL is one truck's week: what it earned and where that went.
+type TruckWeekPnL struct {
+	state   protoimpl.MessageState `protogen:"open.v1"`
+	TruckId string                 `protobuf:"bytes,1,opt,name=truck_id,json=truckId,proto3" json:"truck_id,omitempty"`
+	// Monday of the ISO week the row is bucketed on (date_trunc('week')). A
+	// company whose week starts on another day should read its week as a
+	// [from, to) window and add up the rows, not match on this label.
+	WeekStart *timestamppb.Timestamp `protobuf:"bytes,2,opt,name=week_start,json=weekStart,proto3" json:"week_start,omitempty"`
+	Revenue   float64                `protobuf:"fixed64,3,opt,name=revenue,proto3" json:"revenue,omitempty"`
+	// What the company paid the drivers on this truck.
+	DriverCost float64 `protobuf:"fixed64,4,opt,name=driver_cost,json=driverCost,proto3" json:"driver_cost,omitempty"`
+	// What the owner was owed.
+	OwnerPay float64 `protobuf:"fixed64,5,opt,name=owner_pay,json=ownerPay,proto3" json:"owner_pay,omitempty"`
+	// Deductions taken on the owner's settlement for this truck.
+	Deductions float64 `protobuf:"fixed64,6,opt,name=deductions,proto3" json:"deductions,omitempty"`
+	// What the carrier itself paid for this truck (DEV-2241).
+	AssetCosts float64 `protobuf:"fixed64,7,opt,name=asset_costs,json=assetCosts,proto3" json:"asset_costs,omitempty"`
+	// revenue − driver_cost − owner_pay − asset_costs, derived by accounting so a
+	// caller never carries the formula. Negative is a real answer.
+	CompanyShare  float64 `protobuf:"fixed64,8,opt,name=company_share,json=companyShare,proto3" json:"company_share,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *TruckWeekPnL) Reset() {
+	*x = TruckWeekPnL{}
+	mi := &file_accounting_accounting_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TruckWeekPnL) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TruckWeekPnL) ProtoMessage() {}
+
+func (x *TruckWeekPnL) ProtoReflect() protoreflect.Message {
+	mi := &file_accounting_accounting_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TruckWeekPnL.ProtoReflect.Descriptor instead.
+func (*TruckWeekPnL) Descriptor() ([]byte, []int) {
+	return file_accounting_accounting_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *TruckWeekPnL) GetTruckId() string {
+	if x != nil {
+		return x.TruckId
+	}
+	return ""
+}
+
+func (x *TruckWeekPnL) GetWeekStart() *timestamppb.Timestamp {
+	if x != nil {
+		return x.WeekStart
+	}
+	return nil
+}
+
+func (x *TruckWeekPnL) GetRevenue() float64 {
+	if x != nil {
+		return x.Revenue
+	}
+	return 0
+}
+
+func (x *TruckWeekPnL) GetDriverCost() float64 {
+	if x != nil {
+		return x.DriverCost
+	}
+	return 0
+}
+
+func (x *TruckWeekPnL) GetOwnerPay() float64 {
+	if x != nil {
+		return x.OwnerPay
+	}
+	return 0
+}
+
+func (x *TruckWeekPnL) GetDeductions() float64 {
+	if x != nil {
+		return x.Deductions
+	}
+	return 0
+}
+
+func (x *TruckWeekPnL) GetAssetCosts() float64 {
+	if x != nil {
+		return x.AssetCosts
+	}
+	return 0
+}
+
+func (x *TruckWeekPnL) GetCompanyShare() float64 {
+	if x != nil {
+		return x.CompanyShare
+	}
+	return 0
+}
+
+type ListTruckWeeklyPnLResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Rows          []*TruckWeekPnL        `protobuf:"bytes,1,rep,name=rows,proto3" json:"rows,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListTruckWeeklyPnLResponse) Reset() {
+	*x = ListTruckWeeklyPnLResponse{}
+	mi := &file_accounting_accounting_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListTruckWeeklyPnLResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListTruckWeeklyPnLResponse) ProtoMessage() {}
+
+func (x *ListTruckWeeklyPnLResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_accounting_accounting_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListTruckWeeklyPnLResponse.ProtoReflect.Descriptor instead.
+func (*ListTruckWeeklyPnLResponse) Descriptor() ([]byte, []int) {
+	return file_accounting_accounting_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *ListTruckWeeklyPnLResponse) GetRows() []*TruckWeekPnL {
+	if x != nil {
+		return x.Rows
+	}
+	return nil
+}
+
 var File_accounting_accounting_proto protoreflect.FileDescriptor
 
 const file_accounting_accounting_proto_rawDesc = "" +
@@ -428,7 +653,29 @@ const file_accounting_accounting_proto_rawDesc = "" +
 	"\x19CreateAssetChargeResponse\x12\x1b\n" +
 	"\tcharge_id\x18\x01 \x01(\tR\bchargeId\x12\x16\n" +
 	"\x06status\x18\x02 \x01(\tR\x06status\x12'\n" +
-	"\x0funrouted_reason\x18\x03 \x01(\tR\x0eunroutedReason*U\n" +
+	"\x0funrouted_reason\x18\x03 \x01(\tR\x0eunroutedReason\"\xb3\x01\n" +
+	"\x19ListTruckWeeklyPnLRequest\x12\x1d\n" +
+	"\n" +
+	"company_id\x18\x01 \x01(\tR\tcompanyId\x12.\n" +
+	"\x04from\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\x04from\x12*\n" +
+	"\x02to\x18\x03 \x01(\v2\x1a.google.protobuf.TimestampR\x02to\x12\x1b\n" +
+	"\ttruck_ids\x18\x04 \x03(\tR\btruckIds\"\xa2\x02\n" +
+	"\fTruckWeekPnL\x12\x19\n" +
+	"\btruck_id\x18\x01 \x01(\tR\atruckId\x129\n" +
+	"\n" +
+	"week_start\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\tweekStart\x12\x18\n" +
+	"\arevenue\x18\x03 \x01(\x01R\arevenue\x12\x1f\n" +
+	"\vdriver_cost\x18\x04 \x01(\x01R\n" +
+	"driverCost\x12\x1b\n" +
+	"\towner_pay\x18\x05 \x01(\x01R\bownerPay\x12\x1e\n" +
+	"\n" +
+	"deductions\x18\x06 \x01(\x01R\n" +
+	"deductions\x12\x1f\n" +
+	"\vasset_costs\x18\a \x01(\x01R\n" +
+	"assetCosts\x12#\n" +
+	"\rcompany_share\x18\b \x01(\x01R\fcompanyShare\"J\n" +
+	"\x1aListTruckWeeklyPnLResponse\x12,\n" +
+	"\x04rows\x18\x01 \x03(\v2\x18.accounting.TruckWeekPnLR\x04rows*U\n" +
 	"\tAssetKind\x12\x1a\n" +
 	"\x16ASSET_KIND_UNSPECIFIED\x10\x00\x12\x14\n" +
 	"\x10ASSET_KIND_TRUCK\x10\x01\x12\x16\n" +
@@ -444,9 +691,10 @@ const file_accounting_accounting_proto_rawDesc = "" +
 	"\x1eCHARGE_SOURCE_KIND_UNSPECIFIED\x10\x00\x12\x1d\n" +
 	"\x19CHARGE_SOURCE_KIND_MANUAL\x10\x01\x12\x1b\n" +
 	"\x17CHARGE_SOURCE_KIND_TASK\x10\x02\x12!\n" +
-	"\x1dCHARGE_SOURCE_KIND_WORK_ORDER\x10\x032u\n" +
+	"\x1dCHARGE_SOURCE_KIND_WORK_ORDER\x10\x032\xda\x01\n" +
 	"\x11AccountingService\x12`\n" +
-	"\x11CreateAssetCharge\x12$.accounting.CreateAssetChargeRequest\x1a%.accounting.CreateAssetChargeResponseB0Z.github.com/TMS360/backend-pkg/proto/accountingb\x06proto3"
+	"\x11CreateAssetCharge\x12$.accounting.CreateAssetChargeRequest\x1a%.accounting.CreateAssetChargeResponse\x12c\n" +
+	"\x12ListTruckWeeklyPnL\x12%.accounting.ListTruckWeeklyPnLRequest\x1a&.accounting.ListTruckWeeklyPnLResponseB0Z.github.com/TMS360/backend-pkg/proto/accountingb\x06proto3"
 
 var (
 	file_accounting_accounting_proto_rawDescOnce sync.Once
@@ -461,27 +709,36 @@ func file_accounting_accounting_proto_rawDescGZIP() []byte {
 }
 
 var file_accounting_accounting_proto_enumTypes = make([]protoimpl.EnumInfo, 3)
-var file_accounting_accounting_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
+var file_accounting_accounting_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
 var file_accounting_accounting_proto_goTypes = []any{
-	(AssetKind)(0),                    // 0: accounting.AssetKind
-	(ChargeFault)(0),                  // 1: accounting.ChargeFault
-	(ChargeSourceKind)(0),             // 2: accounting.ChargeSourceKind
-	(*CreateAssetChargeRequest)(nil),  // 3: accounting.CreateAssetChargeRequest
-	(*CreateAssetChargeResponse)(nil), // 4: accounting.CreateAssetChargeResponse
-	(*timestamppb.Timestamp)(nil),     // 5: google.protobuf.Timestamp
+	(AssetKind)(0),                     // 0: accounting.AssetKind
+	(ChargeFault)(0),                   // 1: accounting.ChargeFault
+	(ChargeSourceKind)(0),              // 2: accounting.ChargeSourceKind
+	(*CreateAssetChargeRequest)(nil),   // 3: accounting.CreateAssetChargeRequest
+	(*CreateAssetChargeResponse)(nil),  // 4: accounting.CreateAssetChargeResponse
+	(*ListTruckWeeklyPnLRequest)(nil),  // 5: accounting.ListTruckWeeklyPnLRequest
+	(*TruckWeekPnL)(nil),               // 6: accounting.TruckWeekPnL
+	(*ListTruckWeeklyPnLResponse)(nil), // 7: accounting.ListTruckWeeklyPnLResponse
+	(*timestamppb.Timestamp)(nil),      // 8: google.protobuf.Timestamp
 }
 var file_accounting_accounting_proto_depIdxs = []int32{
-	0, // 0: accounting.CreateAssetChargeRequest.asset_type:type_name -> accounting.AssetKind
-	5, // 1: accounting.CreateAssetChargeRequest.charge_date:type_name -> google.protobuf.Timestamp
-	1, // 2: accounting.CreateAssetChargeRequest.fault:type_name -> accounting.ChargeFault
-	2, // 3: accounting.CreateAssetChargeRequest.source_kind:type_name -> accounting.ChargeSourceKind
-	3, // 4: accounting.AccountingService.CreateAssetCharge:input_type -> accounting.CreateAssetChargeRequest
-	4, // 5: accounting.AccountingService.CreateAssetCharge:output_type -> accounting.CreateAssetChargeResponse
-	5, // [5:6] is the sub-list for method output_type
-	4, // [4:5] is the sub-list for method input_type
-	4, // [4:4] is the sub-list for extension type_name
-	4, // [4:4] is the sub-list for extension extendee
-	0, // [0:4] is the sub-list for field type_name
+	0,  // 0: accounting.CreateAssetChargeRequest.asset_type:type_name -> accounting.AssetKind
+	8,  // 1: accounting.CreateAssetChargeRequest.charge_date:type_name -> google.protobuf.Timestamp
+	1,  // 2: accounting.CreateAssetChargeRequest.fault:type_name -> accounting.ChargeFault
+	2,  // 3: accounting.CreateAssetChargeRequest.source_kind:type_name -> accounting.ChargeSourceKind
+	8,  // 4: accounting.ListTruckWeeklyPnLRequest.from:type_name -> google.protobuf.Timestamp
+	8,  // 5: accounting.ListTruckWeeklyPnLRequest.to:type_name -> google.protobuf.Timestamp
+	8,  // 6: accounting.TruckWeekPnL.week_start:type_name -> google.protobuf.Timestamp
+	6,  // 7: accounting.ListTruckWeeklyPnLResponse.rows:type_name -> accounting.TruckWeekPnL
+	3,  // 8: accounting.AccountingService.CreateAssetCharge:input_type -> accounting.CreateAssetChargeRequest
+	5,  // 9: accounting.AccountingService.ListTruckWeeklyPnL:input_type -> accounting.ListTruckWeeklyPnLRequest
+	4,  // 10: accounting.AccountingService.CreateAssetCharge:output_type -> accounting.CreateAssetChargeResponse
+	7,  // 11: accounting.AccountingService.ListTruckWeeklyPnL:output_type -> accounting.ListTruckWeeklyPnLResponse
+	10, // [10:12] is the sub-list for method output_type
+	8,  // [8:10] is the sub-list for method input_type
+	8,  // [8:8] is the sub-list for extension type_name
+	8,  // [8:8] is the sub-list for extension extendee
+	0,  // [0:8] is the sub-list for field type_name
 }
 
 func init() { file_accounting_accounting_proto_init() }
@@ -495,7 +752,7 @@ func file_accounting_accounting_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_accounting_accounting_proto_rawDesc), len(file_accounting_accounting_proto_rawDesc)),
 			NumEnums:      3,
-			NumMessages:   2,
+			NumMessages:   5,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

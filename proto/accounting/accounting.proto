@@ -33,6 +33,15 @@ service AccountingService {
   // caller owns the key: backend-tasks stores the returned charge_id on the
   // work order and never calls again once it has one.
   rpc CreateAssetCharge(CreateAssetChargeRequest) returns (CreateAssetChargeResponse);
+
+  // The per-truck weekly P&L (DEV-1926) over a window — the same rows the
+  // truckWeeklyPnl query serves the Payroll page, read-only. The first caller
+  // is the tms-teams Planning Board (DEV-2416), which decides who may see it.
+  //
+  // One row per (truck, week) with at least one settlement line or company-paid
+  // truck cost. A truck-week with no money is ABSENT, never zero-filled: "no
+  // settlement yet" and "earned nothing" read differently.
+  rpc ListTruckWeeklyPnL(ListTruckWeeklyPnLRequest) returns (ListTruckWeeklyPnLResponse);
 }
 
 // AssetKind names which kind of equipment carries the charge.
@@ -109,4 +118,39 @@ message CreateAssetChargeResponse {
   // no crew on the asset that day, or a dispatcher with no open statement. The
   // charge exists either way; this says a person has to route it.
   string unrouted_reason = 3;
+}
+
+message ListTruckWeeklyPnLRequest {
+  string company_id = 1;
+  // The window is [from, to): a statement belongs to it by the day its period
+  // starts, a truck charge by its charge date.
+  google.protobuf.Timestamp from = 2;
+  google.protobuf.Timestamp to = 3;
+  // Empty = every truck of the company.
+  repeated string truck_ids = 4;
+}
+
+// TruckWeekPnL is one truck's week: what it earned and where that went.
+message TruckWeekPnL {
+  string truck_id = 1;
+  // Monday of the ISO week the row is bucketed on (date_trunc('week')). A
+  // company whose week starts on another day should read its week as a
+  // [from, to) window and add up the rows, not match on this label.
+  google.protobuf.Timestamp week_start = 2;
+  double revenue = 3;
+  // What the company paid the drivers on this truck.
+  double driver_cost = 4;
+  // What the owner was owed.
+  double owner_pay = 5;
+  // Deductions taken on the owner's settlement for this truck.
+  double deductions = 6;
+  // What the carrier itself paid for this truck (DEV-2241).
+  double asset_costs = 7;
+  // revenue − driver_cost − owner_pay − asset_costs, derived by accounting so a
+  // caller never carries the formula. Negative is a real answer.
+  double company_share = 8;
+}
+
+message ListTruckWeeklyPnLResponse {
+  repeated TruckWeekPnL rows = 1;
 }

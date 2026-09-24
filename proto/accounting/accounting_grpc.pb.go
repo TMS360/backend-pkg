@@ -21,7 +21,8 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	AccountingService_CreateAssetCharge_FullMethodName = "/accounting.AccountingService/CreateAssetCharge"
+	AccountingService_CreateAssetCharge_FullMethodName  = "/accounting.AccountingService/CreateAssetCharge"
+	AccountingService_ListTruckWeeklyPnL_FullMethodName = "/accounting.AccountingService/ListTruckWeeklyPnL"
 )
 
 // AccountingServiceClient is the client API for AccountingService service.
@@ -54,6 +55,14 @@ type AccountingServiceClient interface {
 	// caller owns the key: backend-tasks stores the returned charge_id on the
 	// work order and never calls again once it has one.
 	CreateAssetCharge(ctx context.Context, in *CreateAssetChargeRequest, opts ...grpc.CallOption) (*CreateAssetChargeResponse, error)
+	// The per-truck weekly P&L (DEV-1926) over a window — the same rows the
+	// truckWeeklyPnl query serves the Payroll page, read-only. The first caller
+	// is the tms-teams Planning Board (DEV-2416), which decides who may see it.
+	//
+	// One row per (truck, week) with at least one settlement line or company-paid
+	// truck cost. A truck-week with no money is ABSENT, never zero-filled: "no
+	// settlement yet" and "earned nothing" read differently.
+	ListTruckWeeklyPnL(ctx context.Context, in *ListTruckWeeklyPnLRequest, opts ...grpc.CallOption) (*ListTruckWeeklyPnLResponse, error)
 }
 
 type accountingServiceClient struct {
@@ -68,6 +77,16 @@ func (c *accountingServiceClient) CreateAssetCharge(ctx context.Context, in *Cre
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(CreateAssetChargeResponse)
 	err := c.cc.Invoke(ctx, AccountingService_CreateAssetCharge_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *accountingServiceClient) ListTruckWeeklyPnL(ctx context.Context, in *ListTruckWeeklyPnLRequest, opts ...grpc.CallOption) (*ListTruckWeeklyPnLResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListTruckWeeklyPnLResponse)
+	err := c.cc.Invoke(ctx, AccountingService_ListTruckWeeklyPnL_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -104,6 +123,14 @@ type AccountingServiceServer interface {
 	// caller owns the key: backend-tasks stores the returned charge_id on the
 	// work order and never calls again once it has one.
 	CreateAssetCharge(context.Context, *CreateAssetChargeRequest) (*CreateAssetChargeResponse, error)
+	// The per-truck weekly P&L (DEV-1926) over a window — the same rows the
+	// truckWeeklyPnl query serves the Payroll page, read-only. The first caller
+	// is the tms-teams Planning Board (DEV-2416), which decides who may see it.
+	//
+	// One row per (truck, week) with at least one settlement line or company-paid
+	// truck cost. A truck-week with no money is ABSENT, never zero-filled: "no
+	// settlement yet" and "earned nothing" read differently.
+	ListTruckWeeklyPnL(context.Context, *ListTruckWeeklyPnLRequest) (*ListTruckWeeklyPnLResponse, error)
 	mustEmbedUnimplementedAccountingServiceServer()
 }
 
@@ -116,6 +143,9 @@ type UnimplementedAccountingServiceServer struct{}
 
 func (UnimplementedAccountingServiceServer) CreateAssetCharge(context.Context, *CreateAssetChargeRequest) (*CreateAssetChargeResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method CreateAssetCharge not implemented")
+}
+func (UnimplementedAccountingServiceServer) ListTruckWeeklyPnL(context.Context, *ListTruckWeeklyPnLRequest) (*ListTruckWeeklyPnLResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListTruckWeeklyPnL not implemented")
 }
 func (UnimplementedAccountingServiceServer) mustEmbedUnimplementedAccountingServiceServer() {}
 func (UnimplementedAccountingServiceServer) testEmbeddedByValue()                           {}
@@ -156,6 +186,24 @@ func _AccountingService_CreateAssetCharge_Handler(srv interface{}, ctx context.C
 	return interceptor(ctx, in, info, handler)
 }
 
+func _AccountingService_ListTruckWeeklyPnL_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListTruckWeeklyPnLRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AccountingServiceServer).ListTruckWeeklyPnL(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AccountingService_ListTruckWeeklyPnL_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AccountingServiceServer).ListTruckWeeklyPnL(ctx, req.(*ListTruckWeeklyPnLRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // AccountingService_ServiceDesc is the grpc.ServiceDesc for AccountingService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -166,6 +214,10 @@ var AccountingService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "CreateAssetCharge",
 			Handler:    _AccountingService_CreateAssetCharge_Handler,
+		},
+		{
+			MethodName: "ListTruckWeeklyPnL",
+			Handler:    _AccountingService_ListTruckWeeklyPnL_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

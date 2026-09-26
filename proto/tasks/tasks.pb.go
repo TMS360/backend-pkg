@@ -351,6 +351,193 @@ func (x *ResolveTaskResponse) GetResolved() bool {
 	return false
 }
 
+// ListOpenAuditChecksRequest asks about ONE team-week, named by the crew-week
+// rows the caller is about to sign off. The caller owns the board, so it knows
+// its crews; this service never calls the dispatch service back to find them.
+type ListOpenAuditChecksRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	CrewIds       []string               `protobuf:"bytes,1,rep,name=crew_ids,json=crewIds,proto3" json:"crew_ids,omitempty"`       // UUIDs; empty = nothing to ask about
+	WeekStart     string                 `protobuf:"bytes,2,opt,name=week_start,json=weekStart,proto3" json:"week_start,omitempty"` // YYYY-MM-DD, the naive company-local week start
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListOpenAuditChecksRequest) Reset() {
+	*x = ListOpenAuditChecksRequest{}
+	mi := &file_tasks_tasks_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListOpenAuditChecksRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListOpenAuditChecksRequest) ProtoMessage() {}
+
+func (x *ListOpenAuditChecksRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_tasks_tasks_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListOpenAuditChecksRequest.ProtoReflect.Descriptor instead.
+func (*ListOpenAuditChecksRequest) Descriptor() ([]byte, []int) {
+	return file_tasks_tasks_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *ListOpenAuditChecksRequest) GetCrewIds() []string {
+	if x != nil {
+		return x.CrewIds
+	}
+	return nil
+}
+
+func (x *ListOpenAuditChecksRequest) GetWeekStart() string {
+	if x != nil {
+		return x.WeekStart
+	}
+	return ""
+}
+
+// OpenAuditCheck is one check still waiting for an answer — exactly what a
+// refusal has to name so the manager knows who to go and ask.
+type OpenAuditCheck struct {
+	state      protoimpl.MessageState `protogen:"open.v1"`
+	TaskId     string                 `protobuf:"bytes,1,opt,name=task_id,json=taskId,proto3" json:"task_id,omitempty"`
+	CrewId     string                 `protobuf:"bytes,2,opt,name=crew_id,json=crewId,proto3" json:"crew_id,omitempty"`
+	Day        string                 `protobuf:"bytes,3,opt,name=day,proto3" json:"day,omitempty"`                                 // YYYY-MM-DD, the day under question
+	StatusName string                 `protobuf:"bytes,4,opt,name=status_name,json=statusName,proto3" json:"status_name,omitempty"` // what the dispatcher closed the day with
+	// department is the well-known key of the department that owes the answer
+	// ("maintenance", "safety", …). Empty when the check was never routed to one.
+	Department    string `protobuf:"bytes,5,opt,name=department,proto3" json:"department,omitempty"`
+	Title         string `protobuf:"bytes,6,opt,name=title,proto3" json:"title,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *OpenAuditCheck) Reset() {
+	*x = OpenAuditCheck{}
+	mi := &file_tasks_tasks_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *OpenAuditCheck) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*OpenAuditCheck) ProtoMessage() {}
+
+func (x *OpenAuditCheck) ProtoReflect() protoreflect.Message {
+	mi := &file_tasks_tasks_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use OpenAuditCheck.ProtoReflect.Descriptor instead.
+func (*OpenAuditCheck) Descriptor() ([]byte, []int) {
+	return file_tasks_tasks_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *OpenAuditCheck) GetTaskId() string {
+	if x != nil {
+		return x.TaskId
+	}
+	return ""
+}
+
+func (x *OpenAuditCheck) GetCrewId() string {
+	if x != nil {
+		return x.CrewId
+	}
+	return ""
+}
+
+func (x *OpenAuditCheck) GetDay() string {
+	if x != nil {
+		return x.Day
+	}
+	return ""
+}
+
+func (x *OpenAuditCheck) GetStatusName() string {
+	if x != nil {
+		return x.StatusName
+	}
+	return ""
+}
+
+func (x *OpenAuditCheck) GetDepartment() string {
+	if x != nil {
+		return x.Department
+	}
+	return ""
+}
+
+func (x *OpenAuditCheck) GetTitle() string {
+	if x != nil {
+		return x.Title
+	}
+	return ""
+}
+
+type ListOpenAuditChecksResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Checks        []*OpenAuditCheck      `protobuf:"bytes,1,rep,name=checks,proto3" json:"checks,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListOpenAuditChecksResponse) Reset() {
+	*x = ListOpenAuditChecksResponse{}
+	mi := &file_tasks_tasks_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListOpenAuditChecksResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListOpenAuditChecksResponse) ProtoMessage() {}
+
+func (x *ListOpenAuditChecksResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_tasks_tasks_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListOpenAuditChecksResponse.ProtoReflect.Descriptor instead.
+func (*ListOpenAuditChecksResponse) Descriptor() ([]byte, []int) {
+	return file_tasks_tasks_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *ListOpenAuditChecksResponse) GetChecks() []*OpenAuditCheck {
+	if x != nil {
+		return x.Checks
+	}
+	return nil
+}
+
 var File_tasks_tasks_proto protoreflect.FileDescriptor
 
 const file_tasks_tasks_proto_rawDesc = "" +
@@ -380,11 +567,28 @@ const file_tasks_tasks_proto_rawDesc = "" +
 	"\x06reason\x18\x02 \x01(\tR\x06reason\"J\n" +
 	"\x13ResolveTaskResponse\x12\x17\n" +
 	"\atask_id\x18\x01 \x01(\tR\x06taskId\x12\x1a\n" +
-	"\bresolved\x18\x02 \x01(\bR\bresolved2\x97\x01\n" +
+	"\bresolved\x18\x02 \x01(\bR\bresolved\"V\n" +
+	"\x1aListOpenAuditChecksRequest\x12\x19\n" +
+	"\bcrew_ids\x18\x01 \x03(\tR\acrewIds\x12\x1d\n" +
+	"\n" +
+	"week_start\x18\x02 \x01(\tR\tweekStart\"\xab\x01\n" +
+	"\x0eOpenAuditCheck\x12\x17\n" +
+	"\atask_id\x18\x01 \x01(\tR\x06taskId\x12\x17\n" +
+	"\acrew_id\x18\x02 \x01(\tR\x06crewId\x12\x10\n" +
+	"\x03day\x18\x03 \x01(\tR\x03day\x12\x1f\n" +
+	"\vstatus_name\x18\x04 \x01(\tR\n" +
+	"statusName\x12\x1e\n" +
+	"\n" +
+	"department\x18\x05 \x01(\tR\n" +
+	"department\x12\x14\n" +
+	"\x05title\x18\x06 \x01(\tR\x05title\"L\n" +
+	"\x1bListOpenAuditChecksResponse\x12-\n" +
+	"\x06checks\x18\x01 \x03(\v2\x15.tasks.OpenAuditCheckR\x06checks2\xf5\x01\n" +
 	"\fTasksService\x12A\n" +
 	"\n" +
 	"CreateTask\x12\x18.tasks.CreateTaskRequest\x1a\x19.tasks.CreateTaskResponse\x12D\n" +
-	"\vResolveTask\x12\x19.tasks.ResolveTaskRequest\x1a\x1a.tasks.ResolveTaskResponseB+Z)github.com/TMS360/backend-pkg/proto/tasksb\x06proto3"
+	"\vResolveTask\x12\x19.tasks.ResolveTaskRequest\x1a\x1a.tasks.ResolveTaskResponse\x12\\\n" +
+	"\x13ListOpenAuditChecks\x12!.tasks.ListOpenAuditChecksRequest\x1a\".tasks.ListOpenAuditChecksResponseB+Z)github.com/TMS360/backend-pkg/proto/tasksb\x06proto3"
 
 var (
 	file_tasks_tasks_proto_rawDescOnce sync.Once
@@ -398,28 +602,34 @@ func file_tasks_tasks_proto_rawDescGZIP() []byte {
 	return file_tasks_tasks_proto_rawDescData
 }
 
-var file_tasks_tasks_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
+var file_tasks_tasks_proto_msgTypes = make([]protoimpl.MessageInfo, 8)
 var file_tasks_tasks_proto_goTypes = []any{
-	(*DedupKey)(nil),              // 0: tasks.DedupKey
-	(*CreateTaskRequest)(nil),     // 1: tasks.CreateTaskRequest
-	(*CreateTaskResponse)(nil),    // 2: tasks.CreateTaskResponse
-	(*ResolveTaskRequest)(nil),    // 3: tasks.ResolveTaskRequest
-	(*ResolveTaskResponse)(nil),   // 4: tasks.ResolveTaskResponse
-	(*timestamppb.Timestamp)(nil), // 5: google.protobuf.Timestamp
+	(*DedupKey)(nil),                    // 0: tasks.DedupKey
+	(*CreateTaskRequest)(nil),           // 1: tasks.CreateTaskRequest
+	(*CreateTaskResponse)(nil),          // 2: tasks.CreateTaskResponse
+	(*ResolveTaskRequest)(nil),          // 3: tasks.ResolveTaskRequest
+	(*ResolveTaskResponse)(nil),         // 4: tasks.ResolveTaskResponse
+	(*ListOpenAuditChecksRequest)(nil),  // 5: tasks.ListOpenAuditChecksRequest
+	(*OpenAuditCheck)(nil),              // 6: tasks.OpenAuditCheck
+	(*ListOpenAuditChecksResponse)(nil), // 7: tasks.ListOpenAuditChecksResponse
+	(*timestamppb.Timestamp)(nil),       // 8: google.protobuf.Timestamp
 }
 var file_tasks_tasks_proto_depIdxs = []int32{
 	0, // 0: tasks.CreateTaskRequest.key:type_name -> tasks.DedupKey
-	5, // 1: tasks.CreateTaskRequest.due_at:type_name -> google.protobuf.Timestamp
+	8, // 1: tasks.CreateTaskRequest.due_at:type_name -> google.protobuf.Timestamp
 	0, // 2: tasks.ResolveTaskRequest.key:type_name -> tasks.DedupKey
-	1, // 3: tasks.TasksService.CreateTask:input_type -> tasks.CreateTaskRequest
-	3, // 4: tasks.TasksService.ResolveTask:input_type -> tasks.ResolveTaskRequest
-	2, // 5: tasks.TasksService.CreateTask:output_type -> tasks.CreateTaskResponse
-	4, // 6: tasks.TasksService.ResolveTask:output_type -> tasks.ResolveTaskResponse
-	5, // [5:7] is the sub-list for method output_type
-	3, // [3:5] is the sub-list for method input_type
-	3, // [3:3] is the sub-list for extension type_name
-	3, // [3:3] is the sub-list for extension extendee
-	0, // [0:3] is the sub-list for field type_name
+	6, // 3: tasks.ListOpenAuditChecksResponse.checks:type_name -> tasks.OpenAuditCheck
+	1, // 4: tasks.TasksService.CreateTask:input_type -> tasks.CreateTaskRequest
+	3, // 5: tasks.TasksService.ResolveTask:input_type -> tasks.ResolveTaskRequest
+	5, // 6: tasks.TasksService.ListOpenAuditChecks:input_type -> tasks.ListOpenAuditChecksRequest
+	2, // 7: tasks.TasksService.CreateTask:output_type -> tasks.CreateTaskResponse
+	4, // 8: tasks.TasksService.ResolveTask:output_type -> tasks.ResolveTaskResponse
+	7, // 9: tasks.TasksService.ListOpenAuditChecks:output_type -> tasks.ListOpenAuditChecksResponse
+	7, // [7:10] is the sub-list for method output_type
+	4, // [4:7] is the sub-list for method input_type
+	4, // [4:4] is the sub-list for extension type_name
+	4, // [4:4] is the sub-list for extension extendee
+	0, // [0:4] is the sub-list for field type_name
 }
 
 func init() { file_tasks_tasks_proto_init() }
@@ -433,7 +643,7 @@ func file_tasks_tasks_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_tasks_tasks_proto_rawDesc), len(file_tasks_tasks_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   5,
+			NumMessages:   8,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

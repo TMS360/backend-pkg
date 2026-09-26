@@ -21,8 +21,9 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	TasksService_CreateTask_FullMethodName  = "/tasks.TasksService/CreateTask"
-	TasksService_ResolveTask_FullMethodName = "/tasks.TasksService/ResolveTask"
+	TasksService_CreateTask_FullMethodName          = "/tasks.TasksService/CreateTask"
+	TasksService_ResolveTask_FullMethodName         = "/tasks.TasksService/ResolveTask"
+	TasksService_ListOpenAuditChecks_FullMethodName = "/tasks.TasksService/ListOpenAuditChecks"
 )
 
 // TasksServiceClient is the client API for TasksService service.
@@ -46,6 +47,14 @@ type TasksServiceClient interface {
 	// holds (the problem was fixed). Idempotent: a no-op when nothing is open.
 	// A later re-occurrence of the same validation creates a fresh task.
 	ResolveTask(ctx context.Context, in *ResolveTaskRequest, opts ...grpc.CallOption) (*ResolveTaskResponse, error)
+	// ListOpenAuditChecks answers "is anything on this team-week still waiting for
+	// a department's verdict?" (DEV-2448). The Audit board's finalize is one-way,
+	// so it reads the checks LIVE at the moment the button is pressed rather than
+	// trusting a count cached on the week.
+	//
+	// Read-only and idempotent. A crew with no checks, a week with none, and an
+	// empty crew list all answer with an empty list — never an error.
+	ListOpenAuditChecks(ctx context.Context, in *ListOpenAuditChecksRequest, opts ...grpc.CallOption) (*ListOpenAuditChecksResponse, error)
 }
 
 type tasksServiceClient struct {
@@ -76,6 +85,16 @@ func (c *tasksServiceClient) ResolveTask(ctx context.Context, in *ResolveTaskReq
 	return out, nil
 }
 
+func (c *tasksServiceClient) ListOpenAuditChecks(ctx context.Context, in *ListOpenAuditChecksRequest, opts ...grpc.CallOption) (*ListOpenAuditChecksResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListOpenAuditChecksResponse)
+	err := c.cc.Invoke(ctx, TasksService_ListOpenAuditChecks_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // TasksServiceServer is the server API for TasksService service.
 // All implementations must embed UnimplementedTasksServiceServer
 // for forward compatibility.
@@ -97,6 +116,14 @@ type TasksServiceServer interface {
 	// holds (the problem was fixed). Idempotent: a no-op when nothing is open.
 	// A later re-occurrence of the same validation creates a fresh task.
 	ResolveTask(context.Context, *ResolveTaskRequest) (*ResolveTaskResponse, error)
+	// ListOpenAuditChecks answers "is anything on this team-week still waiting for
+	// a department's verdict?" (DEV-2448). The Audit board's finalize is one-way,
+	// so it reads the checks LIVE at the moment the button is pressed rather than
+	// trusting a count cached on the week.
+	//
+	// Read-only and idempotent. A crew with no checks, a week with none, and an
+	// empty crew list all answer with an empty list — never an error.
+	ListOpenAuditChecks(context.Context, *ListOpenAuditChecksRequest) (*ListOpenAuditChecksResponse, error)
 	mustEmbedUnimplementedTasksServiceServer()
 }
 
@@ -112,6 +139,9 @@ func (UnimplementedTasksServiceServer) CreateTask(context.Context, *CreateTaskRe
 }
 func (UnimplementedTasksServiceServer) ResolveTask(context.Context, *ResolveTaskRequest) (*ResolveTaskResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ResolveTask not implemented")
+}
+func (UnimplementedTasksServiceServer) ListOpenAuditChecks(context.Context, *ListOpenAuditChecksRequest) (*ListOpenAuditChecksResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListOpenAuditChecks not implemented")
 }
 func (UnimplementedTasksServiceServer) mustEmbedUnimplementedTasksServiceServer() {}
 func (UnimplementedTasksServiceServer) testEmbeddedByValue()                      {}
@@ -170,6 +200,24 @@ func _TasksService_ResolveTask_Handler(srv interface{}, ctx context.Context, dec
 	return interceptor(ctx, in, info, handler)
 }
 
+func _TasksService_ListOpenAuditChecks_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListOpenAuditChecksRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(TasksServiceServer).ListOpenAuditChecks(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: TasksService_ListOpenAuditChecks_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(TasksServiceServer).ListOpenAuditChecks(ctx, req.(*ListOpenAuditChecksRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // TasksService_ServiceDesc is the grpc.ServiceDesc for TasksService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -184,6 +232,10 @@ var TasksService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ResolveTask",
 			Handler:    _TasksService_ResolveTask_Handler,
+		},
+		{
+			MethodName: "ListOpenAuditChecks",
+			Handler:    _TasksService_ListOpenAuditChecks_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

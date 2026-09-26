@@ -25,6 +25,15 @@ service TasksService {
   // holds (the problem was fixed). Idempotent: a no-op when nothing is open.
   // A later re-occurrence of the same validation creates a fresh task.
   rpc ResolveTask(ResolveTaskRequest) returns (ResolveTaskResponse);
+
+  // ListOpenAuditChecks answers "is anything on this team-week still waiting for
+  // a department's verdict?" (DEV-2448). The Audit board's finalize is one-way,
+  // so it reads the checks LIVE at the moment the button is pressed rather than
+  // trusting a count cached on the week.
+  //
+  // Read-only and idempotent. A crew with no checks, a week with none, and an
+  // empty crew list all answer with an empty list — never an error.
+  rpc ListOpenAuditChecks(ListOpenAuditChecksRequest) returns (ListOpenAuditChecksResponse);
 }
 
 // DedupKey identifies the specific validation occurrence a task belongs to.
@@ -62,4 +71,29 @@ message ResolveTaskRequest {
 message ResolveTaskResponse {
   string task_id = 1; // the resolved task, or empty when nothing was open
   bool resolved = 2;  // true = a task was auto-resolved; false = no-op
+}
+
+// ListOpenAuditChecksRequest asks about ONE team-week, named by the crew-week
+// rows the caller is about to sign off. The caller owns the board, so it knows
+// its crews; this service never calls the dispatch service back to find them.
+message ListOpenAuditChecksRequest {
+  repeated string crew_ids = 1; // UUIDs; empty = nothing to ask about
+  string week_start = 2;        // YYYY-MM-DD, the naive company-local week start
+}
+
+// OpenAuditCheck is one check still waiting for an answer — exactly what a
+// refusal has to name so the manager knows who to go and ask.
+message OpenAuditCheck {
+  string task_id = 1;
+  string crew_id = 2;
+  string day = 3;         // YYYY-MM-DD, the day under question
+  string status_name = 4; // what the dispatcher closed the day with
+  // department is the well-known key of the department that owes the answer
+  // ("maintenance", "safety", …). Empty when the check was never routed to one.
+  string department = 5;
+  string title = 6;
+}
+
+message ListOpenAuditChecksResponse {
+  repeated OpenAuditCheck checks = 1;
 }

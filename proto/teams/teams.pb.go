@@ -1378,8 +1378,19 @@ type TeamWeekPayroll struct {
 	// team has none, which is not an error: accounting flags the commission line
 	// for a human instead of dropping it.
 	DispatcherIds []string `protobuf:"bytes,10,rep,name=dispatcher_ids,json=dispatcherIds,proto3" json:"dispatcher_ids,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	// is_audit_finalized is the SECOND stage of the week lock (DEV-2448): the
+	// week was not merely closed for editing, its audit was signed off, once and
+	// for good. is_management_locked can still be lifted; this cannot.
+	//
+	// Dispatcher pay is approved on THIS, not on is_management_locked — a closed
+	// week can be reopened under a statement that was already paid.
+	IsAuditFinalized bool `protobuf:"varint,11,opt,name=is_audit_finalized,json=isAuditFinalized,proto3" json:"is_audit_finalized,omitempty"`
+	// audit_finalized_at is RFC3339, empty while the audit is not confirmed.
+	AuditFinalizedAt string `protobuf:"bytes,12,opt,name=audit_finalized_at,json=auditFinalizedAt,proto3" json:"audit_finalized_at,omitempty"`
+	// audit_finalized_by is the user who signed the week off, empty while open.
+	AuditFinalizedBy string `protobuf:"bytes,13,opt,name=audit_finalized_by,json=auditFinalizedBy,proto3" json:"audit_finalized_by,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *TeamWeekPayroll) Reset() {
@@ -1480,6 +1491,27 @@ func (x *TeamWeekPayroll) GetDispatcherIds() []string {
 		return x.DispatcherIds
 	}
 	return nil
+}
+
+func (x *TeamWeekPayroll) GetIsAuditFinalized() bool {
+	if x != nil {
+		return x.IsAuditFinalized
+	}
+	return false
+}
+
+func (x *TeamWeekPayroll) GetAuditFinalizedAt() string {
+	if x != nil {
+		return x.AuditFinalizedAt
+	}
+	return ""
+}
+
+func (x *TeamWeekPayroll) GetAuditFinalizedBy() string {
+	if x != nil {
+		return x.AuditFinalizedBy
+	}
+	return ""
 }
 
 type GetTeamWeeksForPayrollResponse struct {
@@ -1840,7 +1872,7 @@ const file_teams_teams_proto_rawDesc = "" +
 	"\n" +
 	"company_id\x18\x01 \x01(\tR\tcompanyId\x12\x12\n" +
 	"\x04from\x18\x02 \x01(\tR\x04from\x12\x0e\n" +
-	"\x02to\x18\x03 \x01(\tR\x02to\"\x91\x03\n" +
+	"\x02to\x18\x03 \x01(\tR\x02to\"\x9b\x04\n" +
 	"\x0fTeamWeekPayroll\x12\x17\n" +
 	"\ateam_id\x18\x01 \x01(\tR\x06teamId\x12\x1b\n" +
 	"\tteam_name\x18\x02 \x01(\tR\bteamName\x12\x1d\n" +
@@ -1856,7 +1888,10 @@ const file_teams_teams_proto_rawDesc = "" +
 	"\vtotal_gross\x18\t \x01(\x01R\n" +
 	"totalGross\x12%\n" +
 	"\x0edispatcher_ids\x18\n" +
-	" \x03(\tR\rdispatcherIds\"L\n" +
+	" \x03(\tR\rdispatcherIds\x12,\n" +
+	"\x12is_audit_finalized\x18\v \x01(\bR\x10isAuditFinalized\x12,\n" +
+	"\x12audit_finalized_at\x18\f \x01(\tR\x10auditFinalizedAt\x12,\n" +
+	"\x12audit_finalized_by\x18\r \x01(\tR\x10auditFinalizedBy\"L\n" +
 	"\x1eGetTeamWeeksForPayrollResponse\x12*\n" +
 	"\x04data\x18\x01 \x03(\v2\x16.teams.TeamWeekPayrollR\x04data\"\xb5\x01\n" +
 	" GetCrewAssignmentsHistoryRequest\x12\x1d\n" +

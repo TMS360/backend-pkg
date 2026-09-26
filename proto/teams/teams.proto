@@ -237,6 +237,18 @@ message TeamWeekPayroll {
   // team has none, which is not an error: accounting flags the commission line
   // for a human instead of dropping it.
   repeated string dispatcher_ids = 10;
+
+  // is_audit_finalized is the SECOND stage of the week lock (DEV-2448): the
+  // week was not merely closed for editing, its audit was signed off, once and
+  // for good. is_management_locked can still be lifted; this cannot.
+  //
+  // Dispatcher pay is approved on THIS, not on is_management_locked — a closed
+  // week can be reopened under a statement that was already paid.
+  bool is_audit_finalized = 11;
+  // audit_finalized_at is RFC3339, empty while the audit is not confirmed.
+  string audit_finalized_at = 12;
+  // audit_finalized_by is the user who signed the week off, empty while open.
+  string audit_finalized_by = 13;
 }
 
 message GetTeamWeeksForPayrollResponse {

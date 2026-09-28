@@ -156,7 +156,7 @@ message GetAuditCheckAnswerResponse {
   // answered=false means the check is still open; every other field is then
   // zero. It is NOT an error — "no verdict yet" is the answer.
   bool answered = 1;
-  string outcome = 2;     // CONFIRMED | REJECTED
+  string outcome = 2;     // confirmed | rejected — lower-case, as the task stores it
   string note = 3;        // the department's words; mandatory on a reject
   string answered_by = 4; // UUID
   google.protobuf.Timestamp answered_at = 5;

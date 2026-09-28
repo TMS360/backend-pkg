@@ -190,7 +190,7 @@ type AuditCheckResult struct {
 
 // AuditCheckAnswer is a department's verdict read back from the task.
 type AuditCheckAnswer struct {
-	Outcome    string // CONFIRMED | REJECTED
+	Outcome    string // confirmed | rejected — lower-case, as the task stores it
 	Note       string
 	AnsweredBy uuid.UUID
 	AnsweredAt time.Time

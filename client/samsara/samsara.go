@@ -45,6 +45,52 @@ func IsAuthError(err error) bool {
 	return errors.As(err, &ae)
 }
 
+// capabilityRefusalMarkers — слова, которыми Samsara отвечает "этой величины у
+// вас нет по тарифу/скоупу", а не "ключ неверный". Ключ у тенанта при этом
+// рабочий, поэтому такой отказ НЕЛЬЗЯ трактовать как поломку интеграции.
+var capabilityRefusalMarkers = []string{
+	"license",
+	"entitle",
+	"not enabled",
+	"permission",
+	"scope",
+}
+
+// IsCapabilityError reports whether Samsara refused the request because the
+// tenant's plan or token does not cover the data asked for, rather than because
+// the token is wrong. Callers must keep the integration alive on true: the rest
+// of the tenant's data is still perfectly readable with the same key.
+func IsCapabilityError(err error) bool {
+	var ae *AuthError
+	if !errors.As(err, &ae) || ae.StatusCode != http.StatusForbidden {
+		return false
+	}
+	body := strings.ToLower(ae.Body)
+	for _, marker := range capabilityRefusalMarkers {
+		if strings.Contains(body, marker) {
+			return true
+		}
+	}
+	return false
+}
+
+// RefusalMessage returns Samsara's own wording for a refusal, so the operator
+// sees what Samsara said and not a message we invented. Falls back to the raw
+// body when it is not the usual {"message": "..."} envelope.
+func RefusalMessage(err error) string {
+	var ae *AuthError
+	if !errors.As(err, &ae) {
+		return ""
+	}
+	var envelope struct {
+		Message string `json:"message"`
+	}
+	if jsonErr := json.Unmarshal([]byte(ae.Body), &envelope); jsonErr == nil && envelope.Message != "" {
+		return envelope.Message
+	}
+	return strings.TrimSpace(ae.Body)
+}
+
 // VehicleInfo - информация о транспортном средстве
 type VehicleInfo struct {
 	ID   string `json:"id"`
@@ -87,6 +133,15 @@ type OdometerSample struct {
 	Time  string  `json:"time"`
 }
 
+// DefFluidSample - одно показание уровня DEF (жидкость для очистки выхлопа).
+// Samsara отдаёт его в МИЛЛИ-процентах: 52000 означает 52%. Имя типа
+// статистики и единица зафиксированы здесь, чтобы делить на 1000 приходилось
+// ровно в одном месте.
+type DefFluidSample struct {
+	Value float64 `json:"value"`
+	Time  string  `json:"time"`
+}
+
 // VehicleLocation - местоположение транспорта с GPS
 type VehicleLocation struct {
 	ID           string                 `json:"id"`
@@ -95,6 +150,9 @@ type VehicleLocation struct {
 	ExternalIDs  map[string]interface{} `json:"externalIds,omitempty"`
 	Gps          *GpsCoordinates        `json:"gps"`
 	FuelPercents *FuelPercent           `json:"fuelPercents"`
+	// Уровень DEF. Приходит только если тип статистики запрошен И тариф
+	// Samsara его покрывает, поэтому указатель, а не значение.
+	DefFluidMilliPercent *DefFluidSample `json:"defFluidMilliPercent,omitempty"`
 	// Одометр: obd точнее, gps — расчётный запасной вариант.
 	ObdOdometerMeters *OdometerSample `json:"obdOdometerMeters,omitempty"`
 	GpsOdometerMeters *OdometerSample `json:"gpsOdometerMeters,omitempty"`
@@ -112,6 +170,8 @@ type VehicleLocationFeed struct {
 	ExternalIDs  map[string]interface{} `json:"externalIds,omitempty"`
 	Gps          []GpsCoordinates       `json:"gps"`          // feed returns array
 	FuelPercents []FuelPercent          `json:"fuelPercents"` // feed returns array
+	// feed returns DEF as an array too
+	DefFluidMilliPercent []DefFluidSample `json:"defFluidMilliPercent,omitempty"`
 	// feed returns odometer as an array too
 	ObdOdometerMeters []OdometerSample `json:"obdOdometerMeters,omitempty"`
 	GpsOdometerMeters []OdometerSample `json:"gpsOdometerMeters,omitempty"`
@@ -860,15 +920,44 @@ func (c *Client) GetAllVehiclesLocationsWithTime(ctx context.Context, startTime,
 	return response.Data, nil
 }
 
-// locationStatTypes — типы статистики, которые тянет позиционный цикл. Одометр
-// едет тем же запросом, что и GPS: отдельный опрос стоил бы второй сети на
-// компанию за тик и разъехался бы по времени с позицией (DEV-2251).
-const locationStatTypes = "gps,fuelPercents,obdOdometerMeters,gpsOdometerMeters"
+// Типы статистики позиционного запроса. Одометр едет тем же запросом, что и
+// GPS: отдельный опрос стоил бы второй сети на компанию за тик и разъехался бы
+// по времени с позицией (DEV-2251). Уровни топлива и DEF едут там же по той же
+// причине — они поля уже выполняемого запроса, а не отдельный алерт (DEV-2006).
+const (
+	StatTypeGPS                  = "gps"
+	StatTypeFuelPercents         = "fuelPercents"
+	StatTypeDefFluidMilliPercent = "defFluidMilliPercent"
+	StatTypeObdOdometerMeters    = "obdOdometerMeters"
+	StatTypeGpsOdometerMeters    = "gpsOdometerMeters"
+)
 
-// GetAllVehiclesStats получает GPS статистику для ВСЕХ транспортных средств сразу.
-// Использует endpoint /fleet/vehicles/stats?types=gps без фильтрации по ID.
+// DefaultLocationStatTypes — набор для вызывающих, которые не решают состав
+// сами. Совпадает с тем, что запрашивалось до DEV-2006, чтобы их поведение не
+// поменялось.
+func DefaultLocationStatTypes() []string {
+	return []string{StatTypeGPS, StatTypeFuelPercents, StatTypeObdOdometerMeters, StatTypeGpsOdometerMeters}
+}
+
+// statTypesParam собирает значение параметра types, подставляя набор по
+// умолчанию для пустого списка — пустой types Samsara отвергает.
+func statTypesParam(types []string) string {
+	if len(types) == 0 {
+		types = DefaultLocationStatTypes()
+	}
+	return strings.Join(types, ",")
+}
+
+// GetAllVehiclesStats получает статистику для ВСЕХ транспортных средств сразу
+// в наборе типов по умолчанию.
 func (c *Client) GetAllVehiclesStats(ctx context.Context) ([]VehicleLocation, error) {
-	path := "/fleet/vehicles/stats?types=" + locationStatTypes
+	return c.GetAllVehiclesStatsWithTypes(ctx, nil)
+}
+
+// GetAllVehiclesStatsWithTypes — то же самое, но состав types задаёт
+// вызывающий: тенант платит только за те величины, которые включил.
+func (c *Client) GetAllVehiclesStatsWithTypes(ctx context.Context, types []string) ([]VehicleLocation, error) {
+	path := "/fleet/vehicles/stats?types=" + statTypesParam(types)
 
 	resp, err := c.doRequest(ctx, http.MethodGet, path, nil)
 	if err != nil {
@@ -896,11 +985,17 @@ type VehicleStatsFeedResult struct {
 // Subsequent calls (cursor=endCursor): returns only changes since last call.
 // Returns all pages in one call by following pagination automatically.
 func (c *Client) GetVehicleStatsFeed(ctx context.Context, cursor string) (*VehicleStatsFeedResult, error) {
+	return c.GetVehicleStatsFeedWithTypes(ctx, cursor, nil)
+}
+
+// GetVehicleStatsFeedWithTypes — фид с составом types от вызывающего. Курсор
+// привязан к составу: сменил набор — начинай с пустого курсора.
+func (c *Client) GetVehicleStatsFeedWithTypes(ctx context.Context, cursor string, types []string) (*VehicleStatsFeedResult, error) {
 	var allData []VehicleLocation
 	currentCursor := cursor
 
 	for {
-		page, err := c.fetchStatsFeedPage(ctx, currentCursor)
+		page, err := c.fetchStatsFeedPage(ctx, currentCursor, types)
 		if err != nil {
 			return nil, err
 		}
@@ -923,8 +1018,8 @@ func (c *Client) GetVehicleStatsFeed(ctx context.Context, cursor string) (*Vehic
 // fetchStatsFeedPage fetches a single page of the gps/fuel stats feed.
 // Feed returns gps as array (not single object like snapshot), so we parse
 // with VehicleLocationFeedResponse and convert to VehicleLocationResponse.
-func (c *Client) fetchStatsFeedPage(ctx context.Context, cursor string) (*VehicleLocationResponse, error) {
-	path := "/fleet/vehicles/stats/feed?types=" + locationStatTypes
+func (c *Client) fetchStatsFeedPage(ctx context.Context, cursor string, types []string) (*VehicleLocationResponse, error) {
+	path := "/fleet/vehicles/stats/feed?types=" + statTypesParam(types)
 	if cursor != "" {
 		path += "&after=" + cursor
 	}
@@ -954,6 +1049,13 @@ func (c *Client) fetchStatsFeedPage(ctx context.Context, cursor string) (*Vehicl
 			fuelPercent = &fp
 		}
 
+		// Latest DEF reading for this vehicle, same rule as fuel.
+		var defFluid *DefFluidSample
+		if len(v.DefFluidMilliPercent) > 0 {
+			df := v.DefFluidMilliPercent[len(v.DefFluidMilliPercent)-1]
+			defFluid = &df
+		}
+
 		obd := lastOdometerSample(v.ObdOdometerMeters)
 		gpsOdo := lastOdometerSample(v.GpsOdometerMeters)
 
@@ -966,12 +1068,13 @@ func (c *Client) fetchStatsFeedPage(ctx context.Context, cursor string) (*Vehicl
 				continue
 			}
 			result.Data = append(result.Data, VehicleLocation{
-				ID:                v.ID,
-				Name:              v.Name,
-				ExternalIDs:       v.ExternalIDs,
-				FuelPercents:      fuelPercent,
-				ObdOdometerMeters: obd,
-				GpsOdometerMeters: gpsOdo,
+				ID:                   v.ID,
+				Name:                 v.Name,
+				ExternalIDs:          v.ExternalIDs,
+				FuelPercents:         fuelPercent,
+				DefFluidMilliPercent: defFluid,
+				ObdOdometerMeters:    obd,
+				GpsOdometerMeters:    gpsOdo,
 			})
 			continue
 		}
@@ -979,13 +1082,14 @@ func (c *Client) fetchStatsFeedPage(ctx context.Context, cursor string) (*Vehicl
 		for i := range v.Gps {
 			gps := v.Gps[i]
 			result.Data = append(result.Data, VehicleLocation{
-				ID:                v.ID,
-				Name:              v.Name,
-				ExternalIDs:       v.ExternalIDs,
-				Gps:               &gps,
-				FuelPercents:      fuelPercent,
-				ObdOdometerMeters: obd,
-				GpsOdometerMeters: gpsOdo,
+				ID:                   v.ID,
+				Name:                 v.Name,
+				ExternalIDs:          v.ExternalIDs,
+				Gps:                  &gps,
+				FuelPercents:         fuelPercent,
+				DefFluidMilliPercent: defFluid,
+				ObdOdometerMeters:    obd,
+				GpsOdometerMeters:    gpsOdo,
 			})
 		}
 	}

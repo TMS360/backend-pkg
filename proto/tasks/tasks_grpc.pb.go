@@ -24,6 +24,8 @@ const (
 	TasksService_CreateTask_FullMethodName          = "/tasks.TasksService/CreateTask"
 	TasksService_ResolveTask_FullMethodName         = "/tasks.TasksService/ResolveTask"
 	TasksService_ListOpenAuditChecks_FullMethodName = "/tasks.TasksService/ListOpenAuditChecks"
+	TasksService_CreateAuditCheck_FullMethodName    = "/tasks.TasksService/CreateAuditCheck"
+	TasksService_GetAuditCheckAnswer_FullMethodName = "/tasks.TasksService/GetAuditCheckAnswer"
 )
 
 // TasksServiceClient is the client API for TasksService service.
@@ -55,6 +57,17 @@ type TasksServiceClient interface {
 	// Read-only and idempotent. A crew with no checks, a week with none, and an
 	// empty crew list all answer with an empty list — never an error.
 	ListOpenAuditChecks(ctx context.Context, in *ListOpenAuditChecksRequest, opts ...grpc.CallOption) (*ListOpenAuditChecksResponse, error)
+	// CreateAuditCheck opens one audit check (DEV-2445): a day the dispatcher
+	// closed with a status another department owns, or a day an active truck had
+	// no driver. Idempotent on the claim's identity (crew+day, or truck+day for a
+	// no-driver check): a producer retry returns the same card, `created` tells
+	// which happened. Tenant and actor travel in metadata like CreateTask.
+	CreateAuditCheck(ctx context.Context, in *CreateAuditCheckRequest, opts ...grpc.CallOption) (*CreateAuditCheckResponse, error)
+	// GetAuditCheckAnswer reads one check's current verdict straight from the
+	// task — the dispatch service's repair path for when the answered event never
+	// arrived. Read-only and idempotent; a check nobody has answered yet returns
+	// answered=false, never an error.
+	GetAuditCheckAnswer(ctx context.Context, in *GetAuditCheckAnswerRequest, opts ...grpc.CallOption) (*GetAuditCheckAnswerResponse, error)
 }
 
 type tasksServiceClient struct {
@@ -95,6 +108,26 @@ func (c *tasksServiceClient) ListOpenAuditChecks(ctx context.Context, in *ListOp
 	return out, nil
 }
 
+func (c *tasksServiceClient) CreateAuditCheck(ctx context.Context, in *CreateAuditCheckRequest, opts ...grpc.CallOption) (*CreateAuditCheckResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CreateAuditCheckResponse)
+	err := c.cc.Invoke(ctx, TasksService_CreateAuditCheck_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *tasksServiceClient) GetAuditCheckAnswer(ctx context.Context, in *GetAuditCheckAnswerRequest, opts ...grpc.CallOption) (*GetAuditCheckAnswerResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetAuditCheckAnswerResponse)
+	err := c.cc.Invoke(ctx, TasksService_GetAuditCheckAnswer_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // TasksServiceServer is the server API for TasksService service.
 // All implementations must embed UnimplementedTasksServiceServer
 // for forward compatibility.
@@ -124,6 +157,17 @@ type TasksServiceServer interface {
 	// Read-only and idempotent. A crew with no checks, a week with none, and an
 	// empty crew list all answer with an empty list — never an error.
 	ListOpenAuditChecks(context.Context, *ListOpenAuditChecksRequest) (*ListOpenAuditChecksResponse, error)
+	// CreateAuditCheck opens one audit check (DEV-2445): a day the dispatcher
+	// closed with a status another department owns, or a day an active truck had
+	// no driver. Idempotent on the claim's identity (crew+day, or truck+day for a
+	// no-driver check): a producer retry returns the same card, `created` tells
+	// which happened. Tenant and actor travel in metadata like CreateTask.
+	CreateAuditCheck(context.Context, *CreateAuditCheckRequest) (*CreateAuditCheckResponse, error)
+	// GetAuditCheckAnswer reads one check's current verdict straight from the
+	// task — the dispatch service's repair path for when the answered event never
+	// arrived. Read-only and idempotent; a check nobody has answered yet returns
+	// answered=false, never an error.
+	GetAuditCheckAnswer(context.Context, *GetAuditCheckAnswerRequest) (*GetAuditCheckAnswerResponse, error)
 	mustEmbedUnimplementedTasksServiceServer()
 }
 
@@ -142,6 +186,12 @@ func (UnimplementedTasksServiceServer) ResolveTask(context.Context, *ResolveTask
 }
 func (UnimplementedTasksServiceServer) ListOpenAuditChecks(context.Context, *ListOpenAuditChecksRequest) (*ListOpenAuditChecksResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListOpenAuditChecks not implemented")
+}
+func (UnimplementedTasksServiceServer) CreateAuditCheck(context.Context, *CreateAuditCheckRequest) (*CreateAuditCheckResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method CreateAuditCheck not implemented")
+}
+func (UnimplementedTasksServiceServer) GetAuditCheckAnswer(context.Context, *GetAuditCheckAnswerRequest) (*GetAuditCheckAnswerResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetAuditCheckAnswer not implemented")
 }
 func (UnimplementedTasksServiceServer) mustEmbedUnimplementedTasksServiceServer() {}
 func (UnimplementedTasksServiceServer) testEmbeddedByValue()                      {}
@@ -218,6 +268,42 @@ func _TasksService_ListOpenAuditChecks_Handler(srv interface{}, ctx context.Cont
 	return interceptor(ctx, in, info, handler)
 }
 
+func _TasksService_CreateAuditCheck_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CreateAuditCheckRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(TasksServiceServer).CreateAuditCheck(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: TasksService_CreateAuditCheck_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(TasksServiceServer).CreateAuditCheck(ctx, req.(*CreateAuditCheckRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _TasksService_GetAuditCheckAnswer_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetAuditCheckAnswerRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(TasksServiceServer).GetAuditCheckAnswer(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: TasksService_GetAuditCheckAnswer_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(TasksServiceServer).GetAuditCheckAnswer(ctx, req.(*GetAuditCheckAnswerRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // TasksService_ServiceDesc is the grpc.ServiceDesc for TasksService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -236,6 +322,14 @@ var TasksService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ListOpenAuditChecks",
 			Handler:    _TasksService_ListOpenAuditChecks_Handler,
+		},
+		{
+			MethodName: "CreateAuditCheck",
+			Handler:    _TasksService_CreateAuditCheck_Handler,
+		},
+		{
+			MethodName: "GetAuditCheckAnswer",
+			Handler:    _TasksService_GetAuditCheckAnswer_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

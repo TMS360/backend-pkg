@@ -4,6 +4,7 @@ import (
 	"context"
 	"net"
 	"testing"
+	"time"
 
 	"github.com/TMS360/backend-pkg/consts"
 	"github.com/TMS360/backend-pkg/middleware"
@@ -18,6 +19,7 @@ import (
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 	"google.golang.org/grpc/test/bufconn"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 // Unit tests for the shared tasks client (DEV-1666). Wrapper logic (validation,
@@ -33,11 +35,23 @@ type fakeTasksSvc struct {
 	createErr   error
 	resolveResp *pb.ResolveTaskResponse
 	resolveErr  error
+	listResp    *pb.ListOpenAuditChecksResponse
+	listErr     error
+	checkResp   *pb.CreateAuditCheckResponse
+	checkErr    error
+	answerResp  *pb.GetAuditCheckAnswerResponse
+	answerErr   error
 
 	lastCreate   *pb.CreateTaskRequest
 	lastResolve  *pb.ResolveTaskRequest
+	lastList     *pb.ListOpenAuditChecksRequest
+	lastCheck    *pb.CreateAuditCheckRequest
+	lastAnswer   *pb.GetAuditCheckAnswerRequest
 	createCalls  int
 	resolveCalls int
+	listCalls    int
+	checkCalls   int
+	answerCalls  int
 }
 
 func (f *fakeTasksSvc) CreateTask(_ context.Context, in *pb.CreateTaskRequest, _ ...grpc.CallOption) (*pb.CreateTaskResponse, error) {
@@ -56,6 +70,39 @@ func (f *fakeTasksSvc) ResolveTask(_ context.Context, in *pb.ResolveTaskRequest,
 		return nil, f.resolveErr
 	}
 	return f.resolveResp, nil
+}
+
+func (f *fakeTasksSvc) ListOpenAuditChecks(_ context.Context, in *pb.ListOpenAuditChecksRequest, _ ...grpc.CallOption) (*pb.ListOpenAuditChecksResponse, error) {
+	f.listCalls++
+	f.lastList = in
+	if f.listErr != nil {
+		return nil, f.listErr
+	}
+	if f.listResp == nil {
+		return &pb.ListOpenAuditChecksResponse{}, nil
+	}
+	return f.listResp, nil
+}
+
+func (f *fakeTasksSvc) CreateAuditCheck(_ context.Context, in *pb.CreateAuditCheckRequest, _ ...grpc.CallOption) (*pb.CreateAuditCheckResponse, error) {
+	f.checkCalls++
+	f.lastCheck = in
+	if f.checkErr != nil {
+		return nil, f.checkErr
+	}
+	return f.checkResp, nil
+}
+
+func (f *fakeTasksSvc) GetAuditCheckAnswer(_ context.Context, in *pb.GetAuditCheckAnswerRequest, _ ...grpc.CallOption) (*pb.GetAuditCheckAnswerResponse, error) {
+	f.answerCalls++
+	f.lastAnswer = in
+	if f.answerErr != nil {
+		return nil, f.answerErr
+	}
+	if f.answerResp == nil {
+		return &pb.GetAuditCheckAnswerResponse{}, nil
+	}
+	return f.answerResp, nil
 }
 
 func validCreate() tasks.CreateParams {
@@ -233,4 +280,71 @@ func lastMD(md metadata.MD, key string) string {
 		return ""
 	}
 	return v[len(v)-1]
+}
+
+// DEV-2445: the audit-check create maps the claim onto the wire — and a
+// truck-day claim (no crew, no setter) sends ABSENT ids, not zero UUIDs.
+func TestTasksClientCreateAuditCheckMapsClaim(t *testing.T) {
+	taskID := uuid.New()
+	fake := &fakeTasksSvc{checkResp: &pb.CreateAuditCheckResponse{TaskId: taskID.String(), Created: true}}
+	cli := tasks.NewWithClient(fake)
+
+	crew, setBy, truck := uuid.New(), uuid.New(), uuid.New()
+	res, err := cli.CreateAuditCheck(context.Background(), tasks.AuditCheckParams{
+		Day: "2026-09-22", WeekStart: "2026-09-21", StatusName: "Out of service",
+		Explanation: "Shop, brake line", CaseNumber: "WO-1182",
+		CrewID: crew, SetBy: setBy, Department: "maintenance",
+		EntityType: "truck", EntityID: truck,
+	})
+	require.NoError(t, err)
+	require.Equal(t, taskID, res.TaskID)
+	require.True(t, res.Created)
+	require.Equal(t, crew.String(), fake.lastCheck.GetCrewId())
+	require.Equal(t, setBy.String(), fake.lastCheck.GetSetBy())
+	require.Equal(t, "maintenance", fake.lastCheck.GetDepartment())
+
+	// Truck-day-with-no-driver: crew and setter are absent on the wire.
+	_, err = cli.CreateAuditCheck(context.Background(), tasks.AuditCheckParams{
+		Day: "2026-09-22", WeekStart: "2026-09-21", StatusName: "No driver",
+		Department: "human resources", EntityType: "truck", EntityID: truck,
+	})
+	require.NoError(t, err)
+	require.Empty(t, fake.lastCheck.GetCrewId())
+	require.Empty(t, fake.lastCheck.GetSetBy())
+}
+
+// DEV-2445: an incomplete claim is refused BEFORE the network.
+func TestTasksClientCreateAuditCheckValidatesFirst(t *testing.T) {
+	fake := &fakeTasksSvc{checkResp: &pb.CreateAuditCheckResponse{}}
+	cli := tasks.NewWithClient(fake)
+
+	_, err := cli.CreateAuditCheck(context.Background(), tasks.AuditCheckParams{
+		WeekStart: "2026-09-21", StatusName: "Home", EntityType: "truck", EntityID: uuid.New(),
+	})
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "day")
+	require.Zero(t, fake.checkCalls, "no network call on a bad claim")
+}
+
+// DEV-2445: "no verdict yet" is (nil, nil) — the repair sweep's no-op — and an
+// answered check comes back mapped.
+func TestTasksClientGetAuditCheckAnswer(t *testing.T) {
+	fake := &fakeTasksSvc{}
+	cli := tasks.NewWithClient(fake)
+
+	got, err := cli.GetAuditCheckAnswer(context.Background(), uuid.New())
+	require.NoError(t, err)
+	require.Nil(t, got, "an open check answers nil, not an error")
+
+	by := uuid.New()
+	fake.answerResp = &pb.GetAuditCheckAnswerResponse{
+		Answered: true, Outcome: "REJECTED", Note: "Truck was on the road",
+		AnsweredBy: by.String(), AnsweredAt: timestamppb.New(time.Date(2026, 9, 23, 10, 0, 0, 0, time.UTC)),
+	}
+	got, err = cli.GetAuditCheckAnswer(context.Background(), uuid.New())
+	require.NoError(t, err)
+	require.NotNil(t, got)
+	require.Equal(t, "REJECTED", got.Outcome)
+	require.Equal(t, by, got.AnsweredBy)
+	require.Equal(t, 2026, got.AnsweredAt.Year())
 }

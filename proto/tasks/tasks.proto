@@ -34,6 +34,19 @@ service TasksService {
   // Read-only and idempotent. A crew with no checks, a week with none, and an
   // empty crew list all answer with an empty list — never an error.
   rpc ListOpenAuditChecks(ListOpenAuditChecksRequest) returns (ListOpenAuditChecksResponse);
+
+  // CreateAuditCheck opens one audit check (DEV-2445): a day the dispatcher
+  // closed with a status another department owns, or a day an active truck had
+  // no driver. Idempotent on the claim's identity (crew+day, or truck+day for a
+  // no-driver check): a producer retry returns the same card, `created` tells
+  // which happened. Tenant and actor travel in metadata like CreateTask.
+  rpc CreateAuditCheck(CreateAuditCheckRequest) returns (CreateAuditCheckResponse);
+
+  // GetAuditCheckAnswer reads one check's current verdict straight from the
+  // task — the dispatch service's repair path for when the answered event never
+  // arrived. Read-only and idempotent; a check nobody has answered yet returns
+  // answered=false, never an error.
+  rpc GetAuditCheckAnswer(GetAuditCheckAnswerRequest) returns (GetAuditCheckAnswerResponse);
 }
 
 // DedupKey identifies the specific validation occurrence a task belongs to.
@@ -96,4 +109,55 @@ message OpenAuditCheck {
 
 message ListOpenAuditChecksResponse {
   repeated OpenAuditCheck checks = 1;
+}
+
+// CreateAuditCheckRequest is the whole claim in ONE call: the tasks service
+// must be able to show the card, refuse a self-answer and open a rejection's
+// incident without ever calling the dispatch service back. Dates are naive
+// company-local YYYY-MM-DD strings, never instants (DEV-2076).
+message CreateAuditCheckRequest {
+  // The day under question and what it was closed with.
+  string day = 1;        // YYYY-MM-DD
+  string week_start = 2; // YYYY-MM-DD
+  string status_name = 3;
+  string explanation = 4; // optional
+  string case_number = 5; // optional, e.g. "WO-1182"
+
+  // The crew-week the day belongs to, and who set it. BOTH are empty on a
+  // truck-day-with-no-driver check: no crew held the truck and nobody set a
+  // status — the system noticed the gap.
+  string crew_id = 6; // UUID or empty
+  string set_by = 7;  // UUID or empty
+
+  // Who answers, and who may not.
+  string department = 8;             // well-known key ("maintenance", …)
+  repeated string dispatcher_ids = 9; // UUIDs; nobody here may answer
+  string manager_id = 10;             // UUID or empty
+  string dispatch_team_id = 11;       // UUID or empty
+
+  // What the day is about — the crew's truck, or its driver when it has none.
+  string entity_type = 12; // truck | driver
+  string entity_id = 13;   // UUID
+
+  string title = 14;       // optional; empty = generated from status + day
+  string description = 15; // optional
+}
+
+message CreateAuditCheckResponse {
+  string task_id = 1;
+  bool created = 2; // false = the same claim's check already existed (retry)
+}
+
+message GetAuditCheckAnswerRequest {
+  string task_id = 1; // UUID
+}
+
+message GetAuditCheckAnswerResponse {
+  // answered=false means the check is still open; every other field is then
+  // zero. It is NOT an error — "no verdict yet" is the answer.
+  bool answered = 1;
+  string outcome = 2;     // CONFIRMED | REJECTED
+  string note = 3;        // the department's words; mandatory on a reject
+  string answered_by = 4; // UUID
+  google.protobuf.Timestamp answered_at = 5;
 }

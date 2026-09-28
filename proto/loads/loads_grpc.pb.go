@@ -56,6 +56,7 @@ const (
 	LoadsService_GetVehicleNumbersByIDs_FullMethodName         = "/loads.LoadsService/GetVehicleNumbersByIDs"
 	LoadsService_GetTrailerOwnershipByIDs_FullMethodName       = "/loads.LoadsService/GetTrailerOwnershipByIDs"
 	LoadsService_GetTruckIDsByOwnerIDs_FullMethodName          = "/loads.LoadsService/GetTruckIDsByOwnerIDs"
+	LoadsService_ListActiveTruckIDs_FullMethodName             = "/loads.LoadsService/ListActiveTruckIDs"
 	LoadsService_MatchTollRows_FullMethodName                  = "/loads.LoadsService/MatchTollRows"
 	LoadsService_GetLotChargebacksByDispatchers_FullMethodName = "/loads.LoadsService/GetLotChargebacksByDispatchers"
 	LoadsService_GetAssetOdometer_FullMethodName               = "/loads.LoadsService/GetAssetOdometer"
@@ -245,6 +246,17 @@ type LoadsServiceClient interface {
 	// AuthServerInterceptor, so there is no actor to scope by), same contract as
 	// GetTruckOwnersByTruckIDs / GetVehicleNumbersByIDs.
 	GetTruckIDsByOwnerIDs(ctx context.Context, in *GetTruckIDsByOwnerIDsRequest, opts ...grpc.CallOption) (*GetTruckIDsByOwnerIDsResponse, error)
+	// ── Active trucks (used by the tms-teams audit-check producer, DEV-2445) ──
+	// Lists the company's trucks whose CURRENT asset status is active — the fleet
+	// the "truck-day with no driver" check is asked about. A retired or sold
+	// truck is left out, so a day it stood without a driver makes no check; the
+	// status is read as of NOW on purpose (the ticket: marking a truck retired
+	// stops new checks, the ones already opened stay).
+	//
+	// company_id is passed explicitly (backend-load's gRPC server runs without an
+	// AuthServerInterceptor, so there is no actor to scope by), same contract as
+	// GetTruckOwnersByTruckIDs / GetVehicleNumbersByIDs.
+	ListActiveTruckIDs(ctx context.Context, in *ListActiveTruckIDsRequest, opts ...grpc.CallOption) (*ListActiveTruckIDsResponse, error)
 	// ── Toll row → truck / trip matching (backend-accounting, DEV-1793) ──────
 	// Resolves a WHOLE ingested toll file in one call. A weekly PrePass export is
 	// 240-470 rows; a per-row RPC across a service boundary is the thing this
@@ -641,6 +653,16 @@ func (c *loadsServiceClient) GetTruckIDsByOwnerIDs(ctx context.Context, in *GetT
 	return out, nil
 }
 
+func (c *loadsServiceClient) ListActiveTruckIDs(ctx context.Context, in *ListActiveTruckIDsRequest, opts ...grpc.CallOption) (*ListActiveTruckIDsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListActiveTruckIDsResponse)
+	err := c.cc.Invoke(ctx, LoadsService_ListActiveTruckIDs_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *loadsServiceClient) MatchTollRows(ctx context.Context, in *MatchTollRowsRequest, opts ...grpc.CallOption) (*MatchTollRowsResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(MatchTollRowsResponse)
@@ -882,6 +904,17 @@ type LoadsServiceServer interface {
 	// AuthServerInterceptor, so there is no actor to scope by), same contract as
 	// GetTruckOwnersByTruckIDs / GetVehicleNumbersByIDs.
 	GetTruckIDsByOwnerIDs(context.Context, *GetTruckIDsByOwnerIDsRequest) (*GetTruckIDsByOwnerIDsResponse, error)
+	// ── Active trucks (used by the tms-teams audit-check producer, DEV-2445) ──
+	// Lists the company's trucks whose CURRENT asset status is active — the fleet
+	// the "truck-day with no driver" check is asked about. A retired or sold
+	// truck is left out, so a day it stood without a driver makes no check; the
+	// status is read as of NOW on purpose (the ticket: marking a truck retired
+	// stops new checks, the ones already opened stay).
+	//
+	// company_id is passed explicitly (backend-load's gRPC server runs without an
+	// AuthServerInterceptor, so there is no actor to scope by), same contract as
+	// GetTruckOwnersByTruckIDs / GetVehicleNumbersByIDs.
+	ListActiveTruckIDs(context.Context, *ListActiveTruckIDsRequest) (*ListActiveTruckIDsResponse, error)
 	// ── Toll row → truck / trip matching (backend-accounting, DEV-1793) ──────
 	// Resolves a WHOLE ingested toll file in one call. A weekly PrePass export is
 	// 240-470 rows; a per-row RPC across a service boundary is the thing this
@@ -1037,6 +1070,9 @@ func (UnimplementedLoadsServiceServer) GetTrailerOwnershipByIDs(context.Context,
 }
 func (UnimplementedLoadsServiceServer) GetTruckIDsByOwnerIDs(context.Context, *GetTruckIDsByOwnerIDsRequest) (*GetTruckIDsByOwnerIDsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetTruckIDsByOwnerIDs not implemented")
+}
+func (UnimplementedLoadsServiceServer) ListActiveTruckIDs(context.Context, *ListActiveTruckIDsRequest) (*ListActiveTruckIDsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListActiveTruckIDs not implemented")
 }
 func (UnimplementedLoadsServiceServer) MatchTollRows(context.Context, *MatchTollRowsRequest) (*MatchTollRowsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method MatchTollRows not implemented")
@@ -1664,6 +1700,24 @@ func _LoadsService_GetTruckIDsByOwnerIDs_Handler(srv interface{}, ctx context.Co
 	return interceptor(ctx, in, info, handler)
 }
 
+func _LoadsService_ListActiveTruckIDs_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListActiveTruckIDsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(LoadsServiceServer).ListActiveTruckIDs(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: LoadsService_ListActiveTruckIDs_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(LoadsServiceServer).ListActiveTruckIDs(ctx, req.(*ListActiveTruckIDsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _LoadsService_MatchTollRows_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(MatchTollRowsRequest)
 	if err := dec(in); err != nil {
@@ -1906,6 +1960,10 @@ var LoadsService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetTruckIDsByOwnerIDs",
 			Handler:    _LoadsService_GetTruckIDsByOwnerIDs_Handler,
+		},
+		{
+			MethodName: "ListActiveTruckIDs",
+			Handler:    _LoadsService_ListActiveTruckIDs_Handler,
 		},
 		{
 			MethodName: "MatchTollRows",

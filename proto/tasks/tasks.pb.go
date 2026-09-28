@@ -538,6 +538,346 @@ func (x *ListOpenAuditChecksResponse) GetChecks() []*OpenAuditCheck {
 	return nil
 }
 
+// CreateAuditCheckRequest is the whole claim in ONE call: the tasks service
+// must be able to show the card, refuse a self-answer and open a rejection's
+// incident without ever calling the dispatch service back. Dates are naive
+// company-local YYYY-MM-DD strings, never instants (DEV-2076).
+type CreateAuditCheckRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The day under question and what it was closed with.
+	Day         string `protobuf:"bytes,1,opt,name=day,proto3" json:"day,omitempty"`                              // YYYY-MM-DD
+	WeekStart   string `protobuf:"bytes,2,opt,name=week_start,json=weekStart,proto3" json:"week_start,omitempty"` // YYYY-MM-DD
+	StatusName  string `protobuf:"bytes,3,opt,name=status_name,json=statusName,proto3" json:"status_name,omitempty"`
+	Explanation string `protobuf:"bytes,4,opt,name=explanation,proto3" json:"explanation,omitempty"`                 // optional
+	CaseNumber  string `protobuf:"bytes,5,opt,name=case_number,json=caseNumber,proto3" json:"case_number,omitempty"` // optional, e.g. "WO-1182"
+	// The crew-week the day belongs to, and who set it. BOTH are empty on a
+	// truck-day-with-no-driver check: no crew held the truck and nobody set a
+	// status — the system noticed the gap.
+	CrewId string `protobuf:"bytes,6,opt,name=crew_id,json=crewId,proto3" json:"crew_id,omitempty"` // UUID or empty
+	SetBy  string `protobuf:"bytes,7,opt,name=set_by,json=setBy,proto3" json:"set_by,omitempty"`    // UUID or empty
+	// Who answers, and who may not.
+	Department     string   `protobuf:"bytes,8,opt,name=department,proto3" json:"department,omitempty"`                                  // well-known key ("maintenance", …)
+	DispatcherIds  []string `protobuf:"bytes,9,rep,name=dispatcher_ids,json=dispatcherIds,proto3" json:"dispatcher_ids,omitempty"`       // UUIDs; nobody here may answer
+	ManagerId      string   `protobuf:"bytes,10,opt,name=manager_id,json=managerId,proto3" json:"manager_id,omitempty"`                  // UUID or empty
+	DispatchTeamId string   `protobuf:"bytes,11,opt,name=dispatch_team_id,json=dispatchTeamId,proto3" json:"dispatch_team_id,omitempty"` // UUID or empty
+	// What the day is about — the crew's truck, or its driver when it has none.
+	EntityType    string `protobuf:"bytes,12,opt,name=entity_type,json=entityType,proto3" json:"entity_type,omitempty"` // truck | driver
+	EntityId      string `protobuf:"bytes,13,opt,name=entity_id,json=entityId,proto3" json:"entity_id,omitempty"`       // UUID
+	Title         string `protobuf:"bytes,14,opt,name=title,proto3" json:"title,omitempty"`                             // optional; empty = generated from status + day
+	Description   string `protobuf:"bytes,15,opt,name=description,proto3" json:"description,omitempty"`                 // optional
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CreateAuditCheckRequest) Reset() {
+	*x = CreateAuditCheckRequest{}
+	mi := &file_tasks_tasks_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CreateAuditCheckRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CreateAuditCheckRequest) ProtoMessage() {}
+
+func (x *CreateAuditCheckRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_tasks_tasks_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CreateAuditCheckRequest.ProtoReflect.Descriptor instead.
+func (*CreateAuditCheckRequest) Descriptor() ([]byte, []int) {
+	return file_tasks_tasks_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *CreateAuditCheckRequest) GetDay() string {
+	if x != nil {
+		return x.Day
+	}
+	return ""
+}
+
+func (x *CreateAuditCheckRequest) GetWeekStart() string {
+	if x != nil {
+		return x.WeekStart
+	}
+	return ""
+}
+
+func (x *CreateAuditCheckRequest) GetStatusName() string {
+	if x != nil {
+		return x.StatusName
+	}
+	return ""
+}
+
+func (x *CreateAuditCheckRequest) GetExplanation() string {
+	if x != nil {
+		return x.Explanation
+	}
+	return ""
+}
+
+func (x *CreateAuditCheckRequest) GetCaseNumber() string {
+	if x != nil {
+		return x.CaseNumber
+	}
+	return ""
+}
+
+func (x *CreateAuditCheckRequest) GetCrewId() string {
+	if x != nil {
+		return x.CrewId
+	}
+	return ""
+}
+
+func (x *CreateAuditCheckRequest) GetSetBy() string {
+	if x != nil {
+		return x.SetBy
+	}
+	return ""
+}
+
+func (x *CreateAuditCheckRequest) GetDepartment() string {
+	if x != nil {
+		return x.Department
+	}
+	return ""
+}
+
+func (x *CreateAuditCheckRequest) GetDispatcherIds() []string {
+	if x != nil {
+		return x.DispatcherIds
+	}
+	return nil
+}
+
+func (x *CreateAuditCheckRequest) GetManagerId() string {
+	if x != nil {
+		return x.ManagerId
+	}
+	return ""
+}
+
+func (x *CreateAuditCheckRequest) GetDispatchTeamId() string {
+	if x != nil {
+		return x.DispatchTeamId
+	}
+	return ""
+}
+
+func (x *CreateAuditCheckRequest) GetEntityType() string {
+	if x != nil {
+		return x.EntityType
+	}
+	return ""
+}
+
+func (x *CreateAuditCheckRequest) GetEntityId() string {
+	if x != nil {
+		return x.EntityId
+	}
+	return ""
+}
+
+func (x *CreateAuditCheckRequest) GetTitle() string {
+	if x != nil {
+		return x.Title
+	}
+	return ""
+}
+
+func (x *CreateAuditCheckRequest) GetDescription() string {
+	if x != nil {
+		return x.Description
+	}
+	return ""
+}
+
+type CreateAuditCheckResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	TaskId        string                 `protobuf:"bytes,1,opt,name=task_id,json=taskId,proto3" json:"task_id,omitempty"`
+	Created       bool                   `protobuf:"varint,2,opt,name=created,proto3" json:"created,omitempty"` // false = the same claim's check already existed (retry)
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CreateAuditCheckResponse) Reset() {
+	*x = CreateAuditCheckResponse{}
+	mi := &file_tasks_tasks_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CreateAuditCheckResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CreateAuditCheckResponse) ProtoMessage() {}
+
+func (x *CreateAuditCheckResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_tasks_tasks_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CreateAuditCheckResponse.ProtoReflect.Descriptor instead.
+func (*CreateAuditCheckResponse) Descriptor() ([]byte, []int) {
+	return file_tasks_tasks_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *CreateAuditCheckResponse) GetTaskId() string {
+	if x != nil {
+		return x.TaskId
+	}
+	return ""
+}
+
+func (x *CreateAuditCheckResponse) GetCreated() bool {
+	if x != nil {
+		return x.Created
+	}
+	return false
+}
+
+type GetAuditCheckAnswerRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	TaskId        string                 `protobuf:"bytes,1,opt,name=task_id,json=taskId,proto3" json:"task_id,omitempty"` // UUID
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetAuditCheckAnswerRequest) Reset() {
+	*x = GetAuditCheckAnswerRequest{}
+	mi := &file_tasks_tasks_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetAuditCheckAnswerRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetAuditCheckAnswerRequest) ProtoMessage() {}
+
+func (x *GetAuditCheckAnswerRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_tasks_tasks_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetAuditCheckAnswerRequest.ProtoReflect.Descriptor instead.
+func (*GetAuditCheckAnswerRequest) Descriptor() ([]byte, []int) {
+	return file_tasks_tasks_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *GetAuditCheckAnswerRequest) GetTaskId() string {
+	if x != nil {
+		return x.TaskId
+	}
+	return ""
+}
+
+type GetAuditCheckAnswerResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// answered=false means the check is still open; every other field is then
+	// zero. It is NOT an error — "no verdict yet" is the answer.
+	Answered      bool                   `protobuf:"varint,1,opt,name=answered,proto3" json:"answered,omitempty"`
+	Outcome       string                 `protobuf:"bytes,2,opt,name=outcome,proto3" json:"outcome,omitempty"`                         // CONFIRMED | REJECTED
+	Note          string                 `protobuf:"bytes,3,opt,name=note,proto3" json:"note,omitempty"`                               // the department's words; mandatory on a reject
+	AnsweredBy    string                 `protobuf:"bytes,4,opt,name=answered_by,json=answeredBy,proto3" json:"answered_by,omitempty"` // UUID
+	AnsweredAt    *timestamppb.Timestamp `protobuf:"bytes,5,opt,name=answered_at,json=answeredAt,proto3" json:"answered_at,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetAuditCheckAnswerResponse) Reset() {
+	*x = GetAuditCheckAnswerResponse{}
+	mi := &file_tasks_tasks_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetAuditCheckAnswerResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetAuditCheckAnswerResponse) ProtoMessage() {}
+
+func (x *GetAuditCheckAnswerResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_tasks_tasks_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetAuditCheckAnswerResponse.ProtoReflect.Descriptor instead.
+func (*GetAuditCheckAnswerResponse) Descriptor() ([]byte, []int) {
+	return file_tasks_tasks_proto_rawDescGZIP(), []int{11}
+}
+
+func (x *GetAuditCheckAnswerResponse) GetAnswered() bool {
+	if x != nil {
+		return x.Answered
+	}
+	return false
+}
+
+func (x *GetAuditCheckAnswerResponse) GetOutcome() string {
+	if x != nil {
+		return x.Outcome
+	}
+	return ""
+}
+
+func (x *GetAuditCheckAnswerResponse) GetNote() string {
+	if x != nil {
+		return x.Note
+	}
+	return ""
+}
+
+func (x *GetAuditCheckAnswerResponse) GetAnsweredBy() string {
+	if x != nil {
+		return x.AnsweredBy
+	}
+	return ""
+}
+
+func (x *GetAuditCheckAnswerResponse) GetAnsweredAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.AnsweredAt
+	}
+	return nil
+}
+
 var File_tasks_tasks_proto protoreflect.FileDescriptor
 
 const file_tasks_tasks_proto_rawDesc = "" +
@@ -583,12 +923,51 @@ const file_tasks_tasks_proto_rawDesc = "" +
 	"department\x12\x14\n" +
 	"\x05title\x18\x06 \x01(\tR\x05title\"L\n" +
 	"\x1bListOpenAuditChecksResponse\x12-\n" +
-	"\x06checks\x18\x01 \x03(\v2\x15.tasks.OpenAuditCheckR\x06checks2\xf5\x01\n" +
+	"\x06checks\x18\x01 \x03(\v2\x15.tasks.OpenAuditCheckR\x06checks\"\xe4\x03\n" +
+	"\x17CreateAuditCheckRequest\x12\x10\n" +
+	"\x03day\x18\x01 \x01(\tR\x03day\x12\x1d\n" +
+	"\n" +
+	"week_start\x18\x02 \x01(\tR\tweekStart\x12\x1f\n" +
+	"\vstatus_name\x18\x03 \x01(\tR\n" +
+	"statusName\x12 \n" +
+	"\vexplanation\x18\x04 \x01(\tR\vexplanation\x12\x1f\n" +
+	"\vcase_number\x18\x05 \x01(\tR\n" +
+	"caseNumber\x12\x17\n" +
+	"\acrew_id\x18\x06 \x01(\tR\x06crewId\x12\x15\n" +
+	"\x06set_by\x18\a \x01(\tR\x05setBy\x12\x1e\n" +
+	"\n" +
+	"department\x18\b \x01(\tR\n" +
+	"department\x12%\n" +
+	"\x0edispatcher_ids\x18\t \x03(\tR\rdispatcherIds\x12\x1d\n" +
+	"\n" +
+	"manager_id\x18\n" +
+	" \x01(\tR\tmanagerId\x12(\n" +
+	"\x10dispatch_team_id\x18\v \x01(\tR\x0edispatchTeamId\x12\x1f\n" +
+	"\ventity_type\x18\f \x01(\tR\n" +
+	"entityType\x12\x1b\n" +
+	"\tentity_id\x18\r \x01(\tR\bentityId\x12\x14\n" +
+	"\x05title\x18\x0e \x01(\tR\x05title\x12 \n" +
+	"\vdescription\x18\x0f \x01(\tR\vdescription\"M\n" +
+	"\x18CreateAuditCheckResponse\x12\x17\n" +
+	"\atask_id\x18\x01 \x01(\tR\x06taskId\x12\x18\n" +
+	"\acreated\x18\x02 \x01(\bR\acreated\"5\n" +
+	"\x1aGetAuditCheckAnswerRequest\x12\x17\n" +
+	"\atask_id\x18\x01 \x01(\tR\x06taskId\"\xc5\x01\n" +
+	"\x1bGetAuditCheckAnswerResponse\x12\x1a\n" +
+	"\banswered\x18\x01 \x01(\bR\banswered\x12\x18\n" +
+	"\aoutcome\x18\x02 \x01(\tR\aoutcome\x12\x12\n" +
+	"\x04note\x18\x03 \x01(\tR\x04note\x12\x1f\n" +
+	"\vanswered_by\x18\x04 \x01(\tR\n" +
+	"answeredBy\x12;\n" +
+	"\vanswered_at\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\n" +
+	"answeredAt2\xa8\x03\n" +
 	"\fTasksService\x12A\n" +
 	"\n" +
 	"CreateTask\x12\x18.tasks.CreateTaskRequest\x1a\x19.tasks.CreateTaskResponse\x12D\n" +
 	"\vResolveTask\x12\x19.tasks.ResolveTaskRequest\x1a\x1a.tasks.ResolveTaskResponse\x12\\\n" +
-	"\x13ListOpenAuditChecks\x12!.tasks.ListOpenAuditChecksRequest\x1a\".tasks.ListOpenAuditChecksResponseB+Z)github.com/TMS360/backend-pkg/proto/tasksb\x06proto3"
+	"\x13ListOpenAuditChecks\x12!.tasks.ListOpenAuditChecksRequest\x1a\".tasks.ListOpenAuditChecksResponse\x12S\n" +
+	"\x10CreateAuditCheck\x12\x1e.tasks.CreateAuditCheckRequest\x1a\x1f.tasks.CreateAuditCheckResponse\x12\\\n" +
+	"\x13GetAuditCheckAnswer\x12!.tasks.GetAuditCheckAnswerRequest\x1a\".tasks.GetAuditCheckAnswerResponseB+Z)github.com/TMS360/backend-pkg/proto/tasksb\x06proto3"
 
 var (
 	file_tasks_tasks_proto_rawDescOnce sync.Once
@@ -602,7 +981,7 @@ func file_tasks_tasks_proto_rawDescGZIP() []byte {
 	return file_tasks_tasks_proto_rawDescData
 }
 
-var file_tasks_tasks_proto_msgTypes = make([]protoimpl.MessageInfo, 8)
+var file_tasks_tasks_proto_msgTypes = make([]protoimpl.MessageInfo, 12)
 var file_tasks_tasks_proto_goTypes = []any{
 	(*DedupKey)(nil),                    // 0: tasks.DedupKey
 	(*CreateTaskRequest)(nil),           // 1: tasks.CreateTaskRequest
@@ -612,24 +991,33 @@ var file_tasks_tasks_proto_goTypes = []any{
 	(*ListOpenAuditChecksRequest)(nil),  // 5: tasks.ListOpenAuditChecksRequest
 	(*OpenAuditCheck)(nil),              // 6: tasks.OpenAuditCheck
 	(*ListOpenAuditChecksResponse)(nil), // 7: tasks.ListOpenAuditChecksResponse
-	(*timestamppb.Timestamp)(nil),       // 8: google.protobuf.Timestamp
+	(*CreateAuditCheckRequest)(nil),     // 8: tasks.CreateAuditCheckRequest
+	(*CreateAuditCheckResponse)(nil),    // 9: tasks.CreateAuditCheckResponse
+	(*GetAuditCheckAnswerRequest)(nil),  // 10: tasks.GetAuditCheckAnswerRequest
+	(*GetAuditCheckAnswerResponse)(nil), // 11: tasks.GetAuditCheckAnswerResponse
+	(*timestamppb.Timestamp)(nil),       // 12: google.protobuf.Timestamp
 }
 var file_tasks_tasks_proto_depIdxs = []int32{
-	0, // 0: tasks.CreateTaskRequest.key:type_name -> tasks.DedupKey
-	8, // 1: tasks.CreateTaskRequest.due_at:type_name -> google.protobuf.Timestamp
-	0, // 2: tasks.ResolveTaskRequest.key:type_name -> tasks.DedupKey
-	6, // 3: tasks.ListOpenAuditChecksResponse.checks:type_name -> tasks.OpenAuditCheck
-	1, // 4: tasks.TasksService.CreateTask:input_type -> tasks.CreateTaskRequest
-	3, // 5: tasks.TasksService.ResolveTask:input_type -> tasks.ResolveTaskRequest
-	5, // 6: tasks.TasksService.ListOpenAuditChecks:input_type -> tasks.ListOpenAuditChecksRequest
-	2, // 7: tasks.TasksService.CreateTask:output_type -> tasks.CreateTaskResponse
-	4, // 8: tasks.TasksService.ResolveTask:output_type -> tasks.ResolveTaskResponse
-	7, // 9: tasks.TasksService.ListOpenAuditChecks:output_type -> tasks.ListOpenAuditChecksResponse
-	7, // [7:10] is the sub-list for method output_type
-	4, // [4:7] is the sub-list for method input_type
-	4, // [4:4] is the sub-list for extension type_name
-	4, // [4:4] is the sub-list for extension extendee
-	0, // [0:4] is the sub-list for field type_name
+	0,  // 0: tasks.CreateTaskRequest.key:type_name -> tasks.DedupKey
+	12, // 1: tasks.CreateTaskRequest.due_at:type_name -> google.protobuf.Timestamp
+	0,  // 2: tasks.ResolveTaskRequest.key:type_name -> tasks.DedupKey
+	6,  // 3: tasks.ListOpenAuditChecksResponse.checks:type_name -> tasks.OpenAuditCheck
+	12, // 4: tasks.GetAuditCheckAnswerResponse.answered_at:type_name -> google.protobuf.Timestamp
+	1,  // 5: tasks.TasksService.CreateTask:input_type -> tasks.CreateTaskRequest
+	3,  // 6: tasks.TasksService.ResolveTask:input_type -> tasks.ResolveTaskRequest
+	5,  // 7: tasks.TasksService.ListOpenAuditChecks:input_type -> tasks.ListOpenAuditChecksRequest
+	8,  // 8: tasks.TasksService.CreateAuditCheck:input_type -> tasks.CreateAuditCheckRequest
+	10, // 9: tasks.TasksService.GetAuditCheckAnswer:input_type -> tasks.GetAuditCheckAnswerRequest
+	2,  // 10: tasks.TasksService.CreateTask:output_type -> tasks.CreateTaskResponse
+	4,  // 11: tasks.TasksService.ResolveTask:output_type -> tasks.ResolveTaskResponse
+	7,  // 12: tasks.TasksService.ListOpenAuditChecks:output_type -> tasks.ListOpenAuditChecksResponse
+	9,  // 13: tasks.TasksService.CreateAuditCheck:output_type -> tasks.CreateAuditCheckResponse
+	11, // 14: tasks.TasksService.GetAuditCheckAnswer:output_type -> tasks.GetAuditCheckAnswerResponse
+	10, // [10:15] is the sub-list for method output_type
+	5,  // [5:10] is the sub-list for method input_type
+	5,  // [5:5] is the sub-list for extension type_name
+	5,  // [5:5] is the sub-list for extension extendee
+	0,  // [0:5] is the sub-list for field type_name
 }
 
 func init() { file_tasks_tasks_proto_init() }
@@ -643,7 +1031,7 @@ func file_tasks_tasks_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_tasks_tasks_proto_rawDesc), len(file_tasks_tasks_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   8,
+			NumMessages:   12,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

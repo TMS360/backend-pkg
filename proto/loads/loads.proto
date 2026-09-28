@@ -229,6 +229,19 @@ service LoadsService {
   rpc GetTruckIDsByOwnerIDs(GetTruckIDsByOwnerIDsRequest)
       returns (GetTruckIDsByOwnerIDsResponse);
 
+  // ── Active trucks (used by the tms-teams audit-check producer, DEV-2445) ──
+  // Lists the company's trucks whose CURRENT asset status is active — the fleet
+  // the "truck-day with no driver" check is asked about. A retired or sold
+  // truck is left out, so a day it stood without a driver makes no check; the
+  // status is read as of NOW on purpose (the ticket: marking a truck retired
+  // stops new checks, the ones already opened stay).
+  //
+  // company_id is passed explicitly (backend-load's gRPC server runs without an
+  // AuthServerInterceptor, so there is no actor to scope by), same contract as
+  // GetTruckOwnersByTruckIDs / GetVehicleNumbersByIDs.
+  rpc ListActiveTruckIDs(ListActiveTruckIDsRequest)
+      returns (ListActiveTruckIDsResponse);
+
   // ── Toll row → truck / trip matching (backend-accounting, DEV-1793) ──────
   // Resolves a WHOLE ingested toll file in one call. A weekly PrePass export is
   // 240-470 rows; a per-row RPC across a service boundary is the thing this
@@ -1042,6 +1055,20 @@ message TruckIDList {
   // Unit numbers, index-aligned with truck_ids. The preview names the truck the
   // operator will pick ("Truck 301"), and a second round-trip for the numbers
   // would be one call per owner.
+  repeated string numbers = 2;
+}
+
+message ListActiveTruckIDsRequest {
+  string company_id = 1;
+}
+
+message ListActiveTruckIDsResponse {
+  // Every currently-active truck of the company, no paging: the producer walks
+  // the whole fleet per tick and a fleet is hundreds of trucks, not millions.
+  repeated string truck_ids = 1;
+  // Unit numbers, index-aligned with truck_ids — the check card names the truck
+  // ("Truck 1094"), and a second round-trip for the number would be one call
+  // per truck. Blank when the truck has no number on record.
   repeated string numbers = 2;
 }
 

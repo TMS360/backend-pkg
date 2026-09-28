@@ -49,6 +49,12 @@ const (
 	// each time). Never backfilled and never written at broker create: the
 	// invoice-batch review reads it only as a prefill (DEV-2281).
 	CompanySettingsGeneralKeyBrokerDefaultBillingType CompanySettingsGeneralKey = "broker_default_billing_type"
+	// CompanySettingsGeneralKeyTollsGroupBy is the date a statement's Tolls tab
+	// groups crossings into weeks by: "exit" (the default — the week the truck
+	// drove) or "post" (the week the agency posted it). Missing or unknown
+	// reads as "exit". Grouping only; it never changes what was charged
+	// (DEV-2490).
+	CompanySettingsGeneralKeyTollsGroupBy CompanySettingsGeneralKey = "tolls_group_by"
 )
 
 var AllCompanySettingsGeneralKey = []CompanySettingsGeneralKey{
@@ -64,12 +70,14 @@ var AllCompanySettingsGeneralKey = []CompanySettingsGeneralKey{
 	CompanySettingsGeneralKeyFirstDayOfWeek,
 	CompanySettingsGeneralKeyFirstDayOfWeekEffectiveFrom,
 	CompanySettingsGeneralKeyBrokerDefaultBillingType,
+	CompanySettingsGeneralKeyTollsGroupBy,
 }
 
 func (e CompanySettingsGeneralKey) IsValid() bool {
 	switch e {
 	case CompanySettingsGeneralKeyLogo, CompanySettingsGeneralKeyTimezone, CompanySettingsGeneralKeyHazmatEnabled, CompanySettingsGeneralKeyReeferEnabled, CompanySettingsGeneralKeyBrokerHasVerifyShipments, CompanySettingsGeneralKeyTripAssignmentBufferHours, CompanySettingsGeneralKeySamsaraAssetTrackingEnabled, CompanySettingsGeneralKeyUseHereInRisk, CompanySettingsGeneralKeyEmptyMilesWorkflow,
-		CompanySettingsGeneralKeyFirstDayOfWeek, CompanySettingsGeneralKeyFirstDayOfWeekEffectiveFrom, CompanySettingsGeneralKeyBrokerDefaultBillingType:
+		CompanySettingsGeneralKeyFirstDayOfWeek, CompanySettingsGeneralKeyFirstDayOfWeekEffectiveFrom, CompanySettingsGeneralKeyBrokerDefaultBillingType,
+		CompanySettingsGeneralKeyTollsGroupBy:
 		return true
 	}
 	return false

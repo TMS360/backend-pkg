@@ -352,8 +352,7 @@ func TestParse_NoDataSheetIsAnError(t *testing.T) {
 	_, err := p.Parse("f.xlsx", buildXLSX(t, []testSheet{{name: "Cover", rows: [][]any{
 		{"Customer Toll Details"}, {nil, "Account", nil, "516484"},
 	}}}))
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "no PrePass data sheet")
+	require.ErrorIs(t, err, ErrNotPrePassFile)
 }
 
 func TestParse_RawRowIsPreserved(t *testing.T) {
@@ -717,4 +716,73 @@ func TestNewPrePassSFTP_NonProdWithCatcherOverrideDialsTheCatcher(t *testing.T) 
 	assert.Equal(t, "sftp.catcher.internal", got.Host, "host comes from the override")
 	assert.Equal(t, "prepass", got.Username, "username is never overridden — it comes from the stored row")
 	assert.Equal(t, "/prepass", fake.lastDir)
+}
+
+// ---------- DEV-2489: rows without Post Date ----------
+
+// The hash of a posted row is the dedup key of the whole pool history. It must
+// not move when the reader learns to accept unposted rows, or the next re-sent
+// file would land every old crossing a second time. The value was taken from
+// the reader before DEV-2489.
+func TestHash_PostedRowHashIsUnchanged(t *testing.T) {
+	p := newTestProvider()
+	res, err := p.Parse("f.xlsx", buildXLSX(t, []testSheet{{name: "Sheet1", rows: [][]any{
+		narrowHeader(),
+		narrowRow(postDay, exitTime, "777751461", "01606029503", "206", "82nd St.", 7.7),
+	}}}))
+	require.NoError(t, err)
+	require.Len(t, res.Rows, 1)
+	assert.Equal(t, "6ad644d7edac7f57f1fc97c2631e84d49448315b29d85925468d83b3f2061c2c", res.Rows[0].Hash)
+}
+
+// A portal export by Exit date carries crossings PrePass has not posted yet.
+// They are rows, not errors; a row with neither date is still an error.
+func TestParse_RowWithoutPostDateIsKeptWhenItHasAnExit(t *testing.T) {
+	p := newTestProvider()
+	unposted := narrowRow(postDay, exitTime, "777751461", "01606029503", "206", "82nd St.", -7.7)
+	unposted[0] = nil
+	undated := narrowRow(postDay, exitTime, "777751462", "01606029504", "207", "95th St.", 5.8)
+	undated[0], undated[12], undated[13] = nil, nil, nil
+	yearOld := narrowRow(postDay, exitTime.AddDate(-1, 0, 0), "777751463", "01606029505", "208", "82nd St.", 3.1)
+	yearOld[0] = ""
+
+	res, err := p.Parse("by-exit.xlsx", buildXLSX(t, []testSheet{{name: "Sheet1", rows: [][]any{
+		narrowHeader(), unposted, undated, yearOld,
+	}}}))
+	require.NoError(t, err)
+	require.Len(t, res.Rows, 2)
+	assert.True(t, res.Rows[0].PostDate.IsZero(), "no Post Date stays the zero time")
+	require.NotNil(t, res.Rows[0].ExitAt)
+	assert.Equal(t, exitTime, *res.Rows[0].ExitAt)
+	assert.Equal(t, "-7.70", res.Rows[0].Amount.StringFixed(2), "a refund keeps its sign")
+	assert.Equal(t, 2023, res.Rows[1].ExitAt.Year(), "a year-old crossing is accepted")
+
+	require.Len(t, res.Errors, 1)
+	assert.Equal(t, 3, res.Errors[0].RowNumber)
+	assert.Equal(t, colPostDate, res.Errors[0].Column)
+}
+
+// The exit-date export may leave the Post Date column out entirely.
+func TestParse_FileWithoutPostDateColumnIsAPrePassFile(t *testing.T) {
+	p := newTestProvider()
+	csv := "Read Type,PP Device ID,Toll Device ID or Plate,Truck ID,Agency,Exit Plaza,Exit Date,Toll $\n" +
+		"Transponder,777751461,01606029503,206,ILTOLL,82nd St.,2024-08-31 17:23:46,7.70\n"
+	res, err := p.Parse("by-exit.csv", []byte(csv))
+	require.NoError(t, err)
+	require.Len(t, res.Rows, 1)
+	assert.True(t, res.Rows[0].PostDate.IsZero())
+}
+
+// An upload-only company has no folder login. It validates without one, and
+// its provider never dials.
+func TestCredential_UploadOnlyNeedsNoTransportAndNeverDials(t *testing.T) {
+	cred := Credential{ProviderType: ProviderPrePassSFTP, UploadOnly: true}
+	require.NoError(t, cred.Validate())
+	require.Error(t, Credential{ProviderType: ProviderPrePassSFTP}.Validate(), "without the flag the login is still required")
+
+	prov, err := NewProviderFromCredential(cred)
+	require.NoError(t, err)
+	_, err = prov.List(context.Background())
+	assert.ErrorIs(t, err, ErrUploadOnly)
+	assert.ErrorIs(t, prov.TestConnection(context.Background()), ErrUploadOnly)
 }

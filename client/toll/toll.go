@@ -173,6 +173,11 @@ type Credential struct {
 	// provider's own production endpoint is used; set it to point a company at
 	// a sandbox.
 	BaseURL string `json:"base_url,omitempty"`
+
+	// UploadOnly marks a company that loads the aggregator's files by hand and
+	// has no folder login (DEV-2489). Validate then asks for no transport
+	// settings, the provider refuses to dial, and the folder poll skips it.
+	UploadOnly bool `json:"upload_only,omitempty"`
 }
 
 // Redacted returns a copy safe to log or return over the wire: the secret is
@@ -186,10 +191,21 @@ func (c Credential) Redacted() Credential {
 	return c
 }
 
+// ErrNotPrePassFile is Parse refusing a file whose headers are not PrePass's.
+// Its text is written for the accountant who picked the wrong file: callers
+// show it as is, and nothing of the file is stored (DEV-2489).
+var ErrNotPrePassFile = errors.New("This file does not look like a PrePass file") //nolint:staticcheck // user-facing sentence
+
+// ErrUploadOnly is what an upload-only provider answers to any attempt to dial.
+var ErrUploadOnly = errors.New("toll: upload-only integration has no folder to read")
+
 // Validate checks the credential against its provider's declared rules.
 func (c Credential) Validate() error {
 	if !c.ProviderType.IsValid() {
 		return fmt.Errorf("toll: unknown provider_type %q", c.ProviderType)
+	}
+	if c.UploadOnly {
+		return nil
 	}
 	r := RulesFor(c.ProviderType)
 	if r.RequiresUsername && strings.TrimSpace(c.Username) == "" {

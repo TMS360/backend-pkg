@@ -70,6 +70,8 @@ type RouteLegInfo struct {
 	EstimatedArrival time.Time
 	// Encoded polyline geometry for this leg
 	Polyline string
+	// Facts is nil when HERE returned no span data for this leg (DEV-2527).
+	Facts *RouteFacts
 }
 
 // Service provides HERE Maps API operations
@@ -282,6 +284,12 @@ func (s *service) CalculateMultiStopRoute(ctx context.Context, waypoints []Coord
 		departure = &now
 	}
 
+	tolls := tollsFromCtx(ctx)
+	returnOpts := []string{"summary", "polyline"}
+	if tolls {
+		returnOpts = append(returnOpts, "tolls")
+	}
+
 	resp, err := s.client.GetRoute(ctx, RouteRequest{
 		Origin:      waypoints[0],
 		Destination: waypoints[len(waypoints)-1],
@@ -291,7 +299,8 @@ func (s *service) CalculateMultiStopRoute(ctx context.Context, waypoints []Coord
 		DepartureTime: departure,
 		TransportMode: "truck",
 		Currency:      "USD",
-		ReturnOptions: []string{"summary", "polyline"},
+		ReturnOptions: returnOpts,
+		Spans:         routeFactSpans,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to calculate multi-stop route: %w", err)
@@ -333,6 +342,7 @@ func (s *service) CalculateMultiStopRoute(ctx context.Context, waypoints []Coord
 			DurationSeconds:  baseDuration,
 			EstimatedArrival: arrival,
 			Polyline:         section.Polyline,
+			Facts:            sectionFacts(section, tolls),
 		})
 		result.TotalDistanceMeters += distance
 		result.TotalDurationSeconds += baseDuration
@@ -343,7 +353,8 @@ func (s *service) CalculateMultiStopRoute(ctx context.Context, waypoints []Coord
 
 // calculateMultiStopPerLeg requests each waypoint pair on its own. It costs one
 // billed call per leg and exists only for routes whose sections do not line up
-// with the legs.
+// with the legs. Its legs carry no Facts, so route checks read "not checked".
+// ponytail: ferry routes only; ask for spans here too if they show up in checks.
 func (s *service) calculateMultiStopPerLeg(ctx context.Context, waypoints []Coordinates, departureTime *time.Time) (*MultiStopRouteInfo, error) {
 	result := &MultiStopRouteInfo{
 		Legs: make([]RouteLegInfo, 0, len(waypoints)-1),

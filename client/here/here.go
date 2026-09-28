@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/TMS360/backend-pkg/config"
@@ -56,6 +57,7 @@ type RouteRequest struct {
 	TransportMode string // car, truck, pedestrian, bicycle, scooter
 	Currency      string
 	ReturnOptions []string // summary, polyline, instructions, etc.
+	Spans         []string // span attributes (HERE `spans=`), e.g. countryCode, stateCode
 
 	// Optional navigation extensions. Zero value preserves legacy behavior.
 	Via          []Coordinates    // intermediate waypoints (HERE `via=`, repeated)
@@ -94,6 +96,9 @@ type RouteSection struct {
 	Spans    []RouteSpan   `json:"spans,omitempty"`
 	Notices  []RouteNotice `json:"notices,omitempty"`
 	Language string        `json:"language,omitempty"`
+
+	// Tolls is filled only with `return=tolls`; the route facts need presence alone.
+	Tolls []json.RawMessage `json:"tolls,omitempty"`
 }
 
 type LocationInfo struct {
@@ -317,6 +322,10 @@ func (c *Client) GetRoute(ctx context.Context, req RouteRequest) (*RouteResponse
 		params.Set("return", returnStr)
 	} else {
 		params.Set("return", "summary")
+	}
+
+	if len(req.Spans) > 0 {
+		params.Set("spans", strings.Join(req.Spans, ","))
 	}
 
 	if req.Currency != "" {

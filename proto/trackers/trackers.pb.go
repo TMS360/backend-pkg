@@ -810,8 +810,16 @@ type EstimatedRouteLeg struct {
 	DurationSeconds int32  `protobuf:"varint,4,opt,name=duration_seconds,json=durationSeconds,proto3" json:"duration_seconds,omitempty"`
 	StopId          string `protobuf:"bytes,5,opt,name=stop_id,json=stopId,proto3" json:"stop_id,omitempty"` // UUID of the destination trip stop
 	Coordinates     string `protobuf:"bytes,7,opt,name=coordinates,proto3" json:"coordinates,omitempty"`     // Decoded polyline as JSON: [[lat,lng],...]
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	// Route facts for driver-preference checks (DEV-2527). Unset / empty on legs
+	// built before them or when HERE returned no span data: callers must read that
+	// as "not checked", never as "none".
+	HasTolls         *bool    `protobuf:"varint,8,opt,name=has_tolls,json=hasTolls,proto3,oneof" json:"has_tolls,omitempty"`                   // unset when the company has toll data off
+	UsesInterstate   *bool    `protobuf:"varint,9,opt,name=uses_interstate,json=usesInterstate,proto3,oneof" json:"uses_interstate,omitempty"` // set iff the leg has facts: the "known" marker for the lists below
+	StatesCrossed    []string `protobuf:"bytes,10,rep,name=states_crossed,json=statesCrossed,proto3" json:"states_crossed,omitempty"`          // HERE stateCode, route order
+	CountriesCrossed []string `protobuf:"bytes,11,rep,name=countries_crossed,json=countriesCrossed,proto3" json:"countries_crossed,omitempty"` // ISO 3166-1 alpha-3, route order
+	AreasCrossed     []string `protobuf:"bytes,12,rep,name=areas_crossed,json=areasCrossed,proto3" json:"areas_crossed,omitempty"`             // area codes (asset-tracking internal/geo)
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *EstimatedRouteLeg) Reset() {
@@ -884,6 +892,41 @@ func (x *EstimatedRouteLeg) GetCoordinates() string {
 		return x.Coordinates
 	}
 	return ""
+}
+
+func (x *EstimatedRouteLeg) GetHasTolls() bool {
+	if x != nil && x.HasTolls != nil {
+		return *x.HasTolls
+	}
+	return false
+}
+
+func (x *EstimatedRouteLeg) GetUsesInterstate() bool {
+	if x != nil && x.UsesInterstate != nil {
+		return *x.UsesInterstate
+	}
+	return false
+}
+
+func (x *EstimatedRouteLeg) GetStatesCrossed() []string {
+	if x != nil {
+		return x.StatesCrossed
+	}
+	return nil
+}
+
+func (x *EstimatedRouteLeg) GetCountriesCrossed() []string {
+	if x != nil {
+		return x.CountriesCrossed
+	}
+	return nil
+}
+
+func (x *EstimatedRouteLeg) GetAreasCrossed() []string {
+	if x != nil {
+		return x.AreasCrossed
+	}
+	return nil
 }
 
 type SaveEstimatedRouteRequest struct {
@@ -2145,14 +2188,23 @@ const file_trackers_trackers_proto_rawDesc = "" +
 	"\aaddress\x18\x06 \x01(\tR\aaddress\x12'\n" +
 	"\x0fheading_degrees\x18\a \x01(\x01R\x0eheadingDegrees\"G\n" +
 	"\x17GetVehicleRouteResponse\x12,\n" +
-	"\x06points\x18\x01 \x03(\v2\x14.trackers.RoutePointR\x06points\"\xed\x01\n" +
+	"\x06points\x18\x01 \x03(\v2\x14.trackers.RoutePointR\x06points\"\xd8\x03\n" +
 	"\x11EstimatedRouteLeg\x12\x1b\n" +
 	"\tleg_index\x18\x01 \x01(\x05R\blegIndex\x12\x1a\n" +
 	"\bpolyline\x18\x02 \x01(\tR\bpolyline\x12'\n" +
 	"\x0fdistance_meters\x18\x03 \x01(\x05R\x0edistanceMeters\x12)\n" +
 	"\x10duration_seconds\x18\x04 \x01(\x05R\x0fdurationSeconds\x12\x17\n" +
 	"\astop_id\x18\x05 \x01(\tR\x06stopId\x12 \n" +
-	"\vcoordinates\x18\a \x01(\tR\vcoordinatesJ\x04\b\x06\x10\aR\n" +
+	"\vcoordinates\x18\a \x01(\tR\vcoordinates\x12 \n" +
+	"\thas_tolls\x18\b \x01(\bH\x00R\bhasTolls\x88\x01\x01\x12,\n" +
+	"\x0fuses_interstate\x18\t \x01(\bH\x01R\x0eusesInterstate\x88\x01\x01\x12%\n" +
+	"\x0estates_crossed\x18\n" +
+	" \x03(\tR\rstatesCrossed\x12+\n" +
+	"\x11countries_crossed\x18\v \x03(\tR\x10countriesCrossed\x12#\n" +
+	"\rareas_crossed\x18\f \x03(\tR\fareasCrossedB\f\n" +
+	"\n" +
+	"_has_tollsB\x12\n" +
+	"\x10_uses_interstateJ\x04\b\x06\x10\aR\n" +
 	"route_type\"\x89\x02\n" +
 	"\x19SaveEstimatedRouteRequest\x12\x17\n" +
 	"\atrip_id\x18\x01 \x01(\tR\x06tripId\x12\x1d\n" +
@@ -2376,6 +2428,7 @@ func file_trackers_trackers_proto_init() {
 	if File_trackers_trackers_proto != nil {
 		return
 	}
+	file_trackers_trackers_proto_msgTypes[10].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{

@@ -151,6 +151,15 @@ message EstimatedRouteLeg {
   string coordinates = 7;        // Decoded polyline as JSON: [[lat,lng],...]
   reserved 6;                    // formerly route_type — single source: append-once static.
   reserved "route_type";
+
+  // Route facts for driver-preference checks (DEV-2527). Unset / empty on legs
+  // built before them or when HERE returned no span data: callers must read that
+  // as "not checked", never as "none".
+  optional bool has_tolls = 8;       // unset when the company has toll data off
+  optional bool uses_interstate = 9; // set iff the leg has facts: the "known" marker for the lists below
+  repeated string states_crossed = 10;    // HERE stateCode, route order
+  repeated string countries_crossed = 11; // ISO 3166-1 alpha-3, route order
+  repeated string areas_crossed = 12;     // area codes (asset-tracking internal/geo)
 }
 
 message SaveEstimatedRouteRequest {

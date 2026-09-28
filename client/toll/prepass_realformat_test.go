@@ -137,8 +137,8 @@ func TestParse_NotAPrePassExportNamesTheMissingColumns(t *testing.T) {
 	p := NewPrePassSFTP(Credential{ProviderType: ProviderPrePassSFTP})
 	_, err := p.Parse("payroll.xlsx", buildXLSX(t, sheets))
 	require.Error(t, err)
+	assert.ErrorIs(t, err, ErrNotPrePassFile, "the accountant is shown this sentence")
 	assert.Contains(t, err.Error(), "payroll.xlsx")
-	assert.Contains(t, err.Error(), colPostDate)
 	assert.Contains(t, err.Error(), colAmount)
 }
 

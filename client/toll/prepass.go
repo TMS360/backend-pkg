@@ -157,6 +157,11 @@ func NewPrePassSFTP(cred Credential) *PrePassSFTP {
 			dir = v
 		}
 	}
+	if cred.UploadOnly {
+		// No folder to read: the company uploads files by hand (DEV-2489).
+		// Validate let the empty host through, so nothing may dial it.
+		blocked = ErrUploadOnly
+	}
 	if port == 0 {
 		port = prePassSFTPPort
 	}
@@ -243,11 +248,18 @@ func (p *PrePassSFTP) Parse(name string, content []byte) (ParseResult, error) {
 	// Locate the data tab by its headers. Some exports carry a cover sheet
 	// with the report parameters ahead of the data, so the first tab is not
 	// reliably the one we want.
-	t, ok := findTable(sheets, colPostDate, colAmount)
+	//
+	// Post Date is not what identifies the table: a portal export by Exit date
+	// carries rows PrePass has not posted yet (DEV-2489). The amount plus the
+	// exit or the device column is what every PrePass layout has.
+	t, ok := findTable(sheets, colAmount, colExitDate)
+	if !ok {
+		t, ok = findTable(sheets, colAmount, colDeviceID)
+	}
 	if !ok {
 		return ParseResult{}, fmt.Errorf(
-			"toll: %q has no PrePass data sheet (no header row with %q and %q)",
-			name, colPostDate, colAmount)
+			"%w: %q has no header row with %q and %q or %q",
+			ErrNotPrePassFile, name, colAmount, colExitDate, colDeviceID)
 	}
 
 	res := ParseResult{Account: findAccount(sheets, t.sheet)}
@@ -278,17 +290,28 @@ func (p *PrePassSFTP) Parse(name string, content []byte) (ParseResult, error) {
 
 // parsePrePassRow maps one spreadsheet row onto Row.
 //
-// Only Post Date and the amount are hard requirements — Post Date buckets the
-// charge into a pay week and the amount is the money. Everything else is
-// best-effort, because an unmatched row still has to reach a human rather than
-// vanish.
+// The hard requirements are a date and the amount. The date is Post Date or,
+// for a crossing PrePass has not posted yet, the Exit: agencies post late, and
+// a portal export by Exit date carries such rows (DEV-2489). A row without a
+// Post Date keeps PostDate zero, which is also what keeps HashRow of every
+// posted row exactly as it was. Everything else is best-effort, because an
+// unmatched row still has to reach a human rather than vanish.
 func parsePrePassRow(t table, rowNum int, raw []string) (Row, error) {
 	postRaw := t.cell(raw, colPostDate)
-	post, ok := ParseFileTime(postRaw)
-	if !ok {
+	post, hasPost := ParseFileTime(postRaw)
+	exitAt := combineDateTime(t, raw, colExitDate, colExitTime)
+	switch {
+	case !hasPost && strings.TrimSpace(postRaw) != "":
+		// Something is written there and it is not a date: a broken row, not
+		// a crossing that is waiting to be posted.
 		return Row{}, RowError{
 			RowNumber: rowNum, Column: colPostDate, Value: postRaw,
 			Err: fmt.Errorf("unreadable date"),
+		}
+	case !hasPost && exitAt == nil:
+		return Row{}, RowError{
+			RowNumber: rowNum, Column: colPostDate, Value: postRaw,
+			Err: fmt.Errorf("no post date and no exit date"),
 		}
 	}
 
@@ -329,7 +352,7 @@ func parsePrePassRow(t table, rowNum int, raw []string) (Row, error) {
 		row.InvoiceDate = &inv
 	}
 	row.EntryAt = combineDateTime(t, raw, colEntryDate, colEntryTime)
-	row.ExitAt = combineDateTime(t, raw, colExitDate, colExitTime)
+	row.ExitAt = exitAt
 
 	return row, nil
 }

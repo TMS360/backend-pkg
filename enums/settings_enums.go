@@ -17,8 +17,9 @@ const (
 	CompanySettingsGeneralKeyBrokerHasVerifyShipments  CompanySettingsGeneralKey = "broker_has_verify_shipments"
 	CompanySettingsGeneralKeyTripAssignmentBufferHours CompanySettingsGeneralKey = "trip_assignment_buffer_hours"
 	// CompanySettingsGeneralKeySamsaraAssetTrackingEnabled decides where recorded
-	// mileage comes from: Samsara GPS actual when on (default), HERE road-distance
-	// estimate when off. Default-on preserves current behaviour for existing tenants.
+	// mileage comes from: Samsara GPS actual when on, HERE road-distance estimate
+	// when off. It is only ever on while the company has an active samsara_api_key;
+	// with a key, an unsaved switch means on (DEV-2570, settings.SamsaraAssetTrackingOnFrom).
 	CompanySettingsGeneralKeySamsaraAssetTrackingEnabled CompanySettingsGeneralKey = "samsara_asset_tracking_enabled"
 	// CompanySettingsGeneralKeyUseHereInRisk decides whether the trip risk worker
 	// may make the automatic (paid) HERE routing call when a trip looks high-risk.

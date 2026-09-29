@@ -26,27 +26,57 @@ func GetCompanyTimezone(ctx context.Context) string {
 }
 
 // SamsaraAssetTrackingOn reports whether the company records Samsara GPS actual
-// mileage (the default) rather than HERE estimates. Requires an actor in ctx:
-// cache.Get prefixes the key with "{companyID}:". An unset setting means enabled
-// (default-on preserves existing tenants' behaviour); a cache read failure fails
-// closed to OFF so a Redis blip never silently switches a tenant to live-GPS
-// deadhead origins (DEV-1197).
+// mileage rather than HERE estimates. Requires an actor in ctx: cache.Get
+// prefixes the key with "{companyID}:". See SamsaraAssetTrackingOnFrom for the
+// rule.
 func SamsaraAssetTrackingOn(ctx context.Context) bool {
-	var v string
-	err := cache.Get(ctx, fmt.Sprintf("setting:%s", enums.CompanySettingsGeneralKeySamsaraAssetTrackingEnabled), &v)
-	return samsaraTrackingFromCache(v, err)
+	return SamsaraAssetTrackingOnFrom(func(key string, dest *string) error {
+		return cache.Get(ctx, "setting:"+key, dest)
+	})
 }
 
 // SamsaraAssetTrackingOnForCompany is the actor-less variant for gRPC/background
 // paths where ctx carries no actor: it builds the company-scoped key explicitly
 // and unmarshals the JSON-encoded string, mirroring provider.fetchAPIKey.
 func SamsaraAssetTrackingOnForCompany(ctx context.Context, companyID string) bool {
-	key := fmt.Sprintf("%s:setting:%s", companyID, enums.CompanySettingsGeneralKeySamsaraAssetTrackingEnabled)
-	data, err := cache.Client().Get(ctx, key).Bytes()
-	var v string
-	if err == nil {
-		err = json.Unmarshal(data, &v)
+	return SamsaraAssetTrackingOnFrom(func(key string, dest *string) error {
+		data, err := cache.Client().Get(ctx, fmt.Sprintf("%s:setting:%s", companyID, key)).Bytes()
+		if err != nil {
+			return err
+		}
+		return json.Unmarshal(data, dest)
+	})
+}
+
+// SettingReader reads one company setting from the cache into dest. It returns
+// redis.Nil when the setting is not cached.
+type SettingReader func(key string, dest *string) error
+
+// SamsaraAssetTrackingOnFrom is the one rule behind both readers above, taking
+// the cache read as a seam so it can be pinned without Redis:
+//
+//   - No active Samsara key means OFF (DEV-2570, BL-18.3). tms-auth caches
+//     samsara_api_key only while the integration is active, and deletes it when
+//     the key is disabled or removed, so a miss here is "not connected" — the same
+//     signal the Samsara pollers stop on (provider.fetchAPIKey).
+//   - With a key, an unsaved switch means ON; only a saved "false" turns it off.
+//     A company that never connected Samsara used to read as ON too, which sent
+//     it waiting for GPS that never comes.
+//   - Any cache read failure fails closed to OFF, so a Redis blip never silently
+//     switches a tenant to live-GPS deadhead origins (DEV-1197).
+func SamsaraAssetTrackingOnFrom(read SettingReader) bool {
+	var apiKey string
+	if err := read(string(enums.CompanySettingsIntegrationKeySamsaraAPIKey), &apiKey); err != nil {
+		if !errors.Is(err, redis.Nil) {
+			slog.Error("samsara asset tracking: api key cache read failed, failing closed OFF", "error", err)
+		}
+		return false
 	}
+	if strings.TrimSpace(apiKey) == "" {
+		return false
+	}
+	var v string
+	err := read(string(enums.CompanySettingsGeneralKeySamsaraAssetTrackingEnabled), &v)
 	return samsaraTrackingFromCache(v, err)
 }
 
@@ -124,12 +154,13 @@ func emptyMilesWorkflowFromCache(v string, err error) EmptyMilesWorkflow {
 	}
 }
 
+// samsaraTrackingFromCache maps the saved switch of a company that has an active
+// key: unsaved is ON, a saved "false" is OFF, a read failure is OFF.
 func samsaraTrackingFromCache(v string, err error) bool {
 	switch {
 	case err == nil:
 		return v != "false"
 	case errors.Is(err, redis.Nil):
-		slog.Info("samsara asset tracking: setting unset, cache miss defaulted to ON")
 		return true
 	default:
 		slog.Error("samsara asset tracking: cache read failed, failing closed OFF", "error", err)

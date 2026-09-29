@@ -6071,7 +6071,12 @@ type PayBatchTrip struct {
 	// DEV-3101. trip.trailer_id (UUID) — the trip's trailer now; absent when the
 	// trip has no trailer. Lets backend-accounting refuse a vendor bill line that
 	// names a trip and a trailer that is not that trip's.
-	TrailerId     *string `protobuf:"bytes,30,opt,name=trailer_id,json=trailerId,proto3,oneof" json:"trailer_id,omitempty"`
+	TrailerId *string `protobuf:"bytes,30,opt,name=trailer_id,json=trailerId,proto3,oneof" json:"trailer_id,omitempty"`
+	// trip_dispatchers of this trip (UUIDs), read under the request's company.
+	// RMS charge_dispatcher: trip events carry no dispatchers.
+	// 30 is trailer_id and 31 gross_is_manual, which the staging line writes by
+	// number (load) and reads by number (accounting).
+	DispatcherIds []string `protobuf:"bytes,32,rep,name=dispatcher_ids,json=dispatcherIds,proto3" json:"dispatcher_ids,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -6314,6 +6319,13 @@ func (x *PayBatchTrip) GetTrailerId() string {
 		return *x.TrailerId
 	}
 	return ""
+}
+
+func (x *PayBatchTrip) GetDispatcherIds() []string {
+	if x != nil {
+		return x.DispatcherIds
+	}
+	return nil
 }
 
 // TollMatchRow is one toll-road crossing offered for resolution.
@@ -8884,7 +8896,7 @@ const file_loads_loads_proto_rawDesc = "" +
 	"\x0edriver_user_id\x18\a \x01(\tH\x00R\fdriverUserId\x88\x01\x01\x12-\n" +
 	"\x10driver_is_active\x18\b \x01(\bH\x01R\x0edriverIsActive\x88\x01\x01B\x11\n" +
 	"\x0f_driver_user_idB\x13\n" +
-	"\x11_driver_is_active\"\xa6\n" +
+	"\x11_driver_is_active\"\xcd\n" +
 	"\n" +
 	"\fPayBatchTrip\x12\x17\n" +
 	"\atrip_id\x18\x01 \x01(\tR\x06tripId\x12\x1f\n" +
@@ -8928,7 +8940,8 @@ const file_loads_loads_proto_rawDesc = "" +
 	"\x0eparent_trip_id\x18\x1c \x01(\tH\x05R\fparentTripId\x88\x01\x01\x12@\n" +
 	"\x1aempty_miles_not_calculated\x18\x1d \x01(\bH\x06R\x17emptyMilesNotCalculated\x88\x01\x01\x12\"\n" +
 	"\n" +
-	"trailer_id\x18\x1e \x01(\tH\aR\ttrailerId\x88\x01\x01B\n" +
+	"trailer_id\x18\x1e \x01(\tH\aR\ttrailerId\x88\x01\x01\x12%\n" +
+	"\x0edispatcher_ids\x18  \x03(\tR\rdispatcherIdsB\n" +
 	"\n" +
 	"\b_load_idB\f\n" +
 	"\n" +

@@ -129,7 +129,10 @@ type Broker struct {
 	Classdef  *string `protobuf:"bytes,27,opt,name=classdef,proto3,oneof" json:"classdef,omitempty"`
 	IsCarrier bool    `protobuf:"varint,28,opt,name=is_carrier,json=isCarrier,proto3" json:"is_carrier,omitempty"`
 	IsBroker  bool    `protobuf:"varint,29,opt,name=is_broker,json=isBroker,proto3" json:"is_broker,omitempty"`
-	// Search/Score Metadata
+	// Search/Score Metadata.
+	// Deprecated (RMS M4): status_code, score and allowed_to_operate are never
+	// written; a per-tenant decision does not belong on the shared company row.
+	// Mediator reads its own FMCSA result. Drop after one release with no reader.
 	StatusCode       *string  `protobuf:"bytes,30,opt,name=status_code,json=statusCode,proto3,oneof" json:"status_code,omitempty"`
 	Score            *float64 `protobuf:"fixed64,31,opt,name=score,proto3,oneof" json:"score,omitempty"`
 	AllowedToOperate *bool    `protobuf:"varint,32,opt,name=allowed_to_operate,json=allowedToOperate,proto3,oneof" json:"allowed_to_operate,omitempty"`

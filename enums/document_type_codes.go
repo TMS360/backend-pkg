@@ -48,6 +48,18 @@ const (
 	SystemDocDriverRoadTest           SystemDocTypeCode = "DRIVER_ROAD_TEST"
 	SystemDocDriverApplication        SystemDocTypeCode = "DRIVER_APPLICATION"
 	SystemDocDriverPreviousEmployment SystemDocTypeCode = "DRIVER_PREVIOUS_EMPLOYMENT"
+
+	// DRIVER safety events (RMS M16 SOLO hold sources). Not required for any
+	// holder: they never move a dispatch gate by themselves.
+	SystemDocDriverDrugTestPreEmployment SystemDocTypeCode = "DRIVER_DRUG_TEST_PRE_EMPLOYMENT"
+	SystemDocDriverDrugTestRandom        SystemDocTypeCode = "DRIVER_DRUG_TEST_RANDOM"
+	SystemDocDriverDOTInspectionReport   SystemDocTypeCode = "DRIVER_DOT_INSPECTION_REPORT"
+	SystemDocDriverCitation              SystemDocTypeCode = "DRIVER_CITATION"
+	SystemDocDriverAccidentReport        SystemDocTypeCode = "DRIVER_ACCIDENT_REPORT"
+
+	// Level 1 inspections (RMS M17 fact via files GetLatestComplianceDocs).
+	SystemDocTruckLevel1Inspection   SystemDocTypeCode = "TRUCK_LEVEL1_INSPECTION"
+	SystemDocTrailerLevel1Inspection SystemDocTypeCode = "TRAILER_LEVEL1_INSPECTION"
 )
 
 func (c SystemDocTypeCode) String() string { return string(c) }
@@ -85,7 +97,14 @@ func (c SystemDocTypeCode) IsValid() bool {
 		SystemDocDriverMVR,
 		SystemDocDriverRoadTest,
 		SystemDocDriverApplication,
-		SystemDocDriverPreviousEmployment:
+		SystemDocDriverPreviousEmployment,
+		SystemDocDriverDrugTestPreEmployment,
+		SystemDocDriverDrugTestRandom,
+		SystemDocDriverDOTInspectionReport,
+		SystemDocDriverCitation,
+		SystemDocDriverAccidentReport,
+		SystemDocTruckLevel1Inspection,
+		SystemDocTrailerLevel1Inspection:
 		return true
 	default:
 		return false

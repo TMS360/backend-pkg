@@ -33,7 +33,7 @@ func NewConsumer(
 	brokers []string,
 	groupID string,
 	topics []string,
-	engine *rules.Engine,
+	engine *rules.Engine, // nil switches the legacy event_rules engine off
 	systemHandlers map[string][]SystemHandlerFunc, // <--- Add this
 	actions map[string]ActionFunc,
 ) *Consumer {
@@ -133,7 +133,15 @@ func (c *Consumer) dispatch(ctx context.Context, event events.EventPayload) erro
 		}
 	}
 
-	// A. Find Rules
+	// A. Find Rules. A nil engine switches the legacy event_rules engine off
+	// (services moved to RMS automations): system handlers still run, and no
+	// event_rules query is made per event.
+	if c.engine == nil {
+		if !handlerFound {
+			log.Printf("ignored event: %s", handlerKey)
+		}
+		return nil
+	}
 	matchingRules, err := c.engine.GetMatchingRules(ctx, event.EntityType, event.Action, event.Data)
 	if err != nil {
 		log.Printf("Error getting matching rules: %v", err)

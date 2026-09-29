@@ -96,12 +96,19 @@ type Notification struct {
 
 	// EntityID — source entity ID (optional, for tracking).
 	EntityID *uuid.UUID `json:"source_entity_id,omitempty"`
+
+	// CompanyID is the tenant for headless producers (jobs, sweeps, system
+	// actors without a company). It is used only when the ctx actor carries no
+	// company: an actor's own company always wins, so a caller cannot address
+	// another tenant by setting this field.
+	CompanyID *uuid.UUID `json:"-"`
 }
 
 // Send publishes a notification through the transactional outbox.
 // The notification service will pick it up from Kafka, save to DB, and deliver via WebSocket.
 //
-// CompanyID is automatically extracted from the JWT context (actor.Claims.CompanyID).
+// CompanyID is automatically extracted from the JWT context (actor.Claims.CompanyID);
+// Notification.CompanyID is the fallback when the actor has none.
 //
 // Usage:
 //
@@ -136,6 +143,8 @@ func (p *Publisher) Send(ctx context.Context, n Notification) error {
 	var companyID string
 	if actor, _ := middleware.GetActor(ctx); actor != nil && actor.Claims != nil && actor.Claims.CompanyID != nil {
 		companyID = actor.Claims.CompanyID.String()
+	} else if n.CompanyID != nil && *n.CompanyID != uuid.Nil {
+		companyID = n.CompanyID.String()
 	}
 
 	// Build the data payload

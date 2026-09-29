@@ -456,8 +456,11 @@ func (x *VehicleLocationUpdateBatch) GetBatchTime() *timestamppb.Timestamp {
 }
 
 type GetVehicleRoutesRequest struct {
-	state         protoimpl.MessageState    `protogen:"open.v1"`
-	Queries       []*GetVehicleRouteRequest `protobuf:"bytes,1,rep,name=queries,proto3" json:"queries,omitempty"`
+	state   protoimpl.MessageState    `protogen:"open.v1"`
+	Queries []*GetVehicleRouteRequest `protobuf:"bytes,1,rep,name=queries,proto3" json:"queries,omitempty"`
+	// Tenant UUID. Reads are scoped to it once every caller sends it; empty is
+	// the legacy unscoped read and is rejected after the rollout.
+	CompanyId     string `protobuf:"bytes,2,opt,name=company_id,json=companyId,proto3" json:"company_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -497,6 +500,13 @@ func (x *GetVehicleRoutesRequest) GetQueries() []*GetVehicleRouteRequest {
 		return x.Queries
 	}
 	return nil
+}
+
+func (x *GetVehicleRoutesRequest) GetCompanyId() string {
+	if x != nil {
+		return x.CompanyId
+	}
+	return ""
 }
 
 type GetVehicleRoutesResponse struct {
@@ -604,10 +614,13 @@ func (x *VehicleRoute) GetErrorMessage() string {
 }
 
 type GetVehicleRouteRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	TruckId       string                 `protobuf:"bytes,1,opt,name=truck_id,json=truckId,proto3" json:"truck_id,omitempty"`
-	From          *timestamppb.Timestamp `protobuf:"bytes,2,opt,name=from,proto3" json:"from,omitempty"`
-	To            *timestamppb.Timestamp `protobuf:"bytes,3,opt,name=to,proto3" json:"to,omitempty"`
+	state   protoimpl.MessageState `protogen:"open.v1"`
+	TruckId string                 `protobuf:"bytes,1,opt,name=truck_id,json=truckId,proto3" json:"truck_id,omitempty"`
+	From    *timestamppb.Timestamp `protobuf:"bytes,2,opt,name=from,proto3" json:"from,omitempty"`
+	To      *timestamppb.Timestamp `protobuf:"bytes,3,opt,name=to,proto3" json:"to,omitempty"`
+	// Tenant UUID. Reads are scoped to it once every caller sends it; empty is
+	// the legacy unscoped read and is rejected after the rollout.
+	CompanyId     string `protobuf:"bytes,4,opt,name=company_id,json=companyId,proto3" json:"company_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -661,6 +674,13 @@ func (x *GetVehicleRouteRequest) GetTo() *timestamppb.Timestamp {
 		return x.To
 	}
 	return nil
+}
+
+func (x *GetVehicleRouteRequest) GetCompanyId() string {
+	if x != nil {
+		return x.CompanyId
+	}
+	return ""
 }
 
 type RoutePoint struct {
@@ -1058,8 +1078,11 @@ func (x *SaveEstimatedRouteResponse) GetSuccess() bool {
 }
 
 type GetEstimatedRouteRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	TripId        string                 `protobuf:"bytes,1,opt,name=trip_id,json=tripId,proto3" json:"trip_id,omitempty"`
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	TripId string                 `protobuf:"bytes,1,opt,name=trip_id,json=tripId,proto3" json:"trip_id,omitempty"`
+	// Tenant UUID. Reads are scoped to it once every caller sends it; empty is
+	// the legacy unscoped read and is rejected after the rollout.
+	CompanyId     string `protobuf:"bytes,2,opt,name=company_id,json=companyId,proto3" json:"company_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1097,6 +1120,13 @@ func (*GetEstimatedRouteRequest) Descriptor() ([]byte, []int) {
 func (x *GetEstimatedRouteRequest) GetTripId() string {
 	if x != nil {
 		return x.TripId
+	}
+	return ""
+}
+
+func (x *GetEstimatedRouteRequest) GetCompanyId() string {
+	if x != nil {
+		return x.CompanyId
 	}
 	return ""
 }
@@ -2165,19 +2195,23 @@ const file_trackers_trackers_proto_rawDesc = "" +
 	"\x1aVehicleLocationUpdateBatch\x129\n" +
 	"\aupdates\x18\x01 \x03(\v2\x1f.trackers.VehicleLocationUpdateR\aupdates\x129\n" +
 	"\n" +
-	"batch_time\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\tbatchTime\"U\n" +
+	"batch_time\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\tbatchTime\"t\n" +
 	"\x17GetVehicleRoutesRequest\x12:\n" +
-	"\aqueries\x18\x01 \x03(\v2 .trackers.GetVehicleRouteRequestR\aqueries\"J\n" +
+	"\aqueries\x18\x01 \x03(\v2 .trackers.GetVehicleRouteRequestR\aqueries\x12\x1d\n" +
+	"\n" +
+	"company_id\x18\x02 \x01(\tR\tcompanyId\"J\n" +
 	"\x18GetVehicleRoutesResponse\x12.\n" +
 	"\x06routes\x18\x01 \x03(\v2\x16.trackers.VehicleRouteR\x06routes\"|\n" +
 	"\fVehicleRoute\x12\x19\n" +
 	"\btruck_id\x18\x01 \x01(\tR\atruckId\x12,\n" +
 	"\x06points\x18\x02 \x03(\v2\x14.trackers.RoutePointR\x06points\x12#\n" +
-	"\rerror_message\x18\x03 \x01(\tR\ferrorMessage\"\x8f\x01\n" +
+	"\rerror_message\x18\x03 \x01(\tR\ferrorMessage\"\xae\x01\n" +
 	"\x16GetVehicleRouteRequest\x12\x19\n" +
 	"\btruck_id\x18\x01 \x01(\tR\atruckId\x12.\n" +
 	"\x04from\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\x04from\x12*\n" +
-	"\x02to\x18\x03 \x01(\v2\x1a.google.protobuf.TimestampR\x02to\"\xf0\x01\n" +
+	"\x02to\x18\x03 \x01(\v2\x1a.google.protobuf.TimestampR\x02to\x12\x1d\n" +
+	"\n" +
+	"company_id\x18\x04 \x01(\tR\tcompanyId\"\xf0\x01\n" +
 	"\n" +
 	"RoutePoint\x12\x1a\n" +
 	"\blatitude\x18\x01 \x01(\x01R\blatitude\x12\x1c\n" +
@@ -2215,9 +2249,11 @@ const file_trackers_trackers_proto_rawDesc = "" +
 	"\x16total_duration_seconds\x18\x05 \x01(\x05R\x14totalDurationSeconds\x12\x19\n" +
 	"\btruck_id\x18\x06 \x01(\tR\atruckId\"6\n" +
 	"\x1aSaveEstimatedRouteResponse\x12\x18\n" +
-	"\asuccess\x18\x01 \x01(\bR\asuccess\"3\n" +
+	"\asuccess\x18\x01 \x01(\bR\asuccess\"R\n" +
 	"\x18GetEstimatedRouteRequest\x12\x17\n" +
-	"\atrip_id\x18\x01 \x01(\tR\x06tripId\"\xcf\x01\n" +
+	"\atrip_id\x18\x01 \x01(\tR\x06tripId\x12\x1d\n" +
+	"\n" +
+	"company_id\x18\x02 \x01(\tR\tcompanyId\"\xcf\x01\n" +
 	"\x19GetEstimatedRouteResponse\x12\x17\n" +
 	"\atrip_id\x18\x01 \x01(\tR\x06tripId\x12/\n" +
 	"\x04legs\x18\x02 \x03(\v2\x1b.trackers.EstimatedRouteLegR\x04legs\x122\n" +

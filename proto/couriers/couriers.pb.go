@@ -90,8 +90,12 @@ type GetUsersByPermissionRequest struct {
 	// document_type_id is RESERVED for future per-doc-type permission granularity.
 	// tms-auth RBAC is tenant-wide (not doc-type scoped), so it is currently ignored.
 	DocumentTypeId *string `protobuf:"bytes,3,opt,name=document_type_id,json=documentTypeId,proto3,oneof" json:"document_type_id,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// strict = only users who hold the code (NAMED_USERS tier), no tenant-admin
+	// fallback: source is NAMED_USERS or NONE. Used for approval authority, where
+	// an admin the tenant revoked the code from must not be returned.
+	Strict        bool `protobuf:"varint,4,opt,name=strict,proto3" json:"strict,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *GetUsersByPermissionRequest) Reset() {
@@ -143,6 +147,13 @@ func (x *GetUsersByPermissionRequest) GetDocumentTypeId() string {
 		return *x.DocumentTypeId
 	}
 	return ""
+}
+
+func (x *GetUsersByPermissionRequest) GetStrict() bool {
+	if x != nil {
+		return x.Strict
+	}
+	return false
 }
 
 type GetUsersByPermissionResponse struct {
@@ -676,7 +687,9 @@ type UserInfo struct {
 	// deactivated). Added for DEV-1890: a caller repairing resources owned by
 	// dead accounts has to tell a live owner from a deactivated one, and every
 	// other field here is identity, not state.
-	Active        bool `protobuf:"varint,7,opt,name=active,proto3" json:"active,omitempty"`
+	Active bool `protobuf:"varint,7,opt,name=active,proto3" json:"active,omitempty"`
+	// users.manager_id (UUID); "" = no manager. Escalation routing (RMS M3/M9).
+	ManagerId     string `protobuf:"bytes,8,opt,name=manager_id,json=managerId,proto3" json:"manager_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -758,6 +771,13 @@ func (x *UserInfo) GetActive() bool {
 		return x.Active
 	}
 	return false
+}
+
+func (x *UserInfo) GetManagerId() string {
+	if x != nil {
+		return x.ManagerId
+	}
+	return ""
 }
 
 type GetDriverTypesAtRequest struct {
@@ -1278,12 +1298,13 @@ var File_couriers_couriers_proto protoreflect.FileDescriptor
 
 const file_couriers_couriers_proto_rawDesc = "" +
 	"\n" +
-	"\x17couriers/couriers.proto\x12\bcouriers\x1a\x1bgoogle/protobuf/empty.proto\x1a\x15filters/filters.proto\"\xa9\x01\n" +
+	"\x17couriers/couriers.proto\x12\bcouriers\x1a\x1bgoogle/protobuf/empty.proto\x1a\x15filters/filters.proto\"\xc1\x01\n" +
 	"\x1bGetUsersByPermissionRequest\x12\x1d\n" +
 	"\n" +
 	"company_id\x18\x01 \x01(\tR\tcompanyId\x12'\n" +
 	"\x0fpermission_code\x18\x02 \x01(\tR\x0epermissionCode\x12-\n" +
-	"\x10document_type_id\x18\x03 \x01(\tH\x00R\x0edocumentTypeId\x88\x01\x01B\x13\n" +
+	"\x10document_type_id\x18\x03 \x01(\tH\x00R\x0edocumentTypeId\x88\x01\x01\x12\x16\n" +
+	"\x06strict\x18\x04 \x01(\bR\x06strictB\x13\n" +
 	"\x11_document_type_id\"m\n" +
 	"\x1cGetUsersByPermissionResponse\x12\x19\n" +
 	"\buser_ids\x18\x01 \x03(\tR\auserIds\x122\n" +
@@ -1319,7 +1340,7 @@ const file_couriers_couriers_proto_rawDesc = "" +
 	"\x14GetUsersByIdsRequest\x12\x19\n" +
 	"\buser_ids\x18\x01 \x03(\tR\auserIds\"A\n" +
 	"\x15GetUsersByIdsResponse\x12(\n" +
-	"\x05users\x18\x01 \x03(\v2\x12.couriers.UserInfoR\x05users\"\xc0\x01\n" +
+	"\x05users\x18\x01 \x03(\v2\x12.couriers.UserInfoR\x05users\"\xdf\x01\n" +
 	"\bUserInfo\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x14\n" +
@@ -1327,7 +1348,9 @@ const file_couriers_couriers_proto_rawDesc = "" +
 	"\x10driver_ownership\x18\x04 \x01(\x05R\x0fdriverOwnership\x12\x14\n" +
 	"\x05phone\x18\x05 \x01(\tR\x05phone\x12!\n" +
 	"\fphone_second\x18\x06 \x01(\tR\vphoneSecond\x12\x16\n" +
-	"\x06active\x18\a \x01(\bR\x06active\"H\n" +
+	"\x06active\x18\a \x01(\bR\x06active\x12\x1d\n" +
+	"\n" +
+	"manager_id\x18\b \x01(\tR\tmanagerId\"H\n" +
 	"\x17GetDriverTypesAtRequest\x12\x19\n" +
 	"\buser_ids\x18\x01 \x03(\tR\auserIds\x12\x12\n" +
 	"\x04date\x18\x02 \x01(\tR\x04date\"\xb2\x01\n" +

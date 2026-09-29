@@ -1182,6 +1182,9 @@ message PayBatchTrip {
   // отсутствующее значение и новый клиент блокировал бы нормальные трипы на
   // денежном пути. Отсутствие ЭТОГО поля у старого сервера = false = не блокирует.
   optional bool empty_miles_not_calculated = 29;
+  // trip_dispatchers of this trip (UUIDs), read under the request's company.
+  // RMS charge_dispatcher: trip events carry no dispatchers.
+  repeated string dispatcher_ids = 30;
 }
 
 

@@ -39,6 +39,12 @@ service FilesService {
   // can call it best-effort during cache invalidation / re-export cleanup.
   // Tenant scoping is enforced server-side via TenantScopePlugin.
   rpc DeleteFile (DeleteFileRequest) returns (DeleteFileResponse);
+
+  // Latest file per (entity, system document type code), for RMS facts in
+  // other services (M17 level 1 inspection). company_id is required: the
+  // server answers codes.InvalidArgument when it is empty or not a UUID and
+  // never runs the read unscoped.
+  rpc GetLatestComplianceDocs (GetLatestComplianceDocsRequest) returns (GetLatestComplianceDocsResponse);
 }
 
 message GetFileRequest {
@@ -169,4 +175,26 @@ message CheckDispatchComplianceResponse {
   bool blocked = 1;
   // Every blocking document, grouped per entity in a stable order.
   repeated BlockingDocument blocking = 2;
+}
+
+message GetLatestComplianceDocsRequest {
+  string company_id = 1;                   // tenant UUID (required)
+  string entity_type = 2;                  // DRIVER, TRUCK or TRAILER
+  repeated string entity_ids = 3;          // UUIDs
+  repeated string document_type_codes = 4; // enums.SystemDocTypeCode values
+}
+
+message LatestComplianceDoc {
+  string entity_id = 1;
+  string document_type_code = 2;
+  string file_id = 3;
+  string issued_at = 4;  // YYYY-MM-DD; empty when not on file
+  string expires_at = 5; // YYYY-MM-DD; empty when not on file
+  string status = 6;     // VALID or EXPIRED (expires_at before the company day)
+}
+
+message GetLatestComplianceDocsResponse {
+  // At most one item per (entity_id, document_type_code); a pair with no file
+  // is absent.
+  repeated LatestComplianceDoc docs = 1;
 }

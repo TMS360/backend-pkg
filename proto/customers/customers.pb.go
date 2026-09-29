@@ -315,6 +315,354 @@ func (x *Factoring) GetRemitTo() string {
 	return ""
 }
 
+type GetCustomerPolicyFactsRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	CompanyId     string                 `protobuf:"bytes,1,opt,name=company_id,json=companyId,proto3" json:"company_id,omitempty"`       // tenant UUID (required)
+	CustomerIds   []string               `protobuf:"bytes,2,rep,name=customer_ids,json=customerIds,proto3" json:"customer_ids,omitempty"` // UUIDs
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetCustomerPolicyFactsRequest) Reset() {
+	*x = GetCustomerPolicyFactsRequest{}
+	mi := &file_customers_customers_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetCustomerPolicyFactsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetCustomerPolicyFactsRequest) ProtoMessage() {}
+
+func (x *GetCustomerPolicyFactsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_customers_customers_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetCustomerPolicyFactsRequest.ProtoReflect.Descriptor instead.
+func (*GetCustomerPolicyFactsRequest) Descriptor() ([]byte, []int) {
+	return file_customers_customers_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *GetCustomerPolicyFactsRequest) GetCompanyId() string {
+	if x != nil {
+		return x.CompanyId
+	}
+	return ""
+}
+
+func (x *GetCustomerPolicyFactsRequest) GetCustomerIds() []string {
+	if x != nil {
+		return x.CustomerIds
+	}
+	return nil
+}
+
+type GetCustomerPolicyFactsResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Customers     []*CustomerPolicyFacts `protobuf:"bytes,1,rep,name=customers,proto3" json:"customers,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetCustomerPolicyFactsResponse) Reset() {
+	*x = GetCustomerPolicyFactsResponse{}
+	mi := &file_customers_customers_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetCustomerPolicyFactsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetCustomerPolicyFactsResponse) ProtoMessage() {}
+
+func (x *GetCustomerPolicyFactsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_customers_customers_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetCustomerPolicyFactsResponse.ProtoReflect.Descriptor instead.
+func (*GetCustomerPolicyFactsResponse) Descriptor() ([]byte, []int) {
+	return file_customers_customers_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *GetCustomerPolicyFactsResponse) GetCustomers() []*CustomerPolicyFacts {
+	if x != nil {
+		return x.Customers
+	}
+	return nil
+}
+
+type CustomerPolicyFacts struct {
+	state              protoimpl.MessageState `protogen:"open.v1"`
+	CustomerId         string                 `protobuf:"bytes,1,opt,name=customer_id,json=customerId,proto3" json:"customer_id,omitempty"`
+	Status             string                 `protobuf:"bytes,2,opt,name=status,proto3" json:"status,omitempty"`
+	CustomerType       string                 `protobuf:"bytes,3,opt,name=customer_type,json=customerType,proto3" json:"customer_type,omitempty"`
+	BrokerGroup        *string                `protobuf:"bytes,4,opt,name=broker_group,json=brokerGroup,proto3,oneof" json:"broker_group,omitempty"`
+	DriverInstructions string                 `protobuf:"bytes,5,opt,name=driver_instructions,json=driverInstructions,proto3" json:"driver_instructions,omitempty"`
+	Warnings           []*ActiveWarning       `protobuf:"bytes,6,rep,name=warnings,proto3" json:"warnings,omitempty"` // only non-expired warnings
+	Credit             *CreditFacts           `protobuf:"bytes,7,opt,name=credit,proto3,oneof" json:"credit,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
+}
+
+func (x *CustomerPolicyFacts) Reset() {
+	*x = CustomerPolicyFacts{}
+	mi := &file_customers_customers_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CustomerPolicyFacts) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CustomerPolicyFacts) ProtoMessage() {}
+
+func (x *CustomerPolicyFacts) ProtoReflect() protoreflect.Message {
+	mi := &file_customers_customers_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CustomerPolicyFacts.ProtoReflect.Descriptor instead.
+func (*CustomerPolicyFacts) Descriptor() ([]byte, []int) {
+	return file_customers_customers_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *CustomerPolicyFacts) GetCustomerId() string {
+	if x != nil {
+		return x.CustomerId
+	}
+	return ""
+}
+
+func (x *CustomerPolicyFacts) GetStatus() string {
+	if x != nil {
+		return x.Status
+	}
+	return ""
+}
+
+func (x *CustomerPolicyFacts) GetCustomerType() string {
+	if x != nil {
+		return x.CustomerType
+	}
+	return ""
+}
+
+func (x *CustomerPolicyFacts) GetBrokerGroup() string {
+	if x != nil && x.BrokerGroup != nil {
+		return *x.BrokerGroup
+	}
+	return ""
+}
+
+func (x *CustomerPolicyFacts) GetDriverInstructions() string {
+	if x != nil {
+		return x.DriverInstructions
+	}
+	return ""
+}
+
+func (x *CustomerPolicyFacts) GetWarnings() []*ActiveWarning {
+	if x != nil {
+		return x.Warnings
+	}
+	return nil
+}
+
+func (x *CustomerPolicyFacts) GetCredit() *CreditFacts {
+	if x != nil {
+		return x.Credit
+	}
+	return nil
+}
+
+type ActiveWarning struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Type          string                 `protobuf:"bytes,1,opt,name=type,proto3" json:"type,omitempty"`
+	Title         string                 `protobuf:"bytes,2,opt,name=title,proto3" json:"title,omitempty"`
+	CreditLimit   *float64               `protobuf:"fixed64,3,opt,name=credit_limit,json=creditLimit,proto3,oneof" json:"credit_limit,omitempty"`
+	ExpiresAt     *string                `protobuf:"bytes,4,opt,name=expires_at,json=expiresAt,proto3,oneof" json:"expires_at,omitempty"` // RFC3339; unset = never expires
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ActiveWarning) Reset() {
+	*x = ActiveWarning{}
+	mi := &file_customers_customers_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ActiveWarning) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ActiveWarning) ProtoMessage() {}
+
+func (x *ActiveWarning) ProtoReflect() protoreflect.Message {
+	mi := &file_customers_customers_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ActiveWarning.ProtoReflect.Descriptor instead.
+func (*ActiveWarning) Descriptor() ([]byte, []int) {
+	return file_customers_customers_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *ActiveWarning) GetType() string {
+	if x != nil {
+		return x.Type
+	}
+	return ""
+}
+
+func (x *ActiveWarning) GetTitle() string {
+	if x != nil {
+		return x.Title
+	}
+	return ""
+}
+
+func (x *ActiveWarning) GetCreditLimit() float64 {
+	if x != nil && x.CreditLimit != nil {
+		return *x.CreditLimit
+	}
+	return 0
+}
+
+func (x *ActiveWarning) GetExpiresAt() string {
+	if x != nil && x.ExpiresAt != nil {
+		return *x.ExpiresAt
+	}
+	return ""
+}
+
+type CreditFacts struct {
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	CreditScore     *float64               `protobuf:"fixed64,1,opt,name=credit_score,json=creditScore,proto3,oneof" json:"credit_score,omitempty"`
+	CreditRate      *string                `protobuf:"bytes,2,opt,name=credit_rate,json=creditRate,proto3,oneof" json:"credit_rate,omitempty"`
+	ApprovalStatus  *string                `protobuf:"bytes,3,opt,name=approval_status,json=approvalStatus,proto3,oneof" json:"approval_status,omitempty"`
+	DaysToPay       *int32                 `protobuf:"varint,4,opt,name=days_to_pay,json=daysToPay,proto3,oneof" json:"days_to_pay,omitempty"`
+	RtsInvoiceCount *int32                 `protobuf:"varint,5,opt,name=rts_invoice_count,json=rtsInvoiceCount,proto3,oneof" json:"rts_invoice_count,omitempty"`
+	RtsScore        *string                `protobuf:"bytes,6,opt,name=rts_score,json=rtsScore,proto3,oneof" json:"rts_score,omitempty"`
+	RtsAsOf         *string                `protobuf:"bytes,7,opt,name=rts_as_of,json=rtsAsOf,proto3,oneof" json:"rts_as_of,omitempty"` // RFC3339
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *CreditFacts) Reset() {
+	*x = CreditFacts{}
+	mi := &file_customers_customers_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CreditFacts) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CreditFacts) ProtoMessage() {}
+
+func (x *CreditFacts) ProtoReflect() protoreflect.Message {
+	mi := &file_customers_customers_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CreditFacts.ProtoReflect.Descriptor instead.
+func (*CreditFacts) Descriptor() ([]byte, []int) {
+	return file_customers_customers_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *CreditFacts) GetCreditScore() float64 {
+	if x != nil && x.CreditScore != nil {
+		return *x.CreditScore
+	}
+	return 0
+}
+
+func (x *CreditFacts) GetCreditRate() string {
+	if x != nil && x.CreditRate != nil {
+		return *x.CreditRate
+	}
+	return ""
+}
+
+func (x *CreditFacts) GetApprovalStatus() string {
+	if x != nil && x.ApprovalStatus != nil {
+		return *x.ApprovalStatus
+	}
+	return ""
+}
+
+func (x *CreditFacts) GetDaysToPay() int32 {
+	if x != nil && x.DaysToPay != nil {
+		return *x.DaysToPay
+	}
+	return 0
+}
+
+func (x *CreditFacts) GetRtsInvoiceCount() int32 {
+	if x != nil && x.RtsInvoiceCount != nil {
+		return *x.RtsInvoiceCount
+	}
+	return 0
+}
+
+func (x *CreditFacts) GetRtsScore() string {
+	if x != nil && x.RtsScore != nil {
+		return *x.RtsScore
+	}
+	return ""
+}
+
+func (x *CreditFacts) GetRtsAsOf() string {
+	if x != nil && x.RtsAsOf != nil {
+		return *x.RtsAsOf
+	}
+	return ""
+}
+
 var File_customers_customers_proto protoreflect.FileDescriptor
 
 const file_customers_customers_proto_rawDesc = "" +
@@ -344,9 +692,53 @@ const file_customers_customers_proto_rawDesc = "" +
 	"\r_billing_type\"I\n" +
 	"\tFactoring\x12!\n" +
 	"\fcompany_name\x18\x01 \x01(\tR\vcompanyName\x12\x19\n" +
-	"\bremit_to\x18\x02 \x01(\tR\aremitTo2b\n" +
+	"\bremit_to\x18\x02 \x01(\tR\aremitTo\"a\n" +
+	"\x1dGetCustomerPolicyFactsRequest\x12\x1d\n" +
+	"\n" +
+	"company_id\x18\x01 \x01(\tR\tcompanyId\x12!\n" +
+	"\fcustomer_ids\x18\x02 \x03(\tR\vcustomerIds\"^\n" +
+	"\x1eGetCustomerPolicyFactsResponse\x12<\n" +
+	"\tcustomers\x18\x01 \x03(\v2\x1e.customers.CustomerPolicyFactsR\tcustomers\"\xd3\x02\n" +
+	"\x13CustomerPolicyFacts\x12\x1f\n" +
+	"\vcustomer_id\x18\x01 \x01(\tR\n" +
+	"customerId\x12\x16\n" +
+	"\x06status\x18\x02 \x01(\tR\x06status\x12#\n" +
+	"\rcustomer_type\x18\x03 \x01(\tR\fcustomerType\x12&\n" +
+	"\fbroker_group\x18\x04 \x01(\tH\x00R\vbrokerGroup\x88\x01\x01\x12/\n" +
+	"\x13driver_instructions\x18\x05 \x01(\tR\x12driverInstructions\x124\n" +
+	"\bwarnings\x18\x06 \x03(\v2\x18.customers.ActiveWarningR\bwarnings\x123\n" +
+	"\x06credit\x18\a \x01(\v2\x16.customers.CreditFactsH\x01R\x06credit\x88\x01\x01B\x0f\n" +
+	"\r_broker_groupB\t\n" +
+	"\a_credit\"\xa5\x01\n" +
+	"\rActiveWarning\x12\x12\n" +
+	"\x04type\x18\x01 \x01(\tR\x04type\x12\x14\n" +
+	"\x05title\x18\x02 \x01(\tR\x05title\x12&\n" +
+	"\fcredit_limit\x18\x03 \x01(\x01H\x00R\vcreditLimit\x88\x01\x01\x12\"\n" +
+	"\n" +
+	"expires_at\x18\x04 \x01(\tH\x01R\texpiresAt\x88\x01\x01B\x0f\n" +
+	"\r_credit_limitB\r\n" +
+	"\v_expires_at\"\x99\x03\n" +
+	"\vCreditFacts\x12&\n" +
+	"\fcredit_score\x18\x01 \x01(\x01H\x00R\vcreditScore\x88\x01\x01\x12$\n" +
+	"\vcredit_rate\x18\x02 \x01(\tH\x01R\n" +
+	"creditRate\x88\x01\x01\x12,\n" +
+	"\x0fapproval_status\x18\x03 \x01(\tH\x02R\x0eapprovalStatus\x88\x01\x01\x12#\n" +
+	"\vdays_to_pay\x18\x04 \x01(\x05H\x03R\tdaysToPay\x88\x01\x01\x12/\n" +
+	"\x11rts_invoice_count\x18\x05 \x01(\x05H\x04R\x0frtsInvoiceCount\x88\x01\x01\x12 \n" +
+	"\trts_score\x18\x06 \x01(\tH\x05R\brtsScore\x88\x01\x01\x12\x1f\n" +
+	"\trts_as_of\x18\a \x01(\tH\x06R\artsAsOf\x88\x01\x01B\x0f\n" +
+	"\r_credit_scoreB\x0e\n" +
+	"\f_credit_rateB\x12\n" +
+	"\x10_approval_statusB\x0e\n" +
+	"\f_days_to_payB\x14\n" +
+	"\x12_rts_invoice_countB\f\n" +
+	"\n" +
+	"_rts_scoreB\f\n" +
+	"\n" +
+	"_rts_as_of2\xd1\x01\n" +
 	"\x0fCustomerService\x12O\n" +
-	"\fGetCustomers\x12\x1e.customers.GetCustomersRequest\x1a\x1f.customers.GetCustomersResponseB/Z-github.com/TMS360/backend-pkg/proto/customersb\x06proto3"
+	"\fGetCustomers\x12\x1e.customers.GetCustomersRequest\x1a\x1f.customers.GetCustomersResponse\x12m\n" +
+	"\x16GetCustomerPolicyFacts\x12(.customers.GetCustomerPolicyFactsRequest\x1a).customers.GetCustomerPolicyFactsResponseB/Z-github.com/TMS360/backend-pkg/proto/customersb\x06proto3"
 
 var (
 	file_customers_customers_proto_rawDescOnce sync.Once
@@ -360,23 +752,33 @@ func file_customers_customers_proto_rawDescGZIP() []byte {
 	return file_customers_customers_proto_rawDescData
 }
 
-var file_customers_customers_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
+var file_customers_customers_proto_msgTypes = make([]protoimpl.MessageInfo, 9)
 var file_customers_customers_proto_goTypes = []any{
-	(*GetCustomersRequest)(nil),  // 0: customers.GetCustomersRequest
-	(*GetCustomersResponse)(nil), // 1: customers.GetCustomersResponse
-	(*Customer)(nil),             // 2: customers.Customer
-	(*Factoring)(nil),            // 3: customers.Factoring
+	(*GetCustomersRequest)(nil),            // 0: customers.GetCustomersRequest
+	(*GetCustomersResponse)(nil),           // 1: customers.GetCustomersResponse
+	(*Customer)(nil),                       // 2: customers.Customer
+	(*Factoring)(nil),                      // 3: customers.Factoring
+	(*GetCustomerPolicyFactsRequest)(nil),  // 4: customers.GetCustomerPolicyFactsRequest
+	(*GetCustomerPolicyFactsResponse)(nil), // 5: customers.GetCustomerPolicyFactsResponse
+	(*CustomerPolicyFacts)(nil),            // 6: customers.CustomerPolicyFacts
+	(*ActiveWarning)(nil),                  // 7: customers.ActiveWarning
+	(*CreditFacts)(nil),                    // 8: customers.CreditFacts
 }
 var file_customers_customers_proto_depIdxs = []int32{
 	2, // 0: customers.GetCustomersResponse.customers:type_name -> customers.Customer
 	3, // 1: customers.Customer.factoring:type_name -> customers.Factoring
-	0, // 2: customers.CustomerService.GetCustomers:input_type -> customers.GetCustomersRequest
-	1, // 3: customers.CustomerService.GetCustomers:output_type -> customers.GetCustomersResponse
-	3, // [3:4] is the sub-list for method output_type
-	2, // [2:3] is the sub-list for method input_type
-	2, // [2:2] is the sub-list for extension type_name
-	2, // [2:2] is the sub-list for extension extendee
-	0, // [0:2] is the sub-list for field type_name
+	6, // 2: customers.GetCustomerPolicyFactsResponse.customers:type_name -> customers.CustomerPolicyFacts
+	7, // 3: customers.CustomerPolicyFacts.warnings:type_name -> customers.ActiveWarning
+	8, // 4: customers.CustomerPolicyFacts.credit:type_name -> customers.CreditFacts
+	0, // 5: customers.CustomerService.GetCustomers:input_type -> customers.GetCustomersRequest
+	4, // 6: customers.CustomerService.GetCustomerPolicyFacts:input_type -> customers.GetCustomerPolicyFactsRequest
+	1, // 7: customers.CustomerService.GetCustomers:output_type -> customers.GetCustomersResponse
+	5, // 8: customers.CustomerService.GetCustomerPolicyFacts:output_type -> customers.GetCustomerPolicyFactsResponse
+	7, // [7:9] is the sub-list for method output_type
+	5, // [5:7] is the sub-list for method input_type
+	5, // [5:5] is the sub-list for extension type_name
+	5, // [5:5] is the sub-list for extension extendee
+	0, // [0:5] is the sub-list for field type_name
 }
 
 func init() { file_customers_customers_proto_init() }
@@ -385,13 +787,16 @@ func file_customers_customers_proto_init() {
 		return
 	}
 	file_customers_customers_proto_msgTypes[2].OneofWrappers = []any{}
+	file_customers_customers_proto_msgTypes[6].OneofWrappers = []any{}
+	file_customers_customers_proto_msgTypes[7].OneofWrappers = []any{}
+	file_customers_customers_proto_msgTypes[8].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_customers_customers_proto_rawDesc), len(file_customers_customers_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   4,
+			NumMessages:   9,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

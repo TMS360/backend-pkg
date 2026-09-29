@@ -93,6 +93,10 @@ message GetUsersByPermissionRequest {
   // document_type_id is RESERVED for future per-doc-type permission granularity.
   // tms-auth RBAC is tenant-wide (not doc-type scoped), so it is currently ignored.
   optional string document_type_id = 3;
+  // strict = only users who hold the code (NAMED_USERS tier), no tenant-admin
+  // fallback: source is NAMED_USERS or NONE. Used for approval authority, where
+  // an admin the tenant revoked the code from must not be returned.
+  bool strict = 4;
 }
 
 message GetUsersByPermissionResponse {
@@ -163,6 +167,8 @@ message UserInfo {
   // dead accounts has to tell a live owner from a deactivated one, and every
   // other field here is identity, not state.
   bool active = 7;
+  // users.manager_id (UUID); "" = no manager. Escalation routing (RMS M3/M9).
+  string manager_id = 8;
 }
 
 message GetDriverTypesAtRequest {

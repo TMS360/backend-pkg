@@ -26,6 +26,7 @@ const (
 	FilesService_UploadFile_FullMethodName              = "/files.FilesService/UploadFile"
 	FilesService_CheckDispatchCompliance_FullMethodName = "/files.FilesService/CheckDispatchCompliance"
 	FilesService_DeleteFile_FullMethodName              = "/files.FilesService/DeleteFile"
+	FilesService_GetLatestComplianceDocs_FullMethodName = "/files.FilesService/GetLatestComplianceDocs"
 )
 
 // FilesServiceClient is the client API for FilesService service.
@@ -62,6 +63,11 @@ type FilesServiceClient interface {
 	// can call it best-effort during cache invalidation / re-export cleanup.
 	// Tenant scoping is enforced server-side via TenantScopePlugin.
 	DeleteFile(ctx context.Context, in *DeleteFileRequest, opts ...grpc.CallOption) (*DeleteFileResponse, error)
+	// Latest file per (entity, system document type code), for RMS facts in
+	// other services (M17 level 1 inspection). company_id is required: the
+	// server answers codes.InvalidArgument when it is empty or not a UUID and
+	// never runs the read unscoped.
+	GetLatestComplianceDocs(ctx context.Context, in *GetLatestComplianceDocsRequest, opts ...grpc.CallOption) (*GetLatestComplianceDocsResponse, error)
 }
 
 type filesServiceClient struct {
@@ -154,6 +160,16 @@ func (c *filesServiceClient) DeleteFile(ctx context.Context, in *DeleteFileReque
 	return out, nil
 }
 
+func (c *filesServiceClient) GetLatestComplianceDocs(ctx context.Context, in *GetLatestComplianceDocsRequest, opts ...grpc.CallOption) (*GetLatestComplianceDocsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetLatestComplianceDocsResponse)
+	err := c.cc.Invoke(ctx, FilesService_GetLatestComplianceDocs_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // FilesServiceServer is the server API for FilesService service.
 // All implementations must embed UnimplementedFilesServiceServer
 // for forward compatibility.
@@ -188,6 +204,11 @@ type FilesServiceServer interface {
 	// can call it best-effort during cache invalidation / re-export cleanup.
 	// Tenant scoping is enforced server-side via TenantScopePlugin.
 	DeleteFile(context.Context, *DeleteFileRequest) (*DeleteFileResponse, error)
+	// Latest file per (entity, system document type code), for RMS facts in
+	// other services (M17 level 1 inspection). company_id is required: the
+	// server answers codes.InvalidArgument when it is empty or not a UUID and
+	// never runs the read unscoped.
+	GetLatestComplianceDocs(context.Context, *GetLatestComplianceDocsRequest) (*GetLatestComplianceDocsResponse, error)
 	mustEmbedUnimplementedFilesServiceServer()
 }
 
@@ -218,6 +239,9 @@ func (UnimplementedFilesServiceServer) CheckDispatchCompliance(context.Context, 
 }
 func (UnimplementedFilesServiceServer) DeleteFile(context.Context, *DeleteFileRequest) (*DeleteFileResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method DeleteFile not implemented")
+}
+func (UnimplementedFilesServiceServer) GetLatestComplianceDocs(context.Context, *GetLatestComplianceDocsRequest) (*GetLatestComplianceDocsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetLatestComplianceDocs not implemented")
 }
 func (UnimplementedFilesServiceServer) mustEmbedUnimplementedFilesServiceServer() {}
 func (UnimplementedFilesServiceServer) testEmbeddedByValue()                      {}
@@ -348,6 +372,24 @@ func _FilesService_DeleteFile_Handler(srv interface{}, ctx context.Context, dec 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _FilesService_GetLatestComplianceDocs_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetLatestComplianceDocsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(FilesServiceServer).GetLatestComplianceDocs(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: FilesService_GetLatestComplianceDocs_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(FilesServiceServer).GetLatestComplianceDocs(ctx, req.(*GetLatestComplianceDocsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // FilesService_ServiceDesc is the grpc.ServiceDesc for FilesService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -374,6 +416,10 @@ var FilesService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "DeleteFile",
 			Handler:    _FilesService_DeleteFile_Handler,
+		},
+		{
+			MethodName: "GetLatestComplianceDocs",
+			Handler:    _FilesService_GetLatestComplianceDocs_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{

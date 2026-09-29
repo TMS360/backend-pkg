@@ -105,6 +105,9 @@ service VehiclePositionService {
 
 message GetVehicleRoutesRequest {
   repeated GetVehicleRouteRequest queries = 1;
+  // Tenant UUID. Reads are scoped to it once every caller sends it; empty is
+  // the legacy unscoped read and is rejected after the rollout.
+  string company_id = 2;
 }
 
 message GetVehicleRoutesResponse {
@@ -121,6 +124,9 @@ message GetVehicleRouteRequest {
   string truck_id = 1;
   google.protobuf.Timestamp from = 2;
   google.protobuf.Timestamp to = 3;
+  // Tenant UUID. Reads are scoped to it once every caller sends it; empty is
+  // the legacy unscoped read and is rejected after the rollout.
+  string company_id = 4;
 }
 
 message RoutePoint {
@@ -177,6 +183,9 @@ message SaveEstimatedRouteResponse {
 
 message GetEstimatedRouteRequest {
   string trip_id = 1;
+  // Tenant UUID. Reads are scoped to it once every caller sends it; empty is
+  // the legacy unscoped read and is rejected after the rollout.
+  string company_id = 2;
 }
 
 message GetEstimatedRouteResponse {

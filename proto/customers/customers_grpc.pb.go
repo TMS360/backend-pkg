@@ -28,7 +28,8 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	CustomerService_GetCustomers_FullMethodName = "/customers.CustomerService/GetCustomers"
+	CustomerService_GetCustomers_FullMethodName           = "/customers.CustomerService/GetCustomers"
+	CustomerService_GetCustomerPolicyFacts_FullMethodName = "/customers.CustomerService/GetCustomerPolicyFacts"
 )
 
 // CustomerServiceClient is the client API for CustomerService service.
@@ -39,6 +40,10 @@ type CustomerServiceClient interface {
 	// factoring details. Batched to support invoice batch PDF prints in a
 	// single round trip.
 	GetCustomers(ctx context.Context, in *GetCustomersRequest, opts ...grpc.CallOption) (*GetCustomersResponse, error)
+	// RMS facts for load's customer gates (M4, M21, M22, M23). company_id is
+	// required: the server answers codes.InvalidArgument when it is empty or
+	// not a UUID and never runs the read unscoped.
+	GetCustomerPolicyFacts(ctx context.Context, in *GetCustomerPolicyFactsRequest, opts ...grpc.CallOption) (*GetCustomerPolicyFactsResponse, error)
 }
 
 type customerServiceClient struct {
@@ -59,6 +64,16 @@ func (c *customerServiceClient) GetCustomers(ctx context.Context, in *GetCustome
 	return out, nil
 }
 
+func (c *customerServiceClient) GetCustomerPolicyFacts(ctx context.Context, in *GetCustomerPolicyFactsRequest, opts ...grpc.CallOption) (*GetCustomerPolicyFactsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetCustomerPolicyFactsResponse)
+	err := c.cc.Invoke(ctx, CustomerService_GetCustomerPolicyFacts_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // CustomerServiceServer is the server API for CustomerService service.
 // All implementations must embed UnimplementedCustomerServiceServer
 // for forward compatibility.
@@ -67,6 +82,10 @@ type CustomerServiceServer interface {
 	// factoring details. Batched to support invoice batch PDF prints in a
 	// single round trip.
 	GetCustomers(context.Context, *GetCustomersRequest) (*GetCustomersResponse, error)
+	// RMS facts for load's customer gates (M4, M21, M22, M23). company_id is
+	// required: the server answers codes.InvalidArgument when it is empty or
+	// not a UUID and never runs the read unscoped.
+	GetCustomerPolicyFacts(context.Context, *GetCustomerPolicyFactsRequest) (*GetCustomerPolicyFactsResponse, error)
 	mustEmbedUnimplementedCustomerServiceServer()
 }
 
@@ -79,6 +98,9 @@ type UnimplementedCustomerServiceServer struct{}
 
 func (UnimplementedCustomerServiceServer) GetCustomers(context.Context, *GetCustomersRequest) (*GetCustomersResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetCustomers not implemented")
+}
+func (UnimplementedCustomerServiceServer) GetCustomerPolicyFacts(context.Context, *GetCustomerPolicyFactsRequest) (*GetCustomerPolicyFactsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetCustomerPolicyFacts not implemented")
 }
 func (UnimplementedCustomerServiceServer) mustEmbedUnimplementedCustomerServiceServer() {}
 func (UnimplementedCustomerServiceServer) testEmbeddedByValue()                         {}
@@ -119,6 +141,24 @@ func _CustomerService_GetCustomers_Handler(srv interface{}, ctx context.Context,
 	return interceptor(ctx, in, info, handler)
 }
 
+func _CustomerService_GetCustomerPolicyFacts_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetCustomerPolicyFactsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CustomerServiceServer).GetCustomerPolicyFacts(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: CustomerService_GetCustomerPolicyFacts_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CustomerServiceServer).GetCustomerPolicyFacts(ctx, req.(*GetCustomerPolicyFactsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // CustomerService_ServiceDesc is the grpc.ServiceDesc for CustomerService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -129,6 +169,10 @@ var CustomerService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetCustomers",
 			Handler:    _CustomerService_GetCustomers_Handler,
+		},
+		{
+			MethodName: "GetCustomerPolicyFacts",
+			Handler:    _CustomerService_GetCustomerPolicyFacts_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

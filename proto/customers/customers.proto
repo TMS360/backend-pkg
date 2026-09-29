@@ -17,6 +17,11 @@ service CustomerService {
   // factoring details. Batched to support invoice batch PDF prints in a
   // single round trip.
   rpc GetCustomers(GetCustomersRequest) returns (GetCustomersResponse);
+
+  // RMS facts for load's customer gates (M4, M21, M22, M23). company_id is
+  // required: the server answers codes.InvalidArgument when it is empty or
+  // not a UUID and never runs the read unscoped.
+  rpc GetCustomerPolicyFacts(GetCustomerPolicyFactsRequest) returns (GetCustomerPolicyFactsResponse);
 }
 
 message GetCustomersRequest {
@@ -72,4 +77,40 @@ message Factoring {
   // Remit-To address as a single rendered line. Empty when only the company
   // name is configured.
   string remit_to = 2;
+}
+
+message GetCustomerPolicyFactsRequest {
+  string company_id = 1;            // tenant UUID (required)
+  repeated string customer_ids = 2; // UUIDs
+}
+
+message GetCustomerPolicyFactsResponse {
+  repeated CustomerPolicyFacts customers = 1;
+}
+
+message CustomerPolicyFacts {
+  string customer_id = 1;
+  string status = 2;
+  string customer_type = 3;
+  optional string broker_group = 4;
+  string driver_instructions = 5;
+  repeated ActiveWarning warnings = 6; // only non-expired warnings
+  optional CreditFacts credit = 7;
+}
+
+message ActiveWarning {
+  string type = 1;
+  string title = 2;
+  optional double credit_limit = 3;
+  optional string expires_at = 4; // RFC3339; unset = never expires
+}
+
+message CreditFacts {
+  optional double credit_score = 1;
+  optional string credit_rate = 2;
+  optional string approval_status = 3;
+  optional int32 days_to_pay = 4;
+  optional int32 rts_invoice_count = 5;
+  optional string rts_score = 6;
+  optional string rts_as_of = 7; // RFC3339
 }

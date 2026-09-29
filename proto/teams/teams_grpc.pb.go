@@ -35,6 +35,7 @@ const (
 	TeamsService_ResolveDriverIDs_FullMethodName              = "/teams.TeamsService/ResolveDriverIDs"
 	TeamsService_GetTeamWeeksForPayroll_FullMethodName        = "/teams.TeamsService/GetTeamWeeksForPayroll"
 	TeamsService_GetCrewAssignmentsHistory_FullMethodName     = "/teams.TeamsService/GetCrewAssignmentsHistory"
+	TeamsService_GetDriverDispatchFacts_FullMethodName        = "/teams.TeamsService/GetDriverDispatchFacts"
 )
 
 // TeamsServiceClient is the client API for TeamsService service.
@@ -83,6 +84,11 @@ type TeamsServiceClient interface {
 	// The GraphQL query crewAssignmentsHistory serves the same rows to the office
 	// UI from the same service method, so the two doors cannot disagree.
 	GetCrewAssignmentsHistory(ctx context.Context, in *GetCrewAssignmentsHistoryRequest, opts ...grpc.CallOption) (*GetCrewAssignmentsHistoryResponse, error)
+	// RMS facts for load's assign gate (M1 last OFF, M1 new driver, M16 SOLO
+	// hold), one round-trip per assignment. company_id is required: the server
+	// answers codes.InvalidArgument when it is empty or not a UUID and never
+	// runs the read unscoped.
+	GetDriverDispatchFacts(ctx context.Context, in *GetDriverDispatchFactsRequest, opts ...grpc.CallOption) (*GetDriverDispatchFactsResponse, error)
 }
 
 type teamsServiceClient struct {
@@ -223,6 +229,16 @@ func (c *teamsServiceClient) GetCrewAssignmentsHistory(ctx context.Context, in *
 	return out, nil
 }
 
+func (c *teamsServiceClient) GetDriverDispatchFacts(ctx context.Context, in *GetDriverDispatchFactsRequest, opts ...grpc.CallOption) (*GetDriverDispatchFactsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetDriverDispatchFactsResponse)
+	err := c.cc.Invoke(ctx, TeamsService_GetDriverDispatchFacts_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // TeamsServiceServer is the server API for TeamsService service.
 // All implementations must embed UnimplementedTeamsServiceServer
 // for forward compatibility.
@@ -269,6 +285,11 @@ type TeamsServiceServer interface {
 	// The GraphQL query crewAssignmentsHistory serves the same rows to the office
 	// UI from the same service method, so the two doors cannot disagree.
 	GetCrewAssignmentsHistory(context.Context, *GetCrewAssignmentsHistoryRequest) (*GetCrewAssignmentsHistoryResponse, error)
+	// RMS facts for load's assign gate (M1 last OFF, M1 new driver, M16 SOLO
+	// hold), one round-trip per assignment. company_id is required: the server
+	// answers codes.InvalidArgument when it is empty or not a UUID and never
+	// runs the read unscoped.
+	GetDriverDispatchFacts(context.Context, *GetDriverDispatchFactsRequest) (*GetDriverDispatchFactsResponse, error)
 	mustEmbedUnimplementedTeamsServiceServer()
 }
 
@@ -317,6 +338,9 @@ func (UnimplementedTeamsServiceServer) GetTeamWeeksForPayroll(context.Context, *
 }
 func (UnimplementedTeamsServiceServer) GetCrewAssignmentsHistory(context.Context, *GetCrewAssignmentsHistoryRequest) (*GetCrewAssignmentsHistoryResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetCrewAssignmentsHistory not implemented")
+}
+func (UnimplementedTeamsServiceServer) GetDriverDispatchFacts(context.Context, *GetDriverDispatchFactsRequest) (*GetDriverDispatchFactsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetDriverDispatchFacts not implemented")
 }
 func (UnimplementedTeamsServiceServer) mustEmbedUnimplementedTeamsServiceServer() {}
 func (UnimplementedTeamsServiceServer) testEmbeddedByValue()                      {}
@@ -573,6 +597,24 @@ func _TeamsService_GetCrewAssignmentsHistory_Handler(srv interface{}, ctx contex
 	return interceptor(ctx, in, info, handler)
 }
 
+func _TeamsService_GetDriverDispatchFacts_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetDriverDispatchFactsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(TeamsServiceServer).GetDriverDispatchFacts(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: TeamsService_GetDriverDispatchFacts_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(TeamsServiceServer).GetDriverDispatchFacts(ctx, req.(*GetDriverDispatchFactsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // TeamsService_ServiceDesc is the grpc.ServiceDesc for TeamsService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -631,6 +673,10 @@ var TeamsService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetCrewAssignmentsHistory",
 			Handler:    _TeamsService_GetCrewAssignmentsHistory_Handler,
+		},
+		{
+			MethodName: "GetDriverDispatchFacts",
+			Handler:    _TeamsService_GetDriverDispatchFacts_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

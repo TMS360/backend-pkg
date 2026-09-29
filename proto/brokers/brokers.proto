@@ -68,7 +68,10 @@ message Broker {
   bool is_carrier = 28;
   bool is_broker = 29;
 
-  // Search/Score Metadata
+  // Search/Score Metadata.
+  // Deprecated (RMS M4): status_code, score and allowed_to_operate are never
+  // written; a per-tenant decision does not belong on the shared company row.
+  // Mediator reads its own FMCSA result. Drop after one release with no reader.
   optional string status_code = 30;
   optional double score = 31;
   optional bool allowed_to_operate = 32;

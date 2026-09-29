@@ -1023,6 +1023,204 @@ func (x *CheckDispatchComplianceResponse) GetBlocking() []*BlockingDocument {
 	return nil
 }
 
+type GetLatestComplianceDocsRequest struct {
+	state             protoimpl.MessageState `protogen:"open.v1"`
+	CompanyId         string                 `protobuf:"bytes,1,opt,name=company_id,json=companyId,proto3" json:"company_id,omitempty"`                           // tenant UUID (required)
+	EntityType        string                 `protobuf:"bytes,2,opt,name=entity_type,json=entityType,proto3" json:"entity_type,omitempty"`                        // DRIVER, TRUCK or TRAILER
+	EntityIds         []string               `protobuf:"bytes,3,rep,name=entity_ids,json=entityIds,proto3" json:"entity_ids,omitempty"`                           // UUIDs
+	DocumentTypeCodes []string               `protobuf:"bytes,4,rep,name=document_type_codes,json=documentTypeCodes,proto3" json:"document_type_codes,omitempty"` // enums.SystemDocTypeCode values
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
+}
+
+func (x *GetLatestComplianceDocsRequest) Reset() {
+	*x = GetLatestComplianceDocsRequest{}
+	mi := &file_files_files_proto_msgTypes[17]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetLatestComplianceDocsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetLatestComplianceDocsRequest) ProtoMessage() {}
+
+func (x *GetLatestComplianceDocsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_files_files_proto_msgTypes[17]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetLatestComplianceDocsRequest.ProtoReflect.Descriptor instead.
+func (*GetLatestComplianceDocsRequest) Descriptor() ([]byte, []int) {
+	return file_files_files_proto_rawDescGZIP(), []int{17}
+}
+
+func (x *GetLatestComplianceDocsRequest) GetCompanyId() string {
+	if x != nil {
+		return x.CompanyId
+	}
+	return ""
+}
+
+func (x *GetLatestComplianceDocsRequest) GetEntityType() string {
+	if x != nil {
+		return x.EntityType
+	}
+	return ""
+}
+
+func (x *GetLatestComplianceDocsRequest) GetEntityIds() []string {
+	if x != nil {
+		return x.EntityIds
+	}
+	return nil
+}
+
+func (x *GetLatestComplianceDocsRequest) GetDocumentTypeCodes() []string {
+	if x != nil {
+		return x.DocumentTypeCodes
+	}
+	return nil
+}
+
+type LatestComplianceDoc struct {
+	state            protoimpl.MessageState `protogen:"open.v1"`
+	EntityId         string                 `protobuf:"bytes,1,opt,name=entity_id,json=entityId,proto3" json:"entity_id,omitempty"`
+	DocumentTypeCode string                 `protobuf:"bytes,2,opt,name=document_type_code,json=documentTypeCode,proto3" json:"document_type_code,omitempty"`
+	FileId           string                 `protobuf:"bytes,3,opt,name=file_id,json=fileId,proto3" json:"file_id,omitempty"`
+	IssuedAt         string                 `protobuf:"bytes,4,opt,name=issued_at,json=issuedAt,proto3" json:"issued_at,omitempty"`    // YYYY-MM-DD; empty when not on file
+	ExpiresAt        string                 `protobuf:"bytes,5,opt,name=expires_at,json=expiresAt,proto3" json:"expires_at,omitempty"` // YYYY-MM-DD; empty when not on file
+	Status           string                 `protobuf:"bytes,6,opt,name=status,proto3" json:"status,omitempty"`                        // VALID or EXPIRED (expires_at before the company day)
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
+}
+
+func (x *LatestComplianceDoc) Reset() {
+	*x = LatestComplianceDoc{}
+	mi := &file_files_files_proto_msgTypes[18]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *LatestComplianceDoc) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*LatestComplianceDoc) ProtoMessage() {}
+
+func (x *LatestComplianceDoc) ProtoReflect() protoreflect.Message {
+	mi := &file_files_files_proto_msgTypes[18]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use LatestComplianceDoc.ProtoReflect.Descriptor instead.
+func (*LatestComplianceDoc) Descriptor() ([]byte, []int) {
+	return file_files_files_proto_rawDescGZIP(), []int{18}
+}
+
+func (x *LatestComplianceDoc) GetEntityId() string {
+	if x != nil {
+		return x.EntityId
+	}
+	return ""
+}
+
+func (x *LatestComplianceDoc) GetDocumentTypeCode() string {
+	if x != nil {
+		return x.DocumentTypeCode
+	}
+	return ""
+}
+
+func (x *LatestComplianceDoc) GetFileId() string {
+	if x != nil {
+		return x.FileId
+	}
+	return ""
+}
+
+func (x *LatestComplianceDoc) GetIssuedAt() string {
+	if x != nil {
+		return x.IssuedAt
+	}
+	return ""
+}
+
+func (x *LatestComplianceDoc) GetExpiresAt() string {
+	if x != nil {
+		return x.ExpiresAt
+	}
+	return ""
+}
+
+func (x *LatestComplianceDoc) GetStatus() string {
+	if x != nil {
+		return x.Status
+	}
+	return ""
+}
+
+type GetLatestComplianceDocsResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// At most one item per (entity_id, document_type_code); a pair with no file
+	// is absent.
+	Docs          []*LatestComplianceDoc `protobuf:"bytes,1,rep,name=docs,proto3" json:"docs,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetLatestComplianceDocsResponse) Reset() {
+	*x = GetLatestComplianceDocsResponse{}
+	mi := &file_files_files_proto_msgTypes[19]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetLatestComplianceDocsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetLatestComplianceDocsResponse) ProtoMessage() {}
+
+func (x *GetLatestComplianceDocsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_files_files_proto_msgTypes[19]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetLatestComplianceDocsResponse.ProtoReflect.Descriptor instead.
+func (*GetLatestComplianceDocsResponse) Descriptor() ([]byte, []int) {
+	return file_files_files_proto_rawDescGZIP(), []int{19}
+}
+
+func (x *GetLatestComplianceDocsResponse) GetDocs() []*LatestComplianceDoc {
+	if x != nil {
+		return x.Docs
+	}
+	return nil
+}
+
 var File_files_files_proto protoreflect.FileDescriptor
 
 const file_files_files_proto_rawDesc = "" +
@@ -1097,7 +1295,25 @@ const file_files_files_proto_rawDesc = "" +
 	"expires_at\x18\x06 \x01(\tR\texpiresAt\"p\n" +
 	"\x1fCheckDispatchComplianceResponse\x12\x18\n" +
 	"\ablocked\x18\x01 \x01(\bR\ablocked\x123\n" +
-	"\bblocking\x18\x02 \x03(\v2\x17.files.BlockingDocumentR\bblocking2\x8b\x04\n" +
+	"\bblocking\x18\x02 \x03(\v2\x17.files.BlockingDocumentR\bblocking\"\xaf\x01\n" +
+	"\x1eGetLatestComplianceDocsRequest\x12\x1d\n" +
+	"\n" +
+	"company_id\x18\x01 \x01(\tR\tcompanyId\x12\x1f\n" +
+	"\ventity_type\x18\x02 \x01(\tR\n" +
+	"entityType\x12\x1d\n" +
+	"\n" +
+	"entity_ids\x18\x03 \x03(\tR\tentityIds\x12.\n" +
+	"\x13document_type_codes\x18\x04 \x03(\tR\x11documentTypeCodes\"\xcd\x01\n" +
+	"\x13LatestComplianceDoc\x12\x1b\n" +
+	"\tentity_id\x18\x01 \x01(\tR\bentityId\x12,\n" +
+	"\x12document_type_code\x18\x02 \x01(\tR\x10documentTypeCode\x12\x17\n" +
+	"\afile_id\x18\x03 \x01(\tR\x06fileId\x12\x1b\n" +
+	"\tissued_at\x18\x04 \x01(\tR\bissuedAt\x12\x1d\n" +
+	"\n" +
+	"expires_at\x18\x05 \x01(\tR\texpiresAt\x12\x16\n" +
+	"\x06status\x18\x06 \x01(\tR\x06status\"Q\n" +
+	"\x1fGetLatestComplianceDocsResponse\x12.\n" +
+	"\x04docs\x18\x01 \x03(\v2\x1a.files.LatestComplianceDocR\x04docs2\xf5\x04\n" +
 	"\fFilesService\x128\n" +
 	"\aGetFile\x12\x15.files.GetFileRequest\x1a\x16.files.GetFileResponse\x12;\n" +
 	"\bGetFiles\x12\x16.files.GetFilesRequest\x1a\x17.files.GetFilesResponse\x12=\n" +
@@ -1107,7 +1323,8 @@ const file_files_files_proto_rawDesc = "" +
 	"UploadFile\x12\x18.files.UploadFileRequest\x1a\x19.files.UploadFileResponse(\x01\x12h\n" +
 	"\x17CheckDispatchCompliance\x12%.files.CheckDispatchComplianceRequest\x1a&.files.CheckDispatchComplianceResponse\x12A\n" +
 	"\n" +
-	"DeleteFile\x12\x18.files.DeleteFileRequest\x1a\x19.files.DeleteFileResponseB+Z)github.com/TMS360/backend-pkg/proto/filesb\x06proto3"
+	"DeleteFile\x12\x18.files.DeleteFileRequest\x1a\x19.files.DeleteFileResponse\x12h\n" +
+	"\x17GetLatestComplianceDocs\x12%.files.GetLatestComplianceDocsRequest\x1a&.files.GetLatestComplianceDocsResponseB+Z)github.com/TMS360/backend-pkg/proto/filesb\x06proto3"
 
 var (
 	file_files_files_proto_rawDescOnce sync.Once
@@ -1121,7 +1338,7 @@ func file_files_files_proto_rawDescGZIP() []byte {
 	return file_files_files_proto_rawDescData
 }
 
-var file_files_files_proto_msgTypes = make([]protoimpl.MessageInfo, 18)
+var file_files_files_proto_msgTypes = make([]protoimpl.MessageInfo, 21)
 var file_files_files_proto_goTypes = []any{
 	(*GetFileRequest)(nil),                  // 0: files.GetFileRequest
 	(*GetFilesRequest)(nil),                 // 1: files.GetFilesRequest
@@ -1140,35 +1357,41 @@ var file_files_files_proto_goTypes = []any{
 	(*CheckDispatchComplianceRequest)(nil),  // 14: files.CheckDispatchComplianceRequest
 	(*BlockingDocument)(nil),                // 15: files.BlockingDocument
 	(*CheckDispatchComplianceResponse)(nil), // 16: files.CheckDispatchComplianceResponse
-	nil,                                     // 17: files.GetFilesResponse.FilesEntry
+	(*GetLatestComplianceDocsRequest)(nil),  // 17: files.GetLatestComplianceDocsRequest
+	(*LatestComplianceDoc)(nil),             // 18: files.LatestComplianceDoc
+	(*GetLatestComplianceDocsResponse)(nil), // 19: files.GetLatestComplianceDocsResponse
+	nil,                                     // 20: files.GetFilesResponse.FilesEntry
 }
 var file_files_files_proto_depIdxs = []int32{
 	2,  // 0: files.GetFileResponse.file:type_name -> files.File
-	17, // 1: files.GetFilesResponse.files:type_name -> files.GetFilesResponse.FilesEntry
+	20, // 1: files.GetFilesResponse.files:type_name -> files.GetFilesResponse.FilesEntry
 	2,  // 2: files.ListCompanyFilesResponse.files:type_name -> files.File
 	10, // 3: files.UploadFileRequest.meta:type_name -> files.UploadFileMeta
 	2,  // 4: files.UploadFileResponse.file:type_name -> files.File
 	15, // 5: files.CheckDispatchComplianceResponse.blocking:type_name -> files.BlockingDocument
-	2,  // 6: files.GetFilesResponse.FilesEntry.value:type_name -> files.File
-	0,  // 7: files.FilesService.GetFile:input_type -> files.GetFileRequest
-	1,  // 8: files.FilesService.GetFiles:input_type -> files.GetFilesRequest
-	7,  // 9: files.FilesService.Download:input_type -> files.DownloadRequest
-	5,  // 10: files.FilesService.ListCompanyFiles:input_type -> files.ListCompanyFilesRequest
-	9,  // 11: files.FilesService.UploadFile:input_type -> files.UploadFileRequest
-	14, // 12: files.FilesService.CheckDispatchCompliance:input_type -> files.CheckDispatchComplianceRequest
-	12, // 13: files.FilesService.DeleteFile:input_type -> files.DeleteFileRequest
-	3,  // 14: files.FilesService.GetFile:output_type -> files.GetFileResponse
-	4,  // 15: files.FilesService.GetFiles:output_type -> files.GetFilesResponse
-	8,  // 16: files.FilesService.Download:output_type -> files.DownloadResponse
-	6,  // 17: files.FilesService.ListCompanyFiles:output_type -> files.ListCompanyFilesResponse
-	11, // 18: files.FilesService.UploadFile:output_type -> files.UploadFileResponse
-	16, // 19: files.FilesService.CheckDispatchCompliance:output_type -> files.CheckDispatchComplianceResponse
-	13, // 20: files.FilesService.DeleteFile:output_type -> files.DeleteFileResponse
-	14, // [14:21] is the sub-list for method output_type
-	7,  // [7:14] is the sub-list for method input_type
-	7,  // [7:7] is the sub-list for extension type_name
-	7,  // [7:7] is the sub-list for extension extendee
-	0,  // [0:7] is the sub-list for field type_name
+	18, // 6: files.GetLatestComplianceDocsResponse.docs:type_name -> files.LatestComplianceDoc
+	2,  // 7: files.GetFilesResponse.FilesEntry.value:type_name -> files.File
+	0,  // 8: files.FilesService.GetFile:input_type -> files.GetFileRequest
+	1,  // 9: files.FilesService.GetFiles:input_type -> files.GetFilesRequest
+	7,  // 10: files.FilesService.Download:input_type -> files.DownloadRequest
+	5,  // 11: files.FilesService.ListCompanyFiles:input_type -> files.ListCompanyFilesRequest
+	9,  // 12: files.FilesService.UploadFile:input_type -> files.UploadFileRequest
+	14, // 13: files.FilesService.CheckDispatchCompliance:input_type -> files.CheckDispatchComplianceRequest
+	12, // 14: files.FilesService.DeleteFile:input_type -> files.DeleteFileRequest
+	17, // 15: files.FilesService.GetLatestComplianceDocs:input_type -> files.GetLatestComplianceDocsRequest
+	3,  // 16: files.FilesService.GetFile:output_type -> files.GetFileResponse
+	4,  // 17: files.FilesService.GetFiles:output_type -> files.GetFilesResponse
+	8,  // 18: files.FilesService.Download:output_type -> files.DownloadResponse
+	6,  // 19: files.FilesService.ListCompanyFiles:output_type -> files.ListCompanyFilesResponse
+	11, // 20: files.FilesService.UploadFile:output_type -> files.UploadFileResponse
+	16, // 21: files.FilesService.CheckDispatchCompliance:output_type -> files.CheckDispatchComplianceResponse
+	13, // 22: files.FilesService.DeleteFile:output_type -> files.DeleteFileResponse
+	19, // 23: files.FilesService.GetLatestComplianceDocs:output_type -> files.GetLatestComplianceDocsResponse
+	16, // [16:24] is the sub-list for method output_type
+	8,  // [8:16] is the sub-list for method input_type
+	8,  // [8:8] is the sub-list for extension type_name
+	8,  // [8:8] is the sub-list for extension extendee
+	0,  // [0:8] is the sub-list for field type_name
 }
 
 func init() { file_files_files_proto_init() }
@@ -1186,7 +1409,7 @@ func file_files_files_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_files_files_proto_rawDesc), len(file_files_files_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   18,
+			NumMessages:   21,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

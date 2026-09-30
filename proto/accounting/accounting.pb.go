@@ -626,6 +626,173 @@ func (x *ListTruckWeeklyPnLResponse) GetRows() []*TruckWeekPnL {
 	return nil
 }
 
+type ListTripStatementsRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	CompanyId     string                 `protobuf:"bytes,1,opt,name=company_id,json=companyId,proto3" json:"company_id,omitempty"`
+	TripIds       []string               `protobuf:"bytes,2,rep,name=trip_ids,json=tripIds,proto3" json:"trip_ids,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListTripStatementsRequest) Reset() {
+	*x = ListTripStatementsRequest{}
+	mi := &file_accounting_accounting_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListTripStatementsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListTripStatementsRequest) ProtoMessage() {}
+
+func (x *ListTripStatementsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_accounting_accounting_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListTripStatementsRequest.ProtoReflect.Descriptor instead.
+func (*ListTripStatementsRequest) Descriptor() ([]byte, []int) {
+	return file_accounting_accounting_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *ListTripStatementsRequest) GetCompanyId() string {
+	if x != nil {
+		return x.CompanyId
+	}
+	return ""
+}
+
+func (x *ListTripStatementsRequest) GetTripIds() []string {
+	if x != nil {
+		return x.TripIds
+	}
+	return nil
+}
+
+// TripStatement is one trip on one live driver statement.
+type TripStatement struct {
+	state       protoimpl.MessageState `protogen:"open.v1"`
+	TripId      string                 `protobuf:"bytes,1,opt,name=trip_id,json=tripId,proto3" json:"trip_id,omitempty"`
+	StatementId string                 `protobuf:"bytes,2,opt,name=statement_id,json=statementId,proto3" json:"statement_id,omitempty"`
+	// The number a person reads as ST-000123.
+	StatementNumber int64 `protobuf:"varint,3,opt,name=statement_number,json=statementNumber,proto3" json:"statement_number,omitempty"`
+	// draft | under_review | approved | locked
+	Status        string `protobuf:"bytes,4,opt,name=status,proto3" json:"status,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *TripStatement) Reset() {
+	*x = TripStatement{}
+	mi := &file_accounting_accounting_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TripStatement) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TripStatement) ProtoMessage() {}
+
+func (x *TripStatement) ProtoReflect() protoreflect.Message {
+	mi := &file_accounting_accounting_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TripStatement.ProtoReflect.Descriptor instead.
+func (*TripStatement) Descriptor() ([]byte, []int) {
+	return file_accounting_accounting_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *TripStatement) GetTripId() string {
+	if x != nil {
+		return x.TripId
+	}
+	return ""
+}
+
+func (x *TripStatement) GetStatementId() string {
+	if x != nil {
+		return x.StatementId
+	}
+	return ""
+}
+
+func (x *TripStatement) GetStatementNumber() int64 {
+	if x != nil {
+		return x.StatementNumber
+	}
+	return 0
+}
+
+func (x *TripStatement) GetStatus() string {
+	if x != nil {
+		return x.Status
+	}
+	return ""
+}
+
+type ListTripStatementsResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Rows          []*TripStatement       `protobuf:"bytes,1,rep,name=rows,proto3" json:"rows,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListTripStatementsResponse) Reset() {
+	*x = ListTripStatementsResponse{}
+	mi := &file_accounting_accounting_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListTripStatementsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListTripStatementsResponse) ProtoMessage() {}
+
+func (x *ListTripStatementsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_accounting_accounting_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListTripStatementsResponse.ProtoReflect.Descriptor instead.
+func (*ListTripStatementsResponse) Descriptor() ([]byte, []int) {
+	return file_accounting_accounting_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *ListTripStatementsResponse) GetRows() []*TripStatement {
+	if x != nil {
+		return x.Rows
+	}
+	return nil
+}
+
 var File_accounting_accounting_proto protoreflect.FileDescriptor
 
 const file_accounting_accounting_proto_rawDesc = "" +
@@ -675,7 +842,18 @@ const file_accounting_accounting_proto_rawDesc = "" +
 	"assetCosts\x12#\n" +
 	"\rcompany_share\x18\b \x01(\x01R\fcompanyShare\"J\n" +
 	"\x1aListTruckWeeklyPnLResponse\x12,\n" +
-	"\x04rows\x18\x01 \x03(\v2\x18.accounting.TruckWeekPnLR\x04rows*U\n" +
+	"\x04rows\x18\x01 \x03(\v2\x18.accounting.TruckWeekPnLR\x04rows\"U\n" +
+	"\x19ListTripStatementsRequest\x12\x1d\n" +
+	"\n" +
+	"company_id\x18\x01 \x01(\tR\tcompanyId\x12\x19\n" +
+	"\btrip_ids\x18\x02 \x03(\tR\atripIds\"\x8e\x01\n" +
+	"\rTripStatement\x12\x17\n" +
+	"\atrip_id\x18\x01 \x01(\tR\x06tripId\x12!\n" +
+	"\fstatement_id\x18\x02 \x01(\tR\vstatementId\x12)\n" +
+	"\x10statement_number\x18\x03 \x01(\x03R\x0fstatementNumber\x12\x16\n" +
+	"\x06status\x18\x04 \x01(\tR\x06status\"K\n" +
+	"\x1aListTripStatementsResponse\x12-\n" +
+	"\x04rows\x18\x01 \x03(\v2\x19.accounting.TripStatementR\x04rows*U\n" +
 	"\tAssetKind\x12\x1a\n" +
 	"\x16ASSET_KIND_UNSPECIFIED\x10\x00\x12\x14\n" +
 	"\x10ASSET_KIND_TRUCK\x10\x01\x12\x16\n" +
@@ -691,10 +869,11 @@ const file_accounting_accounting_proto_rawDesc = "" +
 	"\x1eCHARGE_SOURCE_KIND_UNSPECIFIED\x10\x00\x12\x1d\n" +
 	"\x19CHARGE_SOURCE_KIND_MANUAL\x10\x01\x12\x1b\n" +
 	"\x17CHARGE_SOURCE_KIND_TASK\x10\x02\x12!\n" +
-	"\x1dCHARGE_SOURCE_KIND_WORK_ORDER\x10\x032\xda\x01\n" +
+	"\x1dCHARGE_SOURCE_KIND_WORK_ORDER\x10\x032\xbf\x02\n" +
 	"\x11AccountingService\x12`\n" +
 	"\x11CreateAssetCharge\x12$.accounting.CreateAssetChargeRequest\x1a%.accounting.CreateAssetChargeResponse\x12c\n" +
-	"\x12ListTruckWeeklyPnL\x12%.accounting.ListTruckWeeklyPnLRequest\x1a&.accounting.ListTruckWeeklyPnLResponseB0Z.github.com/TMS360/backend-pkg/proto/accountingb\x06proto3"
+	"\x12ListTruckWeeklyPnL\x12%.accounting.ListTruckWeeklyPnLRequest\x1a&.accounting.ListTruckWeeklyPnLResponse\x12c\n" +
+	"\x12ListTripStatements\x12%.accounting.ListTripStatementsRequest\x1a&.accounting.ListTripStatementsResponseB0Z.github.com/TMS360/backend-pkg/proto/accountingb\x06proto3"
 
 var (
 	file_accounting_accounting_proto_rawDescOnce sync.Once
@@ -709,7 +888,7 @@ func file_accounting_accounting_proto_rawDescGZIP() []byte {
 }
 
 var file_accounting_accounting_proto_enumTypes = make([]protoimpl.EnumInfo, 3)
-var file_accounting_accounting_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
+var file_accounting_accounting_proto_msgTypes = make([]protoimpl.MessageInfo, 8)
 var file_accounting_accounting_proto_goTypes = []any{
 	(AssetKind)(0),                     // 0: accounting.AssetKind
 	(ChargeFault)(0),                   // 1: accounting.ChargeFault
@@ -719,26 +898,32 @@ var file_accounting_accounting_proto_goTypes = []any{
 	(*ListTruckWeeklyPnLRequest)(nil),  // 5: accounting.ListTruckWeeklyPnLRequest
 	(*TruckWeekPnL)(nil),               // 6: accounting.TruckWeekPnL
 	(*ListTruckWeeklyPnLResponse)(nil), // 7: accounting.ListTruckWeeklyPnLResponse
-	(*timestamppb.Timestamp)(nil),      // 8: google.protobuf.Timestamp
+	(*ListTripStatementsRequest)(nil),  // 8: accounting.ListTripStatementsRequest
+	(*TripStatement)(nil),              // 9: accounting.TripStatement
+	(*ListTripStatementsResponse)(nil), // 10: accounting.ListTripStatementsResponse
+	(*timestamppb.Timestamp)(nil),      // 11: google.protobuf.Timestamp
 }
 var file_accounting_accounting_proto_depIdxs = []int32{
 	0,  // 0: accounting.CreateAssetChargeRequest.asset_type:type_name -> accounting.AssetKind
-	8,  // 1: accounting.CreateAssetChargeRequest.charge_date:type_name -> google.protobuf.Timestamp
+	11, // 1: accounting.CreateAssetChargeRequest.charge_date:type_name -> google.protobuf.Timestamp
 	1,  // 2: accounting.CreateAssetChargeRequest.fault:type_name -> accounting.ChargeFault
 	2,  // 3: accounting.CreateAssetChargeRequest.source_kind:type_name -> accounting.ChargeSourceKind
-	8,  // 4: accounting.ListTruckWeeklyPnLRequest.from:type_name -> google.protobuf.Timestamp
-	8,  // 5: accounting.ListTruckWeeklyPnLRequest.to:type_name -> google.protobuf.Timestamp
-	8,  // 6: accounting.TruckWeekPnL.week_start:type_name -> google.protobuf.Timestamp
+	11, // 4: accounting.ListTruckWeeklyPnLRequest.from:type_name -> google.protobuf.Timestamp
+	11, // 5: accounting.ListTruckWeeklyPnLRequest.to:type_name -> google.protobuf.Timestamp
+	11, // 6: accounting.TruckWeekPnL.week_start:type_name -> google.protobuf.Timestamp
 	6,  // 7: accounting.ListTruckWeeklyPnLResponse.rows:type_name -> accounting.TruckWeekPnL
-	3,  // 8: accounting.AccountingService.CreateAssetCharge:input_type -> accounting.CreateAssetChargeRequest
-	5,  // 9: accounting.AccountingService.ListTruckWeeklyPnL:input_type -> accounting.ListTruckWeeklyPnLRequest
-	4,  // 10: accounting.AccountingService.CreateAssetCharge:output_type -> accounting.CreateAssetChargeResponse
-	7,  // 11: accounting.AccountingService.ListTruckWeeklyPnL:output_type -> accounting.ListTruckWeeklyPnLResponse
-	10, // [10:12] is the sub-list for method output_type
-	8,  // [8:10] is the sub-list for method input_type
-	8,  // [8:8] is the sub-list for extension type_name
-	8,  // [8:8] is the sub-list for extension extendee
-	0,  // [0:8] is the sub-list for field type_name
+	9,  // 8: accounting.ListTripStatementsResponse.rows:type_name -> accounting.TripStatement
+	3,  // 9: accounting.AccountingService.CreateAssetCharge:input_type -> accounting.CreateAssetChargeRequest
+	5,  // 10: accounting.AccountingService.ListTruckWeeklyPnL:input_type -> accounting.ListTruckWeeklyPnLRequest
+	8,  // 11: accounting.AccountingService.ListTripStatements:input_type -> accounting.ListTripStatementsRequest
+	4,  // 12: accounting.AccountingService.CreateAssetCharge:output_type -> accounting.CreateAssetChargeResponse
+	7,  // 13: accounting.AccountingService.ListTruckWeeklyPnL:output_type -> accounting.ListTruckWeeklyPnLResponse
+	10, // 14: accounting.AccountingService.ListTripStatements:output_type -> accounting.ListTripStatementsResponse
+	12, // [12:15] is the sub-list for method output_type
+	9,  // [9:12] is the sub-list for method input_type
+	9,  // [9:9] is the sub-list for extension type_name
+	9,  // [9:9] is the sub-list for extension extendee
+	0,  // [0:9] is the sub-list for field type_name
 }
 
 func init() { file_accounting_accounting_proto_init() }
@@ -752,7 +937,7 @@ func file_accounting_accounting_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_accounting_accounting_proto_rawDesc), len(file_accounting_accounting_proto_rawDesc)),
 			NumEnums:      3,
-			NumMessages:   5,
+			NumMessages:   8,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

@@ -1070,6 +1070,11 @@ message ListActiveTruckIDsResponse {
   // ("Truck 1094"), and a second round-trip for the number would be one call
   // per truck. Blank when the truck has no number on record.
   repeated string numbers = 2;
+  // When each truck joined the fleet (RFC3339, UTC), index-aligned with
+  // truck_ids. The no-driver producer asks nothing about a day before it: a
+  // truck added today did not "stand empty" last week (DEV-2445). Blank when
+  // unknown — the caller then keeps its own window.
+  repeated string created_at = 3;
 }
 
 // TruckOwner is the third party that owns a truck our driver drives. It is NOT

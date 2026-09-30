@@ -42,6 +42,15 @@ service AccountingService {
   // truck cost. A truck-week with no money is ABSENT, never zero-filled: "no
   // settlement yet" and "earned nothing" read differently.
   rpc ListTruckWeeklyPnL(ListTruckWeeklyPnLRequest) returns (ListTruckWeeklyPnLResponse);
+
+  // The live DRIVER pay statements each trip sits on (DEV-2604). backend-load
+  // asks before an office driver change: a trip whose pay is already on a
+  // statement keeps its driver, because the statement's balance lines hit the
+  // driver's balance the moment they are added.
+  //
+  // Live = not deleted and not superseded, any status from draft to locked.
+  // Owner statements are not listed. A trip on no statement is ABSENT.
+  rpc ListTripStatements(ListTripStatementsRequest) returns (ListTripStatementsResponse);
 }
 
 // AssetKind names which kind of equipment carries the charge.
@@ -153,4 +162,23 @@ message TruckWeekPnL {
 
 message ListTruckWeeklyPnLResponse {
   repeated TruckWeekPnL rows = 1;
+}
+
+message ListTripStatementsRequest {
+  string company_id = 1;
+  repeated string trip_ids = 2;
+}
+
+// TripStatement is one trip on one live driver statement.
+message TripStatement {
+  string trip_id = 1;
+  string statement_id = 2;
+  // The number a person reads as ST-000123.
+  int64 statement_number = 3;
+  // draft | under_review | approved | locked
+  string status = 4;
+}
+
+message ListTripStatementsResponse {
+  repeated TripStatement rows = 1;
 }

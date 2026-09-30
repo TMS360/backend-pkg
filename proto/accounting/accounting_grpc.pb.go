@@ -23,6 +23,7 @@ const _ = grpc.SupportPackageIsVersion9
 const (
 	AccountingService_CreateAssetCharge_FullMethodName  = "/accounting.AccountingService/CreateAssetCharge"
 	AccountingService_ListTruckWeeklyPnL_FullMethodName = "/accounting.AccountingService/ListTruckWeeklyPnL"
+	AccountingService_ListTripStatements_FullMethodName = "/accounting.AccountingService/ListTripStatements"
 )
 
 // AccountingServiceClient is the client API for AccountingService service.
@@ -63,6 +64,14 @@ type AccountingServiceClient interface {
 	// truck cost. A truck-week with no money is ABSENT, never zero-filled: "no
 	// settlement yet" and "earned nothing" read differently.
 	ListTruckWeeklyPnL(ctx context.Context, in *ListTruckWeeklyPnLRequest, opts ...grpc.CallOption) (*ListTruckWeeklyPnLResponse, error)
+	// The live DRIVER pay statements each trip sits on (DEV-2604). backend-load
+	// asks before an office driver change: a trip whose pay is already on a
+	// statement keeps its driver, because the statement's balance lines hit the
+	// driver's balance the moment they are added.
+	//
+	// Live = not deleted and not superseded, any status from draft to locked.
+	// Owner statements are not listed. A trip on no statement is ABSENT.
+	ListTripStatements(ctx context.Context, in *ListTripStatementsRequest, opts ...grpc.CallOption) (*ListTripStatementsResponse, error)
 }
 
 type accountingServiceClient struct {
@@ -87,6 +96,16 @@ func (c *accountingServiceClient) ListTruckWeeklyPnL(ctx context.Context, in *Li
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(ListTruckWeeklyPnLResponse)
 	err := c.cc.Invoke(ctx, AccountingService_ListTruckWeeklyPnL_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *accountingServiceClient) ListTripStatements(ctx context.Context, in *ListTripStatementsRequest, opts ...grpc.CallOption) (*ListTripStatementsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListTripStatementsResponse)
+	err := c.cc.Invoke(ctx, AccountingService_ListTripStatements_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -131,6 +150,14 @@ type AccountingServiceServer interface {
 	// truck cost. A truck-week with no money is ABSENT, never zero-filled: "no
 	// settlement yet" and "earned nothing" read differently.
 	ListTruckWeeklyPnL(context.Context, *ListTruckWeeklyPnLRequest) (*ListTruckWeeklyPnLResponse, error)
+	// The live DRIVER pay statements each trip sits on (DEV-2604). backend-load
+	// asks before an office driver change: a trip whose pay is already on a
+	// statement keeps its driver, because the statement's balance lines hit the
+	// driver's balance the moment they are added.
+	//
+	// Live = not deleted and not superseded, any status from draft to locked.
+	// Owner statements are not listed. A trip on no statement is ABSENT.
+	ListTripStatements(context.Context, *ListTripStatementsRequest) (*ListTripStatementsResponse, error)
 	mustEmbedUnimplementedAccountingServiceServer()
 }
 
@@ -146,6 +173,9 @@ func (UnimplementedAccountingServiceServer) CreateAssetCharge(context.Context, *
 }
 func (UnimplementedAccountingServiceServer) ListTruckWeeklyPnL(context.Context, *ListTruckWeeklyPnLRequest) (*ListTruckWeeklyPnLResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListTruckWeeklyPnL not implemented")
+}
+func (UnimplementedAccountingServiceServer) ListTripStatements(context.Context, *ListTripStatementsRequest) (*ListTripStatementsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListTripStatements not implemented")
 }
 func (UnimplementedAccountingServiceServer) mustEmbedUnimplementedAccountingServiceServer() {}
 func (UnimplementedAccountingServiceServer) testEmbeddedByValue()                           {}
@@ -204,6 +234,24 @@ func _AccountingService_ListTruckWeeklyPnL_Handler(srv interface{}, ctx context.
 	return interceptor(ctx, in, info, handler)
 }
 
+func _AccountingService_ListTripStatements_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListTripStatementsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AccountingServiceServer).ListTripStatements(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AccountingService_ListTripStatements_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AccountingServiceServer).ListTripStatements(ctx, req.(*ListTripStatementsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // AccountingService_ServiceDesc is the grpc.ServiceDesc for AccountingService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -218,6 +266,10 @@ var AccountingService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ListTruckWeeklyPnL",
 			Handler:    _AccountingService_ListTruckWeeklyPnL_Handler,
+		},
+		{
+			MethodName: "ListTripStatements",
+			Handler:    _AccountingService_ListTripStatements_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

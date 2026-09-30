@@ -5620,7 +5620,12 @@ type ListActiveTruckIDsResponse struct {
 	// Unit numbers, index-aligned with truck_ids — the check card names the truck
 	// ("Truck 1094"), and a second round-trip for the number would be one call
 	// per truck. Blank when the truck has no number on record.
-	Numbers       []string `protobuf:"bytes,2,rep,name=numbers,proto3" json:"numbers,omitempty"`
+	Numbers []string `protobuf:"bytes,2,rep,name=numbers,proto3" json:"numbers,omitempty"`
+	// When each truck joined the fleet (RFC3339, UTC), index-aligned with
+	// truck_ids. The no-driver producer asks nothing about a day before it: a
+	// truck added today did not "stand empty" last week (DEV-2445). Blank when
+	// unknown — the caller then keeps its own window.
+	CreatedAt     []string `protobuf:"bytes,3,rep,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -5665,6 +5670,13 @@ func (x *ListActiveTruckIDsResponse) GetTruckIds() []string {
 func (x *ListActiveTruckIDsResponse) GetNumbers() []string {
 	if x != nil {
 		return x.Numbers
+	}
+	return nil
+}
+
+func (x *ListActiveTruckIDsResponse) GetCreatedAt() []string {
+	if x != nil {
+		return x.CreatedAt
 	}
 	return nil
 }
@@ -7714,10 +7726,12 @@ const file_loads_loads_proto_rawDesc = "" +
 	"\anumbers\x18\x02 \x03(\tR\anumbers\":\n" +
 	"\x19ListActiveTruckIDsRequest\x12\x1d\n" +
 	"\n" +
-	"company_id\x18\x01 \x01(\tR\tcompanyId\"S\n" +
+	"company_id\x18\x01 \x01(\tR\tcompanyId\"r\n" +
 	"\x1aListActiveTruckIDsResponse\x12\x1b\n" +
 	"\ttruck_ids\x18\x01 \x03(\tR\btruckIds\x12\x18\n" +
-	"\anumbers\x18\x02 \x03(\tR\anumbers\"\xa2\x02\n" +
+	"\anumbers\x18\x02 \x03(\tR\anumbers\x12\x1d\n" +
+	"\n" +
+	"created_at\x18\x03 \x03(\tR\tcreatedAt\"\xa2\x02\n" +
 	"\n" +
 	"TruckOwner\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +

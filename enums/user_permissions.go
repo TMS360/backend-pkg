@@ -550,6 +550,21 @@ const (
 	// `accounting`, so a dotted `accounting.expenses.approve` would let any user
 	// approve their own spend. Seeded to admin and accounting.
 	PermExpenseApprove UserPermissionEnum = "expense_approve"
+
+	// PermStatementReviewResolve gates approving or declining a pay-review item —
+	// backend-accounting's resolveStatementReview (DEV-2548). Approve books the
+	// difference as an adjustment on the driver's next open statement, so it is
+	// a decision on a driver's pay.
+	//
+	// FLAT, and a FIX in the DEV-2366 mould: the mutation shipped gated on
+	// `accounting.statement_balance_entries.create`, which HasPermission's prefix
+	// match lets the bare `accounting` module satisfy — and every built-in office
+	// role holds that module at signup. So a dispatcher could edit a trip's miles
+	// and then approve the pay difference their own edit created.
+	//
+	// Seeded to admin and accounting. Not manager, not dispatcher; a tenant that
+	// wants it wider ticks it on in Settings -> Roles.
+	PermStatementReviewResolve UserPermissionEnum = "statement_review_resolve"
 )
 
 // PermissionCatalogEntry describes one row written to the permissions table.
@@ -775,6 +790,7 @@ var CustomPermissionCatalog = []CustomPermissionEntry{
 	{Code: string(PermVendorBillApproveLevel3), Label: "Approve vendor bills: level 3 and edit approval thresholds"},
 	{Code: string(PermVendorBillPaymentVoid), Label: "Void a payment on a vendor bill"},
 	{Code: string(PermExpenseApprove), Label: "Approve, reject and void expenses; set the expense approval threshold"},
+	{Code: string(PermStatementReviewResolve), Label: "Approve or decline a driver pay review"},
 }
 
 // CustomPermissionCodes returns just the flat custom permission codes, in
@@ -1139,9 +1155,13 @@ func DefaultRolePermissions() map[UserRoleEnum][]string {
 		// The PM rule is that the company admin always holds every permission, so
 		// admin gets all three here. No other role is widened: a tenant hands mail
 		// to a manager or an accountant through a custom role or a user grant.
-		UserRoleAdmin:      withExtra(string(PermTripFinancialsEdit), string(PermTripReassignCommitted), string(PermFileDeleteAny), string(PermReportsRun), string(PermReportsManage), string(PermCallsView), string(PermCallsPlay), string(PermSmsView), string(PermSmsSend), string(PermShipmentBillingApprove), string(PermAuditPlanExclusionEdit), string(PermComplianceDispatchOverride), string(PermAssetOutOfServiceOverride), string(PermTripDelete), string(PermInvoiceUnrecordPayment), string(PermAuditLogView), string(PermGeneralLedgerView), string(PermJournalEntryManage), string(PermVendorBillApproveLevel1), string(PermVendorBillApproveLevel2), string(PermVendorBillApproveLevel3), string(PermVendorBillPaymentVoid), string(PermExpenseApprove), string(PermInvoiceRecordPayment), string(PermMailView), string(PermMailSend), string(PermMailEdit)),
+		// statement_review_resolve (DEV-2548): admin and accounting. Approving a
+		// pay review books money on a driver's statement; the old dotted gate was
+		// satisfied by the `accounting` module every office role holds, so a
+		// dispatcher could approve the difference their own miles edit created.
+		UserRoleAdmin:      withExtra(string(PermTripFinancialsEdit), string(PermTripReassignCommitted), string(PermFileDeleteAny), string(PermReportsRun), string(PermReportsManage), string(PermCallsView), string(PermCallsPlay), string(PermSmsView), string(PermSmsSend), string(PermShipmentBillingApprove), string(PermAuditPlanExclusionEdit), string(PermComplianceDispatchOverride), string(PermAssetOutOfServiceOverride), string(PermTripDelete), string(PermInvoiceUnrecordPayment), string(PermAuditLogView), string(PermGeneralLedgerView), string(PermJournalEntryManage), string(PermVendorBillApproveLevel1), string(PermVendorBillApproveLevel2), string(PermVendorBillApproveLevel3), string(PermVendorBillPaymentVoid), string(PermExpenseApprove), string(PermInvoiceRecordPayment), string(PermMailView), string(PermMailSend), string(PermMailEdit), string(PermStatementReviewResolve)),
 		UserRoleManager:    withExtra(string(PermTripReassignCommitted), string(PermFileDeleteAny), string(PermCallsView), string(PermCallsPlay), string(PermSmsView), string(PermSmsSend), string(PermShipmentBillingApprove), string(PermAuditPlanExclusionEdit), string(PermComplianceDispatchOverride), string(PermAssetOutOfServiceOverride), string(PermTripDelete), string(PermAuditLogView), string(PermVendorBillApproveLevel1), string(PermVendorBillApproveLevel2), string(PermInvoiceRecordPayment)),
-		UserRoleAccounting: withExtra(string(PermTripFinancialsEdit), string(PermReportsRun), string(PermReportsManage), string(PermShipmentBillingApprove), string(PermGeneralLedgerView), string(PermJournalEntryManage), string(PermVendorBillApproveLevel1), string(PermExpenseApprove), string(PermInvoiceRecordPayment)),
+		UserRoleAccounting: withExtra(string(PermTripFinancialsEdit), string(PermReportsRun), string(PermReportsManage), string(PermShipmentBillingApprove), string(PermGeneralLedgerView), string(PermJournalEntryManage), string(PermVendorBillApproveLevel1), string(PermExpenseApprove), string(PermInvoiceRecordPayment), string(PermStatementReviewResolve)),
 		UserRoleFleet:      withExtra(),
 		UserRoleSafety:     withExtra(string(PermComplianceDispatchOverride)),
 		UserRoleHr:         withExtra(),

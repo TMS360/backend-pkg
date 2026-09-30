@@ -141,6 +141,12 @@ message CreateAuditCheckRequest {
 
   string title = 14;       // optional; empty = generated from status + day
   string description = 15; // optional
+
+  // The other records the card links to beside its subject, so the department
+  // sees the truck, the driver AND the load of the day. All optional; the server
+  // skips one equal to the subject.
+  string driver_id = 16;         // UUID or empty
+  repeated string load_ids = 17; // UUIDs of the loads the crew ran that day
 }
 
 message CreateAuditCheckResponse {

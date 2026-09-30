@@ -561,10 +561,15 @@ type CreateAuditCheckRequest struct {
 	ManagerId      string   `protobuf:"bytes,10,opt,name=manager_id,json=managerId,proto3" json:"manager_id,omitempty"`                  // UUID or empty
 	DispatchTeamId string   `protobuf:"bytes,11,opt,name=dispatch_team_id,json=dispatchTeamId,proto3" json:"dispatch_team_id,omitempty"` // UUID or empty
 	// What the day is about — the crew's truck, or its driver when it has none.
-	EntityType    string `protobuf:"bytes,12,opt,name=entity_type,json=entityType,proto3" json:"entity_type,omitempty"` // truck | driver
-	EntityId      string `protobuf:"bytes,13,opt,name=entity_id,json=entityId,proto3" json:"entity_id,omitempty"`       // UUID
-	Title         string `protobuf:"bytes,14,opt,name=title,proto3" json:"title,omitempty"`                             // optional; empty = generated from status + day
-	Description   string `protobuf:"bytes,15,opt,name=description,proto3" json:"description,omitempty"`                 // optional
+	EntityType  string `protobuf:"bytes,12,opt,name=entity_type,json=entityType,proto3" json:"entity_type,omitempty"` // truck | driver
+	EntityId    string `protobuf:"bytes,13,opt,name=entity_id,json=entityId,proto3" json:"entity_id,omitempty"`       // UUID
+	Title       string `protobuf:"bytes,14,opt,name=title,proto3" json:"title,omitempty"`                             // optional; empty = generated from status + day
+	Description string `protobuf:"bytes,15,opt,name=description,proto3" json:"description,omitempty"`                 // optional
+	// The other records the card links to beside its subject, so the department
+	// sees the truck, the driver AND the load of the day. All optional; the server
+	// skips one equal to the subject.
+	DriverId      string   `protobuf:"bytes,16,opt,name=driver_id,json=driverId,proto3" json:"driver_id,omitempty"` // UUID or empty
+	LoadIds       []string `protobuf:"bytes,17,rep,name=load_ids,json=loadIds,proto3" json:"load_ids,omitempty"`    // UUIDs of the loads the crew ran that day
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -704,6 +709,20 @@ func (x *CreateAuditCheckRequest) GetDescription() string {
 	return ""
 }
 
+func (x *CreateAuditCheckRequest) GetDriverId() string {
+	if x != nil {
+		return x.DriverId
+	}
+	return ""
+}
+
+func (x *CreateAuditCheckRequest) GetLoadIds() []string {
+	if x != nil {
+		return x.LoadIds
+	}
+	return nil
+}
+
 type CreateAuditCheckResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	TaskId        string                 `protobuf:"bytes,1,opt,name=task_id,json=taskId,proto3" json:"task_id,omitempty"`
@@ -805,7 +824,7 @@ type GetAuditCheckAnswerResponse struct {
 	// answered=false means the check is still open; every other field is then
 	// zero. It is NOT an error — "no verdict yet" is the answer.
 	Answered      bool                   `protobuf:"varint,1,opt,name=answered,proto3" json:"answered,omitempty"`
-	Outcome       string                 `protobuf:"bytes,2,opt,name=outcome,proto3" json:"outcome,omitempty"`                         // CONFIRMED | REJECTED
+	Outcome       string                 `protobuf:"bytes,2,opt,name=outcome,proto3" json:"outcome,omitempty"`                         // confirmed | rejected — lower-case, as the task stores it
 	Note          string                 `protobuf:"bytes,3,opt,name=note,proto3" json:"note,omitempty"`                               // the department's words; mandatory on a reject
 	AnsweredBy    string                 `protobuf:"bytes,4,opt,name=answered_by,json=answeredBy,proto3" json:"answered_by,omitempty"` // UUID
 	AnsweredAt    *timestamppb.Timestamp `protobuf:"bytes,5,opt,name=answered_at,json=answeredAt,proto3" json:"answered_at,omitempty"`
@@ -923,7 +942,7 @@ const file_tasks_tasks_proto_rawDesc = "" +
 	"department\x12\x14\n" +
 	"\x05title\x18\x06 \x01(\tR\x05title\"L\n" +
 	"\x1bListOpenAuditChecksResponse\x12-\n" +
-	"\x06checks\x18\x01 \x03(\v2\x15.tasks.OpenAuditCheckR\x06checks\"\xe4\x03\n" +
+	"\x06checks\x18\x01 \x03(\v2\x15.tasks.OpenAuditCheckR\x06checks\"\x9c\x04\n" +
 	"\x17CreateAuditCheckRequest\x12\x10\n" +
 	"\x03day\x18\x01 \x01(\tR\x03day\x12\x1d\n" +
 	"\n" +
@@ -947,7 +966,9 @@ const file_tasks_tasks_proto_rawDesc = "" +
 	"entityType\x12\x1b\n" +
 	"\tentity_id\x18\r \x01(\tR\bentityId\x12\x14\n" +
 	"\x05title\x18\x0e \x01(\tR\x05title\x12 \n" +
-	"\vdescription\x18\x0f \x01(\tR\vdescription\"M\n" +
+	"\vdescription\x18\x0f \x01(\tR\vdescription\x12\x1b\n" +
+	"\tdriver_id\x18\x10 \x01(\tR\bdriverId\x12\x19\n" +
+	"\bload_ids\x18\x11 \x03(\tR\aloadIds\"M\n" +
 	"\x18CreateAuditCheckResponse\x12\x17\n" +
 	"\atask_id\x18\x01 \x01(\tR\x06taskId\x12\x18\n" +
 	"\acreated\x18\x02 \x01(\bR\acreated\"5\n" +

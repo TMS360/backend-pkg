@@ -313,6 +313,32 @@ func TestTasksClientCreateAuditCheckMapsClaim(t *testing.T) {
 	require.Empty(t, fake.lastCheck.GetSetBy())
 }
 
+// DEV-2445 AC1: the card links to the truck, the driver AND the load — the
+// driver and the day's loads ride beside the subject; Nil ids never reach the wire.
+func TestTasksClientCreateAuditCheckSendsLinkedRecords(t *testing.T) {
+	fake := &fakeTasksSvc{checkResp: &pb.CreateAuditCheckResponse{TaskId: uuid.NewString(), Created: true}}
+	cli := tasks.NewWithClient(fake)
+
+	truck, driver, load := uuid.New(), uuid.New(), uuid.New()
+	_, err := cli.CreateAuditCheck(context.Background(), tasks.AuditCheckParams{
+		Day: "2026-09-22", WeekStart: "2026-09-21", StatusName: "Out of service",
+		CrewID: uuid.New(), SetBy: uuid.New(), Department: "maintenance",
+		EntityType: "truck", EntityID: truck,
+		DriverID: driver, LoadIDs: []uuid.UUID{load, uuid.Nil},
+	})
+	require.NoError(t, err)
+	require.Equal(t, driver.String(), fake.lastCheck.GetDriverId())
+	require.Equal(t, []string{load.String()}, fake.lastCheck.GetLoadIds())
+
+	_, err = cli.CreateAuditCheck(context.Background(), tasks.AuditCheckParams{
+		Day: "2026-09-22", WeekStart: "2026-09-21", StatusName: "No driver",
+		Department: "human resources", EntityType: "truck", EntityID: truck,
+	})
+	require.NoError(t, err)
+	require.Empty(t, fake.lastCheck.GetDriverId())
+	require.Empty(t, fake.lastCheck.GetLoadIds())
+}
+
 // DEV-2445: an incomplete claim is refused BEFORE the network.
 func TestTasksClientCreateAuditCheckValidatesFirst(t *testing.T) {
 	fake := &fakeTasksSvc{checkResp: &pb.CreateAuditCheckResponse{}}

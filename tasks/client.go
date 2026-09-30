@@ -180,6 +180,11 @@ type AuditCheckParams struct {
 
 	Title       string // optional; empty = generated from status + day
 	Description string // optional
+
+	// The other records the card links to beside its subject: the crew's
+	// driver and the loads it ran that day. Optional; Nil / empty are skipped.
+	DriverID uuid.UUID
+	LoadIDs  []uuid.UUID
 }
 
 // AuditCheckResult is the outcome of CreateAuditCheck.
@@ -407,6 +412,14 @@ func (c *client) CreateAuditCheck(ctx context.Context, p AuditCheckParams) (Audi
 	}
 	if p.DispatchTeamID != nil && *p.DispatchTeamID != uuid.Nil {
 		req.DispatchTeamId = p.DispatchTeamID.String()
+	}
+	if p.DriverID != uuid.Nil {
+		req.DriverId = p.DriverID.String()
+	}
+	for _, id := range p.LoadIDs {
+		if id != uuid.Nil {
+			req.LoadIds = append(req.LoadIds, id.String())
+		}
 	}
 	for _, id := range p.DispatcherIDs {
 		if id != uuid.Nil {

@@ -84,14 +84,16 @@ func TestDefaultRolePermissions_TripFinancialsMatrix(t *testing.T) {
 	edit := string(enums.PermTripFinancialsEdit)
 	approve := string(enums.PermTripFinancialsApprove)
 
-	// admin + accounting: modules + edit.
+	// admin + accounting: modules + edit. Accounting's `fleet` is narrowed to
+	// everything but maintenance (DEV-2502).
+	assert.Subset(t, defaults[enums.UserRoleAdmin], modules, "admin keeps module defaults")
+	assert.Subset(t, defaults[enums.UserRoleAccounting], baselineWithoutFleetMaintenance(), "accounting keeps module defaults")
 	for _, role := range []enums.UserRoleEnum{enums.UserRoleAdmin, enums.UserRoleAccounting} {
-		assert.Subset(t, defaults[role], modules, "%s keeps module defaults", role)
 		assert.Containsf(t, defaults[role], edit, "%s must hold trip_financials_edit", role)
 	}
 
 	// dispatcher: modules only, NO edit (the divergence being fixed).
-	assert.Subset(t, defaults[enums.UserRoleDispatcher], modules)
+	assert.Subset(t, defaults[enums.UserRoleDispatcher], baselineWithoutFleetMaintenance())
 	assert.NotContains(t, defaults[enums.UserRoleDispatcher], edit,
 		"dispatcher must NOT hold trip_financials_edit by default")
 
@@ -248,4 +250,16 @@ func TestAssetOutOfServiceOverride_IsFlatAndSupervisorOnly(t *testing.T) {
 	assert.False(t, middleware.HasPermission(defaults[enums.UserRoleDispatcher], code),
 		"the dispatcher default grant set must not imply %q", code)
 	assert.True(t, middleware.HasPermission([]string{code}, code))
+}
+
+// baselineWithoutFleetMaintenance is the module baseline with `fleet` swapped
+// for its entities minus maintenance — what the non-shop roles hold (DEV-2502).
+func baselineWithoutFleetMaintenance() []string {
+	var out []string
+	for _, m := range enums.ModulePermissionCodes() {
+		if m != enums.FleetModuleCode {
+			out = append(out, m)
+		}
+	}
+	return append(out, enums.FleetEntitiesWithoutMaintenance()...)
 }

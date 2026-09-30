@@ -1057,8 +1057,9 @@ func ModulePermissionCodes() []string {
 // uniform grant: each role is listed explicitly, so a role's default set can
 // diverge from the others.
 //
-// Today every office role's baseline is still the full module set
-// (ModulePermissionCodes); on top of that, dispatcher and accounting receive
+// Every office role's baseline is the full module set (ModulePermissionCodes),
+// except that DEV-2502 swaps `fleet` for its entities minus maintenance on the
+// roles that do not run the shop; on top of that, dispatcher and accounting receive
 // their governed flat custom permission (DEV-1256) — trip_financials_edit and
 // trip_financials_approve respectively. super_admin bypasses all permission
 // checks, so it is intentionally omitted; a role absent from the map receives
@@ -1179,6 +1180,25 @@ func DefaultRolePermissions() map[UserRoleEnum][]string {
 		UserRoleOther:      withExtra(),
 	}
 
+	// DEV-2502 / BL-15: fleet maintenance (service records, work orders, taking
+	// a truck off the road) belongs to the roles that run the shop. The `fleet`
+	// module in the baseline implies every fleet leaf, maintenance included, so
+	// for the other roles it is swapped for the fleet entities minus maintenance —
+	// trucks, trailers and asset charges stay exactly as before. Dispatcher,
+	// accounting and auditor keep a read of maintenance; hr, driver and other get
+	// none. admin, manager, fleet and safety keep the whole module. Runs before
+	// the track_and_trace derivation below, so that role inherits the view.
+	for role, maintenance := range map[UserRoleEnum][]string{
+		UserRoleDispatcher: {string(PermFleetMaintenanceView)},
+		UserRoleAccounting: {string(PermFleetMaintenanceView)},
+		UserRoleAuditor:    {string(PermFleetMaintenanceView)},
+		UserRoleHr:         nil,
+		UserRoleDriver:     nil,
+		UserRoleOther:      nil,
+	} {
+		out[role] = withoutFleetMaintenance(out[role], maintenance...)
+	}
+
 	// DEV-1824 / BL-4 §4.17: Track & Trace is defined as "whatever dispatcher
 	// gets". Deriving it from the dispatcher entry instead of repeating the
 	// literal means the two sets can never drift — a perm added to dispatcher
@@ -1208,5 +1228,39 @@ func DefaultRolePermissions() map[UserRoleEnum][]string {
 	out[UserRoleBrokerAdmin] = append([]string(nil), brokerPortal...)
 	out[UserRoleBrokerUser] = append([]string(nil), brokerPortal...)
 
+	return out
+}
+
+// FleetModuleCode is the top-level fleet module in PermissionCatalog.
+const FleetModuleCode = "fleet"
+
+// FleetEntitiesWithoutMaintenance lists the fleet module's entities except
+// fleet.maintenance, in catalog order (DEV-2502). A role holding these instead
+// of `fleet` keeps every fleet page but maintenance; a fleet entity added later
+// is picked up here too.
+func FleetEntitiesWithoutMaintenance() []string {
+	var out []string
+	for _, ent := range permIndex.moduleEntities[FleetModuleCode] {
+		if ent != fleetMaintenanceEntity {
+			out = append(out, ent)
+		}
+	}
+	return out
+}
+
+const fleetMaintenanceEntity = "fleet.maintenance"
+
+// withoutFleetMaintenance replaces the `fleet` module in codes with
+// FleetEntitiesWithoutMaintenance plus the given maintenance leaves.
+func withoutFleetMaintenance(codes []string, maintenance ...string) []string {
+	out := make([]string, 0, len(codes)+4)
+	for _, c := range codes {
+		if c != FleetModuleCode {
+			out = append(out, c)
+			continue
+		}
+		out = append(out, FleetEntitiesWithoutMaintenance()...)
+		out = append(out, maintenance...)
+	}
 	return out
 }

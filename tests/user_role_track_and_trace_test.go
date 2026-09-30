@@ -70,7 +70,8 @@ func TestUserRoleTrackAndTrace_DefaultPermsEqualTheDispatcherSet(t *testing.T) {
 
 	assert.ElementsMatch(t, defaults[enums.UserRoleDispatcher], tnt,
 		"track_and_trace is defined as 'the dispatcher set' — it must not drift")
-	assert.Subset(t, tnt, enums.ModulePermissionCodes(), "the module baseline is included")
+	assert.Contains(t, tnt, string(enums.PermFleetMaintenanceView), "inherits dispatcher's maintenance read (DEV-2502)")
+	assert.NotContains(t, tnt, enums.FleetModuleCode, "not the whole fleet module — maintenance manage stays with the shop roles")
 }
 
 // The set is derived, not copy-pasted: mutating one role's returned slice must

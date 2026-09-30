@@ -60,9 +60,18 @@ func TestUserRoleAuditor_GetsTheModuleBaseline(t *testing.T) {
 
 	perms, ok := defaults[enums.UserRoleAuditor]
 	require.True(t, ok, "auditor must have default grants")
-	assert.Subset(t, perms, enums.ModulePermissionCodes())
+	// DEV-2502: `fleet` is narrowed to every fleet entity but maintenance, plus
+	// a read of maintenance.
+	var baseline []string
+	for _, m := range enums.ModulePermissionCodes() {
+		if m != enums.FleetModuleCode {
+			baseline = append(baseline, m)
+		}
+	}
+	baseline = append(baseline, enums.FleetEntitiesWithoutMaintenance()...)
+	baseline = append(baseline, string(enums.PermFleetMaintenanceView))
 	assert.ElementsMatch(t,
-		append(enums.ModulePermissionCodes(),
+		append(baseline,
 			string(enums.PermInvoiceUnrecordPayment),
 			string(enums.PermAuditLogView),
 			string(enums.PermGeneralLedgerView),

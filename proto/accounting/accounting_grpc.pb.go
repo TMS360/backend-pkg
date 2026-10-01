@@ -21,10 +21,11 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	AccountingService_CreateAssetCharge_FullMethodName        = "/accounting.AccountingService/CreateAssetCharge"
-	AccountingService_ListTruckWeeklyPnL_FullMethodName       = "/accounting.AccountingService/ListTruckWeeklyPnL"
-	AccountingService_ListTripStatements_FullMethodName       = "/accounting.AccountingService/ListTripStatements"
-	AccountingService_CreateVendorBillFromTask_FullMethodName = "/accounting.AccountingService/CreateVendorBillFromTask"
+	AccountingService_CreateAssetCharge_FullMethodName         = "/accounting.AccountingService/CreateAssetCharge"
+	AccountingService_ListTruckWeeklyPnL_FullMethodName        = "/accounting.AccountingService/ListTruckWeeklyPnL"
+	AccountingService_ListTripStatements_FullMethodName        = "/accounting.AccountingService/ListTripStatements"
+	AccountingService_CreateVendorBillFromTask_FullMethodName  = "/accounting.AccountingService/CreateVendorBillFromTask"
+	AccountingService_RequestAdjustmentFromTask_FullMethodName = "/accounting.AccountingService/RequestAdjustmentFromTask"
 )
 
 // AccountingServiceClient is the client API for AccountingService service.
@@ -90,6 +91,28 @@ type AccountingServiceClient interface {
 	// NO_BILLABLE_LINES), metadata["message"] the sentence a person reads. The
 	// caller shows that sentence, never the raw status text.
 	CreateVendorBillFromTask(ctx context.Context, in *CreateVendorBillFromTaskRequest, opts ...grpc.CallOption) (*CreateVendorBillFromTaskResponse, error)
+	// A driver pay adjustment a resolved task owes (DEV-2618, first caller the
+	// safety case in backend-tasks, DEV-2619): "charge the driver $500" or "pay
+	// the driver $200".
+	//
+	// THE CALLER SENDS THE TOTAL, NOT THE CHANGE. desired_signed_amount is what
+	// the case should come to for the driver this round (negative = the driver
+	// pays, positive = the driver is paid). Accounting subtracts what is already
+	// approved or applied for this task and opens one adjustment for the
+	// difference — a re-resolve after an approved round gets a counter-adjustment,
+	// never a second full amount. No difference → no adjustment, adjustment_id
+	// empty.
+	//
+	// IDEMPOTENT PER (task_id, round). A repeat call returns the live adjustment
+	// of that round. A new round first rejects the task's still-requested
+	// adjustments of earlier rounds ("case reopened"), so two live ones never
+	// exist even when the reopen event is late.
+	//
+	// The adjustment opens as "requested" and waits for an accountant. Once
+	// approved it lands on the driver's next draft statement by itself, or parks
+	// until one exists. label is the statement line text ("SFT-00950 · Accident ·
+	// 2026-09-30"). Zero amount with nothing to undo, or no driver → InvalidArgument.
+	RequestAdjustmentFromTask(ctx context.Context, in *RequestAdjustmentFromTaskRequest, opts ...grpc.CallOption) (*RequestAdjustmentFromTaskResponse, error)
 }
 
 type accountingServiceClient struct {
@@ -134,6 +157,16 @@ func (c *accountingServiceClient) CreateVendorBillFromTask(ctx context.Context, 
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(CreateVendorBillFromTaskResponse)
 	err := c.cc.Invoke(ctx, AccountingService_CreateVendorBillFromTask_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *accountingServiceClient) RequestAdjustmentFromTask(ctx context.Context, in *RequestAdjustmentFromTaskRequest, opts ...grpc.CallOption) (*RequestAdjustmentFromTaskResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(RequestAdjustmentFromTaskResponse)
+	err := c.cc.Invoke(ctx, AccountingService_RequestAdjustmentFromTask_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -203,6 +236,28 @@ type AccountingServiceServer interface {
 	// NO_BILLABLE_LINES), metadata["message"] the sentence a person reads. The
 	// caller shows that sentence, never the raw status text.
 	CreateVendorBillFromTask(context.Context, *CreateVendorBillFromTaskRequest) (*CreateVendorBillFromTaskResponse, error)
+	// A driver pay adjustment a resolved task owes (DEV-2618, first caller the
+	// safety case in backend-tasks, DEV-2619): "charge the driver $500" or "pay
+	// the driver $200".
+	//
+	// THE CALLER SENDS THE TOTAL, NOT THE CHANGE. desired_signed_amount is what
+	// the case should come to for the driver this round (negative = the driver
+	// pays, positive = the driver is paid). Accounting subtracts what is already
+	// approved or applied for this task and opens one adjustment for the
+	// difference — a re-resolve after an approved round gets a counter-adjustment,
+	// never a second full amount. No difference → no adjustment, adjustment_id
+	// empty.
+	//
+	// IDEMPOTENT PER (task_id, round). A repeat call returns the live adjustment
+	// of that round. A new round first rejects the task's still-requested
+	// adjustments of earlier rounds ("case reopened"), so two live ones never
+	// exist even when the reopen event is late.
+	//
+	// The adjustment opens as "requested" and waits for an accountant. Once
+	// approved it lands on the driver's next draft statement by itself, or parks
+	// until one exists. label is the statement line text ("SFT-00950 · Accident ·
+	// 2026-09-30"). Zero amount with nothing to undo, or no driver → InvalidArgument.
+	RequestAdjustmentFromTask(context.Context, *RequestAdjustmentFromTaskRequest) (*RequestAdjustmentFromTaskResponse, error)
 	mustEmbedUnimplementedAccountingServiceServer()
 }
 
@@ -224,6 +279,9 @@ func (UnimplementedAccountingServiceServer) ListTripStatements(context.Context, 
 }
 func (UnimplementedAccountingServiceServer) CreateVendorBillFromTask(context.Context, *CreateVendorBillFromTaskRequest) (*CreateVendorBillFromTaskResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method CreateVendorBillFromTask not implemented")
+}
+func (UnimplementedAccountingServiceServer) RequestAdjustmentFromTask(context.Context, *RequestAdjustmentFromTaskRequest) (*RequestAdjustmentFromTaskResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method RequestAdjustmentFromTask not implemented")
 }
 func (UnimplementedAccountingServiceServer) mustEmbedUnimplementedAccountingServiceServer() {}
 func (UnimplementedAccountingServiceServer) testEmbeddedByValue()                           {}
@@ -318,6 +376,24 @@ func _AccountingService_CreateVendorBillFromTask_Handler(srv interface{}, ctx co
 	return interceptor(ctx, in, info, handler)
 }
 
+func _AccountingService_RequestAdjustmentFromTask_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RequestAdjustmentFromTaskRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AccountingServiceServer).RequestAdjustmentFromTask(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AccountingService_RequestAdjustmentFromTask_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AccountingServiceServer).RequestAdjustmentFromTask(ctx, req.(*RequestAdjustmentFromTaskRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // AccountingService_ServiceDesc is the grpc.ServiceDesc for AccountingService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -340,6 +416,10 @@ var AccountingService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "CreateVendorBillFromTask",
 			Handler:    _AccountingService_CreateVendorBillFromTask_Handler,
+		},
+		{
+			MethodName: "RequestAdjustmentFromTask",
+			Handler:    _AccountingService_RequestAdjustmentFromTask_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

@@ -69,6 +69,29 @@ service AccountingService {
   // NO_BILLABLE_LINES), metadata["message"] the sentence a person reads. The
   // caller shows that sentence, never the raw status text.
   rpc CreateVendorBillFromTask(CreateVendorBillFromTaskRequest) returns (CreateVendorBillFromTaskResponse);
+
+  // A driver pay adjustment a resolved task owes (DEV-2618, first caller the
+  // safety case in backend-tasks, DEV-2619): "charge the driver $500" or "pay
+  // the driver $200".
+  //
+  // THE CALLER SENDS THE TOTAL, NOT THE CHANGE. desired_signed_amount is what
+  // the case should come to for the driver this round (negative = the driver
+  // pays, positive = the driver is paid). Accounting subtracts what is already
+  // approved or applied for this task and opens one adjustment for the
+  // difference — a re-resolve after an approved round gets a counter-adjustment,
+  // never a second full amount. No difference → no adjustment, adjustment_id
+  // empty.
+  //
+  // IDEMPOTENT PER (task_id, round). A repeat call returns the live adjustment
+  // of that round. A new round first rejects the task's still-requested
+  // adjustments of earlier rounds ("case reopened"), so two live ones never
+  // exist even when the reopen event is late.
+  //
+  // The adjustment opens as "requested" and waits for an accountant. Once
+  // approved it lands on the driver's next draft statement by itself, or parks
+  // until one exists. label is the statement line text ("SFT-00950 · Accident ·
+  // 2026-09-30"). Zero amount with nothing to undo, or no driver → InvalidArgument.
+  rpc RequestAdjustmentFromTask(RequestAdjustmentFromTaskRequest) returns (RequestAdjustmentFromTaskResponse);
 }
 
 // AssetKind names which kind of equipment carries the charge.
@@ -201,11 +224,12 @@ message ListTripStatementsResponse {
   repeated TripStatement rows = 1;
 }
 
-// VendorBillSourceKind names the task a vendor bill came from. A safety case
-// joins later (DEV-2619) as the next value.
+// VendorBillSourceKind names the task a vendor bill came from.
 enum VendorBillSourceKind {
   VENDOR_BILL_SOURCE_KIND_UNSPECIFIED = 0;
   VENDOR_BILL_SOURCE_KIND_WORK_ORDER = 1;
+  // A safety case (DEV-2618): a body shop or a claim vendor after an accident.
+  VENDOR_BILL_SOURCE_KIND_SAFETY_CASE = 2;
 }
 
 // VendorBillLineInput is one billable line. The type travels as a CODE, the same
@@ -251,5 +275,35 @@ message CreateVendorBillFromTaskResponse {
   // Accounting's own state word: "draft", "submitted", "approved", "paid".
   string status = 3;
   // True when the bill was there before this call (a retry).
+  bool already_existed = 4;
+}
+
+message RequestAdjustmentFromTaskRequest {
+  string company_id = 1;
+  string actor_id = 2;
+
+  // The task id. With round it is the idempotency key.
+  string task_id = 3;
+  // The task's resolve round, counted by the caller: 1 on the first resolve,
+  // +1 after every reopen.
+  int32 round = 4;
+
+  string driver_id = 5;
+  // The total this task should come to for the driver this round: negative =
+  // the driver pays (charge), positive = the driver is paid.
+  double desired_signed_amount = 6;
+  // The statement line text, "SFT-00950 · Accident · 2026-09-30".
+  string label = 7;
+  // Free text kept on the adjustment for the accountant.
+  string reason = 8;
+}
+
+message RequestAdjustmentFromTaskResponse {
+  // Empty when nothing needed opening (the total did not change).
+  string adjustment_id = 1;
+  string display_number = 2;
+  // Accounting's own state word: "requested", "approved", "applied", ...
+  string status = 3;
+  // True when the adjustment was there before this call (a retry).
   bool already_existed = 4;
 }

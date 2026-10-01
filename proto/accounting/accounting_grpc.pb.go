@@ -21,9 +21,10 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	AccountingService_CreateAssetCharge_FullMethodName  = "/accounting.AccountingService/CreateAssetCharge"
-	AccountingService_ListTruckWeeklyPnL_FullMethodName = "/accounting.AccountingService/ListTruckWeeklyPnL"
-	AccountingService_ListTripStatements_FullMethodName = "/accounting.AccountingService/ListTripStatements"
+	AccountingService_CreateAssetCharge_FullMethodName        = "/accounting.AccountingService/CreateAssetCharge"
+	AccountingService_ListTruckWeeklyPnL_FullMethodName       = "/accounting.AccountingService/ListTruckWeeklyPnL"
+	AccountingService_ListTripStatements_FullMethodName       = "/accounting.AccountingService/ListTripStatements"
+	AccountingService_CreateVendorBillFromTask_FullMethodName = "/accounting.AccountingService/CreateVendorBillFromTask"
 )
 
 // AccountingServiceClient is the client API for AccountingService service.
@@ -72,6 +73,23 @@ type AccountingServiceClient interface {
 	// Live = not deleted and not superseded, any status from draft to locked.
 	// Owner statements are not listed. A trip on no statement is ABSENT.
 	ListTripStatements(ctx context.Context, in *ListTripStatementsRequest, opts ...grpc.CallOption) (*ListTripStatementsResponse, error)
+	// The draft bill a shop sends for a completed task (DEV-2614, first caller
+	// the maintenance work order in backend-tasks, DEV-2615).
+	//
+	// IDEMPOTENT PER SOURCE. One live bill per (source_kind, source_id): a repeat
+	// call returns the bill that already exists instead of a second one, so the
+	// caller may retry after a lost answer. A cancelled bill does not count — a
+	// work order completed again after a reopen gets a new draft.
+	//
+	// The bill number is vendor_invoice_number when set, otherwise source_ref
+	// ("WO-00012"). Bill date and due date are bill_date. Lines with amount 0 are
+	// the caller's to drop; a request with no billable line is refused.
+	//
+	// A refusal carries a google.rpc.ErrorInfo detail: reason is the code
+	// (VENDOR_NOT_FOUND, VENDOR_INACTIVE, VENDOR_BILL_NUMBER_TAKEN,
+	// NO_BILLABLE_LINES), metadata["message"] the sentence a person reads. The
+	// caller shows that sentence, never the raw status text.
+	CreateVendorBillFromTask(ctx context.Context, in *CreateVendorBillFromTaskRequest, opts ...grpc.CallOption) (*CreateVendorBillFromTaskResponse, error)
 }
 
 type accountingServiceClient struct {
@@ -106,6 +124,16 @@ func (c *accountingServiceClient) ListTripStatements(ctx context.Context, in *Li
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(ListTripStatementsResponse)
 	err := c.cc.Invoke(ctx, AccountingService_ListTripStatements_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *accountingServiceClient) CreateVendorBillFromTask(ctx context.Context, in *CreateVendorBillFromTaskRequest, opts ...grpc.CallOption) (*CreateVendorBillFromTaskResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CreateVendorBillFromTaskResponse)
+	err := c.cc.Invoke(ctx, AccountingService_CreateVendorBillFromTask_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -158,6 +186,23 @@ type AccountingServiceServer interface {
 	// Live = not deleted and not superseded, any status from draft to locked.
 	// Owner statements are not listed. A trip on no statement is ABSENT.
 	ListTripStatements(context.Context, *ListTripStatementsRequest) (*ListTripStatementsResponse, error)
+	// The draft bill a shop sends for a completed task (DEV-2614, first caller
+	// the maintenance work order in backend-tasks, DEV-2615).
+	//
+	// IDEMPOTENT PER SOURCE. One live bill per (source_kind, source_id): a repeat
+	// call returns the bill that already exists instead of a second one, so the
+	// caller may retry after a lost answer. A cancelled bill does not count — a
+	// work order completed again after a reopen gets a new draft.
+	//
+	// The bill number is vendor_invoice_number when set, otherwise source_ref
+	// ("WO-00012"). Bill date and due date are bill_date. Lines with amount 0 are
+	// the caller's to drop; a request with no billable line is refused.
+	//
+	// A refusal carries a google.rpc.ErrorInfo detail: reason is the code
+	// (VENDOR_NOT_FOUND, VENDOR_INACTIVE, VENDOR_BILL_NUMBER_TAKEN,
+	// NO_BILLABLE_LINES), metadata["message"] the sentence a person reads. The
+	// caller shows that sentence, never the raw status text.
+	CreateVendorBillFromTask(context.Context, *CreateVendorBillFromTaskRequest) (*CreateVendorBillFromTaskResponse, error)
 	mustEmbedUnimplementedAccountingServiceServer()
 }
 
@@ -176,6 +221,9 @@ func (UnimplementedAccountingServiceServer) ListTruckWeeklyPnL(context.Context, 
 }
 func (UnimplementedAccountingServiceServer) ListTripStatements(context.Context, *ListTripStatementsRequest) (*ListTripStatementsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListTripStatements not implemented")
+}
+func (UnimplementedAccountingServiceServer) CreateVendorBillFromTask(context.Context, *CreateVendorBillFromTaskRequest) (*CreateVendorBillFromTaskResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method CreateVendorBillFromTask not implemented")
 }
 func (UnimplementedAccountingServiceServer) mustEmbedUnimplementedAccountingServiceServer() {}
 func (UnimplementedAccountingServiceServer) testEmbeddedByValue()                           {}
@@ -252,6 +300,24 @@ func _AccountingService_ListTripStatements_Handler(srv interface{}, ctx context.
 	return interceptor(ctx, in, info, handler)
 }
 
+func _AccountingService_CreateVendorBillFromTask_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CreateVendorBillFromTaskRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AccountingServiceServer).CreateVendorBillFromTask(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AccountingService_CreateVendorBillFromTask_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AccountingServiceServer).CreateVendorBillFromTask(ctx, req.(*CreateVendorBillFromTaskRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // AccountingService_ServiceDesc is the grpc.ServiceDesc for AccountingService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -270,6 +336,10 @@ var AccountingService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ListTripStatements",
 			Handler:    _AccountingService_ListTripStatements_Handler,
+		},
+		{
+			MethodName: "CreateVendorBillFromTask",
+			Handler:    _AccountingService_CreateVendorBillFromTask_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

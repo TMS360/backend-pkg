@@ -188,6 +188,54 @@ func (ChargeSourceKind) EnumDescriptor() ([]byte, []int) {
 	return file_accounting_accounting_proto_rawDescGZIP(), []int{2}
 }
 
+// VendorBillSourceKind names the task a vendor bill came from. A safety case
+// joins later (DEV-2619) as the next value.
+type VendorBillSourceKind int32
+
+const (
+	VendorBillSourceKind_VENDOR_BILL_SOURCE_KIND_UNSPECIFIED VendorBillSourceKind = 0
+	VendorBillSourceKind_VENDOR_BILL_SOURCE_KIND_WORK_ORDER  VendorBillSourceKind = 1
+)
+
+// Enum value maps for VendorBillSourceKind.
+var (
+	VendorBillSourceKind_name = map[int32]string{
+		0: "VENDOR_BILL_SOURCE_KIND_UNSPECIFIED",
+		1: "VENDOR_BILL_SOURCE_KIND_WORK_ORDER",
+	}
+	VendorBillSourceKind_value = map[string]int32{
+		"VENDOR_BILL_SOURCE_KIND_UNSPECIFIED": 0,
+		"VENDOR_BILL_SOURCE_KIND_WORK_ORDER":  1,
+	}
+)
+
+func (x VendorBillSourceKind) Enum() *VendorBillSourceKind {
+	p := new(VendorBillSourceKind)
+	*p = x
+	return p
+}
+
+func (x VendorBillSourceKind) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (VendorBillSourceKind) Descriptor() protoreflect.EnumDescriptor {
+	return file_accounting_accounting_proto_enumTypes[3].Descriptor()
+}
+
+func (VendorBillSourceKind) Type() protoreflect.EnumType {
+	return &file_accounting_accounting_proto_enumTypes[3]
+}
+
+func (x VendorBillSourceKind) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use VendorBillSourceKind.Descriptor instead.
+func (VendorBillSourceKind) EnumDescriptor() ([]byte, []int) {
+	return file_accounting_accounting_proto_rawDescGZIP(), []int{3}
+}
+
 type CreateAssetChargeRequest struct {
 	state     protoimpl.MessageState `protogen:"open.v1"`
 	CompanyId string                 `protobuf:"bytes,1,opt,name=company_id,json=companyId,proto3" json:"company_id,omitempty"`
@@ -793,6 +841,272 @@ func (x *ListTripStatementsResponse) GetRows() []*TripStatement {
 	return nil
 }
 
+// VendorBillLineInput is one billable line. The type travels as a CODE, the same
+// rule as CreateAssetChargeRequest.type_code: accounting resolves it per tenant
+// and picks the GL account from it.
+type VendorBillLineInput struct {
+	state    protoimpl.MessageState `protogen:"open.v1"`
+	TypeCode string                 `protobuf:"bytes,1,opt,name=type_code,json=typeCode,proto3" json:"type_code,omitempty"`
+	// What the line was, as the shop wrote it ("TIRES", "Repair").
+	Description string `protobuf:"bytes,2,opt,name=description,proto3" json:"description,omitempty"`
+	// Greater than zero.
+	Amount        float64 `protobuf:"fixed64,3,opt,name=amount,proto3" json:"amount,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *VendorBillLineInput) Reset() {
+	*x = VendorBillLineInput{}
+	mi := &file_accounting_accounting_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *VendorBillLineInput) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*VendorBillLineInput) ProtoMessage() {}
+
+func (x *VendorBillLineInput) ProtoReflect() protoreflect.Message {
+	mi := &file_accounting_accounting_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use VendorBillLineInput.ProtoReflect.Descriptor instead.
+func (*VendorBillLineInput) Descriptor() ([]byte, []int) {
+	return file_accounting_accounting_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *VendorBillLineInput) GetTypeCode() string {
+	if x != nil {
+		return x.TypeCode
+	}
+	return ""
+}
+
+func (x *VendorBillLineInput) GetDescription() string {
+	if x != nil {
+		return x.Description
+	}
+	return ""
+}
+
+func (x *VendorBillLineInput) GetAmount() float64 {
+	if x != nil {
+		return x.Amount
+	}
+	return 0
+}
+
+type CreateVendorBillFromTaskRequest struct {
+	state      protoimpl.MessageState `protogen:"open.v1"`
+	CompanyId  string                 `protobuf:"bytes,1,opt,name=company_id,json=companyId,proto3" json:"company_id,omitempty"`
+	ActorId    string                 `protobuf:"bytes,2,opt,name=actor_id,json=actorId,proto3" json:"actor_id,omitempty"`
+	SourceKind VendorBillSourceKind   `protobuf:"varint,3,opt,name=source_kind,json=sourceKind,proto3,enum=accounting.VendorBillSourceKind" json:"source_kind,omitempty"`
+	// The task id. With source_kind it is the bill's idempotency key.
+	SourceId string `protobuf:"bytes,4,opt,name=source_id,json=sourceId,proto3" json:"source_id,omitempty"`
+	// The task's human number ("WO-00012"): the bill number when the shop gave
+	// none, and how the bill names where it came from.
+	SourceRef string `protobuf:"bytes,5,opt,name=source_ref,json=sourceRef,proto3" json:"source_ref,omitempty"`
+	VendorId  string `protobuf:"bytes,6,opt,name=vendor_id,json=vendorId,proto3" json:"vendor_id,omitempty"`
+	// The shop's own invoice number. Empty means "use source_ref".
+	VendorInvoiceNumber string `protobuf:"bytes,7,opt,name=vendor_invoice_number,json=vendorInvoiceNumber,proto3" json:"vendor_invoice_number,omitempty"`
+	// The service date — bill date and due date both.
+	BillDate *timestamppb.Timestamp `protobuf:"bytes,8,opt,name=bill_date,json=billDate,proto3" json:"bill_date,omitempty"`
+	// The equipment every line is about.
+	AssetType     AssetKind              `protobuf:"varint,9,opt,name=asset_type,json=assetType,proto3,enum=accounting.AssetKind" json:"asset_type,omitempty"`
+	AssetId       string                 `protobuf:"bytes,10,opt,name=asset_id,json=assetId,proto3" json:"asset_id,omitempty"`
+	Lines         []*VendorBillLineInput `protobuf:"bytes,11,rep,name=lines,proto3" json:"lines,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CreateVendorBillFromTaskRequest) Reset() {
+	*x = CreateVendorBillFromTaskRequest{}
+	mi := &file_accounting_accounting_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CreateVendorBillFromTaskRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CreateVendorBillFromTaskRequest) ProtoMessage() {}
+
+func (x *CreateVendorBillFromTaskRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_accounting_accounting_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CreateVendorBillFromTaskRequest.ProtoReflect.Descriptor instead.
+func (*CreateVendorBillFromTaskRequest) Descriptor() ([]byte, []int) {
+	return file_accounting_accounting_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *CreateVendorBillFromTaskRequest) GetCompanyId() string {
+	if x != nil {
+		return x.CompanyId
+	}
+	return ""
+}
+
+func (x *CreateVendorBillFromTaskRequest) GetActorId() string {
+	if x != nil {
+		return x.ActorId
+	}
+	return ""
+}
+
+func (x *CreateVendorBillFromTaskRequest) GetSourceKind() VendorBillSourceKind {
+	if x != nil {
+		return x.SourceKind
+	}
+	return VendorBillSourceKind_VENDOR_BILL_SOURCE_KIND_UNSPECIFIED
+}
+
+func (x *CreateVendorBillFromTaskRequest) GetSourceId() string {
+	if x != nil {
+		return x.SourceId
+	}
+	return ""
+}
+
+func (x *CreateVendorBillFromTaskRequest) GetSourceRef() string {
+	if x != nil {
+		return x.SourceRef
+	}
+	return ""
+}
+
+func (x *CreateVendorBillFromTaskRequest) GetVendorId() string {
+	if x != nil {
+		return x.VendorId
+	}
+	return ""
+}
+
+func (x *CreateVendorBillFromTaskRequest) GetVendorInvoiceNumber() string {
+	if x != nil {
+		return x.VendorInvoiceNumber
+	}
+	return ""
+}
+
+func (x *CreateVendorBillFromTaskRequest) GetBillDate() *timestamppb.Timestamp {
+	if x != nil {
+		return x.BillDate
+	}
+	return nil
+}
+
+func (x *CreateVendorBillFromTaskRequest) GetAssetType() AssetKind {
+	if x != nil {
+		return x.AssetType
+	}
+	return AssetKind_ASSET_KIND_UNSPECIFIED
+}
+
+func (x *CreateVendorBillFromTaskRequest) GetAssetId() string {
+	if x != nil {
+		return x.AssetId
+	}
+	return ""
+}
+
+func (x *CreateVendorBillFromTaskRequest) GetLines() []*VendorBillLineInput {
+	if x != nil {
+		return x.Lines
+	}
+	return nil
+}
+
+type CreateVendorBillFromTaskResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The live bill for this source — new, or the one that already existed.
+	BillId     string `protobuf:"bytes,1,opt,name=bill_id,json=billId,proto3" json:"bill_id,omitempty"`
+	BillNumber string `protobuf:"bytes,2,opt,name=bill_number,json=billNumber,proto3" json:"bill_number,omitempty"`
+	// Accounting's own state word: "draft", "submitted", "approved", "paid".
+	Status string `protobuf:"bytes,3,opt,name=status,proto3" json:"status,omitempty"`
+	// True when the bill was there before this call (a retry).
+	AlreadyExisted bool `protobuf:"varint,4,opt,name=already_existed,json=alreadyExisted,proto3" json:"already_existed,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *CreateVendorBillFromTaskResponse) Reset() {
+	*x = CreateVendorBillFromTaskResponse{}
+	mi := &file_accounting_accounting_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CreateVendorBillFromTaskResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CreateVendorBillFromTaskResponse) ProtoMessage() {}
+
+func (x *CreateVendorBillFromTaskResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_accounting_accounting_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CreateVendorBillFromTaskResponse.ProtoReflect.Descriptor instead.
+func (*CreateVendorBillFromTaskResponse) Descriptor() ([]byte, []int) {
+	return file_accounting_accounting_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *CreateVendorBillFromTaskResponse) GetBillId() string {
+	if x != nil {
+		return x.BillId
+	}
+	return ""
+}
+
+func (x *CreateVendorBillFromTaskResponse) GetBillNumber() string {
+	if x != nil {
+		return x.BillNumber
+	}
+	return ""
+}
+
+func (x *CreateVendorBillFromTaskResponse) GetStatus() string {
+	if x != nil {
+		return x.Status
+	}
+	return ""
+}
+
+func (x *CreateVendorBillFromTaskResponse) GetAlreadyExisted() bool {
+	if x != nil {
+		return x.AlreadyExisted
+	}
+	return false
+}
+
 var File_accounting_accounting_proto protoreflect.FileDescriptor
 
 const file_accounting_accounting_proto_rawDesc = "" +
@@ -853,7 +1167,34 @@ const file_accounting_accounting_proto_rawDesc = "" +
 	"\x10statement_number\x18\x03 \x01(\x03R\x0fstatementNumber\x12\x16\n" +
 	"\x06status\x18\x04 \x01(\tR\x06status\"K\n" +
 	"\x1aListTripStatementsResponse\x12-\n" +
-	"\x04rows\x18\x01 \x03(\v2\x19.accounting.TripStatementR\x04rows*U\n" +
+	"\x04rows\x18\x01 \x03(\v2\x19.accounting.TripStatementR\x04rows\"l\n" +
+	"\x13VendorBillLineInput\x12\x1b\n" +
+	"\ttype_code\x18\x01 \x01(\tR\btypeCode\x12 \n" +
+	"\vdescription\x18\x02 \x01(\tR\vdescription\x12\x16\n" +
+	"\x06amount\x18\x03 \x01(\x01R\x06amount\"\xec\x03\n" +
+	"\x1fCreateVendorBillFromTaskRequest\x12\x1d\n" +
+	"\n" +
+	"company_id\x18\x01 \x01(\tR\tcompanyId\x12\x19\n" +
+	"\bactor_id\x18\x02 \x01(\tR\aactorId\x12A\n" +
+	"\vsource_kind\x18\x03 \x01(\x0e2 .accounting.VendorBillSourceKindR\n" +
+	"sourceKind\x12\x1b\n" +
+	"\tsource_id\x18\x04 \x01(\tR\bsourceId\x12\x1d\n" +
+	"\n" +
+	"source_ref\x18\x05 \x01(\tR\tsourceRef\x12\x1b\n" +
+	"\tvendor_id\x18\x06 \x01(\tR\bvendorId\x122\n" +
+	"\x15vendor_invoice_number\x18\a \x01(\tR\x13vendorInvoiceNumber\x127\n" +
+	"\tbill_date\x18\b \x01(\v2\x1a.google.protobuf.TimestampR\bbillDate\x124\n" +
+	"\n" +
+	"asset_type\x18\t \x01(\x0e2\x15.accounting.AssetKindR\tassetType\x12\x19\n" +
+	"\basset_id\x18\n" +
+	" \x01(\tR\aassetId\x125\n" +
+	"\x05lines\x18\v \x03(\v2\x1f.accounting.VendorBillLineInputR\x05lines\"\x9d\x01\n" +
+	" CreateVendorBillFromTaskResponse\x12\x17\n" +
+	"\abill_id\x18\x01 \x01(\tR\x06billId\x12\x1f\n" +
+	"\vbill_number\x18\x02 \x01(\tR\n" +
+	"billNumber\x12\x16\n" +
+	"\x06status\x18\x03 \x01(\tR\x06status\x12'\n" +
+	"\x0falready_existed\x18\x04 \x01(\bR\x0ealreadyExisted*U\n" +
 	"\tAssetKind\x12\x1a\n" +
 	"\x16ASSET_KIND_UNSPECIFIED\x10\x00\x12\x14\n" +
 	"\x10ASSET_KIND_TRUCK\x10\x01\x12\x16\n" +
@@ -869,11 +1210,15 @@ const file_accounting_accounting_proto_rawDesc = "" +
 	"\x1eCHARGE_SOURCE_KIND_UNSPECIFIED\x10\x00\x12\x1d\n" +
 	"\x19CHARGE_SOURCE_KIND_MANUAL\x10\x01\x12\x1b\n" +
 	"\x17CHARGE_SOURCE_KIND_TASK\x10\x02\x12!\n" +
-	"\x1dCHARGE_SOURCE_KIND_WORK_ORDER\x10\x032\xbf\x02\n" +
+	"\x1dCHARGE_SOURCE_KIND_WORK_ORDER\x10\x03*g\n" +
+	"\x14VendorBillSourceKind\x12'\n" +
+	"#VENDOR_BILL_SOURCE_KIND_UNSPECIFIED\x10\x00\x12&\n" +
+	"\"VENDOR_BILL_SOURCE_KIND_WORK_ORDER\x10\x012\xb6\x03\n" +
 	"\x11AccountingService\x12`\n" +
 	"\x11CreateAssetCharge\x12$.accounting.CreateAssetChargeRequest\x1a%.accounting.CreateAssetChargeResponse\x12c\n" +
 	"\x12ListTruckWeeklyPnL\x12%.accounting.ListTruckWeeklyPnLRequest\x1a&.accounting.ListTruckWeeklyPnLResponse\x12c\n" +
-	"\x12ListTripStatements\x12%.accounting.ListTripStatementsRequest\x1a&.accounting.ListTripStatementsResponseB0Z.github.com/TMS360/backend-pkg/proto/accountingb\x06proto3"
+	"\x12ListTripStatements\x12%.accounting.ListTripStatementsRequest\x1a&.accounting.ListTripStatementsResponse\x12u\n" +
+	"\x18CreateVendorBillFromTask\x12+.accounting.CreateVendorBillFromTaskRequest\x1a,.accounting.CreateVendorBillFromTaskResponseB0Z.github.com/TMS360/backend-pkg/proto/accountingb\x06proto3"
 
 var (
 	file_accounting_accounting_proto_rawDescOnce sync.Once
@@ -887,43 +1232,53 @@ func file_accounting_accounting_proto_rawDescGZIP() []byte {
 	return file_accounting_accounting_proto_rawDescData
 }
 
-var file_accounting_accounting_proto_enumTypes = make([]protoimpl.EnumInfo, 3)
-var file_accounting_accounting_proto_msgTypes = make([]protoimpl.MessageInfo, 8)
+var file_accounting_accounting_proto_enumTypes = make([]protoimpl.EnumInfo, 4)
+var file_accounting_accounting_proto_msgTypes = make([]protoimpl.MessageInfo, 11)
 var file_accounting_accounting_proto_goTypes = []any{
-	(AssetKind)(0),                     // 0: accounting.AssetKind
-	(ChargeFault)(0),                   // 1: accounting.ChargeFault
-	(ChargeSourceKind)(0),              // 2: accounting.ChargeSourceKind
-	(*CreateAssetChargeRequest)(nil),   // 3: accounting.CreateAssetChargeRequest
-	(*CreateAssetChargeResponse)(nil),  // 4: accounting.CreateAssetChargeResponse
-	(*ListTruckWeeklyPnLRequest)(nil),  // 5: accounting.ListTruckWeeklyPnLRequest
-	(*TruckWeekPnL)(nil),               // 6: accounting.TruckWeekPnL
-	(*ListTruckWeeklyPnLResponse)(nil), // 7: accounting.ListTruckWeeklyPnLResponse
-	(*ListTripStatementsRequest)(nil),  // 8: accounting.ListTripStatementsRequest
-	(*TripStatement)(nil),              // 9: accounting.TripStatement
-	(*ListTripStatementsResponse)(nil), // 10: accounting.ListTripStatementsResponse
-	(*timestamppb.Timestamp)(nil),      // 11: google.protobuf.Timestamp
+	(AssetKind)(0),                           // 0: accounting.AssetKind
+	(ChargeFault)(0),                         // 1: accounting.ChargeFault
+	(ChargeSourceKind)(0),                    // 2: accounting.ChargeSourceKind
+	(VendorBillSourceKind)(0),                // 3: accounting.VendorBillSourceKind
+	(*CreateAssetChargeRequest)(nil),         // 4: accounting.CreateAssetChargeRequest
+	(*CreateAssetChargeResponse)(nil),        // 5: accounting.CreateAssetChargeResponse
+	(*ListTruckWeeklyPnLRequest)(nil),        // 6: accounting.ListTruckWeeklyPnLRequest
+	(*TruckWeekPnL)(nil),                     // 7: accounting.TruckWeekPnL
+	(*ListTruckWeeklyPnLResponse)(nil),       // 8: accounting.ListTruckWeeklyPnLResponse
+	(*ListTripStatementsRequest)(nil),        // 9: accounting.ListTripStatementsRequest
+	(*TripStatement)(nil),                    // 10: accounting.TripStatement
+	(*ListTripStatementsResponse)(nil),       // 11: accounting.ListTripStatementsResponse
+	(*VendorBillLineInput)(nil),              // 12: accounting.VendorBillLineInput
+	(*CreateVendorBillFromTaskRequest)(nil),  // 13: accounting.CreateVendorBillFromTaskRequest
+	(*CreateVendorBillFromTaskResponse)(nil), // 14: accounting.CreateVendorBillFromTaskResponse
+	(*timestamppb.Timestamp)(nil),            // 15: google.protobuf.Timestamp
 }
 var file_accounting_accounting_proto_depIdxs = []int32{
 	0,  // 0: accounting.CreateAssetChargeRequest.asset_type:type_name -> accounting.AssetKind
-	11, // 1: accounting.CreateAssetChargeRequest.charge_date:type_name -> google.protobuf.Timestamp
+	15, // 1: accounting.CreateAssetChargeRequest.charge_date:type_name -> google.protobuf.Timestamp
 	1,  // 2: accounting.CreateAssetChargeRequest.fault:type_name -> accounting.ChargeFault
 	2,  // 3: accounting.CreateAssetChargeRequest.source_kind:type_name -> accounting.ChargeSourceKind
-	11, // 4: accounting.ListTruckWeeklyPnLRequest.from:type_name -> google.protobuf.Timestamp
-	11, // 5: accounting.ListTruckWeeklyPnLRequest.to:type_name -> google.protobuf.Timestamp
-	11, // 6: accounting.TruckWeekPnL.week_start:type_name -> google.protobuf.Timestamp
-	6,  // 7: accounting.ListTruckWeeklyPnLResponse.rows:type_name -> accounting.TruckWeekPnL
-	9,  // 8: accounting.ListTripStatementsResponse.rows:type_name -> accounting.TripStatement
-	3,  // 9: accounting.AccountingService.CreateAssetCharge:input_type -> accounting.CreateAssetChargeRequest
-	5,  // 10: accounting.AccountingService.ListTruckWeeklyPnL:input_type -> accounting.ListTruckWeeklyPnLRequest
-	8,  // 11: accounting.AccountingService.ListTripStatements:input_type -> accounting.ListTripStatementsRequest
-	4,  // 12: accounting.AccountingService.CreateAssetCharge:output_type -> accounting.CreateAssetChargeResponse
-	7,  // 13: accounting.AccountingService.ListTruckWeeklyPnL:output_type -> accounting.ListTruckWeeklyPnLResponse
-	10, // 14: accounting.AccountingService.ListTripStatements:output_type -> accounting.ListTripStatementsResponse
-	12, // [12:15] is the sub-list for method output_type
-	9,  // [9:12] is the sub-list for method input_type
-	9,  // [9:9] is the sub-list for extension type_name
-	9,  // [9:9] is the sub-list for extension extendee
-	0,  // [0:9] is the sub-list for field type_name
+	15, // 4: accounting.ListTruckWeeklyPnLRequest.from:type_name -> google.protobuf.Timestamp
+	15, // 5: accounting.ListTruckWeeklyPnLRequest.to:type_name -> google.protobuf.Timestamp
+	15, // 6: accounting.TruckWeekPnL.week_start:type_name -> google.protobuf.Timestamp
+	7,  // 7: accounting.ListTruckWeeklyPnLResponse.rows:type_name -> accounting.TruckWeekPnL
+	10, // 8: accounting.ListTripStatementsResponse.rows:type_name -> accounting.TripStatement
+	3,  // 9: accounting.CreateVendorBillFromTaskRequest.source_kind:type_name -> accounting.VendorBillSourceKind
+	15, // 10: accounting.CreateVendorBillFromTaskRequest.bill_date:type_name -> google.protobuf.Timestamp
+	0,  // 11: accounting.CreateVendorBillFromTaskRequest.asset_type:type_name -> accounting.AssetKind
+	12, // 12: accounting.CreateVendorBillFromTaskRequest.lines:type_name -> accounting.VendorBillLineInput
+	4,  // 13: accounting.AccountingService.CreateAssetCharge:input_type -> accounting.CreateAssetChargeRequest
+	6,  // 14: accounting.AccountingService.ListTruckWeeklyPnL:input_type -> accounting.ListTruckWeeklyPnLRequest
+	9,  // 15: accounting.AccountingService.ListTripStatements:input_type -> accounting.ListTripStatementsRequest
+	13, // 16: accounting.AccountingService.CreateVendorBillFromTask:input_type -> accounting.CreateVendorBillFromTaskRequest
+	5,  // 17: accounting.AccountingService.CreateAssetCharge:output_type -> accounting.CreateAssetChargeResponse
+	8,  // 18: accounting.AccountingService.ListTruckWeeklyPnL:output_type -> accounting.ListTruckWeeklyPnLResponse
+	11, // 19: accounting.AccountingService.ListTripStatements:output_type -> accounting.ListTripStatementsResponse
+	14, // 20: accounting.AccountingService.CreateVendorBillFromTask:output_type -> accounting.CreateVendorBillFromTaskResponse
+	17, // [17:21] is the sub-list for method output_type
+	13, // [13:17] is the sub-list for method input_type
+	13, // [13:13] is the sub-list for extension type_name
+	13, // [13:13] is the sub-list for extension extendee
+	0,  // [0:13] is the sub-list for field type_name
 }
 
 func init() { file_accounting_accounting_proto_init() }
@@ -936,8 +1291,8 @@ func file_accounting_accounting_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_accounting_accounting_proto_rawDesc), len(file_accounting_accounting_proto_rawDesc)),
-			NumEnums:      3,
-			NumMessages:   8,
+			NumEnums:      4,
+			NumMessages:   11,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

@@ -51,6 +51,24 @@ service AccountingService {
   // Live = not deleted and not superseded, any status from draft to locked.
   // Owner statements are not listed. A trip on no statement is ABSENT.
   rpc ListTripStatements(ListTripStatementsRequest) returns (ListTripStatementsResponse);
+
+  // The draft bill a shop sends for a completed task (DEV-2614, first caller
+  // the maintenance work order in backend-tasks, DEV-2615).
+  //
+  // IDEMPOTENT PER SOURCE. One live bill per (source_kind, source_id): a repeat
+  // call returns the bill that already exists instead of a second one, so the
+  // caller may retry after a lost answer. A cancelled bill does not count — a
+  // work order completed again after a reopen gets a new draft.
+  //
+  // The bill number is vendor_invoice_number when set, otherwise source_ref
+  // ("WO-00012"). Bill date and due date are bill_date. Lines with amount 0 are
+  // the caller's to drop; a request with no billable line is refused.
+  //
+  // A refusal carries a google.rpc.ErrorInfo detail: reason is the code
+  // (VENDOR_NOT_FOUND, VENDOR_INACTIVE, VENDOR_BILL_NUMBER_TAKEN,
+  // NO_BILLABLE_LINES), metadata["message"] the sentence a person reads. The
+  // caller shows that sentence, never the raw status text.
+  rpc CreateVendorBillFromTask(CreateVendorBillFromTaskRequest) returns (CreateVendorBillFromTaskResponse);
 }
 
 // AssetKind names which kind of equipment carries the charge.
@@ -181,4 +199,57 @@ message TripStatement {
 
 message ListTripStatementsResponse {
   repeated TripStatement rows = 1;
+}
+
+// VendorBillSourceKind names the task a vendor bill came from. A safety case
+// joins later (DEV-2619) as the next value.
+enum VendorBillSourceKind {
+  VENDOR_BILL_SOURCE_KIND_UNSPECIFIED = 0;
+  VENDOR_BILL_SOURCE_KIND_WORK_ORDER = 1;
+}
+
+// VendorBillLineInput is one billable line. The type travels as a CODE, the same
+// rule as CreateAssetChargeRequest.type_code: accounting resolves it per tenant
+// and picks the GL account from it.
+message VendorBillLineInput {
+  string type_code = 1;
+  // What the line was, as the shop wrote it ("TIRES", "Repair").
+  string description = 2;
+  // Greater than zero.
+  double amount = 3;
+}
+
+message CreateVendorBillFromTaskRequest {
+  string company_id = 1;
+  string actor_id = 2;
+
+  VendorBillSourceKind source_kind = 3;
+  // The task id. With source_kind it is the bill's idempotency key.
+  string source_id = 4;
+  // The task's human number ("WO-00012"): the bill number when the shop gave
+  // none, and how the bill names where it came from.
+  string source_ref = 5;
+
+  string vendor_id = 6;
+  // The shop's own invoice number. Empty means "use source_ref".
+  string vendor_invoice_number = 7;
+
+  // The service date — bill date and due date both.
+  google.protobuf.Timestamp bill_date = 8;
+
+  // The equipment every line is about.
+  AssetKind asset_type = 9;
+  string asset_id = 10;
+
+  repeated VendorBillLineInput lines = 11;
+}
+
+message CreateVendorBillFromTaskResponse {
+  // The live bill for this source — new, or the one that already existed.
+  string bill_id = 1;
+  string bill_number = 2;
+  // Accounting's own state word: "draft", "submitted", "approved", "paid".
+  string status = 3;
+  // True when the bill was there before this call (a retry).
+  bool already_existed = 4;
 }

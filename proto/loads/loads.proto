@@ -259,6 +259,19 @@ service LoadsService {
   // ResolveTruckIDs / GetTripIDsByShipment / GetCustomerLoadStats.
   rpc MatchTollRows(MatchTollRowsRequest) returns (MatchTollRowsResponse);
 
+  // DEV-2586: write what the toll file shows about a transponder nobody has
+  // dated by hand. backend-accounting groups its unmatched crossings per
+  // device and Truck-column number; backend-load decides per device:
+  //   - no segment of the id in the company: a clean move (stretches in
+  //     strict day order, each on at least two days, newest on a fleet truck
+  //     with no box of this provider) becomes closed segments plus an open
+  //     one from the newest stretch's first day. Anything else writes nothing.
+  //   - one open segment, never closed, dated after the beginning of time, and
+  //     at most one Truck-column number: its start moves to the zero instant.
+  // A segment a person wrote is never rebuilt. company_id is explicit, same
+  // contract as MatchTollRows.
+  rpc ApplyTollDeviceHistory(ApplyTollDeviceHistoryRequest) returns (ApplyTollDeviceHistoryResponse);
+
   // DEV-1935: the late-trailer-return charges a dispatcher is accountable for,
   // for a pay period. Accounting puts them on the dispatcher's pay statement.
   //
@@ -1291,6 +1304,41 @@ message TollMatchResult {
 
 message MatchTollRowsResponse {
   repeated TollMatchResult results = 1;
+}
+
+// TollRefStretch is the days one Truck-column number was seen on one device,
+// among crossings no truck holds yet. Days are UTC midnights of the crossing
+// date (exit date, else post date).
+message TollRefStretch {
+  // Through toll.NormalizeTruckRef; never empty.
+  string truck_ref = 1;
+  google.protobuf.Timestamp first_day = 2;
+  google.protobuf.Timestamp last_day = 3;
+  int32 distinct_days = 4;
+}
+
+message TollDeviceHistory {
+  string device_id = 1;
+  // Every non-blank Truck-column number seen for this device, in any order.
+  repeated TollRefStretch stretches = 2;
+}
+
+message ApplyTollDeviceHistoryRequest {
+  string company_id = 1;
+  // Which aggregator issued every device_id below.
+  string provider = 2;
+  repeated TollDeviceHistory devices = 3;
+}
+
+// TollDeviceHistoryWritten names a device whose segments changed, and the
+// earliest day they now cover: the caller re-matches that device from there.
+message TollDeviceHistoryWritten {
+  string device_id = 1;
+  google.protobuf.Timestamp since = 2;
+}
+
+message ApplyTollDeviceHistoryResponse {
+  repeated TollDeviceHistoryWritten written = 1;
 }
 
 // GetLotChargebacksByDispatchersRequest asks for the charges attributed to the

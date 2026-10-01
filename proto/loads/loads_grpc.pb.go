@@ -58,6 +58,7 @@ const (
 	LoadsService_GetTruckIDsByOwnerIDs_FullMethodName          = "/loads.LoadsService/GetTruckIDsByOwnerIDs"
 	LoadsService_ListActiveTruckIDs_FullMethodName             = "/loads.LoadsService/ListActiveTruckIDs"
 	LoadsService_MatchTollRows_FullMethodName                  = "/loads.LoadsService/MatchTollRows"
+	LoadsService_ApplyTollDeviceHistory_FullMethodName         = "/loads.LoadsService/ApplyTollDeviceHistory"
 	LoadsService_GetLotChargebacksByDispatchers_FullMethodName = "/loads.LoadsService/GetLotChargebacksByDispatchers"
 	LoadsService_GetAssetOdometer_FullMethodName               = "/loads.LoadsService/GetAssetOdometer"
 	LoadsService_RecordAssetOdometer_FullMethodName            = "/loads.LoadsService/RecordAssetOdometer"
@@ -273,6 +274,19 @@ type LoadsServiceClient interface {
 	// AuthServerInterceptor, so there is no actor to scope by), same contract as
 	// ResolveTruckIDs / GetTripIDsByShipment / GetCustomerLoadStats.
 	MatchTollRows(ctx context.Context, in *MatchTollRowsRequest, opts ...grpc.CallOption) (*MatchTollRowsResponse, error)
+	// DEV-2586: write what the toll file shows about a transponder nobody has
+	// dated by hand. backend-accounting groups its unmatched crossings per
+	// device and Truck-column number; backend-load decides per device:
+	//   - no segment of the id in the company: a clean move (stretches in
+	//     strict day order, each on at least two days, newest on a fleet truck
+	//     with no box of this provider) becomes closed segments plus an open
+	//     one from the newest stretch's first day. Anything else writes nothing.
+	//   - one open segment, never closed, dated after the beginning of time, and
+	//     at most one Truck-column number: its start moves to the zero instant.
+	//
+	// A segment a person wrote is never rebuilt. company_id is explicit, same
+	// contract as MatchTollRows.
+	ApplyTollDeviceHistory(ctx context.Context, in *ApplyTollDeviceHistoryRequest, opts ...grpc.CallOption) (*ApplyTollDeviceHistoryResponse, error)
 	// DEV-1935: the late-trailer-return charges a dispatcher is accountable for,
 	// for a pay period. Accounting puts them on the dispatcher's pay statement.
 	//
@@ -673,6 +687,16 @@ func (c *loadsServiceClient) MatchTollRows(ctx context.Context, in *MatchTollRow
 	return out, nil
 }
 
+func (c *loadsServiceClient) ApplyTollDeviceHistory(ctx context.Context, in *ApplyTollDeviceHistoryRequest, opts ...grpc.CallOption) (*ApplyTollDeviceHistoryResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ApplyTollDeviceHistoryResponse)
+	err := c.cc.Invoke(ctx, LoadsService_ApplyTollDeviceHistory_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *loadsServiceClient) GetLotChargebacksByDispatchers(ctx context.Context, in *GetLotChargebacksByDispatchersRequest, opts ...grpc.CallOption) (*GetLotChargebacksByDispatchersResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(GetLotChargebacksByDispatchersResponse)
@@ -931,6 +955,19 @@ type LoadsServiceServer interface {
 	// AuthServerInterceptor, so there is no actor to scope by), same contract as
 	// ResolveTruckIDs / GetTripIDsByShipment / GetCustomerLoadStats.
 	MatchTollRows(context.Context, *MatchTollRowsRequest) (*MatchTollRowsResponse, error)
+	// DEV-2586: write what the toll file shows about a transponder nobody has
+	// dated by hand. backend-accounting groups its unmatched crossings per
+	// device and Truck-column number; backend-load decides per device:
+	//   - no segment of the id in the company: a clean move (stretches in
+	//     strict day order, each on at least two days, newest on a fleet truck
+	//     with no box of this provider) becomes closed segments plus an open
+	//     one from the newest stretch's first day. Anything else writes nothing.
+	//   - one open segment, never closed, dated after the beginning of time, and
+	//     at most one Truck-column number: its start moves to the zero instant.
+	//
+	// A segment a person wrote is never rebuilt. company_id is explicit, same
+	// contract as MatchTollRows.
+	ApplyTollDeviceHistory(context.Context, *ApplyTollDeviceHistoryRequest) (*ApplyTollDeviceHistoryResponse, error)
 	// DEV-1935: the late-trailer-return charges a dispatcher is accountable for,
 	// for a pay period. Accounting puts them on the dispatcher's pay statement.
 	//
@@ -1076,6 +1113,9 @@ func (UnimplementedLoadsServiceServer) ListActiveTruckIDs(context.Context, *List
 }
 func (UnimplementedLoadsServiceServer) MatchTollRows(context.Context, *MatchTollRowsRequest) (*MatchTollRowsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method MatchTollRows not implemented")
+}
+func (UnimplementedLoadsServiceServer) ApplyTollDeviceHistory(context.Context, *ApplyTollDeviceHistoryRequest) (*ApplyTollDeviceHistoryResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ApplyTollDeviceHistory not implemented")
 }
 func (UnimplementedLoadsServiceServer) GetLotChargebacksByDispatchers(context.Context, *GetLotChargebacksByDispatchersRequest) (*GetLotChargebacksByDispatchersResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetLotChargebacksByDispatchers not implemented")
@@ -1736,6 +1776,24 @@ func _LoadsService_MatchTollRows_Handler(srv interface{}, ctx context.Context, d
 	return interceptor(ctx, in, info, handler)
 }
 
+func _LoadsService_ApplyTollDeviceHistory_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ApplyTollDeviceHistoryRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(LoadsServiceServer).ApplyTollDeviceHistory(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: LoadsService_ApplyTollDeviceHistory_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(LoadsServiceServer).ApplyTollDeviceHistory(ctx, req.(*ApplyTollDeviceHistoryRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _LoadsService_GetLotChargebacksByDispatchers_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(GetLotChargebacksByDispatchersRequest)
 	if err := dec(in); err != nil {
@@ -1968,6 +2026,10 @@ var LoadsService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "MatchTollRows",
 			Handler:    _LoadsService_MatchTollRows_Handler,
+		},
+		{
+			MethodName: "ApplyTollDeviceHistory",
+			Handler:    _LoadsService_ApplyTollDeviceHistory_Handler,
 		},
 		{
 			MethodName: "GetLotChargebacksByDispatchers",

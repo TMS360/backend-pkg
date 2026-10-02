@@ -155,6 +155,8 @@ message DriverCrewInfo {
   // Empty when the crew carries no note; clearing the note empties it again.
   // A hint for the caller to show, never a rule: tms-teams does not act on it.
   string planning_note = 7;
+  // driver_crews.status: ACTIVE / INACTIVE / ON_LEAVE (empty from older servers).
+  string status = 8;
 }
 
 message TrailerInfo {

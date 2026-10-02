@@ -633,6 +633,16 @@ var PermissionCatalog = []PermissionCatalogEntry{
 	{Code: "settings", Label: "Settings"},
 	{Code: "tasks", Label: "Tasks"},
 	{Code: "workspaces", Label: "Workspaces"},
+	// DEV-2692: fuel-stop planning (backend-fuel). A module, so every built-in
+	// role gets it through the module baseline at signup and existing tenants
+	// through the tms-auth back-fill migration. HasPermission matches by dotted
+	// prefix, so fuel.plans holders pass create AND send; the split only bites
+	// for custom roles. Drivers are cut off by @auth(actorTypes) in backend-fuel.
+	{Code: "fuel", Label: "Fuel"},
+
+	// === fuel entities ===
+	{Code: "fuel.plans", ParentCode: "fuel", Label: "Fuel plans", Actions: []string{"view", "create", "send"}},
+	{Code: "fuel.settings", ParentCode: "fuel", Label: "Fuel settings", Actions: []string{"view", "edit"}},
 
 	// === tasks entities ===
 	// tasks.tasks is the work-item page itself (getTasks/createTask/assign/

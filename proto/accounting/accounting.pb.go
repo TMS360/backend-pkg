@@ -239,6 +239,162 @@ func (VendorBillSourceKind) EnumDescriptor() ([]byte, []int) {
 	return file_accounting_accounting_proto_rawDescGZIP(), []int{3}
 }
 
+type GetDriverFuelCardStatesRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	CompanyId     string                 `protobuf:"bytes,1,opt,name=company_id,json=companyId,proto3" json:"company_id,omitempty"`
+	DriverIds     []string               `protobuf:"bytes,2,rep,name=driver_ids,json=driverIds,proto3" json:"driver_ids,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetDriverFuelCardStatesRequest) Reset() {
+	*x = GetDriverFuelCardStatesRequest{}
+	mi := &file_accounting_accounting_proto_msgTypes[0]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetDriverFuelCardStatesRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetDriverFuelCardStatesRequest) ProtoMessage() {}
+
+func (x *GetDriverFuelCardStatesRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_accounting_accounting_proto_msgTypes[0]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetDriverFuelCardStatesRequest.ProtoReflect.Descriptor instead.
+func (*GetDriverFuelCardStatesRequest) Descriptor() ([]byte, []int) {
+	return file_accounting_accounting_proto_rawDescGZIP(), []int{0}
+}
+
+func (x *GetDriverFuelCardStatesRequest) GetCompanyId() string {
+	if x != nil {
+		return x.CompanyId
+	}
+	return ""
+}
+
+func (x *GetDriverFuelCardStatesRequest) GetDriverIds() []string {
+	if x != nil {
+		return x.DriverIds
+	}
+	return nil
+}
+
+type DriverFuelCardState struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	DriverId      string                 `protobuf:"bytes,1,opt,name=driver_id,json=driverId,proto3" json:"driver_id,omitempty"`
+	Provider      string                 `protobuf:"bytes,2,opt,name=provider,proto3" json:"provider,omitempty"`                       // "relay"
+	SyncStatus    string                 `protobuf:"bytes,3,opt,name=sync_status,json=syncStatus,proto3" json:"sync_status,omitempty"` // synced | pending | failed | inactive
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DriverFuelCardState) Reset() {
+	*x = DriverFuelCardState{}
+	mi := &file_accounting_accounting_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DriverFuelCardState) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DriverFuelCardState) ProtoMessage() {}
+
+func (x *DriverFuelCardState) ProtoReflect() protoreflect.Message {
+	mi := &file_accounting_accounting_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DriverFuelCardState.ProtoReflect.Descriptor instead.
+func (*DriverFuelCardState) Descriptor() ([]byte, []int) {
+	return file_accounting_accounting_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *DriverFuelCardState) GetDriverId() string {
+	if x != nil {
+		return x.DriverId
+	}
+	return ""
+}
+
+func (x *DriverFuelCardState) GetProvider() string {
+	if x != nil {
+		return x.Provider
+	}
+	return ""
+}
+
+func (x *DriverFuelCardState) GetSyncStatus() string {
+	if x != nil {
+		return x.SyncStatus
+	}
+	return ""
+}
+
+type GetDriverFuelCardStatesResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	States        []*DriverFuelCardState `protobuf:"bytes,1,rep,name=states,proto3" json:"states,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetDriverFuelCardStatesResponse) Reset() {
+	*x = GetDriverFuelCardStatesResponse{}
+	mi := &file_accounting_accounting_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetDriverFuelCardStatesResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetDriverFuelCardStatesResponse) ProtoMessage() {}
+
+func (x *GetDriverFuelCardStatesResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_accounting_accounting_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetDriverFuelCardStatesResponse.ProtoReflect.Descriptor instead.
+func (*GetDriverFuelCardStatesResponse) Descriptor() ([]byte, []int) {
+	return file_accounting_accounting_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *GetDriverFuelCardStatesResponse) GetStates() []*DriverFuelCardState {
+	if x != nil {
+		return x.States
+	}
+	return nil
+}
+
 type CreateAssetChargeRequest struct {
 	state     protoimpl.MessageState `protogen:"open.v1"`
 	CompanyId string                 `protobuf:"bytes,1,opt,name=company_id,json=companyId,proto3" json:"company_id,omitempty"`
@@ -273,7 +429,7 @@ type CreateAssetChargeRequest struct {
 
 func (x *CreateAssetChargeRequest) Reset() {
 	*x = CreateAssetChargeRequest{}
-	mi := &file_accounting_accounting_proto_msgTypes[0]
+	mi := &file_accounting_accounting_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -285,7 +441,7 @@ func (x *CreateAssetChargeRequest) String() string {
 func (*CreateAssetChargeRequest) ProtoMessage() {}
 
 func (x *CreateAssetChargeRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_accounting_accounting_proto_msgTypes[0]
+	mi := &file_accounting_accounting_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -298,7 +454,7 @@ func (x *CreateAssetChargeRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateAssetChargeRequest.ProtoReflect.Descriptor instead.
 func (*CreateAssetChargeRequest) Descriptor() ([]byte, []int) {
-	return file_accounting_accounting_proto_rawDescGZIP(), []int{0}
+	return file_accounting_accounting_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *CreateAssetChargeRequest) GetCompanyId() string {
@@ -403,7 +559,7 @@ type CreateAssetChargeResponse struct {
 
 func (x *CreateAssetChargeResponse) Reset() {
 	*x = CreateAssetChargeResponse{}
-	mi := &file_accounting_accounting_proto_msgTypes[1]
+	mi := &file_accounting_accounting_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -415,7 +571,7 @@ func (x *CreateAssetChargeResponse) String() string {
 func (*CreateAssetChargeResponse) ProtoMessage() {}
 
 func (x *CreateAssetChargeResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_accounting_accounting_proto_msgTypes[1]
+	mi := &file_accounting_accounting_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -428,7 +584,7 @@ func (x *CreateAssetChargeResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateAssetChargeResponse.ProtoReflect.Descriptor instead.
 func (*CreateAssetChargeResponse) Descriptor() ([]byte, []int) {
-	return file_accounting_accounting_proto_rawDescGZIP(), []int{1}
+	return file_accounting_accounting_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *CreateAssetChargeResponse) GetChargeId() string {
@@ -467,7 +623,7 @@ type ListTruckWeeklyPnLRequest struct {
 
 func (x *ListTruckWeeklyPnLRequest) Reset() {
 	*x = ListTruckWeeklyPnLRequest{}
-	mi := &file_accounting_accounting_proto_msgTypes[2]
+	mi := &file_accounting_accounting_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -479,7 +635,7 @@ func (x *ListTruckWeeklyPnLRequest) String() string {
 func (*ListTruckWeeklyPnLRequest) ProtoMessage() {}
 
 func (x *ListTruckWeeklyPnLRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_accounting_accounting_proto_msgTypes[2]
+	mi := &file_accounting_accounting_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -492,7 +648,7 @@ func (x *ListTruckWeeklyPnLRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListTruckWeeklyPnLRequest.ProtoReflect.Descriptor instead.
 func (*ListTruckWeeklyPnLRequest) Descriptor() ([]byte, []int) {
-	return file_accounting_accounting_proto_rawDescGZIP(), []int{2}
+	return file_accounting_accounting_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *ListTruckWeeklyPnLRequest) GetCompanyId() string {
@@ -549,7 +705,7 @@ type TruckWeekPnL struct {
 
 func (x *TruckWeekPnL) Reset() {
 	*x = TruckWeekPnL{}
-	mi := &file_accounting_accounting_proto_msgTypes[3]
+	mi := &file_accounting_accounting_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -561,7 +717,7 @@ func (x *TruckWeekPnL) String() string {
 func (*TruckWeekPnL) ProtoMessage() {}
 
 func (x *TruckWeekPnL) ProtoReflect() protoreflect.Message {
-	mi := &file_accounting_accounting_proto_msgTypes[3]
+	mi := &file_accounting_accounting_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -574,7 +730,7 @@ func (x *TruckWeekPnL) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TruckWeekPnL.ProtoReflect.Descriptor instead.
 func (*TruckWeekPnL) Descriptor() ([]byte, []int) {
-	return file_accounting_accounting_proto_rawDescGZIP(), []int{3}
+	return file_accounting_accounting_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *TruckWeekPnL) GetTruckId() string {
@@ -642,7 +798,7 @@ type ListTruckWeeklyPnLResponse struct {
 
 func (x *ListTruckWeeklyPnLResponse) Reset() {
 	*x = ListTruckWeeklyPnLResponse{}
-	mi := &file_accounting_accounting_proto_msgTypes[4]
+	mi := &file_accounting_accounting_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -654,7 +810,7 @@ func (x *ListTruckWeeklyPnLResponse) String() string {
 func (*ListTruckWeeklyPnLResponse) ProtoMessage() {}
 
 func (x *ListTruckWeeklyPnLResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_accounting_accounting_proto_msgTypes[4]
+	mi := &file_accounting_accounting_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -667,7 +823,7 @@ func (x *ListTruckWeeklyPnLResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListTruckWeeklyPnLResponse.ProtoReflect.Descriptor instead.
 func (*ListTruckWeeklyPnLResponse) Descriptor() ([]byte, []int) {
-	return file_accounting_accounting_proto_rawDescGZIP(), []int{4}
+	return file_accounting_accounting_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *ListTruckWeeklyPnLResponse) GetRows() []*TruckWeekPnL {
@@ -687,7 +843,7 @@ type ListTripStatementsRequest struct {
 
 func (x *ListTripStatementsRequest) Reset() {
 	*x = ListTripStatementsRequest{}
-	mi := &file_accounting_accounting_proto_msgTypes[5]
+	mi := &file_accounting_accounting_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -699,7 +855,7 @@ func (x *ListTripStatementsRequest) String() string {
 func (*ListTripStatementsRequest) ProtoMessage() {}
 
 func (x *ListTripStatementsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_accounting_accounting_proto_msgTypes[5]
+	mi := &file_accounting_accounting_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -712,7 +868,7 @@ func (x *ListTripStatementsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListTripStatementsRequest.ProtoReflect.Descriptor instead.
 func (*ListTripStatementsRequest) Descriptor() ([]byte, []int) {
-	return file_accounting_accounting_proto_rawDescGZIP(), []int{5}
+	return file_accounting_accounting_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *ListTripStatementsRequest) GetCompanyId() string {
@@ -744,7 +900,7 @@ type TripStatement struct {
 
 func (x *TripStatement) Reset() {
 	*x = TripStatement{}
-	mi := &file_accounting_accounting_proto_msgTypes[6]
+	mi := &file_accounting_accounting_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -756,7 +912,7 @@ func (x *TripStatement) String() string {
 func (*TripStatement) ProtoMessage() {}
 
 func (x *TripStatement) ProtoReflect() protoreflect.Message {
-	mi := &file_accounting_accounting_proto_msgTypes[6]
+	mi := &file_accounting_accounting_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -769,7 +925,7 @@ func (x *TripStatement) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TripStatement.ProtoReflect.Descriptor instead.
 func (*TripStatement) Descriptor() ([]byte, []int) {
-	return file_accounting_accounting_proto_rawDescGZIP(), []int{6}
+	return file_accounting_accounting_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *TripStatement) GetTripId() string {
@@ -809,7 +965,7 @@ type ListTripStatementsResponse struct {
 
 func (x *ListTripStatementsResponse) Reset() {
 	*x = ListTripStatementsResponse{}
-	mi := &file_accounting_accounting_proto_msgTypes[7]
+	mi := &file_accounting_accounting_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -821,7 +977,7 @@ func (x *ListTripStatementsResponse) String() string {
 func (*ListTripStatementsResponse) ProtoMessage() {}
 
 func (x *ListTripStatementsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_accounting_accounting_proto_msgTypes[7]
+	mi := &file_accounting_accounting_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -834,7 +990,7 @@ func (x *ListTripStatementsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListTripStatementsResponse.ProtoReflect.Descriptor instead.
 func (*ListTripStatementsResponse) Descriptor() ([]byte, []int) {
-	return file_accounting_accounting_proto_rawDescGZIP(), []int{7}
+	return file_accounting_accounting_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *ListTripStatementsResponse) GetRows() []*TripStatement {
@@ -860,7 +1016,7 @@ type VendorBillLineInput struct {
 
 func (x *VendorBillLineInput) Reset() {
 	*x = VendorBillLineInput{}
-	mi := &file_accounting_accounting_proto_msgTypes[8]
+	mi := &file_accounting_accounting_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -872,7 +1028,7 @@ func (x *VendorBillLineInput) String() string {
 func (*VendorBillLineInput) ProtoMessage() {}
 
 func (x *VendorBillLineInput) ProtoReflect() protoreflect.Message {
-	mi := &file_accounting_accounting_proto_msgTypes[8]
+	mi := &file_accounting_accounting_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -885,7 +1041,7 @@ func (x *VendorBillLineInput) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use VendorBillLineInput.ProtoReflect.Descriptor instead.
 func (*VendorBillLineInput) Descriptor() ([]byte, []int) {
-	return file_accounting_accounting_proto_rawDescGZIP(), []int{8}
+	return file_accounting_accounting_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *VendorBillLineInput) GetTypeCode() string {
@@ -934,7 +1090,7 @@ type CreateVendorBillFromTaskRequest struct {
 
 func (x *CreateVendorBillFromTaskRequest) Reset() {
 	*x = CreateVendorBillFromTaskRequest{}
-	mi := &file_accounting_accounting_proto_msgTypes[9]
+	mi := &file_accounting_accounting_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -946,7 +1102,7 @@ func (x *CreateVendorBillFromTaskRequest) String() string {
 func (*CreateVendorBillFromTaskRequest) ProtoMessage() {}
 
 func (x *CreateVendorBillFromTaskRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_accounting_accounting_proto_msgTypes[9]
+	mi := &file_accounting_accounting_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -959,7 +1115,7 @@ func (x *CreateVendorBillFromTaskRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateVendorBillFromTaskRequest.ProtoReflect.Descriptor instead.
 func (*CreateVendorBillFromTaskRequest) Descriptor() ([]byte, []int) {
-	return file_accounting_accounting_proto_rawDescGZIP(), []int{9}
+	return file_accounting_accounting_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *CreateVendorBillFromTaskRequest) GetCompanyId() string {
@@ -1054,7 +1210,7 @@ type CreateVendorBillFromTaskResponse struct {
 
 func (x *CreateVendorBillFromTaskResponse) Reset() {
 	*x = CreateVendorBillFromTaskResponse{}
-	mi := &file_accounting_accounting_proto_msgTypes[10]
+	mi := &file_accounting_accounting_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1066,7 +1222,7 @@ func (x *CreateVendorBillFromTaskResponse) String() string {
 func (*CreateVendorBillFromTaskResponse) ProtoMessage() {}
 
 func (x *CreateVendorBillFromTaskResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_accounting_accounting_proto_msgTypes[10]
+	mi := &file_accounting_accounting_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1079,7 +1235,7 @@ func (x *CreateVendorBillFromTaskResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateVendorBillFromTaskResponse.ProtoReflect.Descriptor instead.
 func (*CreateVendorBillFromTaskResponse) Descriptor() ([]byte, []int) {
-	return file_accounting_accounting_proto_rawDescGZIP(), []int{10}
+	return file_accounting_accounting_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *CreateVendorBillFromTaskResponse) GetBillId() string {
@@ -1133,7 +1289,7 @@ type RequestAdjustmentFromTaskRequest struct {
 
 func (x *RequestAdjustmentFromTaskRequest) Reset() {
 	*x = RequestAdjustmentFromTaskRequest{}
-	mi := &file_accounting_accounting_proto_msgTypes[11]
+	mi := &file_accounting_accounting_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1145,7 +1301,7 @@ func (x *RequestAdjustmentFromTaskRequest) String() string {
 func (*RequestAdjustmentFromTaskRequest) ProtoMessage() {}
 
 func (x *RequestAdjustmentFromTaskRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_accounting_accounting_proto_msgTypes[11]
+	mi := &file_accounting_accounting_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1158,7 +1314,7 @@ func (x *RequestAdjustmentFromTaskRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RequestAdjustmentFromTaskRequest.ProtoReflect.Descriptor instead.
 func (*RequestAdjustmentFromTaskRequest) Descriptor() ([]byte, []int) {
-	return file_accounting_accounting_proto_rawDescGZIP(), []int{11}
+	return file_accounting_accounting_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *RequestAdjustmentFromTaskRequest) GetCompanyId() string {
@@ -1232,7 +1388,7 @@ type RequestAdjustmentFromTaskResponse struct {
 
 func (x *RequestAdjustmentFromTaskResponse) Reset() {
 	*x = RequestAdjustmentFromTaskResponse{}
-	mi := &file_accounting_accounting_proto_msgTypes[12]
+	mi := &file_accounting_accounting_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1244,7 +1400,7 @@ func (x *RequestAdjustmentFromTaskResponse) String() string {
 func (*RequestAdjustmentFromTaskResponse) ProtoMessage() {}
 
 func (x *RequestAdjustmentFromTaskResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_accounting_accounting_proto_msgTypes[12]
+	mi := &file_accounting_accounting_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1257,7 +1413,7 @@ func (x *RequestAdjustmentFromTaskResponse) ProtoReflect() protoreflect.Message 
 
 // Deprecated: Use RequestAdjustmentFromTaskResponse.ProtoReflect.Descriptor instead.
 func (*RequestAdjustmentFromTaskResponse) Descriptor() ([]byte, []int) {
-	return file_accounting_accounting_proto_rawDescGZIP(), []int{12}
+	return file_accounting_accounting_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *RequestAdjustmentFromTaskResponse) GetAdjustmentId() string {
@@ -1293,7 +1449,19 @@ var File_accounting_accounting_proto protoreflect.FileDescriptor
 const file_accounting_accounting_proto_rawDesc = "" +
 	"\n" +
 	"\x1baccounting/accounting.proto\x12\n" +
-	"accounting\x1a\x1fgoogle/protobuf/timestamp.proto\"\xdc\x03\n" +
+	"accounting\x1a\x1fgoogle/protobuf/timestamp.proto\"^\n" +
+	"\x1eGetDriverFuelCardStatesRequest\x12\x1d\n" +
+	"\n" +
+	"company_id\x18\x01 \x01(\tR\tcompanyId\x12\x1d\n" +
+	"\n" +
+	"driver_ids\x18\x02 \x03(\tR\tdriverIds\"o\n" +
+	"\x13DriverFuelCardState\x12\x1b\n" +
+	"\tdriver_id\x18\x01 \x01(\tR\bdriverId\x12\x1a\n" +
+	"\bprovider\x18\x02 \x01(\tR\bprovider\x12\x1f\n" +
+	"\vsync_status\x18\x03 \x01(\tR\n" +
+	"syncStatus\"Z\n" +
+	"\x1fGetDriverFuelCardStatesResponse\x127\n" +
+	"\x06states\x18\x01 \x03(\v2\x1f.accounting.DriverFuelCardStateR\x06states\"\xdc\x03\n" +
 	"\x18CreateAssetChargeRequest\x12\x1d\n" +
 	"\n" +
 	"company_id\x18\x01 \x01(\tR\tcompanyId\x12\x19\n" +
@@ -1410,13 +1578,14 @@ const file_accounting_accounting_proto_rawDesc = "" +
 	"\x14VendorBillSourceKind\x12'\n" +
 	"#VENDOR_BILL_SOURCE_KIND_UNSPECIFIED\x10\x00\x12&\n" +
 	"\"VENDOR_BILL_SOURCE_KIND_WORK_ORDER\x10\x01\x12'\n" +
-	"#VENDOR_BILL_SOURCE_KIND_SAFETY_CASE\x10\x022\xb0\x04\n" +
+	"#VENDOR_BILL_SOURCE_KIND_SAFETY_CASE\x10\x022\xa4\x05\n" +
 	"\x11AccountingService\x12`\n" +
 	"\x11CreateAssetCharge\x12$.accounting.CreateAssetChargeRequest\x1a%.accounting.CreateAssetChargeResponse\x12c\n" +
 	"\x12ListTruckWeeklyPnL\x12%.accounting.ListTruckWeeklyPnLRequest\x1a&.accounting.ListTruckWeeklyPnLResponse\x12c\n" +
 	"\x12ListTripStatements\x12%.accounting.ListTripStatementsRequest\x1a&.accounting.ListTripStatementsResponse\x12u\n" +
 	"\x18CreateVendorBillFromTask\x12+.accounting.CreateVendorBillFromTaskRequest\x1a,.accounting.CreateVendorBillFromTaskResponse\x12x\n" +
-	"\x19RequestAdjustmentFromTask\x12,.accounting.RequestAdjustmentFromTaskRequest\x1a-.accounting.RequestAdjustmentFromTaskResponseB0Z.github.com/TMS360/backend-pkg/proto/accountingb\x06proto3"
+	"\x19RequestAdjustmentFromTask\x12,.accounting.RequestAdjustmentFromTaskRequest\x1a-.accounting.RequestAdjustmentFromTaskResponse\x12r\n" +
+	"\x17GetDriverFuelCardStates\x12*.accounting.GetDriverFuelCardStatesRequest\x1a+.accounting.GetDriverFuelCardStatesResponseB0Z.github.com/TMS360/backend-pkg/proto/accountingb\x06proto3"
 
 var (
 	file_accounting_accounting_proto_rawDescOnce sync.Once
@@ -1431,56 +1600,62 @@ func file_accounting_accounting_proto_rawDescGZIP() []byte {
 }
 
 var file_accounting_accounting_proto_enumTypes = make([]protoimpl.EnumInfo, 4)
-var file_accounting_accounting_proto_msgTypes = make([]protoimpl.MessageInfo, 13)
+var file_accounting_accounting_proto_msgTypes = make([]protoimpl.MessageInfo, 16)
 var file_accounting_accounting_proto_goTypes = []any{
 	(AssetKind)(0),                            // 0: accounting.AssetKind
 	(ChargeFault)(0),                          // 1: accounting.ChargeFault
 	(ChargeSourceKind)(0),                     // 2: accounting.ChargeSourceKind
 	(VendorBillSourceKind)(0),                 // 3: accounting.VendorBillSourceKind
-	(*CreateAssetChargeRequest)(nil),          // 4: accounting.CreateAssetChargeRequest
-	(*CreateAssetChargeResponse)(nil),         // 5: accounting.CreateAssetChargeResponse
-	(*ListTruckWeeklyPnLRequest)(nil),         // 6: accounting.ListTruckWeeklyPnLRequest
-	(*TruckWeekPnL)(nil),                      // 7: accounting.TruckWeekPnL
-	(*ListTruckWeeklyPnLResponse)(nil),        // 8: accounting.ListTruckWeeklyPnLResponse
-	(*ListTripStatementsRequest)(nil),         // 9: accounting.ListTripStatementsRequest
-	(*TripStatement)(nil),                     // 10: accounting.TripStatement
-	(*ListTripStatementsResponse)(nil),        // 11: accounting.ListTripStatementsResponse
-	(*VendorBillLineInput)(nil),               // 12: accounting.VendorBillLineInput
-	(*CreateVendorBillFromTaskRequest)(nil),   // 13: accounting.CreateVendorBillFromTaskRequest
-	(*CreateVendorBillFromTaskResponse)(nil),  // 14: accounting.CreateVendorBillFromTaskResponse
-	(*RequestAdjustmentFromTaskRequest)(nil),  // 15: accounting.RequestAdjustmentFromTaskRequest
-	(*RequestAdjustmentFromTaskResponse)(nil), // 16: accounting.RequestAdjustmentFromTaskResponse
-	(*timestamppb.Timestamp)(nil),             // 17: google.protobuf.Timestamp
+	(*GetDriverFuelCardStatesRequest)(nil),    // 4: accounting.GetDriverFuelCardStatesRequest
+	(*DriverFuelCardState)(nil),               // 5: accounting.DriverFuelCardState
+	(*GetDriverFuelCardStatesResponse)(nil),   // 6: accounting.GetDriverFuelCardStatesResponse
+	(*CreateAssetChargeRequest)(nil),          // 7: accounting.CreateAssetChargeRequest
+	(*CreateAssetChargeResponse)(nil),         // 8: accounting.CreateAssetChargeResponse
+	(*ListTruckWeeklyPnLRequest)(nil),         // 9: accounting.ListTruckWeeklyPnLRequest
+	(*TruckWeekPnL)(nil),                      // 10: accounting.TruckWeekPnL
+	(*ListTruckWeeklyPnLResponse)(nil),        // 11: accounting.ListTruckWeeklyPnLResponse
+	(*ListTripStatementsRequest)(nil),         // 12: accounting.ListTripStatementsRequest
+	(*TripStatement)(nil),                     // 13: accounting.TripStatement
+	(*ListTripStatementsResponse)(nil),        // 14: accounting.ListTripStatementsResponse
+	(*VendorBillLineInput)(nil),               // 15: accounting.VendorBillLineInput
+	(*CreateVendorBillFromTaskRequest)(nil),   // 16: accounting.CreateVendorBillFromTaskRequest
+	(*CreateVendorBillFromTaskResponse)(nil),  // 17: accounting.CreateVendorBillFromTaskResponse
+	(*RequestAdjustmentFromTaskRequest)(nil),  // 18: accounting.RequestAdjustmentFromTaskRequest
+	(*RequestAdjustmentFromTaskResponse)(nil), // 19: accounting.RequestAdjustmentFromTaskResponse
+	(*timestamppb.Timestamp)(nil),             // 20: google.protobuf.Timestamp
 }
 var file_accounting_accounting_proto_depIdxs = []int32{
-	0,  // 0: accounting.CreateAssetChargeRequest.asset_type:type_name -> accounting.AssetKind
-	17, // 1: accounting.CreateAssetChargeRequest.charge_date:type_name -> google.protobuf.Timestamp
-	1,  // 2: accounting.CreateAssetChargeRequest.fault:type_name -> accounting.ChargeFault
-	2,  // 3: accounting.CreateAssetChargeRequest.source_kind:type_name -> accounting.ChargeSourceKind
-	17, // 4: accounting.ListTruckWeeklyPnLRequest.from:type_name -> google.protobuf.Timestamp
-	17, // 5: accounting.ListTruckWeeklyPnLRequest.to:type_name -> google.protobuf.Timestamp
-	17, // 6: accounting.TruckWeekPnL.week_start:type_name -> google.protobuf.Timestamp
-	7,  // 7: accounting.ListTruckWeeklyPnLResponse.rows:type_name -> accounting.TruckWeekPnL
-	10, // 8: accounting.ListTripStatementsResponse.rows:type_name -> accounting.TripStatement
-	3,  // 9: accounting.CreateVendorBillFromTaskRequest.source_kind:type_name -> accounting.VendorBillSourceKind
-	17, // 10: accounting.CreateVendorBillFromTaskRequest.bill_date:type_name -> google.protobuf.Timestamp
-	0,  // 11: accounting.CreateVendorBillFromTaskRequest.asset_type:type_name -> accounting.AssetKind
-	12, // 12: accounting.CreateVendorBillFromTaskRequest.lines:type_name -> accounting.VendorBillLineInput
-	4,  // 13: accounting.AccountingService.CreateAssetCharge:input_type -> accounting.CreateAssetChargeRequest
-	6,  // 14: accounting.AccountingService.ListTruckWeeklyPnL:input_type -> accounting.ListTruckWeeklyPnLRequest
-	9,  // 15: accounting.AccountingService.ListTripStatements:input_type -> accounting.ListTripStatementsRequest
-	13, // 16: accounting.AccountingService.CreateVendorBillFromTask:input_type -> accounting.CreateVendorBillFromTaskRequest
-	15, // 17: accounting.AccountingService.RequestAdjustmentFromTask:input_type -> accounting.RequestAdjustmentFromTaskRequest
-	5,  // 18: accounting.AccountingService.CreateAssetCharge:output_type -> accounting.CreateAssetChargeResponse
-	8,  // 19: accounting.AccountingService.ListTruckWeeklyPnL:output_type -> accounting.ListTruckWeeklyPnLResponse
-	11, // 20: accounting.AccountingService.ListTripStatements:output_type -> accounting.ListTripStatementsResponse
-	14, // 21: accounting.AccountingService.CreateVendorBillFromTask:output_type -> accounting.CreateVendorBillFromTaskResponse
-	16, // 22: accounting.AccountingService.RequestAdjustmentFromTask:output_type -> accounting.RequestAdjustmentFromTaskResponse
-	18, // [18:23] is the sub-list for method output_type
-	13, // [13:18] is the sub-list for method input_type
-	13, // [13:13] is the sub-list for extension type_name
-	13, // [13:13] is the sub-list for extension extendee
-	0,  // [0:13] is the sub-list for field type_name
+	5,  // 0: accounting.GetDriverFuelCardStatesResponse.states:type_name -> accounting.DriverFuelCardState
+	0,  // 1: accounting.CreateAssetChargeRequest.asset_type:type_name -> accounting.AssetKind
+	20, // 2: accounting.CreateAssetChargeRequest.charge_date:type_name -> google.protobuf.Timestamp
+	1,  // 3: accounting.CreateAssetChargeRequest.fault:type_name -> accounting.ChargeFault
+	2,  // 4: accounting.CreateAssetChargeRequest.source_kind:type_name -> accounting.ChargeSourceKind
+	20, // 5: accounting.ListTruckWeeklyPnLRequest.from:type_name -> google.protobuf.Timestamp
+	20, // 6: accounting.ListTruckWeeklyPnLRequest.to:type_name -> google.protobuf.Timestamp
+	20, // 7: accounting.TruckWeekPnL.week_start:type_name -> google.protobuf.Timestamp
+	10, // 8: accounting.ListTruckWeeklyPnLResponse.rows:type_name -> accounting.TruckWeekPnL
+	13, // 9: accounting.ListTripStatementsResponse.rows:type_name -> accounting.TripStatement
+	3,  // 10: accounting.CreateVendorBillFromTaskRequest.source_kind:type_name -> accounting.VendorBillSourceKind
+	20, // 11: accounting.CreateVendorBillFromTaskRequest.bill_date:type_name -> google.protobuf.Timestamp
+	0,  // 12: accounting.CreateVendorBillFromTaskRequest.asset_type:type_name -> accounting.AssetKind
+	15, // 13: accounting.CreateVendorBillFromTaskRequest.lines:type_name -> accounting.VendorBillLineInput
+	7,  // 14: accounting.AccountingService.CreateAssetCharge:input_type -> accounting.CreateAssetChargeRequest
+	9,  // 15: accounting.AccountingService.ListTruckWeeklyPnL:input_type -> accounting.ListTruckWeeklyPnLRequest
+	12, // 16: accounting.AccountingService.ListTripStatements:input_type -> accounting.ListTripStatementsRequest
+	16, // 17: accounting.AccountingService.CreateVendorBillFromTask:input_type -> accounting.CreateVendorBillFromTaskRequest
+	18, // 18: accounting.AccountingService.RequestAdjustmentFromTask:input_type -> accounting.RequestAdjustmentFromTaskRequest
+	4,  // 19: accounting.AccountingService.GetDriverFuelCardStates:input_type -> accounting.GetDriverFuelCardStatesRequest
+	8,  // 20: accounting.AccountingService.CreateAssetCharge:output_type -> accounting.CreateAssetChargeResponse
+	11, // 21: accounting.AccountingService.ListTruckWeeklyPnL:output_type -> accounting.ListTruckWeeklyPnLResponse
+	14, // 22: accounting.AccountingService.ListTripStatements:output_type -> accounting.ListTripStatementsResponse
+	17, // 23: accounting.AccountingService.CreateVendorBillFromTask:output_type -> accounting.CreateVendorBillFromTaskResponse
+	19, // 24: accounting.AccountingService.RequestAdjustmentFromTask:output_type -> accounting.RequestAdjustmentFromTaskResponse
+	6,  // 25: accounting.AccountingService.GetDriverFuelCardStates:output_type -> accounting.GetDriverFuelCardStatesResponse
+	20, // [20:26] is the sub-list for method output_type
+	14, // [14:20] is the sub-list for method input_type
+	14, // [14:14] is the sub-list for extension type_name
+	14, // [14:14] is the sub-list for extension extendee
+	0,  // [0:14] is the sub-list for field type_name
 }
 
 func init() { file_accounting_accounting_proto_init() }
@@ -1494,7 +1669,7 @@ func file_accounting_accounting_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_accounting_accounting_proto_rawDesc), len(file_accounting_accounting_proto_rawDesc)),
 			NumEnums:      4,
-			NumMessages:   13,
+			NumMessages:   16,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

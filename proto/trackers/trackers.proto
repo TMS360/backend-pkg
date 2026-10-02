@@ -101,6 +101,47 @@ service VehiclePositionService {
   // caller can avoid a paid HERE API call. The result is the same JSON payload
   // the caller would have built from the live HERE response.
   rpc LookupGeocodeCache(LookupGeocodeCacheRequest) returns (LookupGeocodeCacheResponse);
+
+  // GetLatestFuelLevels returns, per truck, the latest non-empty fuel and DEF
+  // reading from the position history plus the position of the latest row.
+  // A narrow answer on purpose: GetVehicleRoute fails on big windows
+  // ("message larger than max"). Scoped by company_id from the request.
+  rpc GetLatestFuelLevels(GetLatestFuelLevelsRequest) returns (GetLatestFuelLevelsResponse);
+}
+
+message GetLatestFuelLevelsRequest {
+  string company_id = 1;
+  repeated string truck_ids = 2;
+}
+
+// FuelLevelState tells a reader how far to trust a reading.
+// NOT_COLLECTED: the company switched the capability off in Samsara — no numbers.
+// NO_DATA: collected, but no reading in the history window — no numbers, never 0.
+// STALE: older than 3 x the company's tracking interval.
+enum FuelLevelState {
+  FUEL_LEVEL_STATE_UNSPECIFIED = 0;
+  FRESH = 1;
+  STALE = 2;
+  NOT_COLLECTED = 3;
+  NO_DATA = 4;
+}
+
+message TruckFuelLevel {
+  string truck_id = 1;
+  optional double fuel_percent = 2;
+  FuelLevelState fuel_state = 3;
+  optional double def_percent = 4;
+  FuelLevelState def_state = 5;
+  // gps_time of the row the fuel reading came from (DEF may be older).
+  google.protobuf.Timestamp measured_at = 6;
+  // Position of the truck's latest row, so a caller needs one call for both.
+  optional double latitude = 7;
+  optional double longitude = 8;
+  google.protobuf.Timestamp def_measured_at = 9;
+}
+
+message GetLatestFuelLevelsResponse {
+  repeated TruckFuelLevel levels = 1;
 }
 
 message GetVehicleRoutesRequest {
@@ -131,6 +172,8 @@ message RoutePoint {
   google.protobuf.Timestamp gps_time = 5;
   string address = 6;
   double heading_degrees = 7;
+  // Fuel level of the row, when the company collects it (DEV-2691).
+  optional double fuel_percent = 8;
 }
 
 message GetVehicleRouteResponse {

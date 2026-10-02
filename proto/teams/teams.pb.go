@@ -877,7 +877,9 @@ type DriverCrewInfo struct {
 	// (driver_crews.planning_note, DEV-2089) — "won't run into New Jersey".
 	// Empty when the crew carries no note; clearing the note empties it again.
 	// A hint for the caller to show, never a rule: tms-teams does not act on it.
-	PlanningNote  string `protobuf:"bytes,7,opt,name=planning_note,json=planningNote,proto3" json:"planning_note,omitempty"`
+	PlanningNote string `protobuf:"bytes,7,opt,name=planning_note,json=planningNote,proto3" json:"planning_note,omitempty"`
+	// driver_crews.status: ACTIVE / INACTIVE / ON_LEAVE (empty from older servers).
+	Status        string `protobuf:"bytes,8,opt,name=status,proto3" json:"status,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -957,6 +959,13 @@ func (x *DriverCrewInfo) GetPlanId() string {
 func (x *DriverCrewInfo) GetPlanningNote() string {
 	if x != nil {
 		return x.PlanningNote
+	}
+	return ""
+}
+
+func (x *DriverCrewInfo) GetStatus() string {
+	if x != nil {
+		return x.Status
 	}
 	return ""
 }
@@ -1830,7 +1839,7 @@ const file_teams_teams_proto_rawDesc = "" +
 	"\vtrailer_ids\x18\x02 \x03(\tR\n" +
 	"trailerIds\"R\n" +
 	"%GetCurrentDriversByTrailerIdsResponse\x12)\n" +
-	"\x04data\x18\x01 \x03(\v2\x15.teams.DriverCrewInfoR\x04data\"\x8a\x02\n" +
+	"\x04data\x18\x01 \x03(\v2\x15.teams.DriverCrewInfoR\x04data\"\xa2\x02\n" +
 	"\x0eDriverCrewInfo\x12$\n" +
 	"\x0edriver_crew_id\x18\x01 \x01(\tR\fdriverCrewId\x12*\n" +
 	"\x11primary_driver_id\x18\x02 \x01(\tR\x0fprimaryDriverId\x12.\n" +
@@ -1839,7 +1848,8 @@ const file_teams_teams_proto_rawDesc = "" +
 	"\n" +
 	"trailer_id\x18\x05 \x01(\tR\ttrailerId\x12\x17\n" +
 	"\aplan_id\x18\x06 \x01(\tR\x06planId\x12#\n" +
-	"\rplanning_note\x18\a \x01(\tR\fplanningNote\"(\n" +
+	"\rplanning_note\x18\a \x01(\tR\fplanningNote\x12\x16\n" +
+	"\x06status\x18\b \x01(\tR\x06status\"(\n" +
 	"\vTrailerInfo\x12\x19\n" +
 	"\btruck_id\x18\x01 \x01(\tR\atruckId\"\xd8\x01\n" +
 	"\x1cIsDriverCrewAvailableRequest\x12$\n" +

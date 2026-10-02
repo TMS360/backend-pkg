@@ -9,8 +9,8 @@ import (
 	"github.com/TMS360/backend-pkg/consts"
 	"github.com/TMS360/backend-pkg/enums"
 	"github.com/TMS360/backend-pkg/response"
-	"github.com/google/uuid"
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/google/uuid"
 )
 
 func TestHasPermDirective_UnresolvedReturns503(t *testing.T) {

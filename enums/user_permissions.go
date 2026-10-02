@@ -1,6 +1,9 @@
 package enums
 
-import "sort"
+import (
+	"sort"
+	"strings"
+)
 
 // UserPermissionEnum is the canonical set of permission codes recognized by
 // the system. Permissions are dotted identifier strings (`module.entity.action`)
@@ -128,6 +131,39 @@ const (
 	PermAssetChargesView       UserPermissionEnum = "fleet.asset_charges.view"
 	PermAssetChargesManage     UserPermissionEnum = "fleet.asset_charges.manage"
 	PermAssetChargesAdjudicate UserPermissionEnum = "fleet.asset_charges.adjudicate"
+
+	// DEV-2510 / BL-6 §6.PC6 person charges — the charge list and the lines it
+	// puts on a person's week. Hierarchical under the `teams` module, so a
+	// `teams` grant (admin) implies every code below.
+	//
+	//   teams.person_charges.view   — read the charge list and the lines.
+	//   teams.person_charges.void   — cancel a line.
+	//   teams.person_charges.manage — edit the charge list (groups and types).
+	//
+	// APPLY is per department and lives on SIBLING entities, one per group
+	// department, each with the single action `apply`:
+	//
+	//   teams.person_charges_<department>.apply
+	//
+	// They are deliberately NOT children of `teams.person_charges`: a nested
+	// catalog entry would make `teams.person_charges` a MODULE in the catalog
+	// index, and ExpandPermissions would expand an existing `teams.person_charges`
+	// grant to the apply leaves only, dropping view/void/manage (the
+	// shipments.audit plan-exclusion trap). As siblings, `teams.person_charges`
+	// does not imply any apply either — HasPermission matches whole dot segments,
+	// so `teams.person_charges` is not an ancestor of
+	// `teams.person_charges_dispatch.apply`. A fleet user cannot post a dispatch
+	// charge because they lack that code, not because of their role name.
+	PermPersonChargesView   UserPermissionEnum = "teams.person_charges.view"
+	PermPersonChargesVoid   UserPermissionEnum = "teams.person_charges.void"
+	PermPersonChargesManage UserPermissionEnum = "teams.person_charges.manage"
+
+	PermPersonChargeApplyDispatch   UserPermissionEnum = "teams.person_charges_dispatch.apply"
+	PermPersonChargeApplyFleet      UserPermissionEnum = "teams.person_charges_fleet.apply"
+	PermPersonChargeApplyUpdate     UserPermissionEnum = "teams.person_charges_update.apply"
+	PermPersonChargeApplyAccounting UserPermissionEnum = "teams.person_charges_accounting.apply"
+	PermPersonChargeApplyDriver     UserPermissionEnum = "teams.person_charges_driver.apply"
+	PermPersonChargeApplyBonus      UserPermissionEnum = "teams.person_charges_bonus.apply"
 
 	// DEV-2240 maintenance — the shop side of an asset: service records, the work
 	// that takes a truck off the road, and the bills that come with it.
@@ -659,6 +695,16 @@ var PermissionCatalog = []PermissionCatalogEntry{
 	{Code: "teams.teams", ParentCode: "teams", Label: "Teams", Actions: []string{"view", "edit"}},
 	{Code: "teams.crews", ParentCode: "teams", Label: "Crews", Actions: []string{"view", "create", "edit", "delete"}},
 	{Code: "teams.dispatchers", ParentCode: "teams", Label: "Dispatchers", Actions: []string{"view", "create", "delete"}},
+	// DEV-2510: person charges. view/void/manage are actions on one entity; apply
+	// is one SIBLING entity per department (see PermPersonChargesView) so that
+	// `teams.person_charges` stays an entity and never swallows the apply codes.
+	{Code: "teams.person_charges", ParentCode: "teams", Label: "Person charges", Actions: []string{"view", "void", "manage"}},
+	{Code: "teams.person_charges_dispatch", ParentCode: "teams", Label: "Person charges: apply dispatch types", Actions: []string{"apply"}},
+	{Code: "teams.person_charges_fleet", ParentCode: "teams", Label: "Person charges: apply fleet types", Actions: []string{"apply"}},
+	{Code: "teams.person_charges_update", ParentCode: "teams", Label: "Person charges: apply update types", Actions: []string{"apply"}},
+	{Code: "teams.person_charges_accounting", ParentCode: "teams", Label: "Person charges: apply accounting types", Actions: []string{"apply"}},
+	{Code: "teams.person_charges_driver", ParentCode: "teams", Label: "Person charges: apply driver types", Actions: []string{"apply"}},
+	{Code: "teams.person_charges_bonus", ParentCode: "teams", Label: "Person charges: apply bonus types", Actions: []string{"apply"}},
 
 	// === fleet entities ===
 	{Code: "fleet.trucks", ParentCode: "fleet", Label: "Trucks", Actions: []string{"view", "create", "edit", "delete"}},
@@ -1199,6 +1245,28 @@ func DefaultRolePermissions() map[UserRoleEnum][]string {
 		out[role] = withoutFleetMaintenance(out[role], maintenance...)
 	}
 
+	// DEV-2510 / BL-6 §6.PC6: person charges belong to departments. The `teams`
+	// module in the baseline implies every person-charge code, so on every role
+	// but admin it is swapped for the teams entities minus person charges, plus
+	// the role's own bag. Roles not listed here (hr, auditor, driver, other) get
+	// no person-charge code. There is no built-in "update" role, so update apply
+	// is handed out in Settings -> Roles. Runs before the track_and_trace
+	// derivation below, so that role inherits the dispatcher bag (§4.17).
+	view, void, manage := string(PermPersonChargesView), string(PermPersonChargesVoid), string(PermPersonChargesManage)
+	for role, bag := range map[UserRoleEnum][]string{
+		UserRoleDispatcher: {view, string(PermPersonChargeApplyDispatch)},
+		UserRoleManager:    {view, void, string(PermPersonChargeApplyDispatch), string(PermPersonChargeApplyBonus)},
+		UserRoleFleet:      {view, string(PermPersonChargeApplyFleet)},
+		UserRoleAccounting: {view, void, manage, string(PermPersonChargeApplyAccounting), string(PermPersonChargeApplyBonus)},
+		UserRoleSafety:     {view, string(PermPersonChargeApplyDriver)},
+		UserRoleHr:         nil,
+		UserRoleAuditor:    nil,
+		UserRoleDriver:     nil,
+		UserRoleOther:      nil,
+	} {
+		out[role] = withoutPersonCharges(out[role], bag...)
+	}
+
 	// DEV-1824 / BL-4 §4.17: Track & Trace is defined as "whatever dispatcher
 	// gets". Deriving it from the dispatcher entry instead of repeating the
 	// literal means the two sets can never drift — a perm added to dispatcher
@@ -1253,14 +1321,61 @@ const fleetMaintenanceEntity = "fleet.maintenance"
 // withoutFleetMaintenance replaces the `fleet` module in codes with
 // FleetEntitiesWithoutMaintenance plus the given maintenance leaves.
 func withoutFleetMaintenance(codes []string, maintenance ...string) []string {
-	out := make([]string, 0, len(codes)+4)
+	return replaceModule(codes, FleetModuleCode, FleetEntitiesWithoutMaintenance(), maintenance)
+}
+
+// TeamsModuleCode is the top-level teams module in PermissionCatalog.
+const TeamsModuleCode = "teams"
+
+// PersonChargeEntities lists the person-charge entities in catalog order
+// (DEV-2510): `teams.person_charges` and its apply siblings.
+func PersonChargeEntities() []string {
+	var out []string
+	for _, ent := range permIndex.moduleEntities[TeamsModuleCode] {
+		if isPersonChargeEntity(ent) {
+			out = append(out, ent)
+		}
+	}
+	return out
+}
+
+// TeamsEntitiesWithoutPersonCharges lists the teams module's entities except
+// the person-charge ones, in catalog order (DEV-2510). A role holding these
+// instead of `teams` keeps every teams page; a teams entity added later is
+// picked up here too.
+func TeamsEntitiesWithoutPersonCharges() []string {
+	var out []string
+	for _, ent := range permIndex.moduleEntities[TeamsModuleCode] {
+		if !isPersonChargeEntity(ent) {
+			out = append(out, ent)
+		}
+	}
+	return out
+}
+
+const personChargesEntity = "teams.person_charges"
+
+func isPersonChargeEntity(code string) bool {
+	return code == personChargesEntity || strings.HasPrefix(code, personChargesEntity+"_")
+}
+
+// withoutPersonCharges replaces the `teams` module in codes with
+// TeamsEntitiesWithoutPersonCharges plus the given person-charge leaves.
+func withoutPersonCharges(codes []string, personCharges ...string) []string {
+	return replaceModule(codes, TeamsModuleCode, TeamsEntitiesWithoutPersonCharges(), personCharges)
+}
+
+// replaceModule swaps the module code in codes for entities followed by extra;
+// every other code is kept in place.
+func replaceModule(codes []string, module string, entities, extra []string) []string {
+	out := make([]string, 0, len(codes)+len(entities)+len(extra))
 	for _, c := range codes {
-		if c != FleetModuleCode {
+		if c != module {
 			out = append(out, c)
 			continue
 		}
-		out = append(out, FleetEntitiesWithoutMaintenance()...)
-		out = append(out, maintenance...)
+		out = append(out, entities...)
+		out = append(out, extra...)
 	}
 	return out
 }

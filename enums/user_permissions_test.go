@@ -257,9 +257,11 @@ func TestAssetOutOfServiceOverride_IsFlatAndSupervisorOnly(t *testing.T) {
 func baselineWithoutFleetMaintenance() []string {
 	var out []string
 	for _, m := range enums.ModulePermissionCodes() {
-		if m != enums.FleetModuleCode {
+		if m != enums.FleetModuleCode && m != enums.TeamsModuleCode {
 			out = append(out, m)
 		}
 	}
+	// DEV-2510: `teams` is narrowed to every teams entity but person charges.
+	out = append(out, enums.TeamsEntitiesWithoutPersonCharges()...)
 	return append(out, enums.FleetEntitiesWithoutMaintenance()...)
 }

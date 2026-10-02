@@ -1,0 +1,61 @@
+// pkg/proto/telegram/telegram.proto
+syntax = "proto3";
+
+package telegram;
+
+option go_package = "github.com/TMS360/backend-pkg/proto/telegram";
+
+// TelegramService is the channel gateway: it delivers text to a crew's linked
+// Telegram group. It decides nothing about what to send. Every call is
+// idempotent per (company_id, idempotency_key): a repeat returns the stored
+// result and never sends a second message.
+service TelegramService {
+  rpc SendToCrew(SendToCrewRequest) returns (SendResult);
+  // EditMessage edits a message sent earlier (message_id = SendResult.message_id).
+  rpc EditMessage(EditMessageRequest) returns (SendResult);
+  // ReplyNote posts a short reply to a message sent earlier ("plan replaced").
+  rpc ReplyNote(ReplyNoteRequest) returns (SendResult);
+}
+
+message SendToCrewRequest {
+  string company_id = 1;
+  string crew_id = 2;
+  string idempotency_key = 3;
+  string text = 4;
+  string parse_mode = 5;  // "HTML" or empty
+}
+
+message EditMessageRequest {
+  string company_id = 1;
+  string message_id = 2;
+  string idempotency_key = 3;
+  string text = 4;
+  string parse_mode = 5;
+}
+
+message ReplyNoteRequest {
+  string company_id = 1;
+  string message_id = 2;
+  string idempotency_key = 3;
+  string text = 4;
+  string parse_mode = 5;
+}
+
+// CAUGHT: the real-send lock is closed (not production) — the message went to
+// the catcher chat or only to the log; the crew's group did not get it.
+enum DeliveryStatus {
+  DELIVERY_STATUS_UNSPECIFIED = 0;
+  SENT = 1;
+  FAILED = 2;
+  NO_GROUP = 3;
+  CAUGHT = 4;
+}
+
+message SendResult {
+  string message_id = 1;            // tms-telegram message id (uuid)
+  DeliveryStatus status = 2;
+  int64 chat_id = 3;
+  int64 telegram_message_id = 4;
+  string failure_reason = 5;        // Telegram's description, verbatim
+  string chat_title = 6;
+}

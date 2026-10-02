@@ -351,11 +351,12 @@ var TrackersService_ServiceDesc = grpc.ServiceDesc{
 }
 
 const (
-	VehiclePositionService_GetVehicleRoute_FullMethodName    = "/trackers.VehiclePositionService/GetVehicleRoute"
-	VehiclePositionService_GetVehicleRoutes_FullMethodName   = "/trackers.VehiclePositionService/GetVehicleRoutes"
-	VehiclePositionService_SaveEstimatedRoute_FullMethodName = "/trackers.VehiclePositionService/SaveEstimatedRoute"
-	VehiclePositionService_GetEstimatedRoute_FullMethodName  = "/trackers.VehiclePositionService/GetEstimatedRoute"
-	VehiclePositionService_LookupGeocodeCache_FullMethodName = "/trackers.VehiclePositionService/LookupGeocodeCache"
+	VehiclePositionService_GetVehicleRoute_FullMethodName     = "/trackers.VehiclePositionService/GetVehicleRoute"
+	VehiclePositionService_GetVehicleRoutes_FullMethodName    = "/trackers.VehiclePositionService/GetVehicleRoutes"
+	VehiclePositionService_SaveEstimatedRoute_FullMethodName  = "/trackers.VehiclePositionService/SaveEstimatedRoute"
+	VehiclePositionService_GetEstimatedRoute_FullMethodName   = "/trackers.VehiclePositionService/GetEstimatedRoute"
+	VehiclePositionService_LookupGeocodeCache_FullMethodName  = "/trackers.VehiclePositionService/LookupGeocodeCache"
+	VehiclePositionService_GetLatestFuelLevels_FullMethodName = "/trackers.VehiclePositionService/GetLatestFuelLevels"
 )
 
 // VehiclePositionServiceClient is the client API for VehiclePositionService service.
@@ -375,6 +376,11 @@ type VehiclePositionServiceClient interface {
 	// caller can avoid a paid HERE API call. The result is the same JSON payload
 	// the caller would have built from the live HERE response.
 	LookupGeocodeCache(ctx context.Context, in *LookupGeocodeCacheRequest, opts ...grpc.CallOption) (*LookupGeocodeCacheResponse, error)
+	// GetLatestFuelLevels returns, per truck, the latest non-empty fuel and DEF
+	// reading from the position history plus the position of the latest row.
+	// A narrow answer on purpose: GetVehicleRoute fails on big windows
+	// ("message larger than max"). Scoped by company_id from the request.
+	GetLatestFuelLevels(ctx context.Context, in *GetLatestFuelLevelsRequest, opts ...grpc.CallOption) (*GetLatestFuelLevelsResponse, error)
 }
 
 type vehiclePositionServiceClient struct {
@@ -435,6 +441,16 @@ func (c *vehiclePositionServiceClient) LookupGeocodeCache(ctx context.Context, i
 	return out, nil
 }
 
+func (c *vehiclePositionServiceClient) GetLatestFuelLevels(ctx context.Context, in *GetLatestFuelLevelsRequest, opts ...grpc.CallOption) (*GetLatestFuelLevelsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetLatestFuelLevelsResponse)
+	err := c.cc.Invoke(ctx, VehiclePositionService_GetLatestFuelLevels_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // VehiclePositionServiceServer is the server API for VehiclePositionService service.
 // All implementations must embed UnimplementedVehiclePositionServiceServer
 // for forward compatibility.
@@ -452,6 +468,11 @@ type VehiclePositionServiceServer interface {
 	// caller can avoid a paid HERE API call. The result is the same JSON payload
 	// the caller would have built from the live HERE response.
 	LookupGeocodeCache(context.Context, *LookupGeocodeCacheRequest) (*LookupGeocodeCacheResponse, error)
+	// GetLatestFuelLevels returns, per truck, the latest non-empty fuel and DEF
+	// reading from the position history plus the position of the latest row.
+	// A narrow answer on purpose: GetVehicleRoute fails on big windows
+	// ("message larger than max"). Scoped by company_id from the request.
+	GetLatestFuelLevels(context.Context, *GetLatestFuelLevelsRequest) (*GetLatestFuelLevelsResponse, error)
 	mustEmbedUnimplementedVehiclePositionServiceServer()
 }
 
@@ -476,6 +497,9 @@ func (UnimplementedVehiclePositionServiceServer) GetEstimatedRoute(context.Conte
 }
 func (UnimplementedVehiclePositionServiceServer) LookupGeocodeCache(context.Context, *LookupGeocodeCacheRequest) (*LookupGeocodeCacheResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method LookupGeocodeCache not implemented")
+}
+func (UnimplementedVehiclePositionServiceServer) GetLatestFuelLevels(context.Context, *GetLatestFuelLevelsRequest) (*GetLatestFuelLevelsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetLatestFuelLevels not implemented")
 }
 func (UnimplementedVehiclePositionServiceServer) mustEmbedUnimplementedVehiclePositionServiceServer() {
 }
@@ -589,6 +613,24 @@ func _VehiclePositionService_LookupGeocodeCache_Handler(srv interface{}, ctx con
 	return interceptor(ctx, in, info, handler)
 }
 
+func _VehiclePositionService_GetLatestFuelLevels_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetLatestFuelLevelsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(VehiclePositionServiceServer).GetLatestFuelLevels(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: VehiclePositionService_GetLatestFuelLevels_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(VehiclePositionServiceServer).GetLatestFuelLevels(ctx, req.(*GetLatestFuelLevelsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // VehiclePositionService_ServiceDesc is the grpc.ServiceDesc for VehiclePositionService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -615,6 +657,10 @@ var VehiclePositionService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "LookupGeocodeCache",
 			Handler:    _VehiclePositionService_LookupGeocodeCache_Handler,
+		},
+		{
+			MethodName: "GetLatestFuelLevels",
+			Handler:    _VehiclePositionService_GetLatestFuelLevels_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

@@ -1,0 +1,30 @@
+// pkg/proto/fuel/fuel.proto
+syntax = "proto3";
+
+package fuel;
+
+option go_package = "github.com/TMS360/backend-pkg/proto/fuel";
+
+service FuelService {
+  // GetTripFuelWarnings returns the fuel-plan warnings of the given trips,
+  // computed from plan status on read (stale plan, failed send). Trips with
+  // nothing to say are absent.
+  rpc GetTripFuelWarnings(GetTripFuelWarningsRequest) returns (GetTripFuelWarningsResponse);
+}
+
+message GetTripFuelWarningsRequest {
+  string company_id = 1;
+  repeated string trip_ids = 2;
+}
+
+message TripFuelWarning {
+  string trip_id = 1;
+  string code = 2;      // FUEL_PLAN_STALE | FUEL_PLAN_SEND_FAILED
+  string severity = 3;  // WARNING
+  string message = 4;
+  string plan_id = 5;
+}
+
+message GetTripFuelWarningsResponse {
+  repeated TripFuelWarning warnings = 1;
+}

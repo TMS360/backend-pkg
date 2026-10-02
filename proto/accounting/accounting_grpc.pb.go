@@ -26,6 +26,7 @@ const (
 	AccountingService_ListTripStatements_FullMethodName        = "/accounting.AccountingService/ListTripStatements"
 	AccountingService_CreateVendorBillFromTask_FullMethodName  = "/accounting.AccountingService/CreateVendorBillFromTask"
 	AccountingService_RequestAdjustmentFromTask_FullMethodName = "/accounting.AccountingService/RequestAdjustmentFromTask"
+	AccountingService_GetDriverFuelCardStates_FullMethodName   = "/accounting.AccountingService/GetDriverFuelCardStates"
 )
 
 // AccountingServiceClient is the client API for AccountingService service.
@@ -113,6 +114,10 @@ type AccountingServiceClient interface {
 	// until one exists. label is the statement line text ("SFT-00950 · Accident ·
 	// 2026-09-30"). Zero amount with nothing to undo, or no driver → InvalidArgument.
 	RequestAdjustmentFromTask(ctx context.Context, in *RequestAdjustmentFromTaskRequest, opts ...grpc.CallOption) (*RequestAdjustmentFromTaskResponse, error)
+	// GetDriverFuelCardStates returns the fuel-card integration rows of the given
+	// drivers in the company (provider + sync status). A driver with no row is
+	// absent from the answer. Read-only.
+	GetDriverFuelCardStates(ctx context.Context, in *GetDriverFuelCardStatesRequest, opts ...grpc.CallOption) (*GetDriverFuelCardStatesResponse, error)
 }
 
 type accountingServiceClient struct {
@@ -167,6 +172,16 @@ func (c *accountingServiceClient) RequestAdjustmentFromTask(ctx context.Context,
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(RequestAdjustmentFromTaskResponse)
 	err := c.cc.Invoke(ctx, AccountingService_RequestAdjustmentFromTask_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *accountingServiceClient) GetDriverFuelCardStates(ctx context.Context, in *GetDriverFuelCardStatesRequest, opts ...grpc.CallOption) (*GetDriverFuelCardStatesResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetDriverFuelCardStatesResponse)
+	err := c.cc.Invoke(ctx, AccountingService_GetDriverFuelCardStates_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -258,6 +273,10 @@ type AccountingServiceServer interface {
 	// until one exists. label is the statement line text ("SFT-00950 · Accident ·
 	// 2026-09-30"). Zero amount with nothing to undo, or no driver → InvalidArgument.
 	RequestAdjustmentFromTask(context.Context, *RequestAdjustmentFromTaskRequest) (*RequestAdjustmentFromTaskResponse, error)
+	// GetDriverFuelCardStates returns the fuel-card integration rows of the given
+	// drivers in the company (provider + sync status). A driver with no row is
+	// absent from the answer. Read-only.
+	GetDriverFuelCardStates(context.Context, *GetDriverFuelCardStatesRequest) (*GetDriverFuelCardStatesResponse, error)
 	mustEmbedUnimplementedAccountingServiceServer()
 }
 
@@ -282,6 +301,9 @@ func (UnimplementedAccountingServiceServer) CreateVendorBillFromTask(context.Con
 }
 func (UnimplementedAccountingServiceServer) RequestAdjustmentFromTask(context.Context, *RequestAdjustmentFromTaskRequest) (*RequestAdjustmentFromTaskResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method RequestAdjustmentFromTask not implemented")
+}
+func (UnimplementedAccountingServiceServer) GetDriverFuelCardStates(context.Context, *GetDriverFuelCardStatesRequest) (*GetDriverFuelCardStatesResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetDriverFuelCardStates not implemented")
 }
 func (UnimplementedAccountingServiceServer) mustEmbedUnimplementedAccountingServiceServer() {}
 func (UnimplementedAccountingServiceServer) testEmbeddedByValue()                           {}
@@ -394,6 +416,24 @@ func _AccountingService_RequestAdjustmentFromTask_Handler(srv interface{}, ctx c
 	return interceptor(ctx, in, info, handler)
 }
 
+func _AccountingService_GetDriverFuelCardStates_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetDriverFuelCardStatesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AccountingServiceServer).GetDriverFuelCardStates(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AccountingService_GetDriverFuelCardStates_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AccountingServiceServer).GetDriverFuelCardStates(ctx, req.(*GetDriverFuelCardStatesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // AccountingService_ServiceDesc is the grpc.ServiceDesc for AccountingService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -420,6 +460,10 @@ var AccountingService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "RequestAdjustmentFromTask",
 			Handler:    _AccountingService_RequestAdjustmentFromTask_Handler,
+		},
+		{
+			MethodName: "GetDriverFuelCardStates",
+			Handler:    _AccountingService_GetDriverFuelCardStates_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

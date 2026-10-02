@@ -2470,8 +2470,13 @@ type Trip struct {
 	// См. PayBatchTrip.empty_miles_not_calculated — та же семантика и та же причина
 	// быть отдельным полем, а не optional на empty_miles.
 	EmptyMilesNotCalculated *bool `protobuf:"varint,18,opt,name=empty_miles_not_calculated,json=emptyMilesNotCalculated,proto3,oneof" json:"empty_miles_not_calculated,omitempty"`
-	unknownFields           protoimpl.UnknownFields
-	sizeCache               protoimpl.SizeCache
+	// Exact domain TripStatus (ASSIGNED, LEAVING_STOP, ...); `status` above is
+	// the coarse pb enum.
+	StatusRaw         string `protobuf:"bytes,19,opt,name=status_raw,json=statusRaw,proto3" json:"status_raw,omitempty"`
+	DriverCrewId      string `protobuf:"bytes,20,opt,name=driver_crew_id,json=driverCrewId,proto3" json:"driver_crew_id,omitempty"`
+	SecondaryDriverId string `protobuf:"bytes,21,opt,name=secondary_driver_id,json=secondaryDriverId,proto3" json:"secondary_driver_id,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
 }
 
 func (x *Trip) Reset() {
@@ -2628,6 +2633,27 @@ func (x *Trip) GetEmptyMilesNotCalculated() bool {
 		return *x.EmptyMilesNotCalculated
 	}
 	return false
+}
+
+func (x *Trip) GetStatusRaw() string {
+	if x != nil {
+		return x.StatusRaw
+	}
+	return ""
+}
+
+func (x *Trip) GetDriverCrewId() string {
+	if x != nil {
+		return x.DriverCrewId
+	}
+	return ""
+}
+
+func (x *Trip) GetSecondaryDriverId() string {
+	if x != nil {
+		return x.SecondaryDriverId
+	}
+	return ""
 }
 
 // Trip stop
@@ -7712,7 +7738,7 @@ const file_loads_loads_proto_rawDesc = "" +
 	"\x0eappointment_to\x18\t \x01(\v2\x1a.google.protobuf.TimestampR\rappointmentTo\x12A\n" +
 	"\x0eactual_arrival\x18\n" +
 	" \x01(\v2\x1a.google.protobuf.TimestampR\ractualArrival\x12E\n" +
-	"\x10actual_departure\x18\v \x01(\v2\x1a.google.protobuf.TimestampR\x0factualDeparture\"\x9b\x06\n" +
+	"\x10actual_departure\x18\v \x01(\v2\x1a.google.protobuf.TimestampR\x0factualDeparture\"\x90\a\n" +
 	"\x04Trip\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1f\n" +
 	"\vshipment_id\x18\x02 \x01(\tR\n" +
@@ -7739,7 +7765,11 @@ const file_loads_loads_proto_rawDesc = "" +
 	"created_at\x18\x10 \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x129\n" +
 	"\n" +
 	"updated_at\x18\x11 \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\x12@\n" +
-	"\x1aempty_miles_not_calculated\x18\x12 \x01(\bH\x00R\x17emptyMilesNotCalculated\x88\x01\x01B\x1d\n" +
+	"\x1aempty_miles_not_calculated\x18\x12 \x01(\bH\x00R\x17emptyMilesNotCalculated\x88\x01\x01\x12\x1d\n" +
+	"\n" +
+	"status_raw\x18\x13 \x01(\tR\tstatusRaw\x12$\n" +
+	"\x0edriver_crew_id\x18\x14 \x01(\tR\fdriverCrewId\x12.\n" +
+	"\x13secondary_driver_id\x18\x15 \x01(\tR\x11secondaryDriverIdB\x1d\n" +
 	"\x1b_empty_miles_not_calculated\"\xb6\x04\n" +
 	"\bTripStop\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x17\n" +

@@ -92,6 +92,26 @@ service AccountingService {
   // until one exists. label is the statement line text ("SFT-00950 · Accident ·
   // 2026-09-30"). Zero amount with nothing to undo, or no driver → InvalidArgument.
   rpc RequestAdjustmentFromTask(RequestAdjustmentFromTaskRequest) returns (RequestAdjustmentFromTaskResponse);
+
+  // GetDriverFuelCardStates returns the fuel-card integration rows of the given
+  // drivers in the company (provider + sync status). A driver with no row is
+  // absent from the answer. Read-only.
+  rpc GetDriverFuelCardStates(GetDriverFuelCardStatesRequest) returns (GetDriverFuelCardStatesResponse);
+}
+
+message GetDriverFuelCardStatesRequest {
+  string company_id = 1;
+  repeated string driver_ids = 2;
+}
+
+message DriverFuelCardState {
+  string driver_id = 1;
+  string provider = 2;     // "relay"
+  string sync_status = 3;  // synced | pending | failed | inactive
+}
+
+message GetDriverFuelCardStatesResponse {
+  repeated DriverFuelCardState states = 1;
 }
 
 // AssetKind names which kind of equipment carries the charge.

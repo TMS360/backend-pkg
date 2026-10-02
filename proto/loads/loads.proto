@@ -563,6 +563,11 @@ message Trip {
   // См. PayBatchTrip.empty_miles_not_calculated — та же семантика и та же причина
   // быть отдельным полем, а не optional на empty_miles.
   optional bool empty_miles_not_calculated = 18;
+  // Exact domain TripStatus (ASSIGNED, LEAVING_STOP, ...); `status` above is
+  // the coarse pb enum.
+  string status_raw = 19;
+  string driver_crew_id = 20;
+  string secondary_driver_id = 21;
 }
 
 // Trip stop

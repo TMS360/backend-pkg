@@ -351,12 +351,13 @@ var TrackersService_ServiceDesc = grpc.ServiceDesc{
 }
 
 const (
-	VehiclePositionService_GetVehicleRoute_FullMethodName     = "/trackers.VehiclePositionService/GetVehicleRoute"
-	VehiclePositionService_GetVehicleRoutes_FullMethodName    = "/trackers.VehiclePositionService/GetVehicleRoutes"
-	VehiclePositionService_SaveEstimatedRoute_FullMethodName  = "/trackers.VehiclePositionService/SaveEstimatedRoute"
-	VehiclePositionService_GetEstimatedRoute_FullMethodName   = "/trackers.VehiclePositionService/GetEstimatedRoute"
-	VehiclePositionService_LookupGeocodeCache_FullMethodName  = "/trackers.VehiclePositionService/LookupGeocodeCache"
-	VehiclePositionService_GetLatestFuelLevels_FullMethodName = "/trackers.VehiclePositionService/GetLatestFuelLevels"
+	VehiclePositionService_GetVehicleRoute_FullMethodName      = "/trackers.VehiclePositionService/GetVehicleRoute"
+	VehiclePositionService_GetVehicleRoutes_FullMethodName     = "/trackers.VehiclePositionService/GetVehicleRoutes"
+	VehiclePositionService_SaveEstimatedRoute_FullMethodName   = "/trackers.VehiclePositionService/SaveEstimatedRoute"
+	VehiclePositionService_GetEstimatedRoute_FullMethodName    = "/trackers.VehiclePositionService/GetEstimatedRoute"
+	VehiclePositionService_LookupGeocodeCache_FullMethodName   = "/trackers.VehiclePositionService/LookupGeocodeCache"
+	VehiclePositionService_GetCurrentDutyStatus_FullMethodName = "/trackers.VehiclePositionService/GetCurrentDutyStatus"
+	VehiclePositionService_GetLatestFuelLevels_FullMethodName  = "/trackers.VehiclePositionService/GetLatestFuelLevels"
 )
 
 // VehiclePositionServiceClient is the client API for VehiclePositionService service.
@@ -376,6 +377,12 @@ type VehiclePositionServiceClient interface {
 	// caller can avoid a paid HERE API call. The result is the same JSON payload
 	// the caller would have built from the live HERE response.
 	LookupGeocodeCache(ctx context.Context, in *LookupGeocodeCacheRequest, opts ...grpc.CallOption) (*LookupGeocodeCacheResponse, error)
+	// GetCurrentDutyStatus returns each driver's latest HOS duty status from the
+	// ELD feed (driving, on_duty, off_duty, sleeper_berth, yard_move,
+	// personal_conveyance) and since when. Drivers with no HOS event in the last
+	// 7 days are absent. Scoped by company_id from the request (DEV-2694: the
+	// hourly crew message is not sent while a driver sleeps).
+	GetCurrentDutyStatus(ctx context.Context, in *GetCurrentDutyStatusRequest, opts ...grpc.CallOption) (*GetCurrentDutyStatusResponse, error)
 	// GetLatestFuelLevels returns, per truck, the latest non-empty fuel and DEF
 	// reading from the position history plus the position of the latest row.
 	// A narrow answer on purpose: GetVehicleRoute fails on big windows
@@ -441,6 +448,16 @@ func (c *vehiclePositionServiceClient) LookupGeocodeCache(ctx context.Context, i
 	return out, nil
 }
 
+func (c *vehiclePositionServiceClient) GetCurrentDutyStatus(ctx context.Context, in *GetCurrentDutyStatusRequest, opts ...grpc.CallOption) (*GetCurrentDutyStatusResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetCurrentDutyStatusResponse)
+	err := c.cc.Invoke(ctx, VehiclePositionService_GetCurrentDutyStatus_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *vehiclePositionServiceClient) GetLatestFuelLevels(ctx context.Context, in *GetLatestFuelLevelsRequest, opts ...grpc.CallOption) (*GetLatestFuelLevelsResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(GetLatestFuelLevelsResponse)
@@ -468,6 +485,12 @@ type VehiclePositionServiceServer interface {
 	// caller can avoid a paid HERE API call. The result is the same JSON payload
 	// the caller would have built from the live HERE response.
 	LookupGeocodeCache(context.Context, *LookupGeocodeCacheRequest) (*LookupGeocodeCacheResponse, error)
+	// GetCurrentDutyStatus returns each driver's latest HOS duty status from the
+	// ELD feed (driving, on_duty, off_duty, sleeper_berth, yard_move,
+	// personal_conveyance) and since when. Drivers with no HOS event in the last
+	// 7 days are absent. Scoped by company_id from the request (DEV-2694: the
+	// hourly crew message is not sent while a driver sleeps).
+	GetCurrentDutyStatus(context.Context, *GetCurrentDutyStatusRequest) (*GetCurrentDutyStatusResponse, error)
 	// GetLatestFuelLevels returns, per truck, the latest non-empty fuel and DEF
 	// reading from the position history plus the position of the latest row.
 	// A narrow answer on purpose: GetVehicleRoute fails on big windows
@@ -497,6 +520,9 @@ func (UnimplementedVehiclePositionServiceServer) GetEstimatedRoute(context.Conte
 }
 func (UnimplementedVehiclePositionServiceServer) LookupGeocodeCache(context.Context, *LookupGeocodeCacheRequest) (*LookupGeocodeCacheResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method LookupGeocodeCache not implemented")
+}
+func (UnimplementedVehiclePositionServiceServer) GetCurrentDutyStatus(context.Context, *GetCurrentDutyStatusRequest) (*GetCurrentDutyStatusResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetCurrentDutyStatus not implemented")
 }
 func (UnimplementedVehiclePositionServiceServer) GetLatestFuelLevels(context.Context, *GetLatestFuelLevelsRequest) (*GetLatestFuelLevelsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetLatestFuelLevels not implemented")
@@ -613,6 +639,24 @@ func _VehiclePositionService_LookupGeocodeCache_Handler(srv interface{}, ctx con
 	return interceptor(ctx, in, info, handler)
 }
 
+func _VehiclePositionService_GetCurrentDutyStatus_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetCurrentDutyStatusRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(VehiclePositionServiceServer).GetCurrentDutyStatus(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: VehiclePositionService_GetCurrentDutyStatus_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(VehiclePositionServiceServer).GetCurrentDutyStatus(ctx, req.(*GetCurrentDutyStatusRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _VehiclePositionService_GetLatestFuelLevels_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(GetLatestFuelLevelsRequest)
 	if err := dec(in); err != nil {
@@ -657,6 +701,10 @@ var VehiclePositionService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "LookupGeocodeCache",
 			Handler:    _VehiclePositionService_LookupGeocodeCache_Handler,
+		},
+		{
+			MethodName: "GetCurrentDutyStatus",
+			Handler:    _VehiclePositionService_GetCurrentDutyStatus_Handler,
 		},
 		{
 			MethodName: "GetLatestFuelLevels",

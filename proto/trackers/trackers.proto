@@ -102,6 +102,13 @@ service VehiclePositionService {
   // the caller would have built from the live HERE response.
   rpc LookupGeocodeCache(LookupGeocodeCacheRequest) returns (LookupGeocodeCacheResponse);
 
+  // GetCurrentDutyStatus returns each driver's latest HOS duty status from the
+  // ELD feed (driving, on_duty, off_duty, sleeper_berth, yard_move,
+  // personal_conveyance) and since when. Drivers with no HOS event in the last
+  // 7 days are absent. Scoped by company_id from the request (DEV-2694: the
+  // hourly crew message is not sent while a driver sleeps).
+  rpc GetCurrentDutyStatus(GetCurrentDutyStatusRequest) returns (GetCurrentDutyStatusResponse);
+
   // GetLatestFuelLevels returns, per truck, the latest non-empty fuel and DEF
   // reading from the position history plus the position of the latest row.
   // A narrow answer on purpose: GetVehicleRoute fails on big windows
@@ -348,4 +355,19 @@ message RecordOdometerReadingsRequest {
 
 message RecordOdometerReadingsResponse {
   repeated OdometerReadingResult results = 1;  // one per request reading, in order
+}
+
+message GetCurrentDutyStatusRequest {
+  string company_id = 1;
+  repeated string driver_ids = 2;
+}
+
+message DriverDutyStatus {
+  string driver_id = 1;
+  string status = 2;
+  google.protobuf.Timestamp since = 3;
+}
+
+message GetCurrentDutyStatusResponse {
+  repeated DriverDutyStatus statuses = 1;
 }

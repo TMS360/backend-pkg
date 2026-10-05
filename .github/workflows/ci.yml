@@ -1,8 +1,8 @@
-# Go CI on the office runner (DEV-2365). The checks and the vet/unit jobs live in
-# TMS360/.github: .github/workflows/go-service-ci.yml — change them there, once.
-#
-# DEV-1613. backend-pkg has no goose migrations and no private module deps,
-# so those checks stay off. A missing script must not fail the gate.
+# DEV-1613. backend-pkg is a public repo, so it cannot call the private
+# reusable workflow in TMS360/.github. The unit job is inlined.
+# No private modules, so there is no G_TOKEN step.
+# No goose scripts, so there is no migration check.
+# gofmt stays with DEV-2409 (one file is already unformatted).
 name: CI
 
 on:
@@ -13,18 +13,23 @@ on:
 
 concurrency:
   group: ci-${{ github.ref }}
-  # Cancel superseded pull-request runs only; every push keeps its own run.
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-  ci:
-    uses: TMS360/.github/.github/workflows/go-service-ci.yml@main
-    secrets: inherit
-    with:
-      migration-review: false
-      migration-versions: false
-      require-g-token: false
-      # Default command skips any /tests/ tree. Here that tree is unit tests.
-      unit-test-command: "go test -count=1 ./..."
-      # One pre-existing file is not gofmt-clean. DEV-2409 owns that sweep.
-      gofmt: false
+  unit:
+    name: vet + unit tests
+    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: ${{ vars.CI_RUNNER == '' }}
+
+      - name: go vet
+        run: go vet ./...
+
+      - name: go test (unit)
+        run: go test -count=1 ./...

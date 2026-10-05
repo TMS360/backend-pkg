@@ -25,6 +25,6 @@ jobs:
       migration-versions: false
       require-g-token: false
       # Default command skips any /tests/ tree. Here that tree is unit tests.
-      unit-test-command: go test -count=1 ./...
+      unit-test-command: "go test -count=1 ./..."
       # One pre-existing file is not gofmt-clean. DEV-2409 owns that sweep.
       gofmt: false

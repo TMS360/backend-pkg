@@ -25,6 +25,7 @@ const (
 	FilesService_ListCompanyFiles_FullMethodName        = "/files.FilesService/ListCompanyFiles"
 	FilesService_UploadFile_FullMethodName              = "/files.FilesService/UploadFile"
 	FilesService_CheckDispatchCompliance_FullMethodName = "/files.FilesService/CheckDispatchCompliance"
+	FilesService_CheckCustomerCompliance_FullMethodName = "/files.FilesService/CheckCustomerCompliance"
 	FilesService_DeleteFile_FullMethodName              = "/files.FilesService/DeleteFile"
 )
 
@@ -57,6 +58,15 @@ type FilesServiceClient interface {
 	// not a blocker. Tenant scoping is enforced server-side via the actor in
 	// metadata, so callers cannot probe another tenant's assets.
 	CheckDispatchCompliance(ctx context.Context, in *CheckDispatchComplianceRequest, opts ...grpc.CallOption) (*CheckDispatchComplianceResponse, error)
+	// CheckCustomerCompliance answers "may a new load be taken for this customer?"
+	// (DEV-2727). customer_id is courier_customers.id — the customer card in the
+	// calling carrier's CRM. Only document types the tenant set to "Block new
+	// loads" (required + enforced for CUSTOMER) can block, and only when MISSING
+	// or EXPIRED past grace days. Separate from CheckDispatchCompliance on purpose:
+	// customer paperwork never blocks a trip dispatch. Tenant-scoped via the actor
+	// in metadata; another tenant's customer has no documents here, so it is
+	// never blocked by them and never sees them.
+	CheckCustomerCompliance(ctx context.Context, in *CheckCustomerComplianceRequest, opts ...grpc.CallOption) (*CheckCustomerComplianceResponse, error)
 	// DeleteFile removes the File metadata row and the underlying S3 object.
 	// Idempotent: deleting a missing id returns ok=false but no error so callers
 	// can call it best-effort during cache invalidation / re-export cleanup.
@@ -144,6 +154,16 @@ func (c *filesServiceClient) CheckDispatchCompliance(ctx context.Context, in *Ch
 	return out, nil
 }
 
+func (c *filesServiceClient) CheckCustomerCompliance(ctx context.Context, in *CheckCustomerComplianceRequest, opts ...grpc.CallOption) (*CheckCustomerComplianceResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CheckCustomerComplianceResponse)
+	err := c.cc.Invoke(ctx, FilesService_CheckCustomerCompliance_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *filesServiceClient) DeleteFile(ctx context.Context, in *DeleteFileRequest, opts ...grpc.CallOption) (*DeleteFileResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(DeleteFileResponse)
@@ -183,6 +203,15 @@ type FilesServiceServer interface {
 	// not a blocker. Tenant scoping is enforced server-side via the actor in
 	// metadata, so callers cannot probe another tenant's assets.
 	CheckDispatchCompliance(context.Context, *CheckDispatchComplianceRequest) (*CheckDispatchComplianceResponse, error)
+	// CheckCustomerCompliance answers "may a new load be taken for this customer?"
+	// (DEV-2727). customer_id is courier_customers.id — the customer card in the
+	// calling carrier's CRM. Only document types the tenant set to "Block new
+	// loads" (required + enforced for CUSTOMER) can block, and only when MISSING
+	// or EXPIRED past grace days. Separate from CheckDispatchCompliance on purpose:
+	// customer paperwork never blocks a trip dispatch. Tenant-scoped via the actor
+	// in metadata; another tenant's customer has no documents here, so it is
+	// never blocked by them and never sees them.
+	CheckCustomerCompliance(context.Context, *CheckCustomerComplianceRequest) (*CheckCustomerComplianceResponse, error)
 	// DeleteFile removes the File metadata row and the underlying S3 object.
 	// Idempotent: deleting a missing id returns ok=false but no error so callers
 	// can call it best-effort during cache invalidation / re-export cleanup.
@@ -215,6 +244,9 @@ func (UnimplementedFilesServiceServer) UploadFile(grpc.ClientStreamingServer[Upl
 }
 func (UnimplementedFilesServiceServer) CheckDispatchCompliance(context.Context, *CheckDispatchComplianceRequest) (*CheckDispatchComplianceResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method CheckDispatchCompliance not implemented")
+}
+func (UnimplementedFilesServiceServer) CheckCustomerCompliance(context.Context, *CheckCustomerComplianceRequest) (*CheckCustomerComplianceResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method CheckCustomerCompliance not implemented")
 }
 func (UnimplementedFilesServiceServer) DeleteFile(context.Context, *DeleteFileRequest) (*DeleteFileResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method DeleteFile not implemented")
@@ -330,6 +362,24 @@ func _FilesService_CheckDispatchCompliance_Handler(srv interface{}, ctx context.
 	return interceptor(ctx, in, info, handler)
 }
 
+func _FilesService_CheckCustomerCompliance_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CheckCustomerComplianceRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(FilesServiceServer).CheckCustomerCompliance(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: FilesService_CheckCustomerCompliance_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(FilesServiceServer).CheckCustomerCompliance(ctx, req.(*CheckCustomerComplianceRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _FilesService_DeleteFile_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(DeleteFileRequest)
 	if err := dec(in); err != nil {
@@ -370,6 +420,10 @@ var FilesService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "CheckDispatchCompliance",
 			Handler:    _FilesService_CheckDispatchCompliance_Handler,
+		},
+		{
+			MethodName: "CheckCustomerCompliance",
+			Handler:    _FilesService_CheckCustomerCompliance_Handler,
 		},
 		{
 			MethodName: "DeleteFile",

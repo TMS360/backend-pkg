@@ -38,6 +38,11 @@ func TestSystemDocTypeCode_IsValid_CoversAllConstants(t *testing.T) {
 		SystemDocDriverMVR,
 		SystemDocDriverRoadTest,
 		SystemDocDriverApplication,
+		SystemDocCustomerBrokerCarrierAgreement,
+		SystemDocCustomerCreditApplication,
+		SystemDocCustomerSuretyBond,
+		SystemDocCustomerW9,
+		SystemDocCustomerCertificateOfInsurance,
 		SystemDocDriverPreviousEmployment,
 	}
 	for _, c := range all {

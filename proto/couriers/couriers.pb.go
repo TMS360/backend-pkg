@@ -200,12 +200,18 @@ func (x *GetUsersByPermissionResponse) GetSource() ResolutionSource {
 type GetUsersByRolesRequest struct {
 	state     protoimpl.MessageState `protogen:"open.v1"`
 	CompanyId string                 `protobuf:"bytes,1,opt,name=company_id,json=companyId,proto3" json:"company_id,omitempty"` // tenant UUID (required)
-	// Role UUIDs (required, non-empty). Built-in and tenant-custom role ids are
-	// both accepted; a role id belonging to another tenant simply matches nobody,
-	// because membership is read through the requested company's users.
-	RoleIds       []string `protobuf:"bytes,2,rep,name=role_ids,json=roleIds,proto3" json:"role_ids,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	// Role UUIDs. Built-in and tenant-custom role ids are both accepted; a role
+	// id belonging to another tenant simply matches nobody, because membership is
+	// read through the requested company's users.
+	RoleIds []string `protobuf:"bytes,2,rep,name=role_ids,json=roleIds,proto3" json:"role_ids,omitempty"`
+	// Built-in role codes (roles.unique_name, e.g. "accounting"), resolved to the
+	// built-in role rows (company_id IS NULL) and unioned with role_ids
+	// (DEV-2727: customer document types default to accounting + sales without
+	// storing a role id). An unknown code matches nobody. At least one of
+	// role_ids / role_unique_names must be non-empty.
+	RoleUniqueNames []string `protobuf:"bytes,3,rep,name=role_unique_names,json=roleUniqueNames,proto3" json:"role_unique_names,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *GetUsersByRolesRequest) Reset() {
@@ -248,6 +254,13 @@ func (x *GetUsersByRolesRequest) GetCompanyId() string {
 func (x *GetUsersByRolesRequest) GetRoleIds() []string {
 	if x != nil {
 		return x.RoleIds
+	}
+	return nil
+}
+
+func (x *GetUsersByRolesRequest) GetRoleUniqueNames() []string {
+	if x != nil {
+		return x.RoleUniqueNames
 	}
 	return nil
 }
@@ -1287,11 +1300,12 @@ const file_couriers_couriers_proto_rawDesc = "" +
 	"\x11_document_type_id\"m\n" +
 	"\x1cGetUsersByPermissionResponse\x12\x19\n" +
 	"\buser_ids\x18\x01 \x03(\tR\auserIds\x122\n" +
-	"\x06source\x18\x02 \x01(\x0e2\x1a.couriers.ResolutionSourceR\x06source\"R\n" +
+	"\x06source\x18\x02 \x01(\x0e2\x1a.couriers.ResolutionSourceR\x06source\"~\n" +
 	"\x16GetUsersByRolesRequest\x12\x1d\n" +
 	"\n" +
 	"company_id\x18\x01 \x01(\tR\tcompanyId\x12\x19\n" +
-	"\brole_ids\x18\x02 \x03(\tR\aroleIds\"4\n" +
+	"\brole_ids\x18\x02 \x03(\tR\aroleIds\x12*\n" +
+	"\x11role_unique_names\x18\x03 \x03(\tR\x0froleUniqueNames\"4\n" +
 	"\x17GetUsersByRolesResponse\x12\x19\n" +
 	"\buser_ids\x18\x01 \x03(\tR\auserIds\"o\n" +
 	"\x18ListCompanyAdminsRequest\x12\x1d\n" +

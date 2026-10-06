@@ -48,6 +48,15 @@ const (
 	SystemDocDriverRoadTest           SystemDocTypeCode = "DRIVER_ROAD_TEST"
 	SystemDocDriverApplication        SystemDocTypeCode = "DRIVER_APPLICATION"
 	SystemDocDriverPreviousEmployment SystemDocTypeCode = "DRIVER_PREVIOUS_EMPLOYMENT"
+
+	// CUSTOMER (DEV-2727) — a customer's (broker's) paperwork, kept on the
+	// carrier's customer card. Agreement, credit application and W-9 never
+	// expire; the bond and the certificate of insurance do.
+	SystemDocCustomerBrokerCarrierAgreement SystemDocTypeCode = "CUSTOMER_BROKER_CARRIER_AGREEMENT"
+	SystemDocCustomerCreditApplication      SystemDocTypeCode = "CUSTOMER_CREDIT_APPLICATION"
+	SystemDocCustomerSuretyBond             SystemDocTypeCode = "CUSTOMER_SURETY_BOND"
+	SystemDocCustomerW9                     SystemDocTypeCode = "CUSTOMER_W9"
+	SystemDocCustomerCertificateOfInsurance SystemDocTypeCode = "CUSTOMER_CERTIFICATE_OF_INSURANCE"
 )
 
 func (c SystemDocTypeCode) String() string { return string(c) }
@@ -85,7 +94,12 @@ func (c SystemDocTypeCode) IsValid() bool {
 		SystemDocDriverMVR,
 		SystemDocDriverRoadTest,
 		SystemDocDriverApplication,
-		SystemDocDriverPreviousEmployment:
+		SystemDocDriverPreviousEmployment,
+		SystemDocCustomerBrokerCarrierAgreement,
+		SystemDocCustomerCreditApplication,
+		SystemDocCustomerSuretyBond,
+		SystemDocCustomerW9,
+		SystemDocCustomerCertificateOfInsurance:
 		return true
 	default:
 		return false

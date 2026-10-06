@@ -17,6 +17,28 @@ service CustomerService {
   // factoring details. Batched to support invoice batch PDF prints in a
   // single round trip.
   rpc GetCustomers(GetCustomersRequest) returns (GetCustomersResponse);
+
+  // ListCustomerStatuses returns the status (ACTIVE / INACTIVE / BLOCKED) of the
+  // customer cards of company_id (DEV-2727). With customer_ids empty it lists
+  // every customer of the company; otherwise only those ids, and an id of
+  // another company is simply absent from the answer. tms-files uses it to skip
+  // inactive customers in the compliance flag and to count the customers a
+  // "Block new loads" switch would block today.
+  rpc ListCustomerStatuses(ListCustomerStatusesRequest) returns (ListCustomerStatusesResponse);
+}
+
+message ListCustomerStatusesRequest {
+  string company_id = 1;            // tenant UUID (required)
+  repeated string customer_ids = 2; // courier_customers.id; empty = all
+}
+
+message CustomerStatus {
+  string id = 1;     // courier_customers.id
+  string status = 2; // enums.CompanyStatus
+}
+
+message ListCustomerStatusesResponse {
+  repeated CustomerStatus customers = 1;
 }
 
 message GetCustomersRequest {

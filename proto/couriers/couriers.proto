@@ -102,10 +102,16 @@ message GetUsersByPermissionResponse {
 
 message GetUsersByRolesRequest {
   string company_id      = 1; // tenant UUID (required)
-  // Role UUIDs (required, non-empty). Built-in and tenant-custom role ids are
-  // both accepted; a role id belonging to another tenant simply matches nobody,
-  // because membership is read through the requested company's users.
+  // Role UUIDs. Built-in and tenant-custom role ids are both accepted; a role
+  // id belonging to another tenant simply matches nobody, because membership is
+  // read through the requested company's users.
   repeated string role_ids = 2;
+  // Built-in role codes (roles.unique_name, e.g. "accounting"), resolved to the
+  // built-in role rows (company_id IS NULL) and unioned with role_ids
+  // (DEV-2727: customer document types default to accounting + sales without
+  // storing a role id). An unknown code matches nobody. At least one of
+  // role_ids / role_unique_names must be non-empty.
+  repeated string role_unique_names = 3;
 }
 
 message GetUsersByRolesResponse {

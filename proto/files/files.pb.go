@@ -1023,6 +1023,105 @@ func (x *CheckDispatchComplianceResponse) GetBlocking() []*BlockingDocument {
 	return nil
 }
 
+type CheckCustomerComplianceRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// courier_customers.id (required).
+	CustomerId    string `protobuf:"bytes,1,opt,name=customer_id,json=customerId,proto3" json:"customer_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CheckCustomerComplianceRequest) Reset() {
+	*x = CheckCustomerComplianceRequest{}
+	mi := &file_files_files_proto_msgTypes[17]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CheckCustomerComplianceRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CheckCustomerComplianceRequest) ProtoMessage() {}
+
+func (x *CheckCustomerComplianceRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_files_files_proto_msgTypes[17]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CheckCustomerComplianceRequest.ProtoReflect.Descriptor instead.
+func (*CheckCustomerComplianceRequest) Descriptor() ([]byte, []int) {
+	return file_files_files_proto_rawDescGZIP(), []int{17}
+}
+
+func (x *CheckCustomerComplianceRequest) GetCustomerId() string {
+	if x != nil {
+		return x.CustomerId
+	}
+	return ""
+}
+
+type CheckCustomerComplianceResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// True when at least one "Block new loads" document is missing or expired.
+	Blocked bool `protobuf:"varint,1,opt,name=blocked,proto3" json:"blocked,omitempty"`
+	// Every blocking document (entity_type CUSTOMER), ordered by type name.
+	Blocking      []*BlockingDocument `protobuf:"bytes,2,rep,name=blocking,proto3" json:"blocking,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CheckCustomerComplianceResponse) Reset() {
+	*x = CheckCustomerComplianceResponse{}
+	mi := &file_files_files_proto_msgTypes[18]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CheckCustomerComplianceResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CheckCustomerComplianceResponse) ProtoMessage() {}
+
+func (x *CheckCustomerComplianceResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_files_files_proto_msgTypes[18]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CheckCustomerComplianceResponse.ProtoReflect.Descriptor instead.
+func (*CheckCustomerComplianceResponse) Descriptor() ([]byte, []int) {
+	return file_files_files_proto_rawDescGZIP(), []int{18}
+}
+
+func (x *CheckCustomerComplianceResponse) GetBlocked() bool {
+	if x != nil {
+		return x.Blocked
+	}
+	return false
+}
+
+func (x *CheckCustomerComplianceResponse) GetBlocking() []*BlockingDocument {
+	if x != nil {
+		return x.Blocking
+	}
+	return nil
+}
+
 var File_files_files_proto protoreflect.FileDescriptor
 
 const file_files_files_proto_rawDesc = "" +
@@ -1097,7 +1196,13 @@ const file_files_files_proto_rawDesc = "" +
 	"expires_at\x18\x06 \x01(\tR\texpiresAt\"p\n" +
 	"\x1fCheckDispatchComplianceResponse\x12\x18\n" +
 	"\ablocked\x18\x01 \x01(\bR\ablocked\x123\n" +
-	"\bblocking\x18\x02 \x03(\v2\x17.files.BlockingDocumentR\bblocking2\x8b\x04\n" +
+	"\bblocking\x18\x02 \x03(\v2\x17.files.BlockingDocumentR\bblocking\"A\n" +
+	"\x1eCheckCustomerComplianceRequest\x12\x1f\n" +
+	"\vcustomer_id\x18\x01 \x01(\tR\n" +
+	"customerId\"p\n" +
+	"\x1fCheckCustomerComplianceResponse\x12\x18\n" +
+	"\ablocked\x18\x01 \x01(\bR\ablocked\x123\n" +
+	"\bblocking\x18\x02 \x03(\v2\x17.files.BlockingDocumentR\bblocking2\xf5\x04\n" +
 	"\fFilesService\x128\n" +
 	"\aGetFile\x12\x15.files.GetFileRequest\x1a\x16.files.GetFileResponse\x12;\n" +
 	"\bGetFiles\x12\x16.files.GetFilesRequest\x1a\x17.files.GetFilesResponse\x12=\n" +
@@ -1105,7 +1210,8 @@ const file_files_files_proto_rawDesc = "" +
 	"\x10ListCompanyFiles\x12\x1e.files.ListCompanyFilesRequest\x1a\x1f.files.ListCompanyFilesResponse\x12C\n" +
 	"\n" +
 	"UploadFile\x12\x18.files.UploadFileRequest\x1a\x19.files.UploadFileResponse(\x01\x12h\n" +
-	"\x17CheckDispatchCompliance\x12%.files.CheckDispatchComplianceRequest\x1a&.files.CheckDispatchComplianceResponse\x12A\n" +
+	"\x17CheckDispatchCompliance\x12%.files.CheckDispatchComplianceRequest\x1a&.files.CheckDispatchComplianceResponse\x12h\n" +
+	"\x17CheckCustomerCompliance\x12%.files.CheckCustomerComplianceRequest\x1a&.files.CheckCustomerComplianceResponse\x12A\n" +
 	"\n" +
 	"DeleteFile\x12\x18.files.DeleteFileRequest\x1a\x19.files.DeleteFileResponseB+Z)github.com/TMS360/backend-pkg/proto/filesb\x06proto3"
 
@@ -1121,7 +1227,7 @@ func file_files_files_proto_rawDescGZIP() []byte {
 	return file_files_files_proto_rawDescData
 }
 
-var file_files_files_proto_msgTypes = make([]protoimpl.MessageInfo, 18)
+var file_files_files_proto_msgTypes = make([]protoimpl.MessageInfo, 20)
 var file_files_files_proto_goTypes = []any{
 	(*GetFileRequest)(nil),                  // 0: files.GetFileRequest
 	(*GetFilesRequest)(nil),                 // 1: files.GetFilesRequest
@@ -1140,35 +1246,40 @@ var file_files_files_proto_goTypes = []any{
 	(*CheckDispatchComplianceRequest)(nil),  // 14: files.CheckDispatchComplianceRequest
 	(*BlockingDocument)(nil),                // 15: files.BlockingDocument
 	(*CheckDispatchComplianceResponse)(nil), // 16: files.CheckDispatchComplianceResponse
-	nil,                                     // 17: files.GetFilesResponse.FilesEntry
+	(*CheckCustomerComplianceRequest)(nil),  // 17: files.CheckCustomerComplianceRequest
+	(*CheckCustomerComplianceResponse)(nil), // 18: files.CheckCustomerComplianceResponse
+	nil,                                     // 19: files.GetFilesResponse.FilesEntry
 }
 var file_files_files_proto_depIdxs = []int32{
 	2,  // 0: files.GetFileResponse.file:type_name -> files.File
-	17, // 1: files.GetFilesResponse.files:type_name -> files.GetFilesResponse.FilesEntry
+	19, // 1: files.GetFilesResponse.files:type_name -> files.GetFilesResponse.FilesEntry
 	2,  // 2: files.ListCompanyFilesResponse.files:type_name -> files.File
 	10, // 3: files.UploadFileRequest.meta:type_name -> files.UploadFileMeta
 	2,  // 4: files.UploadFileResponse.file:type_name -> files.File
 	15, // 5: files.CheckDispatchComplianceResponse.blocking:type_name -> files.BlockingDocument
-	2,  // 6: files.GetFilesResponse.FilesEntry.value:type_name -> files.File
-	0,  // 7: files.FilesService.GetFile:input_type -> files.GetFileRequest
-	1,  // 8: files.FilesService.GetFiles:input_type -> files.GetFilesRequest
-	7,  // 9: files.FilesService.Download:input_type -> files.DownloadRequest
-	5,  // 10: files.FilesService.ListCompanyFiles:input_type -> files.ListCompanyFilesRequest
-	9,  // 11: files.FilesService.UploadFile:input_type -> files.UploadFileRequest
-	14, // 12: files.FilesService.CheckDispatchCompliance:input_type -> files.CheckDispatchComplianceRequest
-	12, // 13: files.FilesService.DeleteFile:input_type -> files.DeleteFileRequest
-	3,  // 14: files.FilesService.GetFile:output_type -> files.GetFileResponse
-	4,  // 15: files.FilesService.GetFiles:output_type -> files.GetFilesResponse
-	8,  // 16: files.FilesService.Download:output_type -> files.DownloadResponse
-	6,  // 17: files.FilesService.ListCompanyFiles:output_type -> files.ListCompanyFilesResponse
-	11, // 18: files.FilesService.UploadFile:output_type -> files.UploadFileResponse
-	16, // 19: files.FilesService.CheckDispatchCompliance:output_type -> files.CheckDispatchComplianceResponse
-	13, // 20: files.FilesService.DeleteFile:output_type -> files.DeleteFileResponse
-	14, // [14:21] is the sub-list for method output_type
-	7,  // [7:14] is the sub-list for method input_type
-	7,  // [7:7] is the sub-list for extension type_name
-	7,  // [7:7] is the sub-list for extension extendee
-	0,  // [0:7] is the sub-list for field type_name
+	15, // 6: files.CheckCustomerComplianceResponse.blocking:type_name -> files.BlockingDocument
+	2,  // 7: files.GetFilesResponse.FilesEntry.value:type_name -> files.File
+	0,  // 8: files.FilesService.GetFile:input_type -> files.GetFileRequest
+	1,  // 9: files.FilesService.GetFiles:input_type -> files.GetFilesRequest
+	7,  // 10: files.FilesService.Download:input_type -> files.DownloadRequest
+	5,  // 11: files.FilesService.ListCompanyFiles:input_type -> files.ListCompanyFilesRequest
+	9,  // 12: files.FilesService.UploadFile:input_type -> files.UploadFileRequest
+	14, // 13: files.FilesService.CheckDispatchCompliance:input_type -> files.CheckDispatchComplianceRequest
+	17, // 14: files.FilesService.CheckCustomerCompliance:input_type -> files.CheckCustomerComplianceRequest
+	12, // 15: files.FilesService.DeleteFile:input_type -> files.DeleteFileRequest
+	3,  // 16: files.FilesService.GetFile:output_type -> files.GetFileResponse
+	4,  // 17: files.FilesService.GetFiles:output_type -> files.GetFilesResponse
+	8,  // 18: files.FilesService.Download:output_type -> files.DownloadResponse
+	6,  // 19: files.FilesService.ListCompanyFiles:output_type -> files.ListCompanyFilesResponse
+	11, // 20: files.FilesService.UploadFile:output_type -> files.UploadFileResponse
+	16, // 21: files.FilesService.CheckDispatchCompliance:output_type -> files.CheckDispatchComplianceResponse
+	18, // 22: files.FilesService.CheckCustomerCompliance:output_type -> files.CheckCustomerComplianceResponse
+	13, // 23: files.FilesService.DeleteFile:output_type -> files.DeleteFileResponse
+	16, // [16:24] is the sub-list for method output_type
+	8,  // [8:16] is the sub-list for method input_type
+	8,  // [8:8] is the sub-list for extension type_name
+	8,  // [8:8] is the sub-list for extension extendee
+	0,  // [0:8] is the sub-list for field type_name
 }
 
 func init() { file_files_files_proto_init() }
@@ -1186,7 +1297,7 @@ func file_files_files_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_files_files_proto_rawDesc), len(file_files_files_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   18,
+			NumMessages:   20,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

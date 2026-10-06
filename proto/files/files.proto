@@ -34,6 +34,16 @@ service FilesService {
   // metadata, so callers cannot probe another tenant's assets.
   rpc CheckDispatchCompliance (CheckDispatchComplianceRequest) returns (CheckDispatchComplianceResponse);
 
+  // CheckCustomerCompliance answers "may a new load be taken for this customer?"
+  // (DEV-2727). customer_id is courier_customers.id — the customer card in the
+  // calling carrier's CRM. Only document types the tenant set to "Block new
+  // loads" (required + enforced for CUSTOMER) can block, and only when MISSING
+  // or EXPIRED past grace days. Separate from CheckDispatchCompliance on purpose:
+  // customer paperwork never blocks a trip dispatch. Tenant-scoped via the actor
+  // in metadata; another tenant's customer has no documents here, so it is
+  // never blocked by them and never sees them.
+  rpc CheckCustomerCompliance (CheckCustomerComplianceRequest) returns (CheckCustomerComplianceResponse);
+
   // DeleteFile removes the File metadata row and the underlying S3 object.
   // Idempotent: deleting a missing id returns ok=false but no error so callers
   // can call it best-effort during cache invalidation / re-export cleanup.
@@ -168,5 +178,21 @@ message CheckDispatchComplianceResponse {
   // True when at least one blocking document was found.
   bool blocked = 1;
   // Every blocking document, grouped per entity in a stable order.
+  repeated BlockingDocument blocking = 2;
+}
+
+// ---------------------------------------------------------------------------
+// DEV-2727 customer compliance check
+// ---------------------------------------------------------------------------
+
+message CheckCustomerComplianceRequest {
+  // courier_customers.id (required).
+  string customer_id = 1;
+}
+
+message CheckCustomerComplianceResponse {
+  // True when at least one "Block new loads" document is missing or expired.
+  bool blocked = 1;
+  // Every blocking document (entity_type CUSTOMER), ordered by type name.
   repeated BlockingDocument blocking = 2;
 }

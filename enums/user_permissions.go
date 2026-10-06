@@ -453,6 +453,15 @@ const (
 	// way, in Settings -> Roles.
 	PermComplianceDispatchOverride UserPermissionEnum = "compliance_dispatch_override"
 
+	// PermComplianceCustomerOverride gates creating a load for a customer whose
+	// required document (agreement, W-9, insurance) is missing or lapsed while the
+	// tenant set that document type to "Block new loads" (DEV-2723). The holder
+	// overrides ONE load, with a mandatory reason recorded forever; the next load
+	// for the same customer is refused again. FLAT for the same reason as
+	// PermComplianceDispatchOverride above. Held by default by admin and
+	// accounting (the desks that own the customer relationship).
+	PermComplianceCustomerOverride UserPermissionEnum = "compliance_customer_override"
+
 	// PermAssetOutOfServiceOverride gates sending a trip to the driver when the
 	// truck or trailer on it is OUT_OF_SERVICE (DEV-2254). Like its compliance
 	// sibling above it waives ONE dispatch, with a mandatory reason recorded in
@@ -835,6 +844,7 @@ var CustomPermissionCatalog = []CustomPermissionEntry{
 	{Code: string(PermAuditPlanExclusionEdit), Label: "Exclude a time range from the Dispatch KPI plan"},
 	{Code: string(PermComplianceDispatchOverride), Label: "Dispatch despite a blocking compliance document"},
 	{Code: string(PermAssetOutOfServiceOverride), Label: "Dispatch an out-of-service truck or trailer"},
+	{Code: string(PermComplianceCustomerOverride), Label: "Create a load despite a blocking customer document"},
 	{Code: string(PermTripDelete), Label: "Delete a trip from a load"},
 	{Code: string(PermInvoiceUnrecordPayment), Label: "Un-record a customer payment on an invoice"},
 	{Code: string(PermInvoiceRecordPayment), Label: "Record a customer payment on an invoice"},
@@ -1212,13 +1222,16 @@ func DefaultRolePermissions() map[UserRoleEnum][]string {
 		// The PM rule is that the company admin always holds every permission, so
 		// admin gets all three here. No other role is widened: a tenant hands mail
 		// to a manager or an accountant through a custom role or a user grant.
+		// compliance_customer_override (DEV-2723): booking a load for a customer
+		// missing a blocking document is a commercial-risk call, so admin and
+		// accounting. Dispatcher does NOT — the refusal exists for the dispatch desk.
 		// statement_review_resolve (DEV-2548): admin and accounting. Approving a
 		// pay review books money on a driver's statement; the old dotted gate was
 		// satisfied by the `accounting` module every office role holds, so a
 		// dispatcher could approve the difference their own miles edit created.
-		UserRoleAdmin:      withExtra(string(PermTripFinancialsEdit), string(PermTripReassignCommitted), string(PermFileDeleteAny), string(PermReportsRun), string(PermReportsManage), string(PermCallsView), string(PermCallsPlay), string(PermSmsView), string(PermSmsSend), string(PermShipmentBillingApprove), string(PermAuditPlanExclusionEdit), string(PermComplianceDispatchOverride), string(PermAssetOutOfServiceOverride), string(PermTripDelete), string(PermInvoiceUnrecordPayment), string(PermAuditLogView), string(PermGeneralLedgerView), string(PermJournalEntryManage), string(PermVendorBillApproveLevel1), string(PermVendorBillApproveLevel2), string(PermVendorBillApproveLevel3), string(PermVendorBillPaymentVoid), string(PermExpenseApprove), string(PermInvoiceRecordPayment), string(PermMailView), string(PermMailSend), string(PermMailEdit), string(PermStatementReviewResolve)),
+		UserRoleAdmin:      withExtra(string(PermTripFinancialsEdit), string(PermTripReassignCommitted), string(PermFileDeleteAny), string(PermReportsRun), string(PermReportsManage), string(PermCallsView), string(PermCallsPlay), string(PermSmsView), string(PermSmsSend), string(PermShipmentBillingApprove), string(PermAuditPlanExclusionEdit), string(PermComplianceDispatchOverride), string(PermAssetOutOfServiceOverride), string(PermTripDelete), string(PermInvoiceUnrecordPayment), string(PermAuditLogView), string(PermGeneralLedgerView), string(PermJournalEntryManage), string(PermVendorBillApproveLevel1), string(PermVendorBillApproveLevel2), string(PermVendorBillApproveLevel3), string(PermVendorBillPaymentVoid), string(PermExpenseApprove), string(PermInvoiceRecordPayment), string(PermMailView), string(PermMailSend), string(PermMailEdit), string(PermStatementReviewResolve), string(PermComplianceCustomerOverride)),
 		UserRoleManager:    withExtra(string(PermTripReassignCommitted), string(PermFileDeleteAny), string(PermCallsView), string(PermCallsPlay), string(PermSmsView), string(PermSmsSend), string(PermShipmentBillingApprove), string(PermAuditPlanExclusionEdit), string(PermComplianceDispatchOverride), string(PermAssetOutOfServiceOverride), string(PermTripDelete), string(PermAuditLogView), string(PermVendorBillApproveLevel1), string(PermVendorBillApproveLevel2), string(PermInvoiceRecordPayment)),
-		UserRoleAccounting: withExtra(string(PermTripFinancialsEdit), string(PermReportsRun), string(PermReportsManage), string(PermShipmentBillingApprove), string(PermGeneralLedgerView), string(PermJournalEntryManage), string(PermVendorBillApproveLevel1), string(PermExpenseApprove), string(PermInvoiceRecordPayment), string(PermStatementReviewResolve)),
+		UserRoleAccounting: withExtra(string(PermTripFinancialsEdit), string(PermReportsRun), string(PermReportsManage), string(PermShipmentBillingApprove), string(PermGeneralLedgerView), string(PermJournalEntryManage), string(PermVendorBillApproveLevel1), string(PermExpenseApprove), string(PermInvoiceRecordPayment), string(PermStatementReviewResolve), string(PermComplianceCustomerOverride)),
 		UserRoleFleet:      withExtra(),
 		UserRoleSafety:     withExtra(string(PermComplianceDispatchOverride)),
 		UserRoleHr:         withExtra(),

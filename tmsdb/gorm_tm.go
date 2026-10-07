@@ -168,7 +168,16 @@ func (m *GormTransactionManager) writeEvent(ctx context.Context, b *EventBuilder
 		return err
 	}
 
+	// Version 7 ids sort in the order they were created. The row id used to be
+	// a random v4 from Postgres, so the earliest row for an entity was a coin
+	// flip once a second event was written for it.
+	rowID, err := uuid.NewV7()
+	if err != nil {
+		return fmt.Errorf("outbox: id: %w", err)
+	}
+
 	event := &model.OutboxEvent{
+		ID:         rowID,
 		EntityID:   b.aggID,
 		EntityType: b.aggType,
 		EventType:  b.evtType,

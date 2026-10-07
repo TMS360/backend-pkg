@@ -62,6 +62,12 @@ service TeamsService {
   // The GraphQL query crewAssignmentsHistory serves the same rows to the office
   // UI from the same service method, so the two doors cannot disagree.
   rpc GetCrewAssignmentsHistory(GetCrewAssignmentsHistoryRequest) returns (GetCrewAssignmentsHistoryResponse);
+
+  // DEV-2524: the saved preferences of the given drivers (what each driver wants
+  // to avoid). One entry per requested driver, in request order; a driver with
+  // nothing saved comes back as an empty set, never an error. Preferences are
+  // hints for the caller — tms-teams never blocks anything on them.
+  rpc GetDriverPreferences(GetDriverPreferencesRequest) returns (GetDriverPreferencesResponse);
 }
 
 message DriverCrewFilter {
@@ -157,6 +163,58 @@ message DriverCrewInfo {
   string planning_note = 7;
   // driver_crews.status: ACTIVE / INACTIVE / ON_LEAVE (empty from older servers).
   string status = 8;
+  // DEV-2524: each driver's own preferences (one record per driver, not per crew —
+  // the two drivers of a team crew want different things). Unset from older
+  // servers; an empty set when the driver saved nothing.
+  DriverPreferences primary_driver_preferences = 9;
+  DriverPreferences secondary_driver_preferences = 10;
+}
+
+// DEV-2524: what a driver wants to avoid. Wishes, not abilities: never a block.
+message DriverPreferences {
+  string driver_id = 1;
+  // Number limits. Unset = no limit.
+  optional int32 min_trip_miles = 2;
+  optional int32 max_trip_miles = 3;
+  optional int32 max_driving_hours_per_day = 4;
+  optional int32 max_weight_lbs = 5;
+  optional int32 max_stops = 6;
+  optional int32 max_empty_miles_to_pickup = 7;
+  // Yes/no wishes. false = no preference.
+  bool no_hazmat = 8;
+  bool no_reefer = 9;
+  bool no_flatbed = 10;
+  bool no_high_value = 11;
+  bool no_border_crossing = 12;
+  bool avoid_toll_roads = 13;
+  bool avoid_interstates = 14;
+  bool no_night_driving = 15;
+  // 2-letter US state codes, upper case.
+  repeated string avoided_states = 16;
+  repeated AvoidedCity avoided_cities = 17;
+  // Customer ids; a deleted customer's id simply stays in the list.
+  repeated string avoided_customer_ids = 18;
+  repeated AvoidedMountainArea avoided_mountain_areas = 19;
+  string avoided_facilities = 20;
+  string notes = 21;
+}
+
+message AvoidedCity {
+  string city = 1;
+  string state = 2;
+}
+
+message AvoidedMountainArea {
+  string area_code = 1;
+  bool winter_only = 2;
+}
+
+message GetDriverPreferencesRequest {
+  repeated string driver_ids = 1;
+}
+
+message GetDriverPreferencesResponse {
+  repeated DriverPreferences data = 1;
 }
 
 message TrailerInfo {

@@ -35,6 +35,7 @@ const (
 	TeamsService_ResolveDriverIDs_FullMethodName              = "/teams.TeamsService/ResolveDriverIDs"
 	TeamsService_GetTeamWeeksForPayroll_FullMethodName        = "/teams.TeamsService/GetTeamWeeksForPayroll"
 	TeamsService_GetCrewAssignmentsHistory_FullMethodName     = "/teams.TeamsService/GetCrewAssignmentsHistory"
+	TeamsService_GetDriverPreferences_FullMethodName          = "/teams.TeamsService/GetDriverPreferences"
 )
 
 // TeamsServiceClient is the client API for TeamsService service.
@@ -83,6 +84,11 @@ type TeamsServiceClient interface {
 	// The GraphQL query crewAssignmentsHistory serves the same rows to the office
 	// UI from the same service method, so the two doors cannot disagree.
 	GetCrewAssignmentsHistory(ctx context.Context, in *GetCrewAssignmentsHistoryRequest, opts ...grpc.CallOption) (*GetCrewAssignmentsHistoryResponse, error)
+	// DEV-2524: the saved preferences of the given drivers (what each driver wants
+	// to avoid). One entry per requested driver, in request order; a driver with
+	// nothing saved comes back as an empty set, never an error. Preferences are
+	// hints for the caller — tms-teams never blocks anything on them.
+	GetDriverPreferences(ctx context.Context, in *GetDriverPreferencesRequest, opts ...grpc.CallOption) (*GetDriverPreferencesResponse, error)
 }
 
 type teamsServiceClient struct {
@@ -223,6 +229,16 @@ func (c *teamsServiceClient) GetCrewAssignmentsHistory(ctx context.Context, in *
 	return out, nil
 }
 
+func (c *teamsServiceClient) GetDriverPreferences(ctx context.Context, in *GetDriverPreferencesRequest, opts ...grpc.CallOption) (*GetDriverPreferencesResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetDriverPreferencesResponse)
+	err := c.cc.Invoke(ctx, TeamsService_GetDriverPreferences_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // TeamsServiceServer is the server API for TeamsService service.
 // All implementations must embed UnimplementedTeamsServiceServer
 // for forward compatibility.
@@ -269,6 +285,11 @@ type TeamsServiceServer interface {
 	// The GraphQL query crewAssignmentsHistory serves the same rows to the office
 	// UI from the same service method, so the two doors cannot disagree.
 	GetCrewAssignmentsHistory(context.Context, *GetCrewAssignmentsHistoryRequest) (*GetCrewAssignmentsHistoryResponse, error)
+	// DEV-2524: the saved preferences of the given drivers (what each driver wants
+	// to avoid). One entry per requested driver, in request order; a driver with
+	// nothing saved comes back as an empty set, never an error. Preferences are
+	// hints for the caller — tms-teams never blocks anything on them.
+	GetDriverPreferences(context.Context, *GetDriverPreferencesRequest) (*GetDriverPreferencesResponse, error)
 	mustEmbedUnimplementedTeamsServiceServer()
 }
 
@@ -317,6 +338,9 @@ func (UnimplementedTeamsServiceServer) GetTeamWeeksForPayroll(context.Context, *
 }
 func (UnimplementedTeamsServiceServer) GetCrewAssignmentsHistory(context.Context, *GetCrewAssignmentsHistoryRequest) (*GetCrewAssignmentsHistoryResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetCrewAssignmentsHistory not implemented")
+}
+func (UnimplementedTeamsServiceServer) GetDriverPreferences(context.Context, *GetDriverPreferencesRequest) (*GetDriverPreferencesResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetDriverPreferences not implemented")
 }
 func (UnimplementedTeamsServiceServer) mustEmbedUnimplementedTeamsServiceServer() {}
 func (UnimplementedTeamsServiceServer) testEmbeddedByValue()                      {}
@@ -573,6 +597,24 @@ func _TeamsService_GetCrewAssignmentsHistory_Handler(srv interface{}, ctx contex
 	return interceptor(ctx, in, info, handler)
 }
 
+func _TeamsService_GetDriverPreferences_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetDriverPreferencesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(TeamsServiceServer).GetDriverPreferences(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: TeamsService_GetDriverPreferences_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(TeamsServiceServer).GetDriverPreferences(ctx, req.(*GetDriverPreferencesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // TeamsService_ServiceDesc is the grpc.ServiceDesc for TeamsService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -631,6 +673,10 @@ var TeamsService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetCrewAssignmentsHistory",
 			Handler:    _TeamsService_GetCrewAssignmentsHistory_Handler,
+		},
+		{
+			MethodName: "GetDriverPreferences",
+			Handler:    _TeamsService_GetDriverPreferences_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

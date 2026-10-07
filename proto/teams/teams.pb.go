@@ -879,9 +879,14 @@ type DriverCrewInfo struct {
 	// A hint for the caller to show, never a rule: tms-teams does not act on it.
 	PlanningNote string `protobuf:"bytes,7,opt,name=planning_note,json=planningNote,proto3" json:"planning_note,omitempty"`
 	// driver_crews.status: ACTIVE / INACTIVE / ON_LEAVE (empty from older servers).
-	Status        string `protobuf:"bytes,8,opt,name=status,proto3" json:"status,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Status string `protobuf:"bytes,8,opt,name=status,proto3" json:"status,omitempty"`
+	// DEV-2524: each driver's own preferences (one record per driver, not per crew —
+	// the two drivers of a team crew want different things). Unset from older
+	// servers; an empty set when the driver saved nothing.
+	PrimaryDriverPreferences   *DriverPreferences `protobuf:"bytes,9,opt,name=primary_driver_preferences,json=primaryDriverPreferences,proto3" json:"primary_driver_preferences,omitempty"`
+	SecondaryDriverPreferences *DriverPreferences `protobuf:"bytes,10,opt,name=secondary_driver_preferences,json=secondaryDriverPreferences,proto3" json:"secondary_driver_preferences,omitempty"`
+	unknownFields              protoimpl.UnknownFields
+	sizeCache                  protoimpl.SizeCache
 }
 
 func (x *DriverCrewInfo) Reset() {
@@ -970,6 +975,421 @@ func (x *DriverCrewInfo) GetStatus() string {
 	return ""
 }
 
+func (x *DriverCrewInfo) GetPrimaryDriverPreferences() *DriverPreferences {
+	if x != nil {
+		return x.PrimaryDriverPreferences
+	}
+	return nil
+}
+
+func (x *DriverCrewInfo) GetSecondaryDriverPreferences() *DriverPreferences {
+	if x != nil {
+		return x.SecondaryDriverPreferences
+	}
+	return nil
+}
+
+// DEV-2524: what a driver wants to avoid. Wishes, not abilities: never a block.
+type DriverPreferences struct {
+	state    protoimpl.MessageState `protogen:"open.v1"`
+	DriverId string                 `protobuf:"bytes,1,opt,name=driver_id,json=driverId,proto3" json:"driver_id,omitempty"`
+	// Number limits. Unset = no limit.
+	MinTripMiles          *int32 `protobuf:"varint,2,opt,name=min_trip_miles,json=minTripMiles,proto3,oneof" json:"min_trip_miles,omitempty"`
+	MaxTripMiles          *int32 `protobuf:"varint,3,opt,name=max_trip_miles,json=maxTripMiles,proto3,oneof" json:"max_trip_miles,omitempty"`
+	MaxDrivingHoursPerDay *int32 `protobuf:"varint,4,opt,name=max_driving_hours_per_day,json=maxDrivingHoursPerDay,proto3,oneof" json:"max_driving_hours_per_day,omitempty"`
+	MaxWeightLbs          *int32 `protobuf:"varint,5,opt,name=max_weight_lbs,json=maxWeightLbs,proto3,oneof" json:"max_weight_lbs,omitempty"`
+	MaxStops              *int32 `protobuf:"varint,6,opt,name=max_stops,json=maxStops,proto3,oneof" json:"max_stops,omitempty"`
+	MaxEmptyMilesToPickup *int32 `protobuf:"varint,7,opt,name=max_empty_miles_to_pickup,json=maxEmptyMilesToPickup,proto3,oneof" json:"max_empty_miles_to_pickup,omitempty"`
+	// Yes/no wishes. false = no preference.
+	NoHazmat         bool `protobuf:"varint,8,opt,name=no_hazmat,json=noHazmat,proto3" json:"no_hazmat,omitempty"`
+	NoReefer         bool `protobuf:"varint,9,opt,name=no_reefer,json=noReefer,proto3" json:"no_reefer,omitempty"`
+	NoFlatbed        bool `protobuf:"varint,10,opt,name=no_flatbed,json=noFlatbed,proto3" json:"no_flatbed,omitempty"`
+	NoHighValue      bool `protobuf:"varint,11,opt,name=no_high_value,json=noHighValue,proto3" json:"no_high_value,omitempty"`
+	NoBorderCrossing bool `protobuf:"varint,12,opt,name=no_border_crossing,json=noBorderCrossing,proto3" json:"no_border_crossing,omitempty"`
+	AvoidTollRoads   bool `protobuf:"varint,13,opt,name=avoid_toll_roads,json=avoidTollRoads,proto3" json:"avoid_toll_roads,omitempty"`
+	AvoidInterstates bool `protobuf:"varint,14,opt,name=avoid_interstates,json=avoidInterstates,proto3" json:"avoid_interstates,omitempty"`
+	NoNightDriving   bool `protobuf:"varint,15,opt,name=no_night_driving,json=noNightDriving,proto3" json:"no_night_driving,omitempty"`
+	// 2-letter US state codes, upper case.
+	AvoidedStates []string       `protobuf:"bytes,16,rep,name=avoided_states,json=avoidedStates,proto3" json:"avoided_states,omitempty"`
+	AvoidedCities []*AvoidedCity `protobuf:"bytes,17,rep,name=avoided_cities,json=avoidedCities,proto3" json:"avoided_cities,omitempty"`
+	// Customer ids; a deleted customer's id simply stays in the list.
+	AvoidedCustomerIds   []string               `protobuf:"bytes,18,rep,name=avoided_customer_ids,json=avoidedCustomerIds,proto3" json:"avoided_customer_ids,omitempty"`
+	AvoidedMountainAreas []*AvoidedMountainArea `protobuf:"bytes,19,rep,name=avoided_mountain_areas,json=avoidedMountainAreas,proto3" json:"avoided_mountain_areas,omitempty"`
+	AvoidedFacilities    string                 `protobuf:"bytes,20,opt,name=avoided_facilities,json=avoidedFacilities,proto3" json:"avoided_facilities,omitempty"`
+	Notes                string                 `protobuf:"bytes,21,opt,name=notes,proto3" json:"notes,omitempty"`
+	unknownFields        protoimpl.UnknownFields
+	sizeCache            protoimpl.SizeCache
+}
+
+func (x *DriverPreferences) Reset() {
+	*x = DriverPreferences{}
+	mi := &file_teams_teams_proto_msgTypes[14]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DriverPreferences) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DriverPreferences) ProtoMessage() {}
+
+func (x *DriverPreferences) ProtoReflect() protoreflect.Message {
+	mi := &file_teams_teams_proto_msgTypes[14]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DriverPreferences.ProtoReflect.Descriptor instead.
+func (*DriverPreferences) Descriptor() ([]byte, []int) {
+	return file_teams_teams_proto_rawDescGZIP(), []int{14}
+}
+
+func (x *DriverPreferences) GetDriverId() string {
+	if x != nil {
+		return x.DriverId
+	}
+	return ""
+}
+
+func (x *DriverPreferences) GetMinTripMiles() int32 {
+	if x != nil && x.MinTripMiles != nil {
+		return *x.MinTripMiles
+	}
+	return 0
+}
+
+func (x *DriverPreferences) GetMaxTripMiles() int32 {
+	if x != nil && x.MaxTripMiles != nil {
+		return *x.MaxTripMiles
+	}
+	return 0
+}
+
+func (x *DriverPreferences) GetMaxDrivingHoursPerDay() int32 {
+	if x != nil && x.MaxDrivingHoursPerDay != nil {
+		return *x.MaxDrivingHoursPerDay
+	}
+	return 0
+}
+
+func (x *DriverPreferences) GetMaxWeightLbs() int32 {
+	if x != nil && x.MaxWeightLbs != nil {
+		return *x.MaxWeightLbs
+	}
+	return 0
+}
+
+func (x *DriverPreferences) GetMaxStops() int32 {
+	if x != nil && x.MaxStops != nil {
+		return *x.MaxStops
+	}
+	return 0
+}
+
+func (x *DriverPreferences) GetMaxEmptyMilesToPickup() int32 {
+	if x != nil && x.MaxEmptyMilesToPickup != nil {
+		return *x.MaxEmptyMilesToPickup
+	}
+	return 0
+}
+
+func (x *DriverPreferences) GetNoHazmat() bool {
+	if x != nil {
+		return x.NoHazmat
+	}
+	return false
+}
+
+func (x *DriverPreferences) GetNoReefer() bool {
+	if x != nil {
+		return x.NoReefer
+	}
+	return false
+}
+
+func (x *DriverPreferences) GetNoFlatbed() bool {
+	if x != nil {
+		return x.NoFlatbed
+	}
+	return false
+}
+
+func (x *DriverPreferences) GetNoHighValue() bool {
+	if x != nil {
+		return x.NoHighValue
+	}
+	return false
+}
+
+func (x *DriverPreferences) GetNoBorderCrossing() bool {
+	if x != nil {
+		return x.NoBorderCrossing
+	}
+	return false
+}
+
+func (x *DriverPreferences) GetAvoidTollRoads() bool {
+	if x != nil {
+		return x.AvoidTollRoads
+	}
+	return false
+}
+
+func (x *DriverPreferences) GetAvoidInterstates() bool {
+	if x != nil {
+		return x.AvoidInterstates
+	}
+	return false
+}
+
+func (x *DriverPreferences) GetNoNightDriving() bool {
+	if x != nil {
+		return x.NoNightDriving
+	}
+	return false
+}
+
+func (x *DriverPreferences) GetAvoidedStates() []string {
+	if x != nil {
+		return x.AvoidedStates
+	}
+	return nil
+}
+
+func (x *DriverPreferences) GetAvoidedCities() []*AvoidedCity {
+	if x != nil {
+		return x.AvoidedCities
+	}
+	return nil
+}
+
+func (x *DriverPreferences) GetAvoidedCustomerIds() []string {
+	if x != nil {
+		return x.AvoidedCustomerIds
+	}
+	return nil
+}
+
+func (x *DriverPreferences) GetAvoidedMountainAreas() []*AvoidedMountainArea {
+	if x != nil {
+		return x.AvoidedMountainAreas
+	}
+	return nil
+}
+
+func (x *DriverPreferences) GetAvoidedFacilities() string {
+	if x != nil {
+		return x.AvoidedFacilities
+	}
+	return ""
+}
+
+func (x *DriverPreferences) GetNotes() string {
+	if x != nil {
+		return x.Notes
+	}
+	return ""
+}
+
+type AvoidedCity struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	City          string                 `protobuf:"bytes,1,opt,name=city,proto3" json:"city,omitempty"`
+	State         string                 `protobuf:"bytes,2,opt,name=state,proto3" json:"state,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AvoidedCity) Reset() {
+	*x = AvoidedCity{}
+	mi := &file_teams_teams_proto_msgTypes[15]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AvoidedCity) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AvoidedCity) ProtoMessage() {}
+
+func (x *AvoidedCity) ProtoReflect() protoreflect.Message {
+	mi := &file_teams_teams_proto_msgTypes[15]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AvoidedCity.ProtoReflect.Descriptor instead.
+func (*AvoidedCity) Descriptor() ([]byte, []int) {
+	return file_teams_teams_proto_rawDescGZIP(), []int{15}
+}
+
+func (x *AvoidedCity) GetCity() string {
+	if x != nil {
+		return x.City
+	}
+	return ""
+}
+
+func (x *AvoidedCity) GetState() string {
+	if x != nil {
+		return x.State
+	}
+	return ""
+}
+
+type AvoidedMountainArea struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	AreaCode      string                 `protobuf:"bytes,1,opt,name=area_code,json=areaCode,proto3" json:"area_code,omitempty"`
+	WinterOnly    bool                   `protobuf:"varint,2,opt,name=winter_only,json=winterOnly,proto3" json:"winter_only,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AvoidedMountainArea) Reset() {
+	*x = AvoidedMountainArea{}
+	mi := &file_teams_teams_proto_msgTypes[16]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AvoidedMountainArea) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AvoidedMountainArea) ProtoMessage() {}
+
+func (x *AvoidedMountainArea) ProtoReflect() protoreflect.Message {
+	mi := &file_teams_teams_proto_msgTypes[16]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AvoidedMountainArea.ProtoReflect.Descriptor instead.
+func (*AvoidedMountainArea) Descriptor() ([]byte, []int) {
+	return file_teams_teams_proto_rawDescGZIP(), []int{16}
+}
+
+func (x *AvoidedMountainArea) GetAreaCode() string {
+	if x != nil {
+		return x.AreaCode
+	}
+	return ""
+}
+
+func (x *AvoidedMountainArea) GetWinterOnly() bool {
+	if x != nil {
+		return x.WinterOnly
+	}
+	return false
+}
+
+type GetDriverPreferencesRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	DriverIds     []string               `protobuf:"bytes,1,rep,name=driver_ids,json=driverIds,proto3" json:"driver_ids,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetDriverPreferencesRequest) Reset() {
+	*x = GetDriverPreferencesRequest{}
+	mi := &file_teams_teams_proto_msgTypes[17]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetDriverPreferencesRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetDriverPreferencesRequest) ProtoMessage() {}
+
+func (x *GetDriverPreferencesRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_teams_teams_proto_msgTypes[17]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetDriverPreferencesRequest.ProtoReflect.Descriptor instead.
+func (*GetDriverPreferencesRequest) Descriptor() ([]byte, []int) {
+	return file_teams_teams_proto_rawDescGZIP(), []int{17}
+}
+
+func (x *GetDriverPreferencesRequest) GetDriverIds() []string {
+	if x != nil {
+		return x.DriverIds
+	}
+	return nil
+}
+
+type GetDriverPreferencesResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Data          []*DriverPreferences   `protobuf:"bytes,1,rep,name=data,proto3" json:"data,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetDriverPreferencesResponse) Reset() {
+	*x = GetDriverPreferencesResponse{}
+	mi := &file_teams_teams_proto_msgTypes[18]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetDriverPreferencesResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetDriverPreferencesResponse) ProtoMessage() {}
+
+func (x *GetDriverPreferencesResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_teams_teams_proto_msgTypes[18]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetDriverPreferencesResponse.ProtoReflect.Descriptor instead.
+func (*GetDriverPreferencesResponse) Descriptor() ([]byte, []int) {
+	return file_teams_teams_proto_rawDescGZIP(), []int{18}
+}
+
+func (x *GetDriverPreferencesResponse) GetData() []*DriverPreferences {
+	if x != nil {
+		return x.Data
+	}
+	return nil
+}
+
 type TrailerInfo struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	TruckId       string                 `protobuf:"bytes,1,opt,name=truck_id,json=truckId,proto3" json:"truck_id,omitempty"`
@@ -979,7 +1399,7 @@ type TrailerInfo struct {
 
 func (x *TrailerInfo) Reset() {
 	*x = TrailerInfo{}
-	mi := &file_teams_teams_proto_msgTypes[14]
+	mi := &file_teams_teams_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -991,7 +1411,7 @@ func (x *TrailerInfo) String() string {
 func (*TrailerInfo) ProtoMessage() {}
 
 func (x *TrailerInfo) ProtoReflect() protoreflect.Message {
-	mi := &file_teams_teams_proto_msgTypes[14]
+	mi := &file_teams_teams_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1004,7 +1424,7 @@ func (x *TrailerInfo) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TrailerInfo.ProtoReflect.Descriptor instead.
 func (*TrailerInfo) Descriptor() ([]byte, []int) {
-	return file_teams_teams_proto_rawDescGZIP(), []int{14}
+	return file_teams_teams_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *TrailerInfo) GetTruckId() string {
@@ -1033,7 +1453,7 @@ type IsDriverCrewAvailableRequest struct {
 
 func (x *IsDriverCrewAvailableRequest) Reset() {
 	*x = IsDriverCrewAvailableRequest{}
-	mi := &file_teams_teams_proto_msgTypes[15]
+	mi := &file_teams_teams_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1045,7 +1465,7 @@ func (x *IsDriverCrewAvailableRequest) String() string {
 func (*IsDriverCrewAvailableRequest) ProtoMessage() {}
 
 func (x *IsDriverCrewAvailableRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_teams_teams_proto_msgTypes[15]
+	mi := &file_teams_teams_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1058,7 +1478,7 @@ func (x *IsDriverCrewAvailableRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use IsDriverCrewAvailableRequest.ProtoReflect.Descriptor instead.
 func (*IsDriverCrewAvailableRequest) Descriptor() ([]byte, []int) {
-	return file_teams_teams_proto_rawDescGZIP(), []int{15}
+	return file_teams_teams_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *IsDriverCrewAvailableRequest) GetDriverCrewId() string {
@@ -1110,7 +1530,7 @@ type IsDriverCrewAvailableResponse struct {
 
 func (x *IsDriverCrewAvailableResponse) Reset() {
 	*x = IsDriverCrewAvailableResponse{}
-	mi := &file_teams_teams_proto_msgTypes[16]
+	mi := &file_teams_teams_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1122,7 +1542,7 @@ func (x *IsDriverCrewAvailableResponse) String() string {
 func (*IsDriverCrewAvailableResponse) ProtoMessage() {}
 
 func (x *IsDriverCrewAvailableResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_teams_teams_proto_msgTypes[16]
+	mi := &file_teams_teams_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1135,7 +1555,7 @@ func (x *IsDriverCrewAvailableResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use IsDriverCrewAvailableResponse.ProtoReflect.Descriptor instead.
 func (*IsDriverCrewAvailableResponse) Descriptor() ([]byte, []int) {
-	return file_teams_teams_proto_rawDescGZIP(), []int{16}
+	return file_teams_teams_proto_rawDescGZIP(), []int{21}
 }
 
 func (x *IsDriverCrewAvailableResponse) GetAvailable() bool {
@@ -1182,7 +1602,7 @@ type GetActiveCrewByDriverRequest struct {
 
 func (x *GetActiveCrewByDriverRequest) Reset() {
 	*x = GetActiveCrewByDriverRequest{}
-	mi := &file_teams_teams_proto_msgTypes[17]
+	mi := &file_teams_teams_proto_msgTypes[22]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1194,7 +1614,7 @@ func (x *GetActiveCrewByDriverRequest) String() string {
 func (*GetActiveCrewByDriverRequest) ProtoMessage() {}
 
 func (x *GetActiveCrewByDriverRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_teams_teams_proto_msgTypes[17]
+	mi := &file_teams_teams_proto_msgTypes[22]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1207,7 +1627,7 @@ func (x *GetActiveCrewByDriverRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetActiveCrewByDriverRequest.ProtoReflect.Descriptor instead.
 func (*GetActiveCrewByDriverRequest) Descriptor() ([]byte, []int) {
-	return file_teams_teams_proto_rawDescGZIP(), []int{17}
+	return file_teams_teams_proto_rawDescGZIP(), []int{22}
 }
 
 func (x *GetActiveCrewByDriverRequest) GetDriverId() string {
@@ -1233,7 +1653,7 @@ type GetActiveCrewByDriverResponse struct {
 
 func (x *GetActiveCrewByDriverResponse) Reset() {
 	*x = GetActiveCrewByDriverResponse{}
-	mi := &file_teams_teams_proto_msgTypes[18]
+	mi := &file_teams_teams_proto_msgTypes[23]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1245,7 +1665,7 @@ func (x *GetActiveCrewByDriverResponse) String() string {
 func (*GetActiveCrewByDriverResponse) ProtoMessage() {}
 
 func (x *GetActiveCrewByDriverResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_teams_teams_proto_msgTypes[18]
+	mi := &file_teams_teams_proto_msgTypes[23]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1258,7 +1678,7 @@ func (x *GetActiveCrewByDriverResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetActiveCrewByDriverResponse.ProtoReflect.Descriptor instead.
 func (*GetActiveCrewByDriverResponse) Descriptor() ([]byte, []int) {
-	return file_teams_teams_proto_rawDescGZIP(), []int{18}
+	return file_teams_teams_proto_rawDescGZIP(), []int{23}
 }
 
 func (x *GetActiveCrewByDriverResponse) GetCrewId() string {
@@ -1311,7 +1731,7 @@ type GetTeamWeeksForPayrollRequest struct {
 
 func (x *GetTeamWeeksForPayrollRequest) Reset() {
 	*x = GetTeamWeeksForPayrollRequest{}
-	mi := &file_teams_teams_proto_msgTypes[19]
+	mi := &file_teams_teams_proto_msgTypes[24]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1323,7 +1743,7 @@ func (x *GetTeamWeeksForPayrollRequest) String() string {
 func (*GetTeamWeeksForPayrollRequest) ProtoMessage() {}
 
 func (x *GetTeamWeeksForPayrollRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_teams_teams_proto_msgTypes[19]
+	mi := &file_teams_teams_proto_msgTypes[24]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1336,7 +1756,7 @@ func (x *GetTeamWeeksForPayrollRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetTeamWeeksForPayrollRequest.ProtoReflect.Descriptor instead.
 func (*GetTeamWeeksForPayrollRequest) Descriptor() ([]byte, []int) {
-	return file_teams_teams_proto_rawDescGZIP(), []int{19}
+	return file_teams_teams_proto_rawDescGZIP(), []int{24}
 }
 
 func (x *GetTeamWeeksForPayrollRequest) GetCompanyId() string {
@@ -1404,7 +1824,7 @@ type TeamWeekPayroll struct {
 
 func (x *TeamWeekPayroll) Reset() {
 	*x = TeamWeekPayroll{}
-	mi := &file_teams_teams_proto_msgTypes[20]
+	mi := &file_teams_teams_proto_msgTypes[25]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1416,7 +1836,7 @@ func (x *TeamWeekPayroll) String() string {
 func (*TeamWeekPayroll) ProtoMessage() {}
 
 func (x *TeamWeekPayroll) ProtoReflect() protoreflect.Message {
-	mi := &file_teams_teams_proto_msgTypes[20]
+	mi := &file_teams_teams_proto_msgTypes[25]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1429,7 +1849,7 @@ func (x *TeamWeekPayroll) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TeamWeekPayroll.ProtoReflect.Descriptor instead.
 func (*TeamWeekPayroll) Descriptor() ([]byte, []int) {
-	return file_teams_teams_proto_rawDescGZIP(), []int{20}
+	return file_teams_teams_proto_rawDescGZIP(), []int{25}
 }
 
 func (x *TeamWeekPayroll) GetTeamId() string {
@@ -1532,7 +1952,7 @@ type GetTeamWeeksForPayrollResponse struct {
 
 func (x *GetTeamWeeksForPayrollResponse) Reset() {
 	*x = GetTeamWeeksForPayrollResponse{}
-	mi := &file_teams_teams_proto_msgTypes[21]
+	mi := &file_teams_teams_proto_msgTypes[26]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1544,7 +1964,7 @@ func (x *GetTeamWeeksForPayrollResponse) String() string {
 func (*GetTeamWeeksForPayrollResponse) ProtoMessage() {}
 
 func (x *GetTeamWeeksForPayrollResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_teams_teams_proto_msgTypes[21]
+	mi := &file_teams_teams_proto_msgTypes[26]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1557,7 +1977,7 @@ func (x *GetTeamWeeksForPayrollResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetTeamWeeksForPayrollResponse.ProtoReflect.Descriptor instead.
 func (*GetTeamWeeksForPayrollResponse) Descriptor() ([]byte, []int) {
-	return file_teams_teams_proto_rawDescGZIP(), []int{21}
+	return file_teams_teams_proto_rawDescGZIP(), []int{26}
 }
 
 func (x *GetTeamWeeksForPayrollResponse) GetData() []*TeamWeekPayroll {
@@ -1583,7 +2003,7 @@ type GetCrewAssignmentsHistoryRequest struct {
 
 func (x *GetCrewAssignmentsHistoryRequest) Reset() {
 	*x = GetCrewAssignmentsHistoryRequest{}
-	mi := &file_teams_teams_proto_msgTypes[22]
+	mi := &file_teams_teams_proto_msgTypes[27]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1595,7 +2015,7 @@ func (x *GetCrewAssignmentsHistoryRequest) String() string {
 func (*GetCrewAssignmentsHistoryRequest) ProtoMessage() {}
 
 func (x *GetCrewAssignmentsHistoryRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_teams_teams_proto_msgTypes[22]
+	mi := &file_teams_teams_proto_msgTypes[27]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1608,7 +2028,7 @@ func (x *GetCrewAssignmentsHistoryRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetCrewAssignmentsHistoryRequest.ProtoReflect.Descriptor instead.
 func (*GetCrewAssignmentsHistoryRequest) Descriptor() ([]byte, []int) {
-	return file_teams_teams_proto_rawDescGZIP(), []int{22}
+	return file_teams_teams_proto_rawDescGZIP(), []int{27}
 }
 
 func (x *GetCrewAssignmentsHistoryRequest) GetCompanyId() string {
@@ -1664,7 +2084,7 @@ type CrewAssignmentHistoryRow struct {
 
 func (x *CrewAssignmentHistoryRow) Reset() {
 	*x = CrewAssignmentHistoryRow{}
-	mi := &file_teams_teams_proto_msgTypes[23]
+	mi := &file_teams_teams_proto_msgTypes[28]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1676,7 +2096,7 @@ func (x *CrewAssignmentHistoryRow) String() string {
 func (*CrewAssignmentHistoryRow) ProtoMessage() {}
 
 func (x *CrewAssignmentHistoryRow) ProtoReflect() protoreflect.Message {
-	mi := &file_teams_teams_proto_msgTypes[23]
+	mi := &file_teams_teams_proto_msgTypes[28]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1689,7 +2109,7 @@ func (x *CrewAssignmentHistoryRow) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CrewAssignmentHistoryRow.ProtoReflect.Descriptor instead.
 func (*CrewAssignmentHistoryRow) Descriptor() ([]byte, []int) {
-	return file_teams_teams_proto_rawDescGZIP(), []int{23}
+	return file_teams_teams_proto_rawDescGZIP(), []int{28}
 }
 
 func (x *CrewAssignmentHistoryRow) GetCrewId() string {
@@ -1736,7 +2156,7 @@ type GetCrewAssignmentsHistoryResponse struct {
 
 func (x *GetCrewAssignmentsHistoryResponse) Reset() {
 	*x = GetCrewAssignmentsHistoryResponse{}
-	mi := &file_teams_teams_proto_msgTypes[24]
+	mi := &file_teams_teams_proto_msgTypes[29]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1748,7 +2168,7 @@ func (x *GetCrewAssignmentsHistoryResponse) String() string {
 func (*GetCrewAssignmentsHistoryResponse) ProtoMessage() {}
 
 func (x *GetCrewAssignmentsHistoryResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_teams_teams_proto_msgTypes[24]
+	mi := &file_teams_teams_proto_msgTypes[29]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1761,7 +2181,7 @@ func (x *GetCrewAssignmentsHistoryResponse) ProtoReflect() protoreflect.Message 
 
 // Deprecated: Use GetCrewAssignmentsHistoryResponse.ProtoReflect.Descriptor instead.
 func (*GetCrewAssignmentsHistoryResponse) Descriptor() ([]byte, []int) {
-	return file_teams_teams_proto_rawDescGZIP(), []int{24}
+	return file_teams_teams_proto_rawDescGZIP(), []int{29}
 }
 
 func (x *GetCrewAssignmentsHistoryResponse) GetData() []*CrewAssignmentHistoryRow {
@@ -1839,7 +2259,7 @@ const file_teams_teams_proto_rawDesc = "" +
 	"\vtrailer_ids\x18\x02 \x03(\tR\n" +
 	"trailerIds\"R\n" +
 	"%GetCurrentDriversByTrailerIdsResponse\x12)\n" +
-	"\x04data\x18\x01 \x03(\v2\x15.teams.DriverCrewInfoR\x04data\"\xa2\x02\n" +
+	"\x04data\x18\x01 \x03(\v2\x15.teams.DriverCrewInfoR\x04data\"\xd6\x03\n" +
 	"\x0eDriverCrewInfo\x12$\n" +
 	"\x0edriver_crew_id\x18\x01 \x01(\tR\fdriverCrewId\x12*\n" +
 	"\x11primary_driver_id\x18\x02 \x01(\tR\x0fprimaryDriverId\x12.\n" +
@@ -1849,7 +2269,53 @@ const file_teams_teams_proto_rawDesc = "" +
 	"trailer_id\x18\x05 \x01(\tR\ttrailerId\x12\x17\n" +
 	"\aplan_id\x18\x06 \x01(\tR\x06planId\x12#\n" +
 	"\rplanning_note\x18\a \x01(\tR\fplanningNote\x12\x16\n" +
-	"\x06status\x18\b \x01(\tR\x06status\"(\n" +
+	"\x06status\x18\b \x01(\tR\x06status\x12V\n" +
+	"\x1aprimary_driver_preferences\x18\t \x01(\v2\x18.teams.DriverPreferencesR\x18primaryDriverPreferences\x12Z\n" +
+	"\x1csecondary_driver_preferences\x18\n" +
+	" \x01(\v2\x18.teams.DriverPreferencesR\x1asecondaryDriverPreferences\"\xab\b\n" +
+	"\x11DriverPreferences\x12\x1b\n" +
+	"\tdriver_id\x18\x01 \x01(\tR\bdriverId\x12)\n" +
+	"\x0emin_trip_miles\x18\x02 \x01(\x05H\x00R\fminTripMiles\x88\x01\x01\x12)\n" +
+	"\x0emax_trip_miles\x18\x03 \x01(\x05H\x01R\fmaxTripMiles\x88\x01\x01\x12=\n" +
+	"\x19max_driving_hours_per_day\x18\x04 \x01(\x05H\x02R\x15maxDrivingHoursPerDay\x88\x01\x01\x12)\n" +
+	"\x0emax_weight_lbs\x18\x05 \x01(\x05H\x03R\fmaxWeightLbs\x88\x01\x01\x12 \n" +
+	"\tmax_stops\x18\x06 \x01(\x05H\x04R\bmaxStops\x88\x01\x01\x12=\n" +
+	"\x19max_empty_miles_to_pickup\x18\a \x01(\x05H\x05R\x15maxEmptyMilesToPickup\x88\x01\x01\x12\x1b\n" +
+	"\tno_hazmat\x18\b \x01(\bR\bnoHazmat\x12\x1b\n" +
+	"\tno_reefer\x18\t \x01(\bR\bnoReefer\x12\x1d\n" +
+	"\n" +
+	"no_flatbed\x18\n" +
+	" \x01(\bR\tnoFlatbed\x12\"\n" +
+	"\rno_high_value\x18\v \x01(\bR\vnoHighValue\x12,\n" +
+	"\x12no_border_crossing\x18\f \x01(\bR\x10noBorderCrossing\x12(\n" +
+	"\x10avoid_toll_roads\x18\r \x01(\bR\x0eavoidTollRoads\x12+\n" +
+	"\x11avoid_interstates\x18\x0e \x01(\bR\x10avoidInterstates\x12(\n" +
+	"\x10no_night_driving\x18\x0f \x01(\bR\x0enoNightDriving\x12%\n" +
+	"\x0eavoided_states\x18\x10 \x03(\tR\ravoidedStates\x129\n" +
+	"\x0eavoided_cities\x18\x11 \x03(\v2\x12.teams.AvoidedCityR\ravoidedCities\x120\n" +
+	"\x14avoided_customer_ids\x18\x12 \x03(\tR\x12avoidedCustomerIds\x12P\n" +
+	"\x16avoided_mountain_areas\x18\x13 \x03(\v2\x1a.teams.AvoidedMountainAreaR\x14avoidedMountainAreas\x12-\n" +
+	"\x12avoided_facilities\x18\x14 \x01(\tR\x11avoidedFacilities\x12\x14\n" +
+	"\x05notes\x18\x15 \x01(\tR\x05notesB\x11\n" +
+	"\x0f_min_trip_milesB\x11\n" +
+	"\x0f_max_trip_milesB\x1c\n" +
+	"\x1a_max_driving_hours_per_dayB\x11\n" +
+	"\x0f_max_weight_lbsB\f\n" +
+	"\n" +
+	"_max_stopsB\x1c\n" +
+	"\x1a_max_empty_miles_to_pickup\"7\n" +
+	"\vAvoidedCity\x12\x12\n" +
+	"\x04city\x18\x01 \x01(\tR\x04city\x12\x14\n" +
+	"\x05state\x18\x02 \x01(\tR\x05state\"S\n" +
+	"\x13AvoidedMountainArea\x12\x1b\n" +
+	"\tarea_code\x18\x01 \x01(\tR\bareaCode\x12\x1f\n" +
+	"\vwinter_only\x18\x02 \x01(\bR\n" +
+	"winterOnly\"<\n" +
+	"\x1bGetDriverPreferencesRequest\x12\x1d\n" +
+	"\n" +
+	"driver_ids\x18\x01 \x03(\tR\tdriverIds\"L\n" +
+	"\x1cGetDriverPreferencesResponse\x12,\n" +
+	"\x04data\x18\x01 \x03(\v2\x18.teams.DriverPreferencesR\x04data\"(\n" +
 	"\vTrailerInfo\x12\x19\n" +
 	"\btruck_id\x18\x01 \x01(\tR\atruckId\"\xd8\x01\n" +
 	"\x1cIsDriverCrewAvailableRequest\x12$\n" +
@@ -1923,7 +2389,8 @@ const file_teams_teams_proto_rawDesc = "" +
 	"\rCrewAssetType\x12\x1f\n" +
 	"\x1bCREW_ASSET_TYPE_UNSPECIFIED\x10\x00\x12\x19\n" +
 	"\x15CREW_ASSET_TYPE_TRUCK\x10\x01\x12\x1b\n" +
-	"\x17CREW_ASSET_TYPE_TRAILER\x10\x022\xab\t\n" +
+	"\x17CREW_ASSET_TYPE_TRAILER\x10\x022\x8c\n" +
+	"\n" +
 	"\fTeamsService\x12J\n" +
 	"\rGetDriverCrew\x12\x1b.teams.GetDriverCrewRequest\x1a\x1c.teams.GetDriverCrewResponse\x12h\n" +
 	"\x1cGetDriverCrewWithDispatchers\x12\x1b.teams.GetDriverCrewRequest\x1a+.teams.GetDriverCrewWithDispatchersResponse\x12P\n" +
@@ -1937,7 +2404,8 @@ const file_teams_teams_proto_rawDesc = "" +
 	"\x11ResolveTrailerIDs\x12\x14.teams.TrailerFilter\x1a\x14.filters.IDsResponse\x12=\n" +
 	"\x10ResolveDriverIDs\x12\x13.teams.DriverFilter\x1a\x14.filters.IDsResponse\x12e\n" +
 	"\x16GetTeamWeeksForPayroll\x12$.teams.GetTeamWeeksForPayrollRequest\x1a%.teams.GetTeamWeeksForPayrollResponse\x12n\n" +
-	"\x19GetCrewAssignmentsHistory\x12'.teams.GetCrewAssignmentsHistoryRequest\x1a(.teams.GetCrewAssignmentsHistoryResponseB+Z)github.com/TMS360/backend-pkg/proto/teamsb\x06proto3"
+	"\x19GetCrewAssignmentsHistory\x12'.teams.GetCrewAssignmentsHistoryRequest\x1a(.teams.GetCrewAssignmentsHistoryResponse\x12_\n" +
+	"\x14GetDriverPreferences\x12\".teams.GetDriverPreferencesRequest\x1a#.teams.GetDriverPreferencesResponseB+Z)github.com/TMS360/backend-pkg/proto/teamsb\x06proto3"
 
 var (
 	file_teams_teams_proto_rawDescOnce sync.Once
@@ -1952,7 +2420,7 @@ func file_teams_teams_proto_rawDescGZIP() []byte {
 }
 
 var file_teams_teams_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_teams_teams_proto_msgTypes = make([]protoimpl.MessageInfo, 25)
+var file_teams_teams_proto_msgTypes = make([]protoimpl.MessageInfo, 30)
 var file_teams_teams_proto_goTypes = []any{
 	(CrewAssetType)(0),                            // 0: teams.CrewAssetType
 	(*DriverCrewFilter)(nil),                      // 1: teams.DriverCrewFilter
@@ -1969,85 +2437,97 @@ var file_teams_teams_proto_goTypes = []any{
 	(*GetCurrentDriversByTrailerIdsRequest)(nil),  // 12: teams.GetCurrentDriversByTrailerIdsRequest
 	(*GetCurrentDriversByTrailerIdsResponse)(nil), // 13: teams.GetCurrentDriversByTrailerIdsResponse
 	(*DriverCrewInfo)(nil),                        // 14: teams.DriverCrewInfo
-	(*TrailerInfo)(nil),                           // 15: teams.TrailerInfo
-	(*IsDriverCrewAvailableRequest)(nil),          // 16: teams.IsDriverCrewAvailableRequest
-	(*IsDriverCrewAvailableResponse)(nil),         // 17: teams.IsDriverCrewAvailableResponse
-	(*GetActiveCrewByDriverRequest)(nil),          // 18: teams.GetActiveCrewByDriverRequest
-	(*GetActiveCrewByDriverResponse)(nil),         // 19: teams.GetActiveCrewByDriverResponse
-	(*GetTeamWeeksForPayrollRequest)(nil),         // 20: teams.GetTeamWeeksForPayrollRequest
-	(*TeamWeekPayroll)(nil),                       // 21: teams.TeamWeekPayroll
-	(*GetTeamWeeksForPayrollResponse)(nil),        // 22: teams.GetTeamWeeksForPayrollResponse
-	(*GetCrewAssignmentsHistoryRequest)(nil),      // 23: teams.GetCrewAssignmentsHistoryRequest
-	(*CrewAssignmentHistoryRow)(nil),              // 24: teams.CrewAssignmentHistoryRow
-	(*GetCrewAssignmentsHistoryResponse)(nil),     // 25: teams.GetCrewAssignmentsHistoryResponse
-	(*filters.IDFilter)(nil),                      // 26: filters.IDFilter
-	(*filters.StringFilter)(nil),                  // 27: filters.StringFilter
-	(*filters.IntFilter)(nil),                     // 28: filters.IntFilter
-	(*timestamppb.Timestamp)(nil),                 // 29: google.protobuf.Timestamp
-	(*filters.IDsResponse)(nil),                   // 30: filters.IDsResponse
+	(*DriverPreferences)(nil),                     // 15: teams.DriverPreferences
+	(*AvoidedCity)(nil),                           // 16: teams.AvoidedCity
+	(*AvoidedMountainArea)(nil),                   // 17: teams.AvoidedMountainArea
+	(*GetDriverPreferencesRequest)(nil),           // 18: teams.GetDriverPreferencesRequest
+	(*GetDriverPreferencesResponse)(nil),          // 19: teams.GetDriverPreferencesResponse
+	(*TrailerInfo)(nil),                           // 20: teams.TrailerInfo
+	(*IsDriverCrewAvailableRequest)(nil),          // 21: teams.IsDriverCrewAvailableRequest
+	(*IsDriverCrewAvailableResponse)(nil),         // 22: teams.IsDriverCrewAvailableResponse
+	(*GetActiveCrewByDriverRequest)(nil),          // 23: teams.GetActiveCrewByDriverRequest
+	(*GetActiveCrewByDriverResponse)(nil),         // 24: teams.GetActiveCrewByDriverResponse
+	(*GetTeamWeeksForPayrollRequest)(nil),         // 25: teams.GetTeamWeeksForPayrollRequest
+	(*TeamWeekPayroll)(nil),                       // 26: teams.TeamWeekPayroll
+	(*GetTeamWeeksForPayrollResponse)(nil),        // 27: teams.GetTeamWeeksForPayrollResponse
+	(*GetCrewAssignmentsHistoryRequest)(nil),      // 28: teams.GetCrewAssignmentsHistoryRequest
+	(*CrewAssignmentHistoryRow)(nil),              // 29: teams.CrewAssignmentHistoryRow
+	(*GetCrewAssignmentsHistoryResponse)(nil),     // 30: teams.GetCrewAssignmentsHistoryResponse
+	(*filters.IDFilter)(nil),                      // 31: filters.IDFilter
+	(*filters.StringFilter)(nil),                  // 32: filters.StringFilter
+	(*filters.IntFilter)(nil),                     // 33: filters.IntFilter
+	(*timestamppb.Timestamp)(nil),                 // 34: google.protobuf.Timestamp
+	(*filters.IDsResponse)(nil),                   // 35: filters.IDsResponse
 }
 var file_teams_teams_proto_depIdxs = []int32{
-	26, // 0: teams.DriverCrewFilter.primary_driver_id:type_name -> filters.IDFilter
-	26, // 1: teams.DriverCrewFilter.truck_id:type_name -> filters.IDFilter
-	26, // 2: teams.DriverCrewFilter.trailer_id:type_name -> filters.IDFilter
-	27, // 3: teams.TruckFilter.number:type_name -> filters.StringFilter
-	27, // 4: teams.TruckFilter.vin:type_name -> filters.StringFilter
-	27, // 5: teams.TruckFilter.make:type_name -> filters.StringFilter
-	27, // 6: teams.TruckFilter.model:type_name -> filters.StringFilter
-	27, // 7: teams.TruckFilter.status:type_name -> filters.StringFilter
-	28, // 8: teams.TruckFilter.year:type_name -> filters.IntFilter
-	27, // 9: teams.TrailerFilter.number:type_name -> filters.StringFilter
-	27, // 10: teams.TrailerFilter.vin:type_name -> filters.StringFilter
-	27, // 11: teams.TrailerFilter.make:type_name -> filters.StringFilter
-	27, // 12: teams.TrailerFilter.model:type_name -> filters.StringFilter
-	27, // 13: teams.TrailerFilter.status:type_name -> filters.StringFilter
-	27, // 14: teams.TrailerFilter.trailer_type:type_name -> filters.StringFilter
-	27, // 15: teams.DriverFilter.first_name:type_name -> filters.StringFilter
-	27, // 16: teams.DriverFilter.last_name:type_name -> filters.StringFilter
-	27, // 17: teams.DriverFilter.email:type_name -> filters.StringFilter
-	27, // 18: teams.DriverFilter.phone:type_name -> filters.StringFilter
-	27, // 19: teams.DriverFilter.status:type_name -> filters.StringFilter
-	27, // 20: teams.DriverFilter.license_number:type_name -> filters.StringFilter
+	31, // 0: teams.DriverCrewFilter.primary_driver_id:type_name -> filters.IDFilter
+	31, // 1: teams.DriverCrewFilter.truck_id:type_name -> filters.IDFilter
+	31, // 2: teams.DriverCrewFilter.trailer_id:type_name -> filters.IDFilter
+	32, // 3: teams.TruckFilter.number:type_name -> filters.StringFilter
+	32, // 4: teams.TruckFilter.vin:type_name -> filters.StringFilter
+	32, // 5: teams.TruckFilter.make:type_name -> filters.StringFilter
+	32, // 6: teams.TruckFilter.model:type_name -> filters.StringFilter
+	32, // 7: teams.TruckFilter.status:type_name -> filters.StringFilter
+	33, // 8: teams.TruckFilter.year:type_name -> filters.IntFilter
+	32, // 9: teams.TrailerFilter.number:type_name -> filters.StringFilter
+	32, // 10: teams.TrailerFilter.vin:type_name -> filters.StringFilter
+	32, // 11: teams.TrailerFilter.make:type_name -> filters.StringFilter
+	32, // 12: teams.TrailerFilter.model:type_name -> filters.StringFilter
+	32, // 13: teams.TrailerFilter.status:type_name -> filters.StringFilter
+	32, // 14: teams.TrailerFilter.trailer_type:type_name -> filters.StringFilter
+	32, // 15: teams.DriverFilter.first_name:type_name -> filters.StringFilter
+	32, // 16: teams.DriverFilter.last_name:type_name -> filters.StringFilter
+	32, // 17: teams.DriverFilter.email:type_name -> filters.StringFilter
+	32, // 18: teams.DriverFilter.phone:type_name -> filters.StringFilter
+	32, // 19: teams.DriverFilter.status:type_name -> filters.StringFilter
+	32, // 20: teams.DriverFilter.license_number:type_name -> filters.StringFilter
 	14, // 21: teams.GetDriverCrewResponse.data:type_name -> teams.DriverCrewInfo
 	14, // 22: teams.GetDriverCrewWithDispatchersResponse.data:type_name -> teams.DriverCrewInfo
-	29, // 23: teams.GetBusyVehiclesRequest.from:type_name -> google.protobuf.Timestamp
-	29, // 24: teams.GetBusyVehiclesRequest.to:type_name -> google.protobuf.Timestamp
+	34, // 23: teams.GetBusyVehiclesRequest.from:type_name -> google.protobuf.Timestamp
+	34, // 24: teams.GetBusyVehiclesRequest.to:type_name -> google.protobuf.Timestamp
 	14, // 25: teams.GetCurrentDriversByTruckIdsResponse.data:type_name -> teams.DriverCrewInfo
 	14, // 26: teams.GetCurrentDriversByTrailerIdsResponse.data:type_name -> teams.DriverCrewInfo
-	21, // 27: teams.GetTeamWeeksForPayrollResponse.data:type_name -> teams.TeamWeekPayroll
-	0,  // 28: teams.GetCrewAssignmentsHistoryRequest.asset_type:type_name -> teams.CrewAssetType
-	24, // 29: teams.GetCrewAssignmentsHistoryResponse.data:type_name -> teams.CrewAssignmentHistoryRow
-	5,  // 30: teams.TeamsService.GetDriverCrew:input_type -> teams.GetDriverCrewRequest
-	5,  // 31: teams.TeamsService.GetDriverCrewWithDispatchers:input_type -> teams.GetDriverCrewRequest
-	8,  // 32: teams.TeamsService.GetBusyVehicles:input_type -> teams.GetBusyVehiclesRequest
-	10, // 33: teams.TeamsService.GetCurrentDriversByTruckIds:input_type -> teams.GetCurrentDriversByTruckIdsRequest
-	12, // 34: teams.TeamsService.GetCurrentDriversByTrailerIds:input_type -> teams.GetCurrentDriversByTrailerIdsRequest
-	18, // 35: teams.TeamsService.GetActiveCrewByDriver:input_type -> teams.GetActiveCrewByDriverRequest
-	16, // 36: teams.TeamsService.IsDriverCrewAvailable:input_type -> teams.IsDriverCrewAvailableRequest
-	1,  // 37: teams.TeamsService.ResolveDriverCrewIDs:input_type -> teams.DriverCrewFilter
-	2,  // 38: teams.TeamsService.ResolveTruckIDs:input_type -> teams.TruckFilter
-	3,  // 39: teams.TeamsService.ResolveTrailerIDs:input_type -> teams.TrailerFilter
-	4,  // 40: teams.TeamsService.ResolveDriverIDs:input_type -> teams.DriverFilter
-	20, // 41: teams.TeamsService.GetTeamWeeksForPayroll:input_type -> teams.GetTeamWeeksForPayrollRequest
-	23, // 42: teams.TeamsService.GetCrewAssignmentsHistory:input_type -> teams.GetCrewAssignmentsHistoryRequest
-	6,  // 43: teams.TeamsService.GetDriverCrew:output_type -> teams.GetDriverCrewResponse
-	7,  // 44: teams.TeamsService.GetDriverCrewWithDispatchers:output_type -> teams.GetDriverCrewWithDispatchersResponse
-	9,  // 45: teams.TeamsService.GetBusyVehicles:output_type -> teams.GetBusyVehiclesResponse
-	11, // 46: teams.TeamsService.GetCurrentDriversByTruckIds:output_type -> teams.GetCurrentDriversByTruckIdsResponse
-	13, // 47: teams.TeamsService.GetCurrentDriversByTrailerIds:output_type -> teams.GetCurrentDriversByTrailerIdsResponse
-	19, // 48: teams.TeamsService.GetActiveCrewByDriver:output_type -> teams.GetActiveCrewByDriverResponse
-	17, // 49: teams.TeamsService.IsDriverCrewAvailable:output_type -> teams.IsDriverCrewAvailableResponse
-	30, // 50: teams.TeamsService.ResolveDriverCrewIDs:output_type -> filters.IDsResponse
-	30, // 51: teams.TeamsService.ResolveTruckIDs:output_type -> filters.IDsResponse
-	30, // 52: teams.TeamsService.ResolveTrailerIDs:output_type -> filters.IDsResponse
-	30, // 53: teams.TeamsService.ResolveDriverIDs:output_type -> filters.IDsResponse
-	22, // 54: teams.TeamsService.GetTeamWeeksForPayroll:output_type -> teams.GetTeamWeeksForPayrollResponse
-	25, // 55: teams.TeamsService.GetCrewAssignmentsHistory:output_type -> teams.GetCrewAssignmentsHistoryResponse
-	43, // [43:56] is the sub-list for method output_type
-	30, // [30:43] is the sub-list for method input_type
-	30, // [30:30] is the sub-list for extension type_name
-	30, // [30:30] is the sub-list for extension extendee
-	0,  // [0:30] is the sub-list for field type_name
+	15, // 27: teams.DriverCrewInfo.primary_driver_preferences:type_name -> teams.DriverPreferences
+	15, // 28: teams.DriverCrewInfo.secondary_driver_preferences:type_name -> teams.DriverPreferences
+	16, // 29: teams.DriverPreferences.avoided_cities:type_name -> teams.AvoidedCity
+	17, // 30: teams.DriverPreferences.avoided_mountain_areas:type_name -> teams.AvoidedMountainArea
+	15, // 31: teams.GetDriverPreferencesResponse.data:type_name -> teams.DriverPreferences
+	26, // 32: teams.GetTeamWeeksForPayrollResponse.data:type_name -> teams.TeamWeekPayroll
+	0,  // 33: teams.GetCrewAssignmentsHistoryRequest.asset_type:type_name -> teams.CrewAssetType
+	29, // 34: teams.GetCrewAssignmentsHistoryResponse.data:type_name -> teams.CrewAssignmentHistoryRow
+	5,  // 35: teams.TeamsService.GetDriverCrew:input_type -> teams.GetDriverCrewRequest
+	5,  // 36: teams.TeamsService.GetDriverCrewWithDispatchers:input_type -> teams.GetDriverCrewRequest
+	8,  // 37: teams.TeamsService.GetBusyVehicles:input_type -> teams.GetBusyVehiclesRequest
+	10, // 38: teams.TeamsService.GetCurrentDriversByTruckIds:input_type -> teams.GetCurrentDriversByTruckIdsRequest
+	12, // 39: teams.TeamsService.GetCurrentDriversByTrailerIds:input_type -> teams.GetCurrentDriversByTrailerIdsRequest
+	23, // 40: teams.TeamsService.GetActiveCrewByDriver:input_type -> teams.GetActiveCrewByDriverRequest
+	21, // 41: teams.TeamsService.IsDriverCrewAvailable:input_type -> teams.IsDriverCrewAvailableRequest
+	1,  // 42: teams.TeamsService.ResolveDriverCrewIDs:input_type -> teams.DriverCrewFilter
+	2,  // 43: teams.TeamsService.ResolveTruckIDs:input_type -> teams.TruckFilter
+	3,  // 44: teams.TeamsService.ResolveTrailerIDs:input_type -> teams.TrailerFilter
+	4,  // 45: teams.TeamsService.ResolveDriverIDs:input_type -> teams.DriverFilter
+	25, // 46: teams.TeamsService.GetTeamWeeksForPayroll:input_type -> teams.GetTeamWeeksForPayrollRequest
+	28, // 47: teams.TeamsService.GetCrewAssignmentsHistory:input_type -> teams.GetCrewAssignmentsHistoryRequest
+	18, // 48: teams.TeamsService.GetDriverPreferences:input_type -> teams.GetDriverPreferencesRequest
+	6,  // 49: teams.TeamsService.GetDriverCrew:output_type -> teams.GetDriverCrewResponse
+	7,  // 50: teams.TeamsService.GetDriverCrewWithDispatchers:output_type -> teams.GetDriverCrewWithDispatchersResponse
+	9,  // 51: teams.TeamsService.GetBusyVehicles:output_type -> teams.GetBusyVehiclesResponse
+	11, // 52: teams.TeamsService.GetCurrentDriversByTruckIds:output_type -> teams.GetCurrentDriversByTruckIdsResponse
+	13, // 53: teams.TeamsService.GetCurrentDriversByTrailerIds:output_type -> teams.GetCurrentDriversByTrailerIdsResponse
+	24, // 54: teams.TeamsService.GetActiveCrewByDriver:output_type -> teams.GetActiveCrewByDriverResponse
+	22, // 55: teams.TeamsService.IsDriverCrewAvailable:output_type -> teams.IsDriverCrewAvailableResponse
+	35, // 56: teams.TeamsService.ResolveDriverCrewIDs:output_type -> filters.IDsResponse
+	35, // 57: teams.TeamsService.ResolveTruckIDs:output_type -> filters.IDsResponse
+	35, // 58: teams.TeamsService.ResolveTrailerIDs:output_type -> filters.IDsResponse
+	35, // 59: teams.TeamsService.ResolveDriverIDs:output_type -> filters.IDsResponse
+	27, // 60: teams.TeamsService.GetTeamWeeksForPayroll:output_type -> teams.GetTeamWeeksForPayrollResponse
+	30, // 61: teams.TeamsService.GetCrewAssignmentsHistory:output_type -> teams.GetCrewAssignmentsHistoryResponse
+	19, // 62: teams.TeamsService.GetDriverPreferences:output_type -> teams.GetDriverPreferencesResponse
+	49, // [49:63] is the sub-list for method output_type
+	35, // [35:49] is the sub-list for method input_type
+	35, // [35:35] is the sub-list for extension type_name
+	35, // [35:35] is the sub-list for extension extendee
+	0,  // [0:35] is the sub-list for field type_name
 }
 
 func init() { file_teams_teams_proto_init() }
@@ -2059,14 +2539,15 @@ func file_teams_teams_proto_init() {
 	file_teams_teams_proto_msgTypes[1].OneofWrappers = []any{}
 	file_teams_teams_proto_msgTypes[2].OneofWrappers = []any{}
 	file_teams_teams_proto_msgTypes[3].OneofWrappers = []any{}
-	file_teams_teams_proto_msgTypes[15].OneofWrappers = []any{}
+	file_teams_teams_proto_msgTypes[14].OneofWrappers = []any{}
+	file_teams_teams_proto_msgTypes[20].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_teams_teams_proto_rawDesc), len(file_teams_teams_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   25,
+			NumMessages:   30,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

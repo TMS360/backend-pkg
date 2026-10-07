@@ -64,6 +64,7 @@ const (
 	LoadsService_RecordAssetOdometer_FullMethodName            = "/loads.LoadsService/RecordAssetOdometer"
 	LoadsService_SetAssetStatus_FullMethodName                 = "/loads.LoadsService/SetAssetStatus"
 	LoadsService_GetAssetTripMiles_FullMethodName              = "/loads.LoadsService/GetAssetTripMiles"
+	LoadsService_GetAssetComplianceFacts_FullMethodName        = "/loads.LoadsService/GetAssetComplianceFacts"
 )
 
 // LoadsServiceClient is the client API for LoadsService service.
@@ -318,6 +319,17 @@ type LoadsServiceClient interface {
 	// truck no telematics feed reaches, or whose feed has gone quiet (BL-7 §7.5).
 	// The caller adds this to the last service record's odometer.
 	GetAssetTripMiles(ctx context.Context, in *GetAssetTripMilesRequest, opts ...grpc.CallOption) (*GetAssetTripMilesResponse, error)
+	// ── Compliance facts by id (used by backend-files, DEV-2565) ──────────────
+	// Answers "is this asset retired, and is this truck leased" for a whole page
+	// of one asset class in one call. The compliance flag is None for a retired
+	// asset and Not applicable for a leased truck (the lessor keeps its papers),
+	// and backend-files holds neither fact.
+	//
+	// Ids that belong to another tenant or do not exist are ABSENT from the map —
+	// absence is "unknown", and the caller judges such an id on its documents
+	// alone. company_id is passed explicitly (no AuthServerInterceptor), same
+	// contract as GetTrailerOwnershipByIDs / ListActiveTruckIDs.
+	GetAssetComplianceFacts(ctx context.Context, in *GetAssetComplianceFactsRequest, opts ...grpc.CallOption) (*GetAssetComplianceFactsResponse, error)
 }
 
 type loadsServiceClient struct {
@@ -747,6 +759,16 @@ func (c *loadsServiceClient) GetAssetTripMiles(ctx context.Context, in *GetAsset
 	return out, nil
 }
 
+func (c *loadsServiceClient) GetAssetComplianceFacts(ctx context.Context, in *GetAssetComplianceFactsRequest, opts ...grpc.CallOption) (*GetAssetComplianceFactsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetAssetComplianceFactsResponse)
+	err := c.cc.Invoke(ctx, LoadsService_GetAssetComplianceFacts_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // LoadsServiceServer is the server API for LoadsService service.
 // All implementations must embed UnimplementedLoadsServiceServer
 // for forward compatibility.
@@ -999,6 +1021,17 @@ type LoadsServiceServer interface {
 	// truck no telematics feed reaches, or whose feed has gone quiet (BL-7 §7.5).
 	// The caller adds this to the last service record's odometer.
 	GetAssetTripMiles(context.Context, *GetAssetTripMilesRequest) (*GetAssetTripMilesResponse, error)
+	// ── Compliance facts by id (used by backend-files, DEV-2565) ──────────────
+	// Answers "is this asset retired, and is this truck leased" for a whole page
+	// of one asset class in one call. The compliance flag is None for a retired
+	// asset and Not applicable for a leased truck (the lessor keeps its papers),
+	// and backend-files holds neither fact.
+	//
+	// Ids that belong to another tenant or do not exist are ABSENT from the map —
+	// absence is "unknown", and the caller judges such an id on its documents
+	// alone. company_id is passed explicitly (no AuthServerInterceptor), same
+	// contract as GetTrailerOwnershipByIDs / ListActiveTruckIDs.
+	GetAssetComplianceFacts(context.Context, *GetAssetComplianceFactsRequest) (*GetAssetComplianceFactsResponse, error)
 	mustEmbedUnimplementedLoadsServiceServer()
 }
 
@@ -1131,6 +1164,9 @@ func (UnimplementedLoadsServiceServer) SetAssetStatus(context.Context, *SetAsset
 }
 func (UnimplementedLoadsServiceServer) GetAssetTripMiles(context.Context, *GetAssetTripMilesRequest) (*GetAssetTripMilesResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetAssetTripMiles not implemented")
+}
+func (UnimplementedLoadsServiceServer) GetAssetComplianceFacts(context.Context, *GetAssetComplianceFactsRequest) (*GetAssetComplianceFactsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetAssetComplianceFacts not implemented")
 }
 func (UnimplementedLoadsServiceServer) mustEmbedUnimplementedLoadsServiceServer() {}
 func (UnimplementedLoadsServiceServer) testEmbeddedByValue()                      {}
@@ -1884,6 +1920,24 @@ func _LoadsService_GetAssetTripMiles_Handler(srv interface{}, ctx context.Contex
 	return interceptor(ctx, in, info, handler)
 }
 
+func _LoadsService_GetAssetComplianceFacts_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetAssetComplianceFactsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(LoadsServiceServer).GetAssetComplianceFacts(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: LoadsService_GetAssetComplianceFacts_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(LoadsServiceServer).GetAssetComplianceFacts(ctx, req.(*GetAssetComplianceFactsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // LoadsService_ServiceDesc is the grpc.ServiceDesc for LoadsService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -2050,6 +2104,10 @@ var LoadsService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetAssetTripMiles",
 			Handler:    _LoadsService_GetAssetTripMiles_Handler,
+		},
+		{
+			MethodName: "GetAssetComplianceFacts",
+			Handler:    _LoadsService_GetAssetComplianceFacts_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{

@@ -321,6 +321,18 @@ service LoadsService {
   // truck no telematics feed reaches, or whose feed has gone quiet (BL-7 §7.5).
   // The caller adds this to the last service record's odometer.
   rpc GetAssetTripMiles(GetAssetTripMilesRequest) returns (GetAssetTripMilesResponse);
+
+  // ── Compliance facts by id (used by backend-files, DEV-2565) ──────────────
+  // Answers "is this asset retired, and is this truck leased" for a whole page
+  // of one asset class in one call. The compliance flag is None for a retired
+  // asset and Not applicable for a leased truck (the lessor keeps its papers),
+  // and backend-files holds neither fact.
+  //
+  // Ids that belong to another tenant or do not exist are ABSENT from the map —
+  // absence is "unknown", and the caller judges such an id on its documents
+  // alone. company_id is passed explicitly (no AuthServerInterceptor), same
+  // contract as GetTrailerOwnershipByIDs / ListActiveTruckIDs.
+  rpc GetAssetComplianceFacts(GetAssetComplianceFactsRequest) returns (GetAssetComplianceFactsResponse);
 }
 
 message DriverHasActiveTripRequest {
@@ -1483,4 +1495,26 @@ message GetAssetTripMilesResponse {
   // How many trips the figure came from. Zero trips is a legitimate answer of
   // zero miles, not a missing one.
   int32 trip_count = 2;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Compliance facts (DEV-2565)
+// ─────────────────────────────────────────────────────────────────────────────
+
+message GetAssetComplianceFactsRequest {
+  string company_id = 1;
+  MaintenanceAssetType asset_type = 2;
+  // Empty list is a valid request and returns an empty map, not an error.
+  repeated string asset_ids = 3;
+}
+
+message AssetComplianceFacts {
+  AssetStatus status = 1;
+  // True only for a truck whose ownership is LEASED. Always false for a trailer.
+  bool leased = 2;
+}
+
+message GetAssetComplianceFactsResponse {
+  // Keyed by asset id.
+  map<string, AssetComplianceFacts> facts_by_id = 1;
 }

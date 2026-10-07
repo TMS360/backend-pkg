@@ -87,6 +87,10 @@ message Customer {
   // a direct-pay broker and for an unreviewed one, and accounting must not send
   // an unreviewed broker to the factor or park it in the direct queue.
   optional string billing_type = 10;
+  // CourierCustomer.default_high_value (DEV-2525): every new load for this
+  // broker starts as high-value. Read by backend-load at create only; false
+  // for a broker that was never marked.
+  bool default_high_value = 11;
 }
 
 message Factoring {

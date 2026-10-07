@@ -304,9 +304,13 @@ type Customer struct {
 	// this broker is billed. `factoring` alone cannot say that: it is nil both for
 	// a direct-pay broker and for an unreviewed one, and accounting must not send
 	// an unreviewed broker to the factor or park it in the direct queue.
-	BillingType   *string `protobuf:"bytes,10,opt,name=billing_type,json=billingType,proto3,oneof" json:"billing_type,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	BillingType *string `protobuf:"bytes,10,opt,name=billing_type,json=billingType,proto3,oneof" json:"billing_type,omitempty"`
+	// CourierCustomer.default_high_value (DEV-2525): every new load for this
+	// broker starts as high-value. Read by backend-load at create only; false
+	// for a broker that was never marked.
+	DefaultHighValue bool `protobuf:"varint,11,opt,name=default_high_value,json=defaultHighValue,proto3" json:"default_high_value,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *Customer) Reset() {
@@ -409,6 +413,13 @@ func (x *Customer) GetBillingType() string {
 	return ""
 }
 
+func (x *Customer) GetDefaultHighValue() bool {
+	if x != nil {
+		return x.DefaultHighValue
+	}
+	return false
+}
+
 type Factoring struct {
 	state       protoimpl.MessageState `protogen:"open.v1"`
 	CompanyName string                 `protobuf:"bytes,1,opt,name=company_name,json=companyName,proto3" json:"company_name,omitempty"`
@@ -480,7 +491,7 @@ const file_customers_customers_proto_rawDesc = "" +
 	"\x13GetCustomersRequest\x12!\n" +
 	"\fcustomer_ids\x18\x01 \x03(\tR\vcustomerIds\"I\n" +
 	"\x14GetCustomersResponse\x121\n" +
-	"\tcustomers\x18\x01 \x03(\v2\x13.customers.CustomerR\tcustomers\"\x8d\x03\n" +
+	"\tcustomers\x18\x01 \x03(\v2\x13.customers.CustomerR\tcustomers\"\xbb\x03\n" +
 	"\bCustomer\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12!\n" +
 	"\fcompany_name\x18\x02 \x01(\tR\vcompanyName\x12\x1b\n" +
@@ -493,7 +504,8 @@ const file_customers_customers_proto_rawDesc = "" +
 	"\n" +
 	"company_id\x18\t \x01(\tR\tcompanyId\x12&\n" +
 	"\fbilling_type\x18\n" +
-	" \x01(\tH\x02R\vbillingType\x88\x01\x01B\f\n" +
+	" \x01(\tH\x02R\vbillingType\x88\x01\x01\x12,\n" +
+	"\x12default_high_value\x18\v \x01(\bR\x10defaultHighValueB\f\n" +
 	"\n" +
 	"_factoringB\f\n" +
 	"\n" +

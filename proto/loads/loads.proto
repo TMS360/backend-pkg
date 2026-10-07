@@ -1317,6 +1317,11 @@ message TollMatchResult {
   // The truck device_id is already written on, if any. Non-empty means the
   // device is taken and nothing should be proposed.
   string device_owner_truck_id = 11;
+  // The license plate of the truck_ref truck (the one in truck_ref_truck_id), as
+  // stored — NOT normalised. Empty when that truck has no plate, and when
+  // truck_ref resolved to zero or several trucks. Lets the caller propose a
+  // plate only onto a truck that has none.
+  string truck_ref_plate = 12;
 }
 
 message MatchTollRowsResponse {

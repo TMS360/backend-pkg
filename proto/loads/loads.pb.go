@@ -6346,8 +6346,13 @@ type TollMatchResult struct {
 	// The truck device_id is already written on, if any. Non-empty means the
 	// device is taken and nothing should be proposed.
 	DeviceOwnerTruckId string `protobuf:"bytes,11,opt,name=device_owner_truck_id,json=deviceOwnerTruckId,proto3" json:"device_owner_truck_id,omitempty"`
-	unknownFields      protoimpl.UnknownFields
-	sizeCache          protoimpl.SizeCache
+	// The license plate of the truck_ref truck (the one in truck_ref_truck_id), as
+	// stored — NOT normalised. Empty when that truck has no plate, and when
+	// truck_ref resolved to zero or several trucks. Lets the caller propose a
+	// plate only onto a truck that has none.
+	TruckRefPlate string `protobuf:"bytes,12,opt,name=truck_ref_plate,json=truckRefPlate,proto3" json:"truck_ref_plate,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *TollMatchResult) Reset() {
@@ -6453,6 +6458,13 @@ func (x *TollMatchResult) GetTruckRefTripId() string {
 func (x *TollMatchResult) GetDeviceOwnerTruckId() string {
 	if x != nil {
 		return x.DeviceOwnerTruckId
+	}
+	return ""
+}
+
+func (x *TollMatchResult) GetTruckRefPlate() string {
+	if x != nil {
+		return x.TruckRefPlate
 	}
 	return ""
 }
@@ -8281,7 +8293,7 @@ const file_loads_loads_proto_rawDesc = "" +
 	"\x14MatchTollRowsRequest\x12\x1d\n" +
 	"\n" +
 	"company_id\x18\x01 \x01(\tR\tcompanyId\x12'\n" +
-	"\x04rows\x18\x02 \x03(\v2\x13.loads.TollMatchRowR\x04rows\"\x89\x03\n" +
+	"\x04rows\x18\x02 \x03(\v2\x13.loads.TollMatchRowR\x04rows\"\xb1\x03\n" +
 	"\x0fTollMatchResult\x12\x17\n" +
 	"\arow_key\x18\x01 \x01(\tR\x06rowKey\x12\x19\n" +
 	"\btruck_id\x18\x02 \x01(\tR\atruckId\x12!\n" +
@@ -8294,7 +8306,8 @@ const file_loads_loads_proto_rawDesc = "" +
 	"\x12truck_ref_truck_id\x18\t \x01(\tR\x0ftruckRefTruckId\x12)\n" +
 	"\x11truck_ref_trip_id\x18\n" +
 	" \x01(\tR\x0etruckRefTripId\x121\n" +
-	"\x15device_owner_truck_id\x18\v \x01(\tR\x12deviceOwnerTruckId\"I\n" +
+	"\x15device_owner_truck_id\x18\v \x01(\tR\x12deviceOwnerTruckId\x12&\n" +
+	"\x0ftruck_ref_plate\x18\f \x01(\tR\rtruckRefPlate\"I\n" +
 	"\x15MatchTollRowsResponse\x120\n" +
 	"\aresults\x18\x01 \x03(\v2\x16.loads.TollMatchResultR\aresults\"\xc2\x01\n" +
 	"\x0eTollRefStretch\x12\x1b\n" +

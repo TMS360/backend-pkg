@@ -410,6 +410,8 @@ message TripDetails {
   string status = 9;                  // trip status; needed so the audit upsert's status_rank guard admits a resync
   string pickup_appointment_at = 10;  // ISO Timestamp of the first pickup leg appointment start; the audit board's bucketing key (empty if none)
   string delivery_appointment_to = 11; // ISO Timestamp of the last delivery leg appointment end; the driver-timeline segment's planned to_time (empty if none)
+  string first_pickup_checked_out_at = 12;  // ISO Timestamp of the check-out at the first cargo pickup stop; where the real ENROUTE run starts (empty until checked out)
+  string last_delivery_checked_out_at = 13; // ISO Timestamp of the check-out at the last delivery stop; where the real ENROUTE run ends (empty until checked out)
 }
 
 message GetRecentBrokerIDsRequest {

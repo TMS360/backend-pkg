@@ -242,6 +242,20 @@ service LoadsService {
   rpc ListActiveTruckIDs(ListActiveTruckIDsRequest)
       returns (ListActiveTruckIDsResponse);
 
+  // ── Live fleet (used by the tms-files missing-document summary, DEV-2553) ──
+  // Lists every truck and trailer of the company that is still in the fleet,
+  // in one call: the daily compliance job asks "which assets have no required
+  // document", and tms-files only knows assets that already have a document.
+  // RETIRED and deleted assets are left out; OUT_OF_SERVICE ones stay in (a
+  // temporary stop does not excuse missing paperwork, same as the expiry
+  // reminders).
+  //
+  // company_id is passed explicitly (backend-load's gRPC server runs without an
+  // AuthServerInterceptor, so there is no actor to scope by), same contract as
+  // ListActiveTruckIDs / GetVehicleNumbersByIDs.
+  rpc ListFleetAssetIDs(ListFleetAssetIDsRequest)
+      returns (ListFleetAssetIDsResponse);
+
   // ── Toll row → truck / trip matching (backend-accounting, DEV-1793) ──────
   // Resolves a WHOLE ingested toll file in one call. A weekly PrePass export is
   // 240-470 rows; a per-row RPC across a service boundary is the thing this
@@ -1105,6 +1119,17 @@ message ListActiveTruckIDsResponse {
   // truck added today did not "stand empty" last week (DEV-2445). Blank when
   // unknown — the caller then keeps its own window.
   repeated string created_at = 3;
+}
+
+message ListFleetAssetIDsRequest {
+  string company_id = 1;
+}
+
+message ListFleetAssetIDsResponse {
+  // No paging: a fleet is hundreds of assets, and the caller makes one call per
+  // company per day.
+  repeated string truck_ids   = 1;
+  repeated string trailer_ids = 2;
 }
 
 // TruckOwner is the third party that owns a truck our driver drives. It is NOT

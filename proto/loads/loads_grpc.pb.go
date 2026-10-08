@@ -57,6 +57,7 @@ const (
 	LoadsService_GetTrailerOwnershipByIDs_FullMethodName       = "/loads.LoadsService/GetTrailerOwnershipByIDs"
 	LoadsService_GetTruckIDsByOwnerIDs_FullMethodName          = "/loads.LoadsService/GetTruckIDsByOwnerIDs"
 	LoadsService_ListActiveTruckIDs_FullMethodName             = "/loads.LoadsService/ListActiveTruckIDs"
+	LoadsService_ListFleetAssetIDs_FullMethodName              = "/loads.LoadsService/ListFleetAssetIDs"
 	LoadsService_MatchTollRows_FullMethodName                  = "/loads.LoadsService/MatchTollRows"
 	LoadsService_ApplyTollDeviceHistory_FullMethodName         = "/loads.LoadsService/ApplyTollDeviceHistory"
 	LoadsService_GetLotChargebacksByDispatchers_FullMethodName = "/loads.LoadsService/GetLotChargebacksByDispatchers"
@@ -259,6 +260,18 @@ type LoadsServiceClient interface {
 	// AuthServerInterceptor, so there is no actor to scope by), same contract as
 	// GetTruckOwnersByTruckIDs / GetVehicleNumbersByIDs.
 	ListActiveTruckIDs(ctx context.Context, in *ListActiveTruckIDsRequest, opts ...grpc.CallOption) (*ListActiveTruckIDsResponse, error)
+	// ── Live fleet (used by the tms-files missing-document summary, DEV-2553) ──
+	// Lists every truck and trailer of the company that is still in the fleet,
+	// in one call: the daily compliance job asks "which assets have no required
+	// document", and tms-files only knows assets that already have a document.
+	// RETIRED and deleted assets are left out; OUT_OF_SERVICE ones stay in (a
+	// temporary stop does not excuse missing paperwork, same as the expiry
+	// reminders).
+	//
+	// company_id is passed explicitly (backend-load's gRPC server runs without an
+	// AuthServerInterceptor, so there is no actor to scope by), same contract as
+	// ListActiveTruckIDs / GetVehicleNumbersByIDs.
+	ListFleetAssetIDs(ctx context.Context, in *ListFleetAssetIDsRequest, opts ...grpc.CallOption) (*ListFleetAssetIDsResponse, error)
 	// ── Toll row → truck / trip matching (backend-accounting, DEV-1793) ──────
 	// Resolves a WHOLE ingested toll file in one call. A weekly PrePass export is
 	// 240-470 rows; a per-row RPC across a service boundary is the thing this
@@ -689,6 +702,16 @@ func (c *loadsServiceClient) ListActiveTruckIDs(ctx context.Context, in *ListAct
 	return out, nil
 }
 
+func (c *loadsServiceClient) ListFleetAssetIDs(ctx context.Context, in *ListFleetAssetIDsRequest, opts ...grpc.CallOption) (*ListFleetAssetIDsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListFleetAssetIDsResponse)
+	err := c.cc.Invoke(ctx, LoadsService_ListFleetAssetIDs_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *loadsServiceClient) MatchTollRows(ctx context.Context, in *MatchTollRowsRequest, opts ...grpc.CallOption) (*MatchTollRowsResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(MatchTollRowsResponse)
@@ -961,6 +984,18 @@ type LoadsServiceServer interface {
 	// AuthServerInterceptor, so there is no actor to scope by), same contract as
 	// GetTruckOwnersByTruckIDs / GetVehicleNumbersByIDs.
 	ListActiveTruckIDs(context.Context, *ListActiveTruckIDsRequest) (*ListActiveTruckIDsResponse, error)
+	// ── Live fleet (used by the tms-files missing-document summary, DEV-2553) ──
+	// Lists every truck and trailer of the company that is still in the fleet,
+	// in one call: the daily compliance job asks "which assets have no required
+	// document", and tms-files only knows assets that already have a document.
+	// RETIRED and deleted assets are left out; OUT_OF_SERVICE ones stay in (a
+	// temporary stop does not excuse missing paperwork, same as the expiry
+	// reminders).
+	//
+	// company_id is passed explicitly (backend-load's gRPC server runs without an
+	// AuthServerInterceptor, so there is no actor to scope by), same contract as
+	// ListActiveTruckIDs / GetVehicleNumbersByIDs.
+	ListFleetAssetIDs(context.Context, *ListFleetAssetIDsRequest) (*ListFleetAssetIDsResponse, error)
 	// ── Toll row → truck / trip matching (backend-accounting, DEV-1793) ──────
 	// Resolves a WHOLE ingested toll file in one call. A weekly PrePass export is
 	// 240-470 rows; a per-row RPC across a service boundary is the thing this
@@ -1143,6 +1178,9 @@ func (UnimplementedLoadsServiceServer) GetTruckIDsByOwnerIDs(context.Context, *G
 }
 func (UnimplementedLoadsServiceServer) ListActiveTruckIDs(context.Context, *ListActiveTruckIDsRequest) (*ListActiveTruckIDsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListActiveTruckIDs not implemented")
+}
+func (UnimplementedLoadsServiceServer) ListFleetAssetIDs(context.Context, *ListFleetAssetIDsRequest) (*ListFleetAssetIDsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListFleetAssetIDs not implemented")
 }
 func (UnimplementedLoadsServiceServer) MatchTollRows(context.Context, *MatchTollRowsRequest) (*MatchTollRowsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method MatchTollRows not implemented")
@@ -1794,6 +1832,24 @@ func _LoadsService_ListActiveTruckIDs_Handler(srv interface{}, ctx context.Conte
 	return interceptor(ctx, in, info, handler)
 }
 
+func _LoadsService_ListFleetAssetIDs_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListFleetAssetIDsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(LoadsServiceServer).ListFleetAssetIDs(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: LoadsService_ListFleetAssetIDs_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(LoadsServiceServer).ListFleetAssetIDs(ctx, req.(*ListFleetAssetIDsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _LoadsService_MatchTollRows_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(MatchTollRowsRequest)
 	if err := dec(in); err != nil {
@@ -2076,6 +2132,10 @@ var LoadsService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ListActiveTruckIDs",
 			Handler:    _LoadsService_ListActiveTruckIDs_Handler,
+		},
+		{
+			MethodName: "ListFleetAssetIDs",
+			Handler:    _LoadsService_ListFleetAssetIDs_Handler,
 		},
 		{
 			MethodName: "MatchTollRows",

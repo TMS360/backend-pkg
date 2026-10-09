@@ -4,10 +4,12 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"reflect"
 	"testing"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/jackc/pgx/v5/pgtype"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
@@ -110,4 +112,40 @@ func TestDefaultProtocol_StillReproducesCachedPlanError(t *testing.T) {
 		t.Fatalf("ожидался 0A000 под дефолтным протоколом "+
 			"(контроль, что проба воспроизводит хазард); получено: %v", err)
 	}
+}
+
+// DEV-2586. Postgres text for a UTC timestamptz is "…+00". On a UTC host Go's
+// parser labels that time.Local, so reflect.DeepEqual rejects the same clock
+// built with time.UTC. registerTimeCodecs is what openGorm installs.
+func TestRegisterTimeCodecs_TimestamptzTextIsUTC(t *testing.T) {
+	src := []byte("2026-06-02 08:00:00+00")
+	want := time.Date(2026, time.June, 2, 8, 0, 0, 0, time.UTC)
+
+	var plain pgtype.Timestamptz
+	if err := scanTimestamptzText(pgtype.NewMap(), src, &plain); err != nil {
+		t.Fatal(err)
+	}
+	if reflect.DeepEqual(plain.Time, want) {
+		t.Fatal("default codec already returned time.UTC; this test no longer guards the scan")
+	}
+
+	m := pgtype.NewMap()
+	if err := registerTimeCodecs(m, "UTC"); err != nil {
+		t.Fatal(err)
+	}
+	var got pgtype.Timestamptz
+	if err := scanTimestamptzText(m, src, &got); err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(got.Time, want) {
+		t.Fatalf("got %#v want %#v", got.Time, want)
+	}
+}
+
+func scanTimestamptzText(m *pgtype.Map, src []byte, dst *pgtype.Timestamptz) error {
+	plan := m.PlanScan(pgtype.TimestamptzOID, pgtype.TextFormatCode, dst)
+	if plan == nil {
+		return errors.New("no timestamptz scan plan")
+	}
+	return plan.Scan(src, dst)
 }

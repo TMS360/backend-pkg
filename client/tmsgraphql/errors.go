@@ -97,6 +97,13 @@ func NewErrorPresenter(isDebug bool) graphql.ErrorPresenterFunc {
 			}
 		}
 
+		// 1a. Client disconnected or request timed out — a normal network
+		// condition, not a server fault. Return the default presentation
+		// without capturing to Sentry.
+		if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+			return graphql.DefaultErrorPresenter(ctx, err)
+		}
+
 		gqlErr := graphql.DefaultErrorPresenter(ctx, err)
 
 		// 2. Check for your custom "PublicError"

@@ -57,9 +57,9 @@ func TestDefaultRolePermissions_NarrowedRolesKeepOtherFleetAccess(t *testing.T) 
 		enums.UserRoleAccounting:    {manage},
 		enums.UserRoleAuditor:       {manage},
 		enums.UserRoleHr:            {view, manage},
-		enums.UserRoleDriver:        {view, manage},
 		enums.UserRoleOther:         {view, manage},
 	}
+	// The driver is not here: since DEV-2866 it holds no fleet code at all.
 	for role, gone := range lost {
 		perms := defaults[role]
 		assert.NotContainsf(t, perms, enums.FleetModuleCode, "%s must not hold the whole fleet module", role)

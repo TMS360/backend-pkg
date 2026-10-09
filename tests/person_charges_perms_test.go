@@ -145,7 +145,7 @@ func TestDefaultRolePermissions_NarrowedRolesKeepOtherTeamsAccess(t *testing.T) 
 	for _, role := range []enums.UserRoleEnum{
 		enums.UserRoleDispatcher, enums.UserRoleTrackAndTrace, enums.UserRoleManager, enums.UserRoleFleet,
 		enums.UserRoleAccounting, enums.UserRoleSafety, enums.UserRoleHr, enums.UserRoleAuditor,
-		enums.UserRoleDriver, enums.UserRoleOther,
+		enums.UserRoleOther, // not the driver: since DEV-2866 it holds no teams code at all
 	} {
 		perms := defaults[role]
 		assert.NotContainsf(t, perms, enums.TeamsModuleCode, "%s must not hold the whole teams module", role)

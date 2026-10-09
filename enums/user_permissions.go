@@ -623,7 +623,27 @@ const (
 	// Seeded to admin only. A tenant hands it to a senior accountant in
 	// Settings -> Roles.
 	PermOwnerEscrowRelease UserPermissionEnum = "owner_escrow_release"
+
+	// PermShipmentsShipmentsSplit gates splitting an in-transit load onto a
+	// recovery trip — tms-loads splitOrder (DEV-2866). A driver does this from
+	// the app, but splitOrder used to share shipments.shipments.edit with
+	// cancel, edit and mark-paid, so a driver who could split could also do
+	// those. Its own leaf lets the driver role hold split alone. Office roles
+	// hold the `shipments` module, which implies this leaf, so they lose nothing.
+	PermShipmentsShipmentsSplit UserPermissionEnum = "shipments.shipments.split"
+
+	// The rest of the driver app's calls (DEV-2866) — see DriverRolePermissions.
+	PermShipmentsShipmentsView UserPermissionEnum = "shipments.shipments.view"
+	PermShipmentsTripsView     UserPermissionEnum = "shipments.trips.view"
+	PermShipmentsTripStopsView UserPermissionEnum = "shipments.trip_stops.view"
+	PermSettingsFilesView      UserPermissionEnum = "settings.files.view"
+	PermSettingsDocTypesView   UserPermissionEnum = "settings.doc_types.view"
+	PermSettingsDriverAppView  UserPermissionEnum = "settings.driver_app.view"
 )
+
+// ShipmentsTripFilesEntity is the trip-files entity (view, create, edit): the
+// driver uploads BOL and POD from the app (DEV-2866).
+const ShipmentsTripFilesEntity = "shipments.trip_files"
 
 // PermissionCatalogEntry describes one row written to the permissions table.
 // Modules carry no actions; entities carry the CRUD verbs they support.
@@ -698,7 +718,9 @@ var PermissionCatalog = []PermissionCatalogEntry{
 	{Code: "dashboard.hierarchy", ParentCode: "dashboard", Label: "Company hierarchy", Actions: []string{"view"}},
 
 	// === shipments entities ===
-	{Code: "shipments.shipments", ParentCode: "shipments", Label: "Shipments", Actions: []string{"view", "create", "edit", "delete"}},
+	// `split` (DEV-2866) is splitOrder alone, so a driver can split a load
+	// without the edit/cancel/mark-paid that `edit` carries.
+	{Code: "shipments.shipments", ParentCode: "shipments", Label: "Shipments", Actions: []string{"view", "create", "edit", "delete", "split"}},
 	{Code: "shipments.legs", ParentCode: "shipments", Label: "Shipment legs", Actions: []string{"view", "create", "edit", "delete"}},
 	{Code: "shipments.trips", ParentCode: "shipments", Label: "Trips", Actions: []string{"view", "edit"}},
 	{Code: "shipments.trip_stops", ParentCode: "shipments", Label: "Trip stops", Actions: []string{"view", "edit"}},
@@ -1261,8 +1283,10 @@ func DefaultRolePermissions() map[UserRoleEnum][]string {
 		// refused on unrecordPayment.)
 		UserRoleAuditor:    withExtra(string(PermInvoiceUnrecordPayment), string(PermAuditLogView), string(PermGeneralLedgerView), string(PermVendorBillPaymentVoid)),
 		UserRoleDispatcher: withExtra(string(PermCallsView), string(PermCallsPlay), string(PermSmsView), string(PermSmsSend)),
-		UserRoleDriver:     withExtra(),
-		UserRoleOther:      withExtra(),
+		// DEV-2866: the driver gets only what the driver app calls, not the
+		// office module baseline. See DriverRolePermissions.
+		UserRoleDriver: DriverRolePermissions(),
+		UserRoleOther:  withExtra(),
 	}
 
 	// DEV-2502 / BL-15: fleet maintenance (service records, work orders, taking
@@ -1278,7 +1302,6 @@ func DefaultRolePermissions() map[UserRoleEnum][]string {
 		UserRoleAccounting: {string(PermFleetMaintenanceView)},
 		UserRoleAuditor:    {string(PermFleetMaintenanceView)},
 		UserRoleHr:         nil,
-		UserRoleDriver:     nil,
 		UserRoleOther:      nil,
 	} {
 		out[role] = withoutFleetMaintenance(out[role], maintenance...)
@@ -1300,7 +1323,6 @@ func DefaultRolePermissions() map[UserRoleEnum][]string {
 		UserRoleSafety:     {view, string(PermPersonChargeApplyDriver)},
 		UserRoleHr:         nil,
 		UserRoleAuditor:    nil,
-		UserRoleDriver:     nil,
 		UserRoleOther:      nil,
 	} {
 		out[role] = withoutPersonCharges(out[role], bag...)
@@ -1336,6 +1358,39 @@ func DefaultRolePermissions() map[UserRoleEnum][]string {
 	out[UserRoleBrokerUser] = append([]string(nil), brokerPortal...)
 
 	return out
+}
+
+// DriverRolePermissions is the built-in driver role's default set (DEV-2866):
+// the codes behind the calls the driver app makes, and nothing else. The role
+// used to get the office module baseline, so a driver login passed payroll,
+// settings, driver create and fleet checks.
+//
+//   - trips and stops: read (getTrips, getTrip, getTripStops, User.activeTrip)
+//   - the load behind a trip: read (getShipment, getShipmentFiles)
+//   - trip files: the whole entity — upload BOL/POD (addTripFile,
+//     addTripStopFile), attach (attachOrderFile), list
+//   - split a load: its own leaf (splitOrder), not shipments.shipments.edit
+//   - company and driver files the app reads (getCompanyFiles,
+//     getDriverDocuments, getDriverShipmentFiles) and the document-type picker
+//     for uploads (getDocTypes)
+//   - the driver app config (getDriverAppConfig)
+//
+// Accept trip, chat, notifications and location need no code (@auth only).
+// Deliberately absent: manualCheckIn/manualCheckOut (shipments.trip_stops.edit)
+// and updateTruck (fleet.trucks.edit) — the app has those calls but does not
+// use them. tms-auth's back-fill migration
+// 20261009120000_narrow_driver_role_defaults.sql writes the same list.
+func DriverRolePermissions() []string {
+	return []string{
+		string(PermShipmentsTripsView),
+		string(PermShipmentsTripStopsView),
+		string(PermShipmentsShipmentsView),
+		ShipmentsTripFilesEntity,
+		string(PermShipmentsShipmentsSplit),
+		string(PermSettingsFilesView),
+		string(PermSettingsDocTypesView),
+		string(PermSettingsDriverAppView),
+	}
 }
 
 // FleetModuleCode is the top-level fleet module in PermissionCatalog.

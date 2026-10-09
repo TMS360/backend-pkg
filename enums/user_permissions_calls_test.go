@@ -32,11 +32,12 @@ func TestCallsPerms_AreFlatAndDeniedToDrivers(t *testing.T) {
 			"driver must not hold %q by default — a recording is a named person's voice", code)
 	}
 
-	// The fact that forced the flat codes. If this ever starts failing, someone
-	// removed `settings` from the module baseline and the call log could then
-	// safely have reused settings.office_users.view after all.
-	assert.True(t, middleware.HasPermission(driver, "settings.office_users.view"),
-		"drivers satisfy settings.office_users.view via the `settings` module — "+
+	// The fact that forced the flat codes: every office role satisfies
+	// settings.office_users.view via the `settings` module, so a dotted code
+	// there would have reached them all. (Since DEV-2866 the driver no longer
+	// holds the module baseline; the flat codes stay flat regardless.)
+	assert.True(t, middleware.HasPermission(defaults[enums.UserRoleOther], "settings.office_users.view"),
+		"office roles satisfy settings.office_users.view via the `settings` module — "+
 			"this is why calls_view exists as a flat code")
 
 	// Flat means no ancestor can imply them.

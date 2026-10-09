@@ -720,12 +720,25 @@ func snakeToCamel(s string) string {
 
 // Paginate применяет пагинацию. Call it after Count(), the way FindWithCount
 // does — Count() deliberately ignores whatever page is set.
+//
+// DEV-2596: when the list's ceiling cuts the requested page size, the served
+// size is written back into p. Repositories build their reply with
+// NewPagination(p, total) after this call, so the reply then states the page
+// that was actually served (`limit: 100`, totalPages over 100) instead of the
+// one that was asked for — and the offset steps by the served size too, so
+// page 2 starts at row 101 rather than skipping past rows nobody received.
 func (fb *FilterBuilder) Paginate(p *PaginationInput) *FilterBuilder {
 	limit := p.GetLimit()
-	offset := p.GetOffset()
 
 	if limit > fb.maxLimit {
 		limit = fb.maxLimit
+		if p != nil {
+			p.Limit = int32(limit)
+		}
+	}
+	offset := 0
+	if page := p.GetPage(); page > 1 {
+		offset = (page - 1) * limit
 	}
 
 	if limit == 0 {

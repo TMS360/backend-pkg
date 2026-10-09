@@ -86,6 +86,14 @@ func NewErrorPresenter(isDebug bool) graphql.ErrorPresenterFunc {
 	return func(ctx context.Context, err error) *gqlerror.Error {
 		requestID := middleware.GetRequestID(ctx)
 
+		// Client disconnected or request timed out on the caller's side.
+		// These are not server faults — propagating a canceled context through
+		// a resolver is normal behaviour. Skip Sentry capture entirely and
+		// return a plain GraphQL error so the response is still well-formed.
+		if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+			return graphql.DefaultErrorPresenter(ctx, err)
+		}
+
 		if validationErrors := validate.GetValidationErrors(ctx); validationErrors != nil && validationErrors.HasErrors() {
 			return &gqlerror.Error{
 				Message: "Validation failed",

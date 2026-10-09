@@ -52,10 +52,30 @@ func grpcPublicError(err error) (message, code string, httpStatus int, ok bool) 
 	case codes.ResourceExhausted:
 		return st.Message(), "RESOURCE_EXHAUSTED", http.StatusTooManyRequests, true
 	default:
-		// Unknown, Internal, DataLoss, Unimplemented, Aborted, Canceled,
-		// DeadlineExceeded — server-fault class; keep the 500 handling.
+		// Unknown, Internal, DataLoss, Unimplemented, Aborted, DeadlineExceeded
+		// — server-fault class; keep the 500 handling. Canceled is handled
+		// separately by isClientCanceled (a caller abort, not a server fault).
 		return "", "", 0, false
 	}
+}
+
+// statusClientClosedRequest is the de-facto (nginx) status for a request the
+// client abandoned before the server responded.
+const statusClientClosedRequest = 499
+
+// isClientCanceled reports whether err stems from the caller aborting the
+// request (navigation away, router/client cancel) rather than a server fault.
+// Such errors are expected noise and must not be captured as Sentry errors.
+func isClientCanceled(ctx context.Context, err error) bool {
+	if errors.Is(err, context.Canceled) {
+		return true
+	}
+	type grpcStatuser interface{ GRPCStatus() *status.Status }
+	var gs grpcStatuser
+	if errors.As(err, &gs) && gs.GRPCStatus().Code() == codes.Canceled {
+		return true
+	}
+	return ctx != nil && errors.Is(ctx.Err(), context.Canceled)
 }
 
 // captureFunc / captureWarningFunc report to Sentry at Error / Warning level.
@@ -162,6 +182,26 @@ func NewErrorPresenter(isDebug bool) graphql.ErrorPresenterFunc {
 			gqlErr.Message = msg
 			gqlErr.Extensions = map[string]any{"code": code, "status": httpStatus}
 			captureWarningFunc(ctx, err)
+		} else if isClientCanceled(ctx, err) {
+			// The caller aborted the request (navigated away, router/client
+			// cancel). Not a server fault — never capture to Sentry.
+			slog.Debug("GraphQL request canceled by client", "err", err, "path", gqlErr.Path, "request_id", requestID)
+			gqlErr.Message = "Request canceled"
+			gqlErr.Extensions = map[string]any{
+				"code":   "REQUEST_CANCELED",
+				"status": statusClientClosedRequest,
+			}
+		} else if errors.Is(err, context.DeadlineExceeded) {
+			// A timeout is worth seeing, but should not page — capture as warning.
+			slog.Warn("GraphQL request deadline exceeded", "err", err, "path", gqlErr.Path, "request_id", requestID)
+			captureWarningFunc(ctx, err)
+			if !isDebug {
+				gqlErr.Message = "Request timed out"
+				gqlErr.Extensions = map[string]any{
+					"code":   "DEADLINE_EXCEEDED",
+					"status": http.StatusGatewayTimeout,
+				}
+			}
 		} else {
 			// 3. Unexpected errors — always treat as 500-class.
 			slog.Error("GraphQL Internal Error", "err", err, "path", gqlErr.Path, "request_id", requestID)

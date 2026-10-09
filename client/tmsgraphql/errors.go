@@ -162,6 +162,19 @@ func NewErrorPresenter(isDebug bool) graphql.ErrorPresenterFunc {
 			gqlErr.Message = msg
 			gqlErr.Extensions = map[string]any{"code": code, "status": httpStatus}
 			captureWarningFunc(ctx, err)
+		} else if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+			// Request was cancelled by the caller (e.g. Apollo Router timeout or
+			// client disconnect). This is a normal operational event — not a server
+			// fault — so we must not alert on it. Log at Info level for
+			// observability and return a structured client-facing error.
+			slog.Info("GraphQL request cancelled", "err", err, "path", gqlErr.Path, "request_id", requestID)
+			gqlErr.Extensions = map[string]any{
+				"code":   "REQUEST_CANCELLED",
+				"status": 499, // 499 Client Closed Request (nginx convention)
+			}
+			if !isDebug {
+				gqlErr.Message = "Request cancelled"
+			}
 		} else {
 			// 3. Unexpected errors — always treat as 500-class.
 			slog.Error("GraphQL Internal Error", "err", err, "path", gqlErr.Path, "request_id", requestID)

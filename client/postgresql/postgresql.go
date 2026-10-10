@@ -1,6 +1,7 @@
 package postgresql
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"log"
@@ -9,7 +10,10 @@ import (
 	"github.com/TMS360/backend-pkg/config"
 	"github.com/TMS360/backend-pkg/response"
 	"github.com/TMS360/backend-pkg/tmsdb"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/jackc/pgx/v5/stdlib"
 
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -114,21 +118,58 @@ func NewClient(cfg config.PostgresSQLConfig) (*gorm.DB, error) {
 	return db, nil
 }
 
-// openGorm — единственная точка, где задаётся протокол pgx, используется и в
-// EnsureDatabase, и в NewClient. PreferSimpleProtocol отключает неявный кэш
-// prepared statements pgx, поэтому ALTER TABLE во время деплоя не вернёт 0A000
-// из протухшего плана на дренящемся поде. Держим это здесь, чтобы контракт был
-// тестируемым (см. postgresql_test.go).
+// openGorm is the only place the pgx protocol is chosen. EnsureDatabase and
+// NewClient both use it. Simple protocol turns off pgx's prepared-statement
+// cache, so an ALTER during deploy cannot return 0A000 from a stale plan.
+// The check for that lives in postgresql_test.go.
+//
+// The pool is ours because gorm skips AfterConnect when Conn is set. That
+// hook keeps the timestamp ScanLocation gorm would have taken from the DSN
+// time zone, and scans timestamptz as UTC. Text "+00" on a UTC host otherwise
+// comes back as time.Local, and reflect.DeepEqual then rejects the same
+// instant built with time.UTC (DEV-2586).
 func openGorm(dsn string) (*gorm.DB, error) {
 	// The DSN carries the database password. It used to be printed here on
 	// every start, which put the credential in the logs of every service.
-	return gorm.Open(
-		postgres.New(postgres.Config{
-			DSN:                  dsn,
-			PreferSimpleProtocol: true,
-		}),
-		&gorm.Config{},
-	)
+	cfg, err := pgx.ParseConfig(dsn)
+	if err != nil {
+		return nil, fmt.Errorf("parse postgres dsn: %w", err)
+	}
+	cfg.DefaultQueryExecMode = pgx.QueryExecModeSimpleProtocol
+
+	sqlDB := stdlib.OpenDB(*cfg, stdlib.OptionAfterConnect(func(ctx context.Context, conn *pgx.Conn) error {
+		return registerTimeCodecs(conn.TypeMap(), sessionTimeZone(cfg))
+	}))
+	return gorm.Open(postgres.New(postgres.Config{Conn: sqlDB}), &gorm.Config{})
+}
+
+func sessionTimeZone(cfg *pgx.ConnConfig) string {
+	for _, key := range []string{"TimeZone", "timezone", "time_zone"} {
+		if v := cfg.RuntimeParams[key]; v != "" {
+			return v
+		}
+	}
+	return ""
+}
+
+func registerTimeCodecs(m *pgtype.Map, tz string) error {
+	if tz != "" {
+		loc, err := time.LoadLocation(tz)
+		if err != nil {
+			return err
+		}
+		m.RegisterType(&pgtype.Type{
+			Name:  "timestamp",
+			OID:   pgtype.TimestampOID,
+			Codec: &pgtype.TimestampCodec{ScanLocation: loc},
+		})
+	}
+	m.RegisterType(&pgtype.Type{
+		Name:  "timestamptz",
+		OID:   pgtype.TimestamptzOID,
+		Codec: &pgtype.TimestamptzCodec{ScanLocation: time.UTC},
+	})
+	return nil
 }
 
 const (

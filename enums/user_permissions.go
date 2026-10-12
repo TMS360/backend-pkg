@@ -639,11 +639,13 @@ const (
 	PermSettingsFilesView      UserPermissionEnum = "settings.files.view"
 	PermSettingsDocTypesView   UserPermissionEnum = "settings.doc_types.view"
 	PermSettingsDriverAppView  UserPermissionEnum = "settings.driver_app.view"
-)
 
-// ShipmentsTripFilesEntity is the trip-files entity (view, create, edit): the
-// driver uploads BOL and POD from the app (DEV-2866).
-const ShipmentsTripFilesEntity = "shipments.trip_files"
+	// PermShipmentsTripFilesCreate is the upload half of trip files
+	// (addTripFile, addTripStopFile): the driver uploads BOL and POD from the
+	// app (DEV-2949). The office-side attach and edit stay on
+	// shipments.trip_files.edit.
+	PermShipmentsTripFilesCreate UserPermissionEnum = "shipments.trip_files.create"
+)
 
 // PermissionCatalogEntry describes one row written to the permissions table.
 // Modules carry no actions; entities carry the CRUD verbs they support.
@@ -1360,35 +1362,32 @@ func DefaultRolePermissions() map[UserRoleEnum][]string {
 	return out
 }
 
-// DriverRolePermissions is the built-in driver role's default set (DEV-2866):
-// the codes behind the calls the driver app makes, and nothing else. The role
-// used to get the office module baseline, so a driver login passed payroll,
-// settings, driver create and fleet checks.
+// DriverRolePermissions is the built-in driver role's default set: the codes
+// behind the calls the driver app makes, and nothing else (DEV-2866, narrowed
+// by DEV-2949 to what the app really calls).
 //
 //   - trips and stops: read (getTrips, getTrip, getTripStops, User.activeTrip)
-//   - the load behind a trip: read (getShipment, getShipmentFiles)
-//   - trip files: the whole entity — upload BOL/POD (addTripFile,
-//     addTripStopFile), attach (attachOrderFile), list
+//   - trip files: upload BOL/POD only (addTripFile, addTripStopFile)
 //   - split a load: its own leaf (splitOrder), not shipments.shipments.edit
-//   - company and driver files the app reads (getCompanyFiles,
-//     getDriverDocuments, getDriverShipmentFiles) and the document-type picker
-//     for uploads (getDocTypes)
+//   - company and vehicle files the app reads (getCompanyFiles,
+//     getDriverVehicleFiles)
 //   - the driver app config (getDriverAppConfig)
 //
 // Accept trip, chat, notifications and location need no code (@auth only).
-// Deliberately absent: manualCheckIn/manualCheckOut (shipments.trip_stops.edit)
-// and updateTruck (fleet.trucks.edit) — the app has those calls but does not
-// use them. tms-auth's back-fill migration
-// 20261009120000_narrow_driver_role_defaults.sql writes the same list.
+// Deliberately absent: the load list and load export (shipments.shipments.view),
+// office file attach/edit (shipments.trip_files.edit), the document-type
+// picker (settings.doc_types.view), the rate-confirmation files
+// (shipments.rc_files.view), manualCheckIn/manualCheckOut
+// (shipments.trip_stops.edit) and updateTruck (fleet.trucks.edit) — the app
+// does not call them. tms-auth's back-fill migration
+// 20261012120000_driver_role_app_codes_only.sql writes the same list.
 func DriverRolePermissions() []string {
 	return []string{
 		string(PermShipmentsTripsView),
 		string(PermShipmentsTripStopsView),
-		string(PermShipmentsShipmentsView),
-		ShipmentsTripFilesEntity,
+		string(PermShipmentsTripFilesCreate),
 		string(PermShipmentsShipmentsSplit),
 		string(PermSettingsFilesView),
-		string(PermSettingsDocTypesView),
 		string(PermSettingsDriverAppView),
 	}
 }

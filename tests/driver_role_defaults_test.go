@@ -35,18 +35,15 @@ func TestDEV2866_DriverHoldsNoOfficeAccess(t *testing.T) {
 
 // AC2: the driver keeps what the app calls — trips, stops, accept (no code),
 // split, chat (no code), trip-file upload, company files, the app config.
+// DEV-2949 narrowed the list; see dev2949_driver_app_codes_test.go.
 func TestDEV2866_DriverKeepsTheAppCalls(t *testing.T) {
 	driver := enums.DefaultRolePermissions()[enums.UserRoleDriver]
 	for _, code := range []string{
 		"shipments.trips.view",        // getTrips, getTrip, User.activeTrip
 		"shipments.trip_stops.view",   // getTripStops
-		"shipments.shipments.view",    // getShipment
-		"shipments.trip_files.view",   // trip files
 		"shipments.trip_files.create", // addTripFile, addTripStopFile
-		"shipments.trip_files.edit",   // attachOrderFile
 		"shipments.shipments.split",   // splitOrder
-		"settings.files.view",         // getCompanyFiles, getDriverDocuments, getDriverShipmentFiles
-		"settings.doc_types.view",     // getDocTypes (upload picker)
+		"settings.files.view",         // getCompanyFiles, getDriverVehicleFiles
 		"settings.driver_app.view",    // getDriverAppConfig
 	} {
 		assert.Truef(t, middleware.HasPermission(driver, code), "driver must pass %s", code)

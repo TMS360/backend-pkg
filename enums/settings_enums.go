@@ -56,6 +56,12 @@ const (
 	// reads as "exit". Grouping only; it never changes what was charged
 	// (DEV-2490).
 	CompanySettingsGeneralKeyTollsGroupBy CompanySettingsGeneralKey = "tolls_group_by"
+	// CompanySettingsGeneralKeyTruckOwnerPDFMode is how a Truck Owner settlement
+	// PDF is packaged: "single" (the default — one PDF, summary page first, then
+	// one section per truck) or "per_truck" (a summary PDF plus one PDF per
+	// truck). Missing or unknown reads as "single". Read it through
+	// settings.TruckOwnerPDFModeFor / the ForCompany variant (DEV-2914).
+	CompanySettingsGeneralKeyTruckOwnerPDFMode CompanySettingsGeneralKey = "truck_owner_pdf_mode"
 )
 
 var AllCompanySettingsGeneralKey = []CompanySettingsGeneralKey{
@@ -72,13 +78,14 @@ var AllCompanySettingsGeneralKey = []CompanySettingsGeneralKey{
 	CompanySettingsGeneralKeyFirstDayOfWeekEffectiveFrom,
 	CompanySettingsGeneralKeyBrokerDefaultBillingType,
 	CompanySettingsGeneralKeyTollsGroupBy,
+	CompanySettingsGeneralKeyTruckOwnerPDFMode,
 }
 
 func (e CompanySettingsGeneralKey) IsValid() bool {
 	switch e {
 	case CompanySettingsGeneralKeyLogo, CompanySettingsGeneralKeyTimezone, CompanySettingsGeneralKeyHazmatEnabled, CompanySettingsGeneralKeyReeferEnabled, CompanySettingsGeneralKeyBrokerHasVerifyShipments, CompanySettingsGeneralKeyTripAssignmentBufferHours, CompanySettingsGeneralKeySamsaraAssetTrackingEnabled, CompanySettingsGeneralKeyUseHereInRisk, CompanySettingsGeneralKeyEmptyMilesWorkflow,
 		CompanySettingsGeneralKeyFirstDayOfWeek, CompanySettingsGeneralKeyFirstDayOfWeekEffectiveFrom, CompanySettingsGeneralKeyBrokerDefaultBillingType,
-		CompanySettingsGeneralKeyTollsGroupBy:
+		CompanySettingsGeneralKeyTollsGroupBy, CompanySettingsGeneralKeyTruckOwnerPDFMode:
 		return true
 	}
 	return false

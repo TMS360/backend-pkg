@@ -265,3 +265,18 @@ func baselineWithoutFleetMaintenance() []string {
 	out = append(out, enums.TeamsEntitiesWithoutPersonCharges()...)
 	return append(out, enums.FleetEntitiesWithoutMaintenance()...)
 }
+
+// DEV-2979: the gross-only permission is in the catalog with its label, held by
+// admin by default and by nobody else — a company grants it to dispatchers itself.
+func TestDefaultRolePermissions_TripGrossEditIsAdminOnly(t *testing.T) {
+	gross := string(enums.PermTripGrossEdit)
+	assert.Contains(t, enums.CustomPermissionCodes(), gross)
+
+	for role, perms := range enums.DefaultRolePermissions() {
+		if role == enums.UserRoleAdmin {
+			assert.Contains(t, perms, gross, "admin must hold trip_gross_edit")
+			continue
+		}
+		assert.NotContainsf(t, perms, gross, "%s must NOT hold trip_gross_edit by default", role)
+	}
+}

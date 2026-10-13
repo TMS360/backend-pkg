@@ -258,6 +258,12 @@ const (
 	PermTripFinancialsEdit    UserPermissionEnum = "trip_financials_edit"
 	PermTripFinancialsApprove UserPermissionEnum = "trip_financials_approve"
 
+	// PermTripGrossEdit (DEV-2979) is the narrow sibling of PermTripFinancialsEdit:
+	// its holder may change a trip's driver gross through the same governed
+	// override, but not the empty or loaded miles. Held by admin only by default;
+	// a company grants it to dispatchers itself.
+	PermTripGrossEdit UserPermissionEnum = "trip_gross_edit"
+
 	// PermTripReassignCommitted (DEV-1226) gates swapping/removing a trip's driver
 	// AFTER the driver has accepted the trip (DriversAccepted=true). A regular
 	// dispatcher can still edit other trip fields via shipments.trips.edit, but the
@@ -857,6 +863,7 @@ type CustomPermissionEntry struct {
 // grantable/revocable per company via custom roles like any other code.
 var CustomPermissionCatalog = []CustomPermissionEntry{
 	{Code: string(PermTripFinancialsEdit), Label: "Edit trip miles & gross rate"},
+	{Code: string(PermTripGrossEdit), Label: "Edit driver gross only"},
 	// Registered and grantable via custom roles, but NOT default-seeded to any
 	// role yet — reserved for a future maker-checker approval flow (see
 	// DefaultRolePermissions).
@@ -1184,6 +1191,8 @@ func DefaultRolePermissions() map[UserRoleEnum][]string {
 		// DEV-1256 / BL §7.5: hand-editing trip miles & gross rate
 		// (trip_financials_edit) is held by default by admin and accounting only.
 		// A regular dispatcher does NOT get it (a custom role may add it later).
+		// trip_gross_edit (DEV-2979): admin only. Accounting already edits gross
+		// through trip_financials_edit; dispatchers get it when the company grants it.
 		// trip_financials_approve is intentionally NOT seeded to any role — it stays
 		// registered/grantable for a future maker-checker flow, but seeding it now
 		// would leave accounting with approve-and-no-edit, the exact divergence this
@@ -1269,7 +1278,7 @@ func DefaultRolePermissions() map[UserRoleEnum][]string {
 		// dispatcher could approve the difference their own miles edit created.
 		// owner_escrow_release (DEV-2821): admin only. Releasing escrow moves held
 		// money out and is not reversible, so the accounting role does NOT hold it.
-		UserRoleAdmin:      withExtra(string(PermTripFinancialsEdit), string(PermTripReassignCommitted), string(PermFileDeleteAny), string(PermReportsRun), string(PermReportsManage), string(PermCallsView), string(PermCallsPlay), string(PermSmsView), string(PermSmsSend), string(PermShipmentBillingApprove), string(PermAuditPlanExclusionEdit), string(PermComplianceDispatchOverride), string(PermAssetOutOfServiceOverride), string(PermTripDelete), string(PermInvoiceUnrecordPayment), string(PermAuditLogView), string(PermGeneralLedgerView), string(PermJournalEntryManage), string(PermVendorBillApproveLevel1), string(PermVendorBillApproveLevel2), string(PermVendorBillApproveLevel3), string(PermVendorBillPaymentVoid), string(PermExpenseApprove), string(PermInvoiceRecordPayment), string(PermMailView), string(PermMailSend), string(PermMailEdit), string(PermStatementReviewResolve), string(PermComplianceCustomerOverride), string(PermOwnerEscrowRelease)),
+		UserRoleAdmin:      withExtra(string(PermTripFinancialsEdit), string(PermTripGrossEdit), string(PermTripReassignCommitted), string(PermFileDeleteAny), string(PermReportsRun), string(PermReportsManage), string(PermCallsView), string(PermCallsPlay), string(PermSmsView), string(PermSmsSend), string(PermShipmentBillingApprove), string(PermAuditPlanExclusionEdit), string(PermComplianceDispatchOverride), string(PermAssetOutOfServiceOverride), string(PermTripDelete), string(PermInvoiceUnrecordPayment), string(PermAuditLogView), string(PermGeneralLedgerView), string(PermJournalEntryManage), string(PermVendorBillApproveLevel1), string(PermVendorBillApproveLevel2), string(PermVendorBillApproveLevel3), string(PermVendorBillPaymentVoid), string(PermExpenseApprove), string(PermInvoiceRecordPayment), string(PermMailView), string(PermMailSend), string(PermMailEdit), string(PermStatementReviewResolve), string(PermComplianceCustomerOverride), string(PermOwnerEscrowRelease)),
 		UserRoleManager:    withExtra(string(PermTripReassignCommitted), string(PermFileDeleteAny), string(PermCallsView), string(PermCallsPlay), string(PermSmsView), string(PermSmsSend), string(PermShipmentBillingApprove), string(PermAuditPlanExclusionEdit), string(PermComplianceDispatchOverride), string(PermAssetOutOfServiceOverride), string(PermTripDelete), string(PermAuditLogView), string(PermVendorBillApproveLevel1), string(PermVendorBillApproveLevel2), string(PermInvoiceRecordPayment)),
 		UserRoleAccounting: withExtra(string(PermTripFinancialsEdit), string(PermReportsRun), string(PermReportsManage), string(PermShipmentBillingApprove), string(PermGeneralLedgerView), string(PermJournalEntryManage), string(PermVendorBillApproveLevel1), string(PermExpenseApprove), string(PermInvoiceRecordPayment), string(PermStatementReviewResolve), string(PermComplianceCustomerOverride)),
 		UserRoleFleet:      withExtra(),

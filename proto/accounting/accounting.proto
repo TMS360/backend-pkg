@@ -296,6 +296,9 @@ message CreateVendorBillFromTaskResponse {
   string status = 3;
   // True when the bill was there before this call (a retry).
   bool already_existed = 4;
+  // The live bill's total. With a bill that is no longer a draft it lets the
+  // caller see that its own new total differs from what was approved (DEV-2948).
+  double total = 5;
 }
 
 message RequestAdjustmentFromTaskRequest {

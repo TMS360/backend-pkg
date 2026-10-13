@@ -65,6 +65,7 @@ const (
 	LoadsService_RecordAssetOdometer_FullMethodName            = "/loads.LoadsService/RecordAssetOdometer"
 	LoadsService_SetAssetStatus_FullMethodName                 = "/loads.LoadsService/SetAssetStatus"
 	LoadsService_GetAssetTripMiles_FullMethodName              = "/loads.LoadsService/GetAssetTripMiles"
+	LoadsService_GetTruckSamsaraMiles_FullMethodName           = "/loads.LoadsService/GetTruckSamsaraMiles"
 	LoadsService_GetAssetComplianceFacts_FullMethodName        = "/loads.LoadsService/GetAssetComplianceFacts"
 )
 
@@ -332,6 +333,11 @@ type LoadsServiceClient interface {
 	// truck no telematics feed reaches, or whose feed has gone quiet (BL-7 §7.5).
 	// The caller adds this to the last service record's odometer.
 	GetAssetTripMiles(ctx context.Context, in *GetAssetTripMilesRequest, opts ...grpc.CallOption) (*GetAssetTripMilesResponse, error)
+	// Miles a truck drove between two instants by its Samsara odometer (DEV-2907):
+	// the last Samsara reading at or before `to` minus the one the period starts
+	// from. Manual and trip-estimate readings are never read. Answered from the
+	// stored reading history only; Samsara itself is not called.
+	GetTruckSamsaraMiles(ctx context.Context, in *GetTruckSamsaraMilesRequest, opts ...grpc.CallOption) (*GetTruckSamsaraMilesResponse, error)
 	// ── Compliance facts by id (used by backend-files, DEV-2565) ──────────────
 	// Answers "is this asset retired, and is this truck leased" for a whole page
 	// of one asset class in one call. The compliance flag is None for a retired
@@ -782,6 +788,16 @@ func (c *loadsServiceClient) GetAssetTripMiles(ctx context.Context, in *GetAsset
 	return out, nil
 }
 
+func (c *loadsServiceClient) GetTruckSamsaraMiles(ctx context.Context, in *GetTruckSamsaraMilesRequest, opts ...grpc.CallOption) (*GetTruckSamsaraMilesResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetTruckSamsaraMilesResponse)
+	err := c.cc.Invoke(ctx, LoadsService_GetTruckSamsaraMiles_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *loadsServiceClient) GetAssetComplianceFacts(ctx context.Context, in *GetAssetComplianceFactsRequest, opts ...grpc.CallOption) (*GetAssetComplianceFactsResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(GetAssetComplianceFactsResponse)
@@ -1056,6 +1072,11 @@ type LoadsServiceServer interface {
 	// truck no telematics feed reaches, or whose feed has gone quiet (BL-7 §7.5).
 	// The caller adds this to the last service record's odometer.
 	GetAssetTripMiles(context.Context, *GetAssetTripMilesRequest) (*GetAssetTripMilesResponse, error)
+	// Miles a truck drove between two instants by its Samsara odometer (DEV-2907):
+	// the last Samsara reading at or before `to` minus the one the period starts
+	// from. Manual and trip-estimate readings are never read. Answered from the
+	// stored reading history only; Samsara itself is not called.
+	GetTruckSamsaraMiles(context.Context, *GetTruckSamsaraMilesRequest) (*GetTruckSamsaraMilesResponse, error)
 	// ── Compliance facts by id (used by backend-files, DEV-2565) ──────────────
 	// Answers "is this asset retired, and is this truck leased" for a whole page
 	// of one asset class in one call. The compliance flag is None for a retired
@@ -1202,6 +1223,9 @@ func (UnimplementedLoadsServiceServer) SetAssetStatus(context.Context, *SetAsset
 }
 func (UnimplementedLoadsServiceServer) GetAssetTripMiles(context.Context, *GetAssetTripMilesRequest) (*GetAssetTripMilesResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetAssetTripMiles not implemented")
+}
+func (UnimplementedLoadsServiceServer) GetTruckSamsaraMiles(context.Context, *GetTruckSamsaraMilesRequest) (*GetTruckSamsaraMilesResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetTruckSamsaraMiles not implemented")
 }
 func (UnimplementedLoadsServiceServer) GetAssetComplianceFacts(context.Context, *GetAssetComplianceFactsRequest) (*GetAssetComplianceFactsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetAssetComplianceFacts not implemented")
@@ -1976,6 +2000,24 @@ func _LoadsService_GetAssetTripMiles_Handler(srv interface{}, ctx context.Contex
 	return interceptor(ctx, in, info, handler)
 }
 
+func _LoadsService_GetTruckSamsaraMiles_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetTruckSamsaraMilesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(LoadsServiceServer).GetTruckSamsaraMiles(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: LoadsService_GetTruckSamsaraMiles_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(LoadsServiceServer).GetTruckSamsaraMiles(ctx, req.(*GetTruckSamsaraMilesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _LoadsService_GetAssetComplianceFacts_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(GetAssetComplianceFactsRequest)
 	if err := dec(in); err != nil {
@@ -2164,6 +2206,10 @@ var LoadsService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetAssetTripMiles",
 			Handler:    _LoadsService_GetAssetTripMiles_Handler,
+		},
+		{
+			MethodName: "GetTruckSamsaraMiles",
+			Handler:    _LoadsService_GetTruckSamsaraMiles_Handler,
 		},
 		{
 			MethodName: "GetAssetComplianceFacts",

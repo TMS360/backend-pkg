@@ -336,6 +336,12 @@ service LoadsService {
   // The caller adds this to the last service record's odometer.
   rpc GetAssetTripMiles(GetAssetTripMilesRequest) returns (GetAssetTripMilesResponse);
 
+  // Miles a truck drove between two instants by its Samsara odometer (DEV-2907):
+  // the last Samsara reading at or before `to` minus the one the period starts
+  // from. Manual and trip-estimate readings are never read. Answered from the
+  // stored reading history only; Samsara itself is not called.
+  rpc GetTruckSamsaraMiles(GetTruckSamsaraMilesRequest) returns (GetTruckSamsaraMilesResponse);
+
   // ── Compliance facts by id (used by backend-files, DEV-2565) ──────────────
   // Answers "is this asset retired, and is this truck leased" for a whole page
   // of one asset class in one call. The compliance flag is None for a retired
@@ -1527,6 +1533,41 @@ message GetAssetTripMilesResponse {
   // How many trips the figure came from. Zero trips is a legitimate answer of
   // zero miles, not a missing one.
   int32 trip_count = 2;
+}
+
+message GetTruckSamsaraMilesRequest {
+  string company_id = 1;
+  string truck_id = 2;
+  // The period, both ends required, `to` after `from`.
+  google.protobuf.Timestamp from = 3;
+  google.protobuf.Timestamp to = 4;
+}
+
+// SamsaraMilesReason says why GetTruckSamsaraMiles has no number. UNSPECIFIED
+// is the answer WITH a number.
+enum SamsaraMilesReason {
+  SAMSARA_MILES_REASON_UNSPECIFIED = 0;
+  // The truck has no Samsara reading at or before `to`.
+  SAMSARA_MILES_REASON_NO_READINGS = 1;
+  // A Samsara reading inside the period is lower than the one before it.
+  SAMSARA_MILES_REASON_ODOMETER_ROLLBACK = 2;
+  // End reading minus start reading is zero or less.
+  SAMSARA_MILES_REASON_NON_POSITIVE_DELTA = 3;
+}
+
+message GetTruckSamsaraMilesResponse {
+  // Meaningful only when reason is UNSPECIFIED; zero otherwise, and a caller
+  // must check reason rather than treat 0 as miles driven.
+  double miles = 1;
+  SamsaraMilesReason reason = 2;
+  // The two readings the answer stands on, so the caller can show how fresh
+  // they are. Start is the last reading at or before `from`, or the first one
+  // inside the period when there is none. Both are absent with NO_READINGS and
+  // present with every other reason.
+  double start_miles = 3;
+  google.protobuf.Timestamp start_read_at = 4;
+  double end_miles = 5;
+  google.protobuf.Timestamp end_read_at = 6;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

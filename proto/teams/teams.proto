@@ -346,6 +346,12 @@ message CrewAssignmentHistoryRow {
   string secondary_driver_id = 3; // empty when the crew ran solo
   string from = 4; // YYYY-MM-DD, inclusive, first day this crew held the asset
   string to = 5;   // YYYY-MM-DD, inclusive, last day this crew held the asset
+  // started_at / ended_at are the exact instants of the hold behind this row
+  // (RFC3339, with offset), NOT clipped to the window — a per-mile charge splits
+  // a mid-day swap on them, while from/to stay day-granular for asset charges.
+  // ended_at is empty while the crew still holds the asset.
+  string started_at = 6;
+  string ended_at = 7;
 }
 
 message GetCrewAssignmentsHistoryResponse {

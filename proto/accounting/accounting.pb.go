@@ -1204,8 +1204,11 @@ type CreateVendorBillFromTaskResponse struct {
 	Status string `protobuf:"bytes,3,opt,name=status,proto3" json:"status,omitempty"`
 	// True when the bill was there before this call (a retry).
 	AlreadyExisted bool `protobuf:"varint,4,opt,name=already_existed,json=alreadyExisted,proto3" json:"already_existed,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// The live bill's total. With a bill that is no longer a draft it lets the
+	// caller see that its own new total differs from what was approved (DEV-2948).
+	Total         float64 `protobuf:"fixed64,5,opt,name=total,proto3" json:"total,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *CreateVendorBillFromTaskResponse) Reset() {
@@ -1264,6 +1267,13 @@ func (x *CreateVendorBillFromTaskResponse) GetAlreadyExisted() bool {
 		return x.AlreadyExisted
 	}
 	return false
+}
+
+func (x *CreateVendorBillFromTaskResponse) GetTotal() float64 {
+	if x != nil {
+		return x.Total
+	}
+	return 0
 }
 
 type RequestAdjustmentFromTaskRequest struct {
@@ -1537,13 +1547,14 @@ const file_accounting_accounting_proto_rawDesc = "" +
 	"asset_type\x18\t \x01(\x0e2\x15.accounting.AssetKindR\tassetType\x12\x19\n" +
 	"\basset_id\x18\n" +
 	" \x01(\tR\aassetId\x125\n" +
-	"\x05lines\x18\v \x03(\v2\x1f.accounting.VendorBillLineInputR\x05lines\"\x9d\x01\n" +
+	"\x05lines\x18\v \x03(\v2\x1f.accounting.VendorBillLineInputR\x05lines\"\xb3\x01\n" +
 	" CreateVendorBillFromTaskResponse\x12\x17\n" +
 	"\abill_id\x18\x01 \x01(\tR\x06billId\x12\x1f\n" +
 	"\vbill_number\x18\x02 \x01(\tR\n" +
 	"billNumber\x12\x16\n" +
 	"\x06status\x18\x03 \x01(\tR\x06status\x12'\n" +
-	"\x0falready_existed\x18\x04 \x01(\bR\x0ealreadyExisted\"\x8a\x02\n" +
+	"\x0falready_existed\x18\x04 \x01(\bR\x0ealreadyExisted\x12\x14\n" +
+	"\x05total\x18\x05 \x01(\x01R\x05total\"\x8a\x02\n" +
 	" RequestAdjustmentFromTaskRequest\x12\x1d\n" +
 	"\n" +
 	"company_id\x18\x01 \x01(\tR\tcompanyId\x12\x19\n" +

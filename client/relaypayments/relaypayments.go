@@ -161,7 +161,7 @@ func (c *Client) doRequestTo(ctx context.Context, host, method, path string, que
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		defer resp.Body.Close()
 		bodyBytes, _ := io.ReadAll(resp.Body)
-		return nil, decodeAPIError(resp.StatusCode, bodyBytes)
+		return nil, decodeAPIError(resp.StatusCode, bodyBytes, resp.Header.Get("X-Request-Id"))
 	}
 
 	return resp, nil
@@ -181,12 +181,37 @@ func decodeJSON(resp *http.Response, out any) error {
 	return nil
 }
 
-func decodeAPIError(status int, body []byte) error {
-	var apiErr Error
-	if len(body) > 0 && json.Unmarshal(body, &apiErr) == nil && apiErr.Message != "" {
-		return fmt.Errorf("relaypayments: status %d: %s", status, apiErr.Message)
+func decodeAPIError(status int, body []byte, requestID string) error {
+	apiErr := &APIError{StatusCode: status, Body: string(body), RequestID: requestID}
+	var envelope Error
+	if len(body) > 0 && json.Unmarshal(body, &envelope) == nil {
+		apiErr.Message = envelope.Message
 	}
-	return fmt.Errorf("relaypayments: status %d: %s", status, string(body))
+	return apiErr
+}
+
+// APIError is a non-auth, non-2xx answer from Relay. It keeps the whole answer
+// (status, request id, raw body) so callers can log and report it; Error()
+// shows only Relay's message, as before.
+type APIError struct {
+	StatusCode int
+	Message    string
+	Body       string
+	RequestID  string
+}
+
+func (e *APIError) Error() string {
+	if e.Message != "" {
+		return fmt.Sprintf("relaypayments: status %d: %s", e.StatusCode, e.Message)
+	}
+	return fmt.Sprintf("relaypayments: status %d: %s", e.StatusCode, e.Body)
+}
+
+// AsAPIError returns the *APIError in err's chain, if any.
+func AsAPIError(err error) (*APIError, bool) {
+	var ae *APIError
+	ok := errors.As(err, &ae)
+	return ae, ok
 }
 
 // Error is the generic error envelope returned by Relay.

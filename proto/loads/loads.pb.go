@@ -5364,8 +5364,16 @@ type GetVehicleNumbersByIDsResponse struct {
 	// writes down "the number I was told", and a blank is not a number.
 	TruckNumbersById   map[string]string `protobuf:"bytes,1,rep,name=truck_numbers_by_id,json=truckNumbersById,proto3" json:"truck_numbers_by_id,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	TrailerNumbersById map[string]string `protobuf:"bytes,2,rep,name=trailer_numbers_by_id,json=trailerNumbersById,proto3" json:"trailer_numbers_by_id,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
-	unknownFields      protoimpl.UnknownFields
-	sizeCache          protoimpl.SizeCache
+	// DEV-3048: which of the requested ids are SOFT-DELETED trucks / trailers of
+	// the company. A deleted truck keeps its number in truck_numbers_by_id (its
+	// tolls and charges must still say whose they were, DEV-2835), so a caller
+	// cannot read "named" as "alive" — this is the explicit answer. Ids of
+	// another tenant and ids that never existed are not listed here either:
+	// absence still means "unknown", not "deleted".
+	DeletedTruckIds   []string `protobuf:"bytes,3,rep,name=deleted_truck_ids,json=deletedTruckIds,proto3" json:"deleted_truck_ids,omitempty"`
+	DeletedTrailerIds []string `protobuf:"bytes,4,rep,name=deleted_trailer_ids,json=deletedTrailerIds,proto3" json:"deleted_trailer_ids,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
 }
 
 func (x *GetVehicleNumbersByIDsResponse) Reset() {
@@ -5408,6 +5416,20 @@ func (x *GetVehicleNumbersByIDsResponse) GetTruckNumbersById() map[string]string
 func (x *GetVehicleNumbersByIDsResponse) GetTrailerNumbersById() map[string]string {
 	if x != nil {
 		return x.TrailerNumbersById
+	}
+	return nil
+}
+
+func (x *GetVehicleNumbersByIDsResponse) GetDeletedTruckIds() []string {
+	if x != nil {
+		return x.DeletedTruckIds
+	}
+	return nil
+}
+
+func (x *GetVehicleNumbersByIDsResponse) GetDeletedTrailerIds() []string {
+	if x != nil {
+		return x.DeletedTrailerIds
 	}
 	return nil
 }
@@ -8509,10 +8531,12 @@ const file_loads_loads_proto_rawDesc = "" +
 	"company_id\x18\x01 \x01(\tR\tcompanyId\x12\x1b\n" +
 	"\ttruck_ids\x18\x02 \x03(\tR\btruckIds\x12\x1f\n" +
 	"\vtrailer_ids\x18\x03 \x03(\tR\n" +
-	"trailerIds\"\x8a\x03\n" +
+	"trailerIds\"\xe6\x03\n" +
 	"\x1eGetVehicleNumbersByIDsResponse\x12j\n" +
 	"\x13truck_numbers_by_id\x18\x01 \x03(\v2;.loads.GetVehicleNumbersByIDsResponse.TruckNumbersByIdEntryR\x10truckNumbersById\x12p\n" +
-	"\x15trailer_numbers_by_id\x18\x02 \x03(\v2=.loads.GetVehicleNumbersByIDsResponse.TrailerNumbersByIdEntryR\x12trailerNumbersById\x1aC\n" +
+	"\x15trailer_numbers_by_id\x18\x02 \x03(\v2=.loads.GetVehicleNumbersByIDsResponse.TrailerNumbersByIdEntryR\x12trailerNumbersById\x12*\n" +
+	"\x11deleted_truck_ids\x18\x03 \x03(\tR\x0fdeletedTruckIds\x12.\n" +
+	"\x13deleted_trailer_ids\x18\x04 \x03(\tR\x11deletedTrailerIds\x1aC\n" +
 	"\x15TruckNumbersByIdEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1aE\n" +

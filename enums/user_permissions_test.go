@@ -265,3 +265,25 @@ func baselineWithoutFleetMaintenance() []string {
 	out = append(out, enums.TeamsEntitiesWithoutPersonCharges()...)
 	return append(out, enums.FleetEntitiesWithoutMaintenance()...)
 }
+
+// DEV-3096: truck_vin_correct is a flat custom code held by admin only. The
+// truck VIN is fixed after create; this is the one governed way to change it.
+func TestTruckVINCorrect_AdminOnlyAndFlat(t *testing.T) {
+	code := string(enums.PermTruckVINCorrect)
+	assert.Equal(t, "truck_vin_correct", code)
+	assert.True(t, enums.IsValidPermissionCode(code), "must validate so custom roles can grant it")
+	assert.True(t, enums.IsCustomPermissionCode(code))
+
+	for role, perms := range enums.DefaultRolePermissions() {
+		if role == enums.UserRoleAdmin {
+			assert.Contains(t, perms, code, "admin holds it by default")
+			continue
+		}
+		assert.NotContainsf(t, perms, code, "%s must not hold truck_vin_correct by default", role)
+	}
+
+	// Flat code → no module grant (not even `fleet`) implies it.
+	for _, m := range enums.ModulePermissionCodes() {
+		assert.Falsef(t, middleware.HasPermission([]string{m}, code), "module %q must not imply %q", m, code)
+	}
+}

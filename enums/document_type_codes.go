@@ -18,6 +18,10 @@ const (
 	SystemDocMCAuthority                              SystemDocTypeCode = "MC_AUTHORITY"
 	SystemDocPSSpottedLanternflyPermit                SystemDocTypeCode = "PS_SPOTTED_LANTERNFLY_PERMIT"
 	SystemDocPSSpottedLanternflyQuarantineRegulations SystemDocTypeCode = "PS_SPOTTED_LANTERNFLY_QUARANTINE_REGULATIONS"
+	// COMPANY (DEV-3093) — the rest of the BL-17 §17.4 Company tab set.
+	SystemDocBMC91       SystemDocTypeCode = "BMC_91"
+	SystemDocUCR         SystemDocTypeCode = "UCR"
+	SystemDocUSDOTMCS150 SystemDocTypeCode = "USDOT_MCS_150"
 
 	// TRUCK
 	SystemDocNMPermit              SystemDocTypeCode = "NM_PERMIT"
@@ -73,6 +77,9 @@ func (c SystemDocTypeCode) IsValid() bool {
 		SystemDocMCAuthority,
 		SystemDocPSSpottedLanternflyPermit,
 		SystemDocPSSpottedLanternflyQuarantineRegulations,
+		SystemDocBMC91,
+		SystemDocUCR,
+		SystemDocUSDOTMCS150,
 		SystemDocNMPermit,
 		SystemDocNYPermit,
 		SystemDocORPermit,

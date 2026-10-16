@@ -1240,6 +1240,11 @@ message PayBatchTrip {
   // отсутствующее значение и новый клиент блокировал бы нормальные трипы на
   // денежном пути. Отсутствие ЭТОГО поля у старого сервера = false = не блокирует.
   optional bool empty_miles_not_calculated = 29;
+
+  // DEV-3101. trip.trailer_id (UUID) — the trip's trailer now; absent when the
+  // trip has no trailer. Lets backend-accounting refuse a vendor bill line that
+  // names a trip and a trailer that is not that trip's.
+  optional string trailer_id = 30;
 }
 
 

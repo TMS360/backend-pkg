@@ -256,13 +256,14 @@ func (c *Client) doRequest(ctx context.Context, method, op, fullURL string) (*ht
 
 	req, err := http.NewRequestWithContext(ctx, method, fullURL, nil)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create request: %w", err)
+		return nil, fmt.Errorf("failed to create request: %w", redactURLErr(err))
 	}
 
 	req.Header.Set("Accept", "application/json")
 
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
+		err = redactURLErr(err)
 		// Never reached HERE, so nothing was billed — logged anyway so a
 		// network-level outage is visible in the same sample.
 		logCall(ctx, op, 0, started, err)
@@ -566,13 +567,13 @@ func (c *Client) TestConnection(ctx context.Context) error {
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.geocodeHost+"/v1/revgeocode?"+params.Encode(), nil)
 	if err != nil {
-		return fmt.Errorf("here: failed to create request: %w", err)
+		return fmt.Errorf("here: failed to create request: %w", redactURLErr(err))
 	}
 	req.Header.Set("Accept", "application/json")
 
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
-		netErr := fmt.Errorf("here: network error: %w", err)
+		netErr := fmt.Errorf("here: network error: %w", redactURLErr(err))
 		logCall(ctx, opTestConn, 0, started, netErr)
 		return netErr
 	}
@@ -593,4 +594,33 @@ func (c *Client) TestConnection(ctx context.Context) error {
 
 	logCall(ctx, opTestConn, resp.StatusCode, started, nil)
 	return nil
+}
+
+// redactURLErr scrubs the apiKey out of a *url.Error. net/http reports a
+// transport failure as *url.Error, whose text is the full request URL — and
+// HERE's credential rides in that URL — so without this the key reaches every
+// log line and Sentry event the error is wrapped into. The error keeps its
+// type and inner Err, so Timeout() and errors.Is(context.DeadlineExceeded)
+// still work for callers that retry.
+func redactURLErr(err error) error {
+	var ue *url.Error
+	if errors.As(err, &ue) {
+		ue.URL = redactAPIKey(ue.URL)
+	}
+	return err
+}
+
+// redactAPIKey replaces the apiKey query value with REDACTED and keeps the
+// rest of the URL for debugging. An unparseable URL is dropped entirely.
+func redactAPIKey(raw string) string {
+	u, err := url.Parse(raw)
+	if err != nil {
+		return ""
+	}
+	q := u.Query()
+	if q.Has("apiKey") {
+		q.Set("apiKey", "REDACTED")
+		u.RawQuery = q.Encode()
+	}
+	return u.String()
 }

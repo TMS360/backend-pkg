@@ -988,31 +988,40 @@ func (c *Client) GetVehicleStatsFeed(ctx context.Context, cursor string) (*Vehic
 	return c.GetVehicleStatsFeedWithTypes(ctx, cursor, nil)
 }
 
+// MaxStatsFeedPagesPerCall caps how many feed pages one call follows. On a
+// live fleet hasNextPage stays true for hours, so an uncapped loop held every
+// GPS point in memory until Samsara answered 429 and the whole sweep was
+// discarded. The caller stores EndCursor and continues on its next tick.
+const MaxStatsFeedPagesPerCall = 20
+
 // GetVehicleStatsFeedWithTypes — фид с составом types от вызывающего. Курсор
 // привязан к составу: сменил набор — начинай с пустого курсора.
+// Follows at most MaxStatsFeedPagesPerCall pages; HasMore says the feed has
+// pages past EndCursor. A request error after at least one page returns the
+// pages collected so far together with the error, so the caller can keep
+// EndCursor instead of losing the sweep.
 func (c *Client) GetVehicleStatsFeedWithTypes(ctx context.Context, cursor string, types []string) (*VehicleStatsFeedResult, error) {
-	var allData []VehicleLocation
-	currentCursor := cursor
+	result := &VehicleStatsFeedResult{EndCursor: cursor}
 
-	for {
-		page, err := c.fetchStatsFeedPage(ctx, currentCursor, types)
+	for pages := 0; pages < MaxStatsFeedPagesPerCall; pages++ {
+		page, err := c.fetchStatsFeedPage(ctx, result.EndCursor, types)
 		if err != nil {
-			return nil, err
+			if pages == 0 {
+				return nil, err
+			}
+			return result, err
 		}
 
-		allData = append(allData, page.Data...)
-		currentCursor = page.Pagination.EndCursor
+		result.Data = append(result.Data, page.Data...)
+		result.EndCursor = page.Pagination.EndCursor
+		result.HasMore = page.Pagination.HasNextPage && page.Pagination.EndCursor != ""
 
-		if !page.Pagination.HasNextPage {
+		if !result.HasMore {
 			break
 		}
 	}
 
-	return &VehicleStatsFeedResult{
-		Data:      allData,
-		EndCursor: currentCursor,
-		HasMore:   false,
-	}, nil
+	return result, nil
 }
 
 // fetchStatsFeedPage fetches a single page of the gps/fuel stats feed.

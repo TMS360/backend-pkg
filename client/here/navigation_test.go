@@ -190,3 +190,32 @@ func TestSanitizeOffset(t *testing.T) {
 		}
 	}
 }
+
+func TestBuildTruckRoute_OriginCourse(t *testing.T) {
+	body := `{"routes":[{"id":"r1","sections":[{"id":"s1","summary":{"length":1000,"duration":120,"baseDuration":100},"polyline":""}]}]}`
+	course := 271.6
+	for _, tc := range []struct {
+		name   string
+		course *float64
+		want   string
+	}{
+		{"no course keeps the plain point", nil, "41.000000,69.000000"},
+		{"course is sent rounded with the point", &course, "41.000000,69.000000;course=272"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var got *http.Request
+			svc := newTestNavService(t, body, &got)
+			_, err := svc.BuildTruckRoute(context.Background(), TruckNavRequest{
+				Origin:       Coordinates{Latitude: 41.0, Longitude: 69.0},
+				Destination:  Coordinates{Latitude: 41.5, Longitude: 69.5},
+				OriginCourse: tc.course,
+			})
+			if err != nil {
+				t.Fatalf("unexpected err: %v", err)
+			}
+			if o := got.URL.Query().Get("origin"); o != tc.want {
+				t.Errorf("origin=%q, want %q", o, tc.want)
+			}
+		})
+	}
+}

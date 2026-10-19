@@ -22,6 +22,7 @@ type TruckNavRequest struct {
 	Currency      string // default "USD"
 	Units         string // instruction text units; default "imperial"
 	Alternatives  int
+	OriginCourse  *float64 // direction of travel at Origin, degrees from north; nil = unknown
 }
 
 // TruckNavMultiStopRequest is the multi-stop variant; all stops in one HERE call.
@@ -123,6 +124,7 @@ func (s *navigationService) BuildTruckRoute(ctx context.Context, req TruckNavReq
 		Alternatives:  req.Alternatives,
 		Lang:          lang,
 		Units:         navUnits(req.Units),
+		OriginCourse:  req.OriginCourse,
 	}
 
 	resp, err := s.client.GetRoute(ctx, rr)

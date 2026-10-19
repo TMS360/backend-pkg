@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -66,6 +67,10 @@ type RouteRequest struct {
 	Alternatives int              // 0..6 — number of alternative routes
 	Lang         string           // BCP47, e.g. "en-US", "ru-RU"
 	Units        string           // "metric" | "imperial"
+	// OriginCourse is the vehicle's direction of travel at Origin, degrees
+	// clockwise from north (HERE waypoint option `course`). HERE then starts
+	// the route the way the vehicle faces instead of with a U-turn. Nil = unset.
+	OriginCourse *float64
 }
 
 type Coordinates struct {
@@ -300,7 +305,11 @@ func (c *Client) GetRoute(ctx context.Context, req RouteRequest) (*RouteResponse
 	params := url.Values{}
 
 	// Required parameters
-	params.Set("origin", fmt.Sprintf("%f,%f", req.Origin.Latitude, req.Origin.Longitude))
+	origin := fmt.Sprintf("%f,%f", req.Origin.Latitude, req.Origin.Longitude)
+	if req.OriginCourse != nil {
+		origin += fmt.Sprintf(";course=%d", int(math.Round(*req.OriginCourse))%360)
+	}
+	params.Set("origin", origin)
 	params.Set("destination", fmt.Sprintf("%f,%f", req.Destination.Latitude, req.Destination.Longitude))
 	params.Set("apiKey", c.apiKey)
 

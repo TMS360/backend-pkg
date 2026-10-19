@@ -85,13 +85,13 @@ func NewNavigationService(client *Client) NavigationService {
 }
 
 // navReturnOptions is the fixed set of HERE `return=` fields needed for navigation.
+// "spans" and "notices" are not valid `return=` values: HERE answers 400
+// E605001 for the whole request. Section notices come back without asking.
 var navReturnOptions = []string{
 	"polyline",
 	"summary",
 	"actions",
 	"instructions",
-	"spans",
-	"notices",
 	"travelSummary",
 }
 

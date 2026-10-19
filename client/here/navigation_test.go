@@ -64,10 +64,25 @@ func TestBuildTruckRoute_URLContainsTruckParams(t *testing.T) {
 	if q.Get("vehicle[shippedHazardousGoods]") != "flammable" {
 		t.Errorf("hazmat=%q, want flammable", q.Get("vehicle[shippedHazardousGoods]"))
 	}
-	ret := q.Get("return")
-	for _, must := range []string{"actions", "instructions", "polyline", "spans", "notices"} {
-		if !strings.Contains(ret, must) {
+	assertNavReturn(t, q.Get("return"))
+}
+
+// assertNavReturn checks the HERE `return=` list: the navigation fields are
+// there, and no value HERE rejects with 400 E605001 (spans has its own param).
+func assertNavReturn(t *testing.T, ret string) {
+	t.Helper()
+	got := map[string]bool{}
+	for _, v := range strings.Split(ret, ",") {
+		got[v] = true
+	}
+	for _, must := range []string{"actions", "instructions", "polyline", "summary"} {
+		if !got[must] {
 			t.Errorf("return=%q missing %q", ret, must)
+		}
+	}
+	for _, bad := range []string{"spans", "notices"} {
+		if got[bad] {
+			t.Errorf("return=%q has %q, which HERE rejects", ret, bad)
 		}
 	}
 }
@@ -96,6 +111,7 @@ func TestBuildTruckRouteMultiStop_SingleHTTPCallWithVia(t *testing.T) {
 	if len(via) != 2 {
 		t.Fatalf("via count=%d, want 2 (got %v)", len(via), via)
 	}
+	assertNavReturn(t, got.URL.Query().Get("return"))
 }
 
 func TestBuildTruckRoute_AlternativesParsed(t *testing.T) {

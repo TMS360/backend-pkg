@@ -65,6 +65,9 @@ func TestBuildTruckRoute_URLContainsTruckParams(t *testing.T) {
 		t.Errorf("hazmat=%q, want flammable", q.Get("vehicle[shippedHazardousGoods]"))
 	}
 	assertNavReturn(t, q.Get("return"))
+	if q.Get("units") != "imperial" {
+		t.Errorf("units=%q, want imperial", q.Get("units"))
+	}
 }
 
 // assertNavReturn checks the HERE `return=` list: the navigation fields are
@@ -112,6 +115,9 @@ func TestBuildTruckRouteMultiStop_SingleHTTPCallWithVia(t *testing.T) {
 		t.Fatalf("via count=%d, want 2 (got %v)", len(via), via)
 	}
 	assertNavReturn(t, got.URL.Query().Get("return"))
+	if u := got.URL.Query().Get("units"); u != "imperial" {
+		t.Errorf("units=%q, want imperial", u)
+	}
 }
 
 func TestBuildTruckRoute_AlternativesParsed(t *testing.T) {

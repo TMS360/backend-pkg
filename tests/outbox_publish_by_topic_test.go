@@ -42,7 +42,7 @@ func TestPublishByTopic_OneBatchPerTopic(t *testing.T) {
 
 	failed := outbox.PublishByTopic(context.Background(), w, []kafkaGo.Message{
 		msg("trips", "a"), msg("security_events", "b"), msg("trips", "c"),
-	})
+	}).Failed
 
 	assert.Empty(t, failed)
 	require.Len(t, w.batches, 2, "one write per distinct topic, not one per message")
@@ -58,7 +58,7 @@ func TestPublishByTopic_AnUnknownTopicDoesNotBlockTheOthers(t *testing.T) {
 
 	failed := outbox.PublishByTopic(context.Background(), w, []kafkaGo.Message{
 		msg("accounting_settings", "a"), msg("driver_crews", "b"), msg("invoices", "c"),
-	})
+	}).Failed
 
 	require.Len(t, failed, 1)
 	assert.ErrorIs(t, failed["accounting_settings"], unknown)
@@ -81,6 +81,6 @@ func TestPublishByTopic_KeepsOrderWithinATopic(t *testing.T) {
 func TestPublishByTopic_NothingToPublish(t *testing.T) {
 	w := &writerSpy{}
 
-	assert.Empty(t, outbox.PublishByTopic(context.Background(), w, nil))
+	assert.Empty(t, outbox.PublishByTopic(context.Background(), w, nil).Failed)
 	assert.Empty(t, w.batches, "an empty batch must not reach the broker at all")
 }

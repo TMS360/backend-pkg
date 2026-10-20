@@ -5364,8 +5364,16 @@ type GetVehicleNumbersByIDsResponse struct {
 	// writes down "the number I was told", and a blank is not a number.
 	TruckNumbersById   map[string]string `protobuf:"bytes,1,rep,name=truck_numbers_by_id,json=truckNumbersById,proto3" json:"truck_numbers_by_id,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	TrailerNumbersById map[string]string `protobuf:"bytes,2,rep,name=trailer_numbers_by_id,json=trailerNumbersById,proto3" json:"trailer_numbers_by_id,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
-	unknownFields      protoimpl.UnknownFields
-	sizeCache          protoimpl.SizeCache
+	// DEV-3048: which of the requested ids are SOFT-DELETED trucks / trailers of
+	// the company. A deleted truck keeps its number in truck_numbers_by_id (its
+	// tolls and charges must still say whose they were, DEV-2835), so a caller
+	// cannot read "named" as "alive" — this is the explicit answer. Ids of
+	// another tenant and ids that never existed are not listed here either:
+	// absence still means "unknown", not "deleted".
+	DeletedTruckIds   []string `protobuf:"bytes,3,rep,name=deleted_truck_ids,json=deletedTruckIds,proto3" json:"deleted_truck_ids,omitempty"`
+	DeletedTrailerIds []string `protobuf:"bytes,4,rep,name=deleted_trailer_ids,json=deletedTrailerIds,proto3" json:"deleted_trailer_ids,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
 }
 
 func (x *GetVehicleNumbersByIDsResponse) Reset() {
@@ -5408,6 +5416,20 @@ func (x *GetVehicleNumbersByIDsResponse) GetTruckNumbersById() map[string]string
 func (x *GetVehicleNumbersByIDsResponse) GetTrailerNumbersById() map[string]string {
 	if x != nil {
 		return x.TrailerNumbersById
+	}
+	return nil
+}
+
+func (x *GetVehicleNumbersByIDsResponse) GetDeletedTruckIds() []string {
+	if x != nil {
+		return x.DeletedTruckIds
+	}
+	return nil
+}
+
+func (x *GetVehicleNumbersByIDsResponse) GetDeletedTrailerIds() []string {
+	if x != nil {
+		return x.DeletedTrailerIds
 	}
 	return nil
 }
@@ -6046,8 +6068,12 @@ type PayBatchTrip struct {
 	// отсутствующее значение и новый клиент блокировал бы нормальные трипы на
 	// денежном пути. Отсутствие ЭТОГО поля у старого сервера = false = не блокирует.
 	EmptyMilesNotCalculated *bool `protobuf:"varint,29,opt,name=empty_miles_not_calculated,json=emptyMilesNotCalculated,proto3,oneof" json:"empty_miles_not_calculated,omitempty"`
-	unknownFields           protoimpl.UnknownFields
-	sizeCache               protoimpl.SizeCache
+	// DEV-3101. trip.trailer_id (UUID) — the trip's trailer now; absent when the
+	// trip has no trailer. Lets backend-accounting refuse a vendor bill line that
+	// names a trip and a trailer that is not that trip's.
+	TrailerId     *string `protobuf:"bytes,30,opt,name=trailer_id,json=trailerId,proto3,oneof" json:"trailer_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *PayBatchTrip) Reset() {
@@ -6281,6 +6307,13 @@ func (x *PayBatchTrip) GetEmptyMilesNotCalculated() bool {
 		return *x.EmptyMilesNotCalculated
 	}
 	return false
+}
+
+func (x *PayBatchTrip) GetTrailerId() string {
+	if x != nil && x.TrailerId != nil {
+		return *x.TrailerId
+	}
+	return ""
 }
 
 // TollMatchRow is one toll-road crossing offered for resolution.
@@ -8509,10 +8542,12 @@ const file_loads_loads_proto_rawDesc = "" +
 	"company_id\x18\x01 \x01(\tR\tcompanyId\x12\x1b\n" +
 	"\ttruck_ids\x18\x02 \x03(\tR\btruckIds\x12\x1f\n" +
 	"\vtrailer_ids\x18\x03 \x03(\tR\n" +
-	"trailerIds\"\x8a\x03\n" +
+	"trailerIds\"\xe6\x03\n" +
 	"\x1eGetVehicleNumbersByIDsResponse\x12j\n" +
 	"\x13truck_numbers_by_id\x18\x01 \x03(\v2;.loads.GetVehicleNumbersByIDsResponse.TruckNumbersByIdEntryR\x10truckNumbersById\x12p\n" +
-	"\x15trailer_numbers_by_id\x18\x02 \x03(\v2=.loads.GetVehicleNumbersByIDsResponse.TrailerNumbersByIdEntryR\x12trailerNumbersById\x1aC\n" +
+	"\x15trailer_numbers_by_id\x18\x02 \x03(\v2=.loads.GetVehicleNumbersByIDsResponse.TrailerNumbersByIdEntryR\x12trailerNumbersById\x12*\n" +
+	"\x11deleted_truck_ids\x18\x03 \x03(\tR\x0fdeletedTruckIds\x12.\n" +
+	"\x13deleted_trailer_ids\x18\x04 \x03(\tR\x11deletedTrailerIds\x1aC\n" +
 	"\x15TruckNumbersByIdEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1aE\n" +
@@ -8567,7 +8602,8 @@ const file_loads_loads_proto_rawDesc = "" +
 	"\x0edriver_user_id\x18\a \x01(\tH\x00R\fdriverUserId\x88\x01\x01\x12-\n" +
 	"\x10driver_is_active\x18\b \x01(\bH\x01R\x0edriverIsActive\x88\x01\x01B\x11\n" +
 	"\x0f_driver_user_idB\x13\n" +
-	"\x11_driver_is_active\"\xf3\t\n" +
+	"\x11_driver_is_active\"\xa6\n" +
+	"\n" +
 	"\fPayBatchTrip\x12\x17\n" +
 	"\atrip_id\x18\x01 \x01(\tR\x06tripId\x12\x1f\n" +
 	"\vtrip_number\x18\x02 \x01(\tR\n" +
@@ -8608,7 +8644,9 @@ const file_loads_loads_proto_rawDesc = "" +
 	"\x12shipment_load_rate\x18\x1a \x01(\x01R\x10shipmentLoadRate\x12.\n" +
 	"\x13shipment_has_issues\x18\x1b \x01(\bR\x11shipmentHasIssues\x12)\n" +
 	"\x0eparent_trip_id\x18\x1c \x01(\tH\x05R\fparentTripId\x88\x01\x01\x12@\n" +
-	"\x1aempty_miles_not_calculated\x18\x1d \x01(\bH\x06R\x17emptyMilesNotCalculated\x88\x01\x01B\n" +
+	"\x1aempty_miles_not_calculated\x18\x1d \x01(\bH\x06R\x17emptyMilesNotCalculated\x88\x01\x01\x12\"\n" +
+	"\n" +
+	"trailer_id\x18\x1e \x01(\tH\aR\ttrailerId\x88\x01\x01B\n" +
 	"\n" +
 	"\b_load_idB\f\n" +
 	"\n" +
@@ -8617,7 +8655,8 @@ const file_loads_loads_proto_rawDesc = "" +
 	"\x14_secondary_driver_idB\v\n" +
 	"\t_truck_idB\x11\n" +
 	"\x0f_parent_trip_idB\x1d\n" +
-	"\x1b_empty_miles_not_calculated\"\xba\x02\n" +
+	"\x1b_empty_miles_not_calculatedB\r\n" +
+	"\v_trailer_id\"\xba\x02\n" +
 	"\fTollMatchRow\x12\x17\n" +
 	"\arow_key\x18\x01 \x01(\tR\x06rowKey\x12\x1b\n" +
 	"\tdevice_id\x18\x02 \x01(\tR\bdeviceId\x12\x14\n" +

@@ -40,6 +40,7 @@ const (
 	ParticipantKindShipment ParticipantKind = "shipment"
 	ParticipantKindCompany  ParticipantKind = "company"
 	ParticipantKindTrip     ParticipantKind = "trip"
+	ParticipantKindCustomer ParticipantKind = "customer"
 )
 
 // Participant records one entity that took part in an audited action and the

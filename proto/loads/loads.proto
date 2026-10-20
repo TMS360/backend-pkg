@@ -1074,6 +1074,14 @@ message GetVehicleNumbersByIDsResponse {
   // writes down "the number I was told", and a blank is not a number.
   map<string, string> truck_numbers_by_id = 1;
   map<string, string> trailer_numbers_by_id = 2;
+  // DEV-3048: which of the requested ids are SOFT-DELETED trucks / trailers of
+  // the company. A deleted truck keeps its number in truck_numbers_by_id (its
+  // tolls and charges must still say whose they were, DEV-2835), so a caller
+  // cannot read "named" as "alive" — this is the explicit answer. Ids of
+  // another tenant and ids that never existed are not listed here either:
+  // absence still means "unknown", not "deleted".
+  repeated string deleted_truck_ids = 3;
+  repeated string deleted_trailer_ids = 4;
 }
 
 // DEV-2241: which of these trailers the company owns.
@@ -1232,6 +1240,11 @@ message PayBatchTrip {
   // отсутствующее значение и новый клиент блокировал бы нормальные трипы на
   // денежном пути. Отсутствие ЭТОГО поля у старого сервера = false = не блокирует.
   optional bool empty_miles_not_calculated = 29;
+
+  // DEV-3101. trip.trailer_id (UUID) — the trip's trailer now; absent when the
+  // trip has no trailer. Lets backend-accounting refuse a vendor bill line that
+  // names a trip and a trailer that is not that trip's.
+  optional string trailer_id = 30;
 }
 
 

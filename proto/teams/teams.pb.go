@@ -2078,8 +2078,14 @@ type CrewAssignmentHistoryRow struct {
 	SecondaryDriverId string                 `protobuf:"bytes,3,opt,name=secondary_driver_id,json=secondaryDriverId,proto3" json:"secondary_driver_id,omitempty"` // empty when the crew ran solo
 	From              string                 `protobuf:"bytes,4,opt,name=from,proto3" json:"from,omitempty"`                                                      // YYYY-MM-DD, inclusive, first day this crew held the asset
 	To                string                 `protobuf:"bytes,5,opt,name=to,proto3" json:"to,omitempty"`                                                          // YYYY-MM-DD, inclusive, last day this crew held the asset
-	unknownFields     protoimpl.UnknownFields
-	sizeCache         protoimpl.SizeCache
+	// started_at / ended_at are the exact instants of the hold behind this row
+	// (RFC3339, with offset), NOT clipped to the window — a per-mile charge splits
+	// a mid-day swap on them, while from/to stay day-granular for asset charges.
+	// ended_at is empty while the crew still holds the asset.
+	StartedAt     string `protobuf:"bytes,6,opt,name=started_at,json=startedAt,proto3" json:"started_at,omitempty"`
+	EndedAt       string `protobuf:"bytes,7,opt,name=ended_at,json=endedAt,proto3" json:"ended_at,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *CrewAssignmentHistoryRow) Reset() {
@@ -2143,6 +2149,20 @@ func (x *CrewAssignmentHistoryRow) GetFrom() string {
 func (x *CrewAssignmentHistoryRow) GetTo() string {
 	if x != nil {
 		return x.To
+	}
+	return ""
+}
+
+func (x *CrewAssignmentHistoryRow) GetStartedAt() string {
+	if x != nil {
+		return x.StartedAt
+	}
+	return ""
+}
+
+func (x *CrewAssignmentHistoryRow) GetEndedAt() string {
+	if x != nil {
+		return x.EndedAt
 	}
 	return ""
 }
@@ -2377,13 +2397,16 @@ const file_teams_teams_proto_rawDesc = "" +
 	"asset_type\x18\x02 \x01(\x0e2\x14.teams.CrewAssetTypeR\tassetType\x12\x19\n" +
 	"\basset_id\x18\x03 \x01(\tR\aassetId\x12\x12\n" +
 	"\x04from\x18\x04 \x01(\tR\x04from\x12\x0e\n" +
-	"\x02to\x18\x05 \x01(\tR\x02to\"\xb3\x01\n" +
+	"\x02to\x18\x05 \x01(\tR\x02to\"\xed\x01\n" +
 	"\x18CrewAssignmentHistoryRow\x12\x17\n" +
 	"\acrew_id\x18\x01 \x01(\tR\x06crewId\x12*\n" +
 	"\x11primary_driver_id\x18\x02 \x01(\tR\x0fprimaryDriverId\x12.\n" +
 	"\x13secondary_driver_id\x18\x03 \x01(\tR\x11secondaryDriverId\x12\x12\n" +
 	"\x04from\x18\x04 \x01(\tR\x04from\x12\x0e\n" +
-	"\x02to\x18\x05 \x01(\tR\x02to\"X\n" +
+	"\x02to\x18\x05 \x01(\tR\x02to\x12\x1d\n" +
+	"\n" +
+	"started_at\x18\x06 \x01(\tR\tstartedAt\x12\x19\n" +
+	"\bended_at\x18\a \x01(\tR\aendedAt\"X\n" +
 	"!GetCrewAssignmentsHistoryResponse\x123\n" +
 	"\x04data\x18\x01 \x03(\v2\x1f.teams.CrewAssignmentHistoryRowR\x04data*h\n" +
 	"\rCrewAssetType\x12\x1f\n" +

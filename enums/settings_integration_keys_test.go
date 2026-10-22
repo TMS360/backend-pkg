@@ -54,3 +54,16 @@ func TestRingCentralKeyIsARegisteredIntegrationKey(t *testing.T) {
 	assert.Contains(t, enums.AllCompanySettingsIntegrationKey, key,
 		"must be in the canonical list — audit redaction iterates it, so an absent key leaks the credential")
 }
+
+// DEV-3292: the RC processor reads each company's own Gemini key from Redis at
+// {company_id}:setting:gemini_api_key. Registered here so tms-auth's audit
+// redaction masks it and the settings save/delete paths accept it.
+func TestGeminiKeyIsARegisteredIntegrationKey(t *testing.T) {
+	key := enums.CompanySettingsIntegrationKeyGeminiAPIKey
+
+	require.Equal(t, "gemini_api_key", string(key),
+		"the wire value is the Redis settings suffix the RC processor reads; renaming it orphans every saved key")
+	assert.True(t, key.IsValid(), "must pass enum validation on the settings save and delete paths")
+	assert.Contains(t, enums.AllCompanySettingsIntegrationKey, key,
+		"must be in the canonical list — audit redaction iterates it, so an absent key leaks the secret")
+}

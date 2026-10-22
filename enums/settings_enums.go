@@ -159,6 +159,11 @@ const (
 	// the same reason as every other key: tms-auth's audit redaction iterates this
 	// list, so an unregistered key would write live tokens into an audit event.
 	CompanySettingsIntegrationKeySamsaraExtraOrgs CompanySettingsIntegrationKey = "samsara_extra_orgs"
+	// CompanySettingsIntegrationKeyGeminiAPIKey is the tenant's own Google Gemini
+	// key, used by the RC processor to read uploaded rate confirmations
+	// (DEV-3292). Per company on purpose: the old single platform key lived in an
+	// env var and leaked, and one shared key means one leak hits every tenant.
+	CompanySettingsIntegrationKeyGeminiAPIKey CompanySettingsIntegrationKey = "gemini_api_key"
 )
 
 var AllCompanySettingsIntegrationKey = []CompanySettingsIntegrationKey{
@@ -170,6 +175,7 @@ var AllCompanySettingsIntegrationKey = []CompanySettingsIntegrationKey{
 	CompanySettingsIntegrationKeyGoogleSheetsAPIKey,
 	CompanySettingsIntegrationKeyRingCentralCredentials,
 	CompanySettingsIntegrationKeySamsaraExtraOrgs,
+	CompanySettingsIntegrationKeyGeminiAPIKey,
 }
 
 func (e CompanySettingsIntegrationKey) IsValid() bool {
@@ -181,7 +187,8 @@ func (e CompanySettingsIntegrationKey) IsValid() bool {
 		CompanySettingsIntegrationKeyGoogleMapsAPIKey,
 		CompanySettingsIntegrationKeyGoogleSheetsAPIKey,
 		CompanySettingsIntegrationKeyRingCentralCredentials,
-		CompanySettingsIntegrationKeySamsaraExtraOrgs:
+		CompanySettingsIntegrationKeySamsaraExtraOrgs,
+		CompanySettingsIntegrationKeyGeminiAPIKey:
 		return true
 	}
 	return false

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"log/slog"
 	"time"
 
 	"github.com/TMS360/backend-pkg/consts"
@@ -101,7 +102,7 @@ func (c *Consumer) Start(ctx context.Context) {
 func (c *Consumer) dispatch(ctx context.Context, event events.EventPayload) error {
 	handlerKey := fmt.Sprintf("%s.%s", event.EntityType, event.Action)
 
-	log.Printf("📥 received event: %s (id=%s)", handlerKey, event.EventID)
+	slog.DebugContext(ctx, "received event", "event", handlerKey, "id", event.EventID)
 
 	// Default to Nil UUID if it's a system event without a specific actor
 	actorID := uuid.Nil
@@ -126,7 +127,6 @@ func (c *Consumer) dispatch(ctx context.Context, event events.EventPayload) erro
 	if handlers, exists := c.systemHandlers[handlerKey]; exists {
 		handlerFound = true
 		for _, handler := range handlers {
-			log.Printf("Executing System Handler for EntityType %s", event.EntityType)
 			if err := handler(ctxWithActor, event); err != nil {
 				log.Printf("❌ System handler execution failed: %v", err)
 			}
@@ -153,7 +153,7 @@ func (c *Consumer) dispatch(ctx context.Context, event events.EventPayload) erro
 	}
 
 	if !handlerFound {
-		log.Printf("ignored event: %s", handlerKey)
+		slog.DebugContext(ctx, "ignored event", "event", handlerKey)
 	}
 
 	return nil

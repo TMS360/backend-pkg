@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"context"
+	"crypto/subtle"
 	"encoding/json"
 	"io"
 	"log/slog"
@@ -47,6 +48,16 @@ const (
 	// DefaultAuthRateLimitWindow is the counting window for the ceiling above.
 	DefaultAuthRateLimitWindow = time.Minute
 
+	// HeaderInternalToken marks an HTTP call one of our own services makes on
+	// behalf of a user (DEV-3291), e.g. backend-workspaces filling a board
+	// through apollo-router with the user's JWT. Its value is the shared
+	// internal service secret (EnvInternalToken), so a browser or a script
+	// holding only a user token cannot produce it.
+	HeaderInternalToken = "X-Internal-Token"
+	// EnvInternalToken is the shared internal service secret, the same one the
+	// gRPC x-internal-token metadata carries.
+	EnvInternalToken = "GRPC_INTERNAL_TOKEN"
+
 	// maxBodyPeek bounds how much of the request body we read to recover the
 	// GraphQL operation name for the throttle log line. Only read on the abort
 	// path, so it never touches a request we let through.
@@ -59,9 +70,10 @@ const (
 type RateLimiterFunc func(ctx context.Context, key string, limit int, window time.Duration) (bool, error)
 
 type rateLimitConfig struct {
-	max    int
-	window time.Duration
-	allow  RateLimiterFunc
+	max           int
+	window        time.Duration
+	allow         RateLimiterFunc
+	internalToken string
 }
 
 // RateLimitOption customizes RateLimitAuthenticated.
@@ -91,6 +103,15 @@ func WithRateLimiter(fn RateLimiterFunc) RateLimitOption {
 	}
 }
 
+// WithInternalToken overrides the shared internal secret (defaults to the
+// GRPC_INTERNAL_TOKEN env var) that exempts a call from the ceiling. An empty
+// token disables the exemption entirely.
+func WithInternalToken(token string) RateLimitOption {
+	return func(c *rateLimitConfig) {
+		c.internalToken = token
+	}
+}
+
 // RateLimitAuthenticated throttles authenticated user traffic per (user, IP).
 // Install it right AFTER IdentifyUser so the actor and the resolved client
 // origin are already on the context.
@@ -99,6 +120,12 @@ func WithRateLimiter(fn RateLimiterFunc) RateLimitOption {
 // (their own limiter runs at the resolver), and system / internal
 // service-to-service actors are passed through untouched — so a login page, a
 // share link, or a background job is never throttled by this ceiling.
+//
+// Behind-the-scenes calls are not counted either (DEV-3291): a request that
+// carries X-Internal-Token equal to the shared internal secret was made by one
+// of our own services for a user click that was already counted at that
+// service's edge. Counting every fan-out call again made one busy board view
+// burn the whole per-user budget. A missing or wrong token is counted as usual.
 //
 // On a throttle it aborts with 429 + Retry-After BEFORE the GraphQL handler
 // runs, so a rejected mutation cannot partially apply, and logs the actor id,
@@ -109,9 +136,10 @@ func WithRateLimiter(fn RateLimiterFunc) RateLimitOption {
 // outage lets traffic through rather than locking the product out.
 func RateLimitAuthenticated(opts ...RateLimitOption) gin.HandlerFunc {
 	cfg := &rateLimitConfig{
-		max:    envInt(EnvAuthRateLimitMax, DefaultAuthRateLimitMax),
-		window: envDuration(EnvAuthRateLimitWindow, DefaultAuthRateLimitWindow),
-		allow:  ratelimit.Allow,
+		max:           envInt(EnvAuthRateLimitMax, DefaultAuthRateLimitMax),
+		window:        envDuration(EnvAuthRateLimitWindow, DefaultAuthRateLimitWindow),
+		allow:         ratelimit.Allow,
+		internalToken: strings.TrimSpace(os.Getenv(EnvInternalToken)),
 	}
 	for _, opt := range opts {
 		opt(cfg)
@@ -122,6 +150,10 @@ func RateLimitAuthenticated(opts ...RateLimitOption) gin.HandlerFunc {
 
 		actor, err := GetActor(reqCtx)
 		if err != nil || actor == nil || actor.IsGuest || actor.IsSystem {
+			c.Next()
+			return
+		}
+		if isInternalCall(c.Request, cfg.internalToken) {
 			c.Next()
 			return
 		}
@@ -173,6 +205,17 @@ func RateLimitAuthenticated(opts ...RateLimitOption) gin.HandlerFunc {
 			"message": consts.MsgRateLimited,
 		})
 	}
+}
+
+// isInternalCall reports whether r carries the shared internal secret. The
+// comparison is constant-time so the header cannot be used to guess the secret
+// byte by byte.
+func isInternalCall(r *http.Request, internalToken string) bool {
+	if internalToken == "" || r == nil {
+		return false
+	}
+	got := r.Header.Get(HeaderInternalToken)
+	return got != "" && subtle.ConstantTimeCompare([]byte(got), []byte(internalToken)) == 1
 }
 
 // operationName best-effort recovers the GraphQL operation name from the request

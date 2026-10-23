@@ -3,7 +3,11 @@ package rules
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"log"
+	"sync/atomic"
+
+	"github.com/jackc/pgx/v5/pgconn"
 
 	pkgRule "github.com/nikunjy/rules"
 	"gorm.io/gorm"
@@ -11,6 +15,10 @@ import (
 
 type Engine struct {
 	db *gorm.DB
+	// noTable is set once the service's database has no event_rules table.
+	// Such a service has no rules, so the engine stops asking instead of
+	// logging the same error on every event (DEV-3338).
+	noTable atomic.Bool
 }
 
 // NewEngine creates a new Rule Engine instance
@@ -21,6 +29,9 @@ func NewEngine(db *gorm.DB) *Engine {
 // GetMatchingRules fetches active rules for the event type and filters them.
 // Note: For high performance, you might want to cache these rules in Redis/Memory later.
 func (e *Engine) GetMatchingRules(ctx context.Context, topic, eventType string, eventData interface{}) ([]EventRule, error) {
+	if e.noTable.Load() {
+		return nil, nil
+	}
 	var rules []EventRule
 
 	// 1. Fetch potential rules from DB
@@ -29,6 +40,12 @@ func (e *Engine) GetMatchingRules(ctx context.Context, topic, eventType string, 
 		Where("event_type = ?", eventType).
 		Where("is_active = ?", true).
 		Find(&rules).Error
+	if isUndefinedTable(err) {
+		if !e.noTable.Swap(true) {
+			log.Printf("event rules: no event_rules table in this database; rules are off for this service")
+		}
+		return nil, nil
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -80,4 +97,9 @@ func (e *Engine) matchesCondition(conditions []byte, data interface{}) bool {
 	}
 
 	return match
+}
+
+func isUndefinedTable(err error) bool {
+	var pgErr *pgconn.PgError
+	return errors.As(err, &pgErr) && pgErr.Code == "42P01"
 }

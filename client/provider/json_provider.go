@@ -100,6 +100,11 @@ func (p *JSONClientProvider[Cred, T]) fetchCredential(ctx context.Context, compa
 		return zero, fmt.Errorf("provider: %s not found for company %s: %w", p.settingKey, companyID, err)
 	}
 
+	return decodeCredential[Cred](ctx, companyID, p.settingKey, data)
+}
+
+// decodeCredential turns the cached value into the typed credential.
+func decodeCredential[Cred any](ctx context.Context, companyID, settingKey string, data []byte) (Cred, error) {
 	var cred Cred
 
 	// Setting values are written to Redis by tms360-backend via cache.Set,
@@ -119,11 +124,17 @@ func (p *JSONClientProvider[Cred, T]) fetchCredential(ctx context.Context, compa
 	var jsonStr string
 	if err := json.Unmarshal(data, &jsonStr); err != nil {
 		var zero Cred
-		return zero, fmt.Errorf("provider: failed to unmarshal %s for company %s: %w", p.settingKey, companyID, err)
+		return zero, fmt.Errorf("provider: failed to unmarshal %s for company %s: %w", settingKey, companyID, err)
+	}
+	// A sealed credential (DEV-3295) is this same JSON text, encrypted.
+	jsonStr, err := openSetting(ctx, companyID, settingKey, jsonStr)
+	if err != nil {
+		var zero Cred
+		return zero, err
 	}
 	if err := json.Unmarshal([]byte(jsonStr), &cred); err != nil {
 		var zero Cred
-		return zero, fmt.Errorf("provider: failed to parse %s json for company %s: %w", p.settingKey, companyID, err)
+		return zero, fmt.Errorf("provider: failed to parse %s json for company %s: %w", settingKey, companyID, err)
 	}
 	return cred, nil
 }

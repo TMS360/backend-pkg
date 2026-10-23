@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"path"
 	"strconv"
 	"strings"
 	"time"
@@ -158,47 +157,7 @@ func (p *RTSSFTPProvider) SubmitBatch(ctx context.Context, batch Batch, onProgre
 	if err := client.EnsureDir(p.inboundDir); err != nil {
 		return SubmitResult{}, err
 	}
-
-	// total = every PDF plus the CSV manifest (uploaded last).
-	total := len(batch.PDFs) + 1
-	uploaded := make([]string, 0, total)
-	for i, pdf := range batch.PDFs {
-		if err := ctx.Err(); err != nil {
-			return SubmitResult{CSVFileName: csvFileName, Uploaded: uploaded}, err
-		}
-		fileName := sanitizePDFName(pdf.InvoiceNumber)
-		remote, uerr := client.Upload(p.inboundDir, fileName, pdf.Bytes)
-		if uerr != nil {
-			return SubmitResult{CSVFileName: csvFileName, Uploaded: uploaded},
-				fmt.Errorf("upload pdf[%d] %s: %w", i, pdf.InvoiceNumber, uerr)
-		}
-		uploaded = append(uploaded, remote)
-		if onProgress != nil {
-			onProgress(Progress{Phase: "uploading", Done: i + 1, Total: total, Detail: fileName})
-		}
-	}
-
-	// Trigger-safe manifest drop: RTS ingests on ANY *.csv/*.xlsx the moment it
-	// appears, so a connection drop mid-write must never leave a truncated CSV
-	// behind — a partial manifest would fire the trigger with an incomplete
-	// batch. Upload under an inert temp name (not a spreadsheet extension),
-	// then atomically rename into place; the trigger only ever sees a complete
-	// manifest. A leftover *.uploading from a crash is ignored by RTS.
-	tmpName := csvFileName + ".uploading"
-	if _, err := client.Upload(p.inboundDir, tmpName, csvBytes); err != nil {
-		return SubmitResult{CSVFileName: csvFileName, Uploaded: uploaded},
-			fmt.Errorf("upload csv manifest (temp): %w", err)
-	}
-	if err := client.Rename(p.inboundDir, tmpName, csvFileName); err != nil {
-		return SubmitResult{CSVFileName: csvFileName, Uploaded: uploaded},
-			fmt.Errorf("activate csv manifest: %w", err)
-	}
-	uploaded = append(uploaded, path.Join(p.inboundDir, csvFileName))
-	if onProgress != nil {
-		onProgress(Progress{Phase: "uploading", Done: total, Total: total, Detail: csvFileName})
-	}
-
-	return SubmitResult{CSVFileName: csvFileName, Uploaded: uploaded}, nil
+	return shipBatch(ctx, client, p.inboundDir, batch.PDFs, csvFileName, csvBytes, onProgress)
 }
 
 func (p *RTSSFTPProvider) clock() time.Time {

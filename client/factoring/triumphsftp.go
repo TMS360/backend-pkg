@@ -46,6 +46,10 @@ type sftpUploader interface {
 	// Rename moves remoteDir/from to remoteDir/to (replacing the target) —
 	// the second half of a trigger-safe two-step manifest drop.
 	Rename(remoteDir, from, to string) error
+	// Remove deletes a file this attempt uploaded (full remote path).
+	Remove(remotePath string) error
+	// Size reports whether remoteDir/filename exists and how big it is.
+	Size(remoteDir, filename string) (int64, bool, error)
 	Close() error
 }
 
@@ -144,9 +148,10 @@ func defaultSFTPDial(ctx context.Context, d sftpDialer) (sftpUploader, error) {
 	return dialSFTP(ctx, d)
 }
 
-// SubmitBatch uploads every invoice PDF first, then the CSV manifest last.
-// Order matters: Triumph's poller starts processing the moment it sees the
-// CSV, so any PDF uploaded after the CSV is missed.
+// SubmitBatch uploads every invoice PDF first, then the CSV manifest last
+// (via shipBatch: temp name + rename, cleanup on failure). Order matters:
+// Triumph's poller starts processing the moment it sees the CSV, so any PDF
+// uploaded after the CSV is missed.
 //
 // File naming:
 //   - PDFs: <INVOICE#>.pdf (InvoiceNumber sanitized for filesystem safety)
@@ -196,37 +201,7 @@ func (p *TriumphSFTPProvider) SubmitBatch(ctx context.Context, batch Batch, onPr
 	if err := client.EnsureDir(p.inboundDir); err != nil {
 		return SubmitResult{}, err
 	}
-
-	// total = every PDF plus the CSV manifest (uploaded last).
-	total := len(batch.PDFs) + 1
-	uploaded := make([]string, 0, total)
-	for i, pdf := range batch.PDFs {
-		if err := ctx.Err(); err != nil {
-			return SubmitResult{CSVFileName: csvFileName, Uploaded: uploaded}, err
-		}
-		fileName := sanitizePDFName(pdf.InvoiceNumber)
-		remote, uerr := client.Upload(p.inboundDir, fileName, pdf.Bytes)
-		if uerr != nil {
-			return SubmitResult{CSVFileName: csvFileName, Uploaded: uploaded},
-				fmt.Errorf("upload pdf[%d] %s: %w", i, pdf.InvoiceNumber, uerr)
-		}
-		uploaded = append(uploaded, remote)
-		if onProgress != nil {
-			onProgress(Progress{Phase: "uploading", Done: i + 1, Total: total, Detail: fileName})
-		}
-	}
-
-	csvPath, err := client.Upload(p.inboundDir, csvFileName, csvBytes)
-	if err != nil {
-		return SubmitResult{CSVFileName: csvFileName, Uploaded: uploaded},
-			fmt.Errorf("upload csv manifest: %w", err)
-	}
-	uploaded = append(uploaded, csvPath)
-	if onProgress != nil {
-		onProgress(Progress{Phase: "uploading", Done: total, Total: total, Detail: csvFileName})
-	}
-
-	return SubmitResult{CSVFileName: csvFileName, Uploaded: uploaded}, nil
+	return shipBatch(ctx, client, p.inboundDir, batch.PDFs, csvFileName, csvBytes, onProgress)
 }
 
 // BuildManifest renders the Triumph 5-column CSV — the same bytes SubmitBatch

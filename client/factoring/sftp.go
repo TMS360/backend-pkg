@@ -179,6 +179,29 @@ func (c *sftpClient) Rename(remoteDir, from, to string) error {
 	return nil
 }
 
+// Remove deletes one remote file by its full path (as returned by Upload).
+// A file that is already gone counts as removed.
+func (c *sftpClient) Remove(remotePath string) error {
+	if err := c.sftp.Remove(remotePath); err != nil && !errors.Is(err, os.ErrNotExist) {
+		return fmt.Errorf("factoring/sftp: remove %s: %w", remotePath, err)
+	}
+	return nil
+}
+
+// Size reports the size of remoteDir/filename and whether it exists. A missing
+// file is (0, false, nil); any other error means the server could not tell.
+func (c *sftpClient) Size(remoteDir, filename string) (int64, bool, error) {
+	remotePath := path.Join(remoteDir, filename)
+	fi, err := c.sftp.Stat(remotePath)
+	if errors.Is(err, os.ErrNotExist) {
+		return 0, false, nil
+	}
+	if err != nil {
+		return 0, false, fmt.Errorf("factoring/sftp: stat %s: %w", remotePath, err)
+	}
+	return fi.Size(), true, nil
+}
+
 // Close releases the SFTP subsystem and the underlying SSH connection. Safe
 // to call on a partially-constructed client (nil-safe).
 func (c *sftpClient) Close() error {

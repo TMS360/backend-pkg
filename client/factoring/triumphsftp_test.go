@@ -3,6 +3,8 @@ package factoring
 import (
 	"context"
 	"errors"
+	"path"
+	"sort"
 	"strings"
 	"sync"
 	"testing"
@@ -22,6 +24,18 @@ type fakeUploader struct {
 	closed    bool
 	uploadErr error
 	renameErr error
+
+	// files is the remote folder as the fake sees it: full path → size.
+	files map[string]int64
+	// failUploadOf fails only the upload of that filename (after creating it
+	// half written), so a batch can break in the middle.
+	failUploadOf string
+	// renameErrAfterMove makes Rename move the file and still report an error
+	// (the reply was lost after the server did the work).
+	renameErrAfterMove bool
+	removeErr          error
+	sizeErr            error
+	removed            []string
 }
 
 type recordedUpload struct {
@@ -48,18 +62,63 @@ func (f *fakeUploader) Upload(dir, filename string, content []byte) (string, err
 	if f.uploadErr != nil {
 		return "", f.uploadErr
 	}
+	if f.files == nil {
+		f.files = map[string]int64{}
+	}
+	if filename == f.failUploadOf {
+		f.files[path.Join(dir, filename)] = int64(len(content) / 2)
+		return "", errors.New("connection reset")
+	}
 	f.uploads = append(f.uploads, recordedUpload{dir: dir, filename: filename, content: append([]byte(nil), content...)})
-	return dir + "/" + filename, nil
+	f.files[path.Join(dir, filename)] = int64(len(content))
+	return path.Join(dir, filename), nil
+}
+
+func (f *fakeUploader) Remove(remotePath string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.removeErr != nil {
+		return f.removeErr
+	}
+	f.removed = append(f.removed, remotePath)
+	delete(f.files, remotePath)
+	return nil
+}
+
+func (f *fakeUploader) Size(dir, filename string) (int64, bool, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.sizeErr != nil {
+		return 0, false, f.sizeErr
+	}
+	size, ok := f.files[path.Join(dir, filename)]
+	return size, ok, nil
+}
+
+// remoteFiles lists what is left in the fake folder.
+func (f *fakeUploader) remoteFiles() []string {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	out := make([]string, 0, len(f.files))
+	for p := range f.files {
+		out = append(out, p)
+	}
+	sort.Strings(out)
+	return out
 }
 
 func (f *fakeUploader) Rename(dir, from, to string) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	if f.renameErr != nil {
+	if f.renameErr != nil && !f.renameErrAfterMove {
 		return f.renameErr
 	}
 	f.renames = append(f.renames, recordedRename{dir: dir, from: from, to: to})
-	return nil
+	if size, ok := f.files[path.Join(dir, from)]; ok {
+		delete(f.files, path.Join(dir, from))
+		f.files[path.Join(dir, to)] = size
+	}
+	return f.renameErr
 }
 
 func (f *fakeUploader) Close() error {
@@ -104,10 +163,12 @@ func TestSubmitBatch_UploadOrder_PDFsBeforeCSV(t *testing.T) {
 	require.Len(t, fake.uploads, 3, "expected 2 PDFs + 1 CSV")
 	assert.Equal(t, "IN-000000.pdf", fake.uploads[0].filename)
 	assert.Equal(t, "IN-000001.pdf", fake.uploads[1].filename)
-	// CSV MUST be last so Triumph's poller never sees a manifest without files.
-	assert.True(t, strings.HasSuffix(fake.uploads[2].filename, ".csv"),
-		"last upload should be CSV, got %q", fake.uploads[2].filename)
-	assert.Equal(t, "invoices_20260111_143052.csv", fake.uploads[2].filename)
+	// CSV MUST be last so Triumph's poller never sees a manifest without files,
+	// and it goes up under an inert temp name, renamed into place only once
+	// whole (DEV-3299) — a half-written CSV is never visible.
+	assert.Equal(t, "invoices_20260111_143052.csv.uploading", fake.uploads[2].filename)
+	require.Len(t, fake.renames, 1)
+	assert.Equal(t, recordedRename{dir: "TMS_INPUT", from: "invoices_20260111_143052.csv.uploading", to: "invoices_20260111_143052.csv"}, fake.renames[0])
 	assert.Equal(t, "invoices_20260111_143052.csv", res.CSVFileName)
 	assert.Len(t, res.Uploaded, 3)
 	assert.True(t, fake.closed, "client should be closed on success")

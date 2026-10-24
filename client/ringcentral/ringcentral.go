@@ -144,7 +144,9 @@ type tokenResponse struct {
 	ExpiresIn   int    `json:"expires_in"`
 	OwnerID     string `json:"owner_id"`
 	// Scope is the space-separated list of permissions the app was granted.
-	Scope string `json:"scope"`
+	// A pointer: an empty list (no permissions at all) is not the same answer
+	// as no list.
+	Scope *string `json:"scope"`
 }
 
 // errorResponse is the OAuth error payload RingCentral returns on a rejection.
@@ -351,8 +353,10 @@ func (c *Client) TestConnection(ctx context.Context) error {
 
 // MissingPermissions logs in and returns the RequiredPermissions the app was
 // not granted, read from the token response — no extra call to RingCentral.
-// A login failure is returned as TestConnection would return it. A response
-// with no scope at all returns nil: we cannot tell, so we do not warn.
+// A login failure is returned as TestConnection would return it. An empty
+// scope means the app has no permissions, so every one is missing (seen live on
+// the first customer's app). Only a response with no scope field returns nil:
+// we cannot tell, so we do not warn.
 func (c *Client) MissingPermissions(ctx context.Context) ([]Permission, error) {
 	tok, err := c.tokenExchange(ctx)
 	if err != nil {
@@ -361,10 +365,10 @@ func (c *Client) MissingPermissions(ctx context.Context) ([]Permission, error) {
 		}
 		return nil, err
 	}
-	granted := strings.Fields(tok.Scope)
-	if len(granted) == 0 {
+	if tok.Scope == nil {
 		return nil, nil
 	}
+	granted := strings.Fields(*tok.Scope)
 	have := make(map[string]bool, len(granted))
 	for _, s := range granted {
 		have[s] = true
@@ -380,9 +384,10 @@ func (c *Client) MissingPermissions(ctx context.Context) ([]Permission, error) {
 
 // isAuthRejection separates "your credentials are wrong" from "the request or
 // the platform was wrong". RingCentral answers a revoked or expired JWT with
-// 400 invalid_grant, not 401, so status alone is not enough.
+// 400 invalid_grant, not 401, so status alone is not enough. A JWT deleted in
+// the developer console answers 404 "Personal API Key is not found" (DEV-3365).
 func isAuthRejection(status int, code string) bool {
-	if status == http.StatusUnauthorized || status == http.StatusForbidden {
+	if status == http.StatusUnauthorized || status == http.StatusForbidden || status == http.StatusNotFound {
 		return true
 	}
 	if status == http.StatusBadRequest {

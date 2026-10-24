@@ -25,6 +25,14 @@ const (
 	// real client address to it before the request reaches us.
 	HeaderXForwardedFor = "X-Forwarded-For"
 
+	// HeaderXRealIP is the client address Railway's edge writes on every public
+	// request (docs: Public Networking → Specs & Limits), replacing any copy the
+	// caller sent. Apollo Router forwards it to subgraphs over the private
+	// network (see apollo-router/router.yaml). It is preferred over
+	// X-Forwarded-For because Railway's CDN layer appends its own rotating
+	// addresses to that chain, so its rightmost entry is not the client (DEV-3291).
+	HeaderXRealIP = "X-Real-IP"
+
 	// HeaderClientUserAgent carries the *client's* user-agent across Apollo
 	// Router, which replaces User-Agent with its own on subgraph requests. The
 	// router copies the incoming User-Agent into this header (see
@@ -97,6 +105,10 @@ func TrustedProxyHops() int {
 // With hops > 0 an absent XFF means the request never crossed the edge proxy
 // (internal service-to-service traffic), so we record nothing rather than an
 // internal container address.
+//
+// Behind the edge (hops > 0) a valid X-Real-IP wins over the chain: the edge
+// sets it to the client itself, while the chain's tail can be a CDN node that
+// changes from request to request (DEV-3291).
 func ResolveClientIP(r *http.Request) string {
 	if r == nil {
 		return ""
@@ -105,6 +117,10 @@ func ResolveClientIP(r *http.Request) string {
 	hops := TrustedProxyHops()
 	if hops == 0 {
 		return normalizeIP(r.RemoteAddr)
+	}
+
+	if realIP := normalizeIP(r.Header.Get(HeaderXRealIP)); realIP != "" {
+		return realIP
 	}
 
 	forwarded := r.Header.Get(HeaderXForwardedFor)

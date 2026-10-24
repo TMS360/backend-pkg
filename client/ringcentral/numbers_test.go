@@ -146,3 +146,27 @@ func NewClientWithCredMust(t *testing.T, serverURL string) *Client {
 	require.NoError(t, err)
 	return c
 }
+
+// DEV-3365: a 403 on a read is a missing app permission, not a dead login. It
+// still matches ErrInvalidCredentials so callers written before the split keep
+// working.
+func TestListPhoneNumbers_ForbiddenIsMissingPermission(t *testing.T) {
+	url, _ := numbersServer(t, func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusForbidden)
+		_, _ = w.Write([]byte(`{"errorCode":"CMN-401","message":"In order to call this API endpoint, application needs to have [ReadAccounts] permission"}`))
+	})
+
+	_, err := NewClientWithCredMust(t, url).ListPhoneNumbers(context.Background())
+	assert.ErrorIs(t, err, ErrInsufficientPermissions)
+	assert.ErrorIs(t, err, ErrInvalidCredentials)
+}
+
+func TestListPhoneNumbers_UnauthorizedIsNotMissingPermission(t *testing.T) {
+	url, _ := numbersServer(t, func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusUnauthorized)
+	})
+
+	_, err := NewClientWithCredMust(t, url).ListPhoneNumbers(context.Background())
+	assert.ErrorIs(t, err, ErrInvalidCredentials)
+	assert.NotErrorIs(t, err, ErrInsufficientPermissions)
+}

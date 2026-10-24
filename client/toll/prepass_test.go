@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/TMS360/backend-pkg/deployenv"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/xuri/excelize/v2"
@@ -71,6 +72,14 @@ func newTestProvider() *PrePassSFTP {
 		Secret:       "p",
 		Directory:    "/inbound",
 	})
+}
+
+// newProdProvider is newTestProvider on a production deployment, where the
+// stored host is dialed as is.
+func newProdProvider(t *testing.T) *PrePassSFTP {
+	t.Helper()
+	inProduction(t)
+	return newTestProvider()
 }
 
 // serial converts a wall-clock time to the Excel serial the file would carry.
@@ -490,7 +499,7 @@ func withFake(p *PrePassSFTP, fake *fakeFetcher) *PrePassSFTP {
 
 func TestList_PassesDirectoryAndAcceptedExtensions(t *testing.T) {
 	fake := &fakeFetcher{files: []RemoteFile{{Name: "a.xlsx"}}}
-	p := withFake(newTestProvider(), fake)
+	p := withFake(newProdProvider(t), fake)
 
 	got, err := p.List(context.Background())
 	require.NoError(t, err)
@@ -501,7 +510,7 @@ func TestList_PassesDirectoryAndAcceptedExtensions(t *testing.T) {
 }
 
 func TestList_EmptyFolderIsNotAnError(t *testing.T) {
-	p := withFake(newTestProvider(), &fakeFetcher{})
+	p := withFake(newProdProvider(t), &fakeFetcher{})
 	got, err := p.List(context.Background())
 	require.NoError(t, err, "between weekly drops the folder is simply empty")
 	assert.Empty(t, got)
@@ -509,7 +518,7 @@ func TestList_EmptyFolderIsNotAnError(t *testing.T) {
 
 func TestFetch_ReturnsBytesAndClosesConnection(t *testing.T) {
 	fake := &fakeFetcher{blobs: map[string][]byte{"weekly.xlsx": []byte("payload")}}
-	p := withFake(newTestProvider(), fake)
+	p := withFake(newProdProvider(t), fake)
 
 	got, err := p.Fetch(context.Background(), "weekly.xlsx")
 	require.NoError(t, err)
@@ -519,13 +528,13 @@ func TestFetch_ReturnsBytesAndClosesConnection(t *testing.T) {
 
 func TestTestConnection_DialsAndCloses(t *testing.T) {
 	fake := &fakeFetcher{}
-	p := withFake(newTestProvider(), fake)
+	p := withFake(newProdProvider(t), fake)
 	require.NoError(t, p.TestConnection(context.Background()))
 	assert.True(t, fake.closed, "the probe must not download anything")
 }
 
 func TestTestConnection_SurfacesAuthError(t *testing.T) {
-	p := newTestProvider()
+	p := newProdProvider(t)
 	p.dialFn = func(context.Context, sftpDialer) (sftpFetcher, error) {
 		return nil, &AuthError{ProviderType: ProviderPrePassSFTP, Cause: errors.New("permission denied")}
 	}
@@ -546,6 +555,7 @@ func TestHostKeyCallback(t *testing.T) {
 // ---------- registry ----------
 
 func TestNewProviderFromCredential(t *testing.T) {
+	inProduction(t) // the host requirement is waived outside production
 	p, err := NewProviderFromCredential(Credential{
 		ProviderType: ProviderPrePassSFTP,
 		Host:         "sftp.example.test",
@@ -665,7 +675,7 @@ func TestRulesFor_DrivesValidationPerProvider(t *testing.T) {
 // override is what redirects them, so its absence has to stop the dial rather
 // than fall through to the host the copied tenant brought with it.
 func TestNewPrePassSFTP_NonProdWithoutCatcherOverrideRefusesToDial(t *testing.T) {
-	t.Setenv("APP_ENV", "dev")
+	t.Setenv(deployenv.RailwayEnvVar, "development")
 	t.Setenv(envTestPrePassHost, "")
 
 	p := NewPrePassSFTP(Credential{
@@ -693,7 +703,7 @@ func TestNewPrePassSFTP_NonProdWithoutCatcherOverrideRefusesToDial(t *testing.T)
 }
 
 func TestNewPrePassSFTP_NonProdWithCatcherOverrideDialsTheCatcher(t *testing.T) {
-	t.Setenv("APP_ENV", "staging")
+	t.Setenv(deployenv.RailwayEnvVar, "staging")
 	t.Setenv(envTestPrePassHost, "sftp.catcher.internal")
 	t.Setenv(envTestPrePassDir, "/prepass")
 

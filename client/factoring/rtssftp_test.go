@@ -7,12 +7,14 @@ import (
 	"testing"
 	"time"
 
+	"github.com/TMS360/backend-pkg/deployenv"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func newRTSProvider(t *testing.T, fake *fakeUploader) *RTSSFTPProvider {
 	t.Helper()
+	inProduction(t)
 	p := NewRTSSFTP(Credential{
 		ProviderType: ProviderRTSSFTP,
 		Username:     "truckco1",
@@ -197,7 +199,7 @@ func TestNewProviderFromCredential_ReturnsRTSForKnownType(t *testing.T) {
 }
 
 func TestNewProviderFromCredential_ReturnsRTSTest(t *testing.T) {
-	t.Setenv("APP_ENV", "")
+	inProduction(t)
 	prov, err := NewProviderFromCredential(Credential{
 		ProviderType: ProviderRTSTestSFTP,
 		Username:     "u",
@@ -222,6 +224,7 @@ func TestTestConnection_DialsAndClosesWithoutUpload(t *testing.T) {
 }
 
 func TestTestConnection_PropagatesAuthError(t *testing.T) {
+	inProduction(t)
 	p := NewRTSSFTP(Credential{ProviderType: ProviderRTSSFTP, Username: "u", Password: "p"})
 	p.dialFn = func(ctx context.Context, d sftpDialer) (sftpUploader, error) {
 		return nil, &AuthError{ProviderType: d.ProviderType, Cause: errors.New("unable to authenticate")}
@@ -232,7 +235,7 @@ func TestTestConnection_PropagatesAuthError(t *testing.T) {
 }
 
 func TestNewRTSSFTP_ProdHostIgnoresAccessKey(t *testing.T) {
-	t.Setenv("APP_ENV", "")
+	inProduction(t)
 	p := NewRTSSFTP(Credential{
 		ProviderType: ProviderRTSSFTP,
 		Username:     "u",
@@ -244,7 +247,7 @@ func TestNewRTSSFTP_ProdHostIgnoresAccessKey(t *testing.T) {
 }
 
 func TestNewRTSSFTP_NonProdRemapsBothRTSTypes(t *testing.T) {
-	t.Setenv("APP_ENV", "dev")
+	t.Setenv(deployenv.RailwayEnvVar, "staging")
 	t.Setenv("TEST_RTS_SFTP_HOST", "sftpgo.internal")
 	t.Setenv("TEST_RTS_SFTP_PORT", "2022")
 	t.Setenv("TEST_RTS_SFTP_INBOUND_DIR", "TMS_INPUT")

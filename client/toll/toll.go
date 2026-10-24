@@ -37,6 +37,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/TMS360/backend-pkg/deployenv"
 	"github.com/shopspring/decimal"
 )
 
@@ -199,6 +200,10 @@ var ErrNotPrePassFile = errors.New("This file does not look like a PrePass file"
 // ErrUploadOnly is what an upload-only provider answers to any attempt to dial.
 var ErrUploadOnly = errors.New("toll: upload-only integration has no folder to read")
 
+// ErrRealServerBlocked is what a provider answers to any dial outside Railway
+// production when no TEST_* host points it at our catcher (DEV-3306).
+var ErrRealServerBlocked = errors.New("real PrePass server is blocked outside production")
+
 // Validate checks the credential against its provider's declared rules.
 func (c Credential) Validate() error {
 	if !c.ProviderType.IsValid() {
@@ -217,9 +222,9 @@ func (c Credential) Validate() error {
 	if r.RequiresBaseURL && strings.TrimSpace(c.BaseURL) == "" {
 		return fmt.Errorf("toll: %s credential missing base url", c.ProviderType)
 	}
-	// The host requirement is waived on non-production deployments, where the
-	// TEST_* override supplies our catcher folder instead of the real one.
-	if r.RequiresHost && strings.TrimSpace(c.Host) == "" && !isNonProdAppEnv() {
+	// The host requirement is waived outside production, where the TEST_*
+	// override supplies our catcher folder instead of the real one.
+	if r.RequiresHost && strings.TrimSpace(c.Host) == "" && deployenv.IsProduction() {
 		return fmt.Errorf("toll: %s credential missing host", c.ProviderType)
 	}
 	return nil

@@ -3,6 +3,7 @@ package factoring
 import (
 	"testing"
 
+	"github.com/TMS360/backend-pkg/deployenv"
 	"github.com/stretchr/testify/require"
 )
 
@@ -12,7 +13,7 @@ func TestNewTestTargetProvider_EmptyHostRefused(t *testing.T) {
 }
 
 func TestNewTestTargetProvider_IgnoresTestEnvOverrides(t *testing.T) {
-	t.Setenv("APP_ENV", "dev")
+	t.Setenv(deployenv.RailwayEnvVar, "staging")
 	t.Setenv(envTestTriumphSFTPHost, "other-host")
 	t.Setenv(envTestSFTPHostLegacy, "other-host")
 	t.Setenv(envTestRTSSFTPHost, "other-host")

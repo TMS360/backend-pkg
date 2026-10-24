@@ -10,7 +10,7 @@ import (
 
 // TestTarget is the TMS360 test server (SFTPGo) that a factoring test send
 // writes to (DEV-3288). It is never a factor: the host comes only from the
-// caller, the TEST_* overrides and APP_ENV are not read, and an empty host is
+// caller, the TEST_* overrides and the environment name are not read, and an empty host is
 // an error — there is no fallback to the Triumph or RTS address.
 type TestTarget struct {
 	Host     string

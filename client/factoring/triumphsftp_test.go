@@ -71,6 +71,7 @@ func (f *fakeUploader) Close() error {
 
 func newProvider(t *testing.T, fake *fakeUploader) *TriumphSFTPProvider {
 	t.Helper()
+	inProduction(t)
 	p := NewTriumphSFTP(Credential{
 		ProviderType: ProviderTriumphSFTP,
 		Username:     "u",
@@ -143,6 +144,7 @@ func TestSubmitBatch_ReportsPerFileProgress(t *testing.T) {
 }
 
 func TestSubmitBatch_UsesHardcodedInboundDir(t *testing.T) {
+	inProduction(t)
 	fake := &fakeUploader{}
 	p := NewTriumphSFTP(Credential{
 		ProviderType: ProviderTriumphSFTP,

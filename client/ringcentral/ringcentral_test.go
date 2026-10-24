@@ -196,7 +196,7 @@ func TestMissingPermissions(t *testing.T) {
 	}{
 		{"all granted", all, nil},
 		{"two missing", "ReadAccounts ReadCallRecording ReadMessages SMS SubscriptionWebhook EditExtensions", []string{"Read Call Log", "Faxes"}},
-		{"no scope in the answer", "", nil},
+		{"empty scope means none granted", "", []string{"Read Accounts", "Read Call Log", "Read Call Recording", "Read Messages", "SMS", "Faxes", "WebHook Subscriptions"}},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -222,4 +222,25 @@ func TestMissingPermissions_RejectedLogin(t *testing.T) {
 
 	_, err = c.MissingPermissions(context.Background())
 	assert.ErrorIs(t, err, ErrInvalidCredentials)
+}
+
+// DEV-3365: no scope field at all — we cannot tell, so nothing is reported.
+func TestMissingPermissions_NoScopeFieldIsUnknown(t *testing.T) {
+	srv, _ := stubServer(t, http.StatusOK, `{"access_token":"tok","expires_in":3600}`)
+	c, err := NewClientWithCred(credFor(srv.URL))
+	require.NoError(t, err)
+
+	missing, err := c.MissingPermissions(context.Background())
+	require.NoError(t, err)
+	assert.Empty(t, missing)
+}
+
+// DEV-3365: a JWT deleted in the developer console answers 404 on login. That
+// is a dead credential, not a RingCentral outage.
+func TestTestConnection_DeletedJWTIsRejected(t *testing.T) {
+	srv, _ := stubServer(t, http.StatusNotFound, `{"errorCode":"OAU-251","message":"Personal API Key is not found"}`)
+	c, err := NewClientWithCred(credFor(srv.URL))
+	require.NoError(t, err)
+
+	assert.ErrorIs(t, c.TestConnection(context.Background()), ErrInvalidCredentials)
 }

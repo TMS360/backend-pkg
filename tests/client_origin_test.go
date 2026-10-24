@@ -115,6 +115,45 @@ func TestResolveClientIP_NoForwardedHeaderRecordsNothing(t *testing.T) {
 	assert.Empty(t, middleware.ResolveClientIP(r))
 }
 
+// DEV-3291: Railway's CDN layer appends its own, rotating address to
+// X-Forwarded-For, so the chain's tail split one user's rate-limit budget across
+// many "IPs". The edge-written X-Real-IP names the client and wins.
+func TestResolveClientIP_PrefersRealIPOverRotatingChainTail(t *testing.T) {
+	t.Setenv(middleware.EnvTrustedProxyHops, "1")
+
+	for _, cdnHop := range []string{"152.233.12.7", "79.127.178.81"} {
+		r := requestWithHeaders(t, map[string]string{
+			middleware.HeaderXRealIP:       "202.79.190.135",
+			middleware.HeaderXForwardedFor: "202.79.190.135, " + cdnHop,
+		}, "10.0.0.7:41234")
+
+		assert.Equal(t, "202.79.190.135", middleware.ResolveClientIP(r), "CDN hop %s", cdnHop)
+	}
+}
+
+// A missing or unparseable X-Real-IP keeps the old chain rule.
+func TestResolveClientIP_BadRealIPFallsBackToChain(t *testing.T) {
+	t.Setenv(middleware.EnvTrustedProxyHops, "1")
+
+	for _, realIP := range []string{"", "not-an-ip"} {
+		headers := map[string]string{middleware.HeaderXForwardedFor: "1.1.1.1, 203.0.113.9"}
+		if realIP != "" {
+			headers[middleware.HeaderXRealIP] = realIP
+		}
+		r := requestWithHeaders(t, headers, "10.0.0.7:41234")
+
+		assert.Equal(t, "203.0.113.9", middleware.ResolveClientIP(r), "X-Real-IP %q", realIP)
+	}
+}
+
+// With no proxy in front (hops = 0) no header is trusted, X-Real-IP included.
+func TestResolveClientIP_NoProxyIgnoresRealIP(t *testing.T) {
+	t.Setenv(middleware.EnvTrustedProxyHops, "0")
+
+	r := requestWithHeaders(t, map[string]string{middleware.HeaderXRealIP: "1.1.1.1"}, "198.51.100.4:443")
+	assert.Equal(t, "198.51.100.4", middleware.ResolveClientIP(r))
+}
+
 // Apollo Router replaces User-Agent with its own on subgraph requests, so the
 // client's value arrives renamed. Prefer it; fall back for direct REST calls.
 func TestResolveUserAgent_PrefersClientHeaderFromRouter(t *testing.T) {

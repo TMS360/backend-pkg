@@ -165,9 +165,11 @@ func (r phoneNumberRecord) toPhoneNumber() PhoneNumber {
 	return n
 }
 
-// get performs an authenticated GET and returns the raw body. A 401/403 on a
-// token we just minted means the credential was revoked between the two calls,
-// so it maps to ErrInvalidCredentials like every other credential failure.
+// get performs an authenticated GET and returns the raw body. A 401 on a token
+// we just minted means the credential was revoked between the two calls, so it
+// maps to ErrInvalidCredentials. A 403 means the app lacks the permission for
+// this read; it matches ErrInsufficientPermissions and, for older callers,
+// ErrInvalidCredentials too (forbiddenError).
 func (c *Client) get(ctx context.Context, token, path string) ([]byte, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.serverURL+path, nil)
 	if err != nil {
@@ -184,8 +186,11 @@ func (c *Client) get(ctx context.Context, token, path string) ([]byte, error) {
 
 	body, _ := io.ReadAll(resp.Body)
 
-	if resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden {
+	if resp.StatusCode == http.StatusUnauthorized {
 		return nil, ErrInvalidCredentials
+	}
+	if resp.StatusCode == http.StatusForbidden {
+		return nil, forbiddenError{}
 	}
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		var er errorResponse

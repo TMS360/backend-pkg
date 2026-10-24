@@ -7,6 +7,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/TMS360/backend-pkg/deployenv"
 )
 
 // Triumph SFTP transport constants. The per-carrier inbound directory is
@@ -14,12 +16,11 @@ import (
 // the manifest + PDFs in the TMS_INPUT subfolder (their poller scans only
 // that path).
 //
-// NewTriumphSFTP transparently swaps these defaults for TEST_TRIUMPH_SFTP_*
-// env vars (legacy TEST_SFTP_* still honored)
-// when APP_ENV is dev / stage / local, so a self-hosted sftpgo instance can
-// stand in for Triumph end-to-end without any UI or credential changes. The
-// allowlist (NOT a deny-list against "prod") means an unset APP_ENV in
-// production still keeps the real Triumph host — fail-safe by default.
+// Outside Railway production (deployenv.IsProduction) NewTriumphSFTP swaps
+// these defaults for TEST_TRIUMPH_SFTP_* env vars (legacy TEST_SFTP_* still
+// honored), so a self-hosted sftpgo instance can stand in for Triumph
+// end-to-end without any UI or credential changes. With no test host set
+// there, every dial fails with ErrRealServerBlocked — never the real host.
 const (
 	triumphSFTPHost       = "files.triumphbcap.com"
 	triumphSFTPPort       = 22
@@ -72,48 +73,46 @@ type TriumphSFTPProvider struct {
 	providerType ProviderType
 	dialFn       func(ctx context.Context, d sftpDialer) (sftpUploader, error)
 	now          func() time.Time
+	// blocked, when set, refuses every dial (ErrRealServerBlocked).
+	blocked error
 }
 
 // NewTriumphSFTP builds a TriumphSFTPProvider for a single submission. Reuse
 // across calls is safe (no internal state), but the connection is opened and
 // closed inside each SubmitBatch.
 //
-// In dev / stage / local environments (APP_ENV allowlist) the transport host
-// is swapped for TEST_TRIUMPH_SFTP_HOST / TEST_TRIUMPH_SFTP_PORT /
-// TEST_TRIUMPH_SFTP_INBOUND_DIR (legacy TEST_SFTP_* honored as fallback) if
-// any of those env vars are set — so the GraphQL surface (one provider type
-// "triumph_sftp", one Settings form) stays identical across environments
-// while a self-hosted sftpgo instance can stand in for Triumph. In
-// production (or when APP_ENV is unset) the env vars are ignored and the
-// real Triumph endpoint is always used.
+// In Railway production the real Triumph endpoint is always used and the
+// TEST_* env vars are ignored. Everywhere else the transport host is swapped
+// for TEST_TRIUMPH_SFTP_HOST / TEST_TRIUMPH_SFTP_PORT /
+// TEST_TRIUMPH_SFTP_INBOUND_DIR (legacy TEST_SFTP_* honored as fallback) — so
+// the GraphQL surface (one provider type "triumph_sftp", one Settings form)
+// stays identical across environments while a self-hosted sftpgo instance
+// stands in for Triumph. A missing test host blocks the provider instead of
+// falling back to Triumph (DEV-3306).
 func NewTriumphSFTP(cred Credential) *TriumphSFTPProvider {
-	host := triumphSFTPHost
-	port := triumphSFTPPort
-	inboundDir := triumphSFTPInboundDir
-
-	if isNonProdAppEnv() {
-		if h := firstNonEmptyEnv(envTestTriumphSFTPHost, envTestSFTPHostLegacy); h != "" {
-			host = h
-		}
-		if raw := firstNonEmptyEnv(envTestTriumphSFTPPort, envTestSFTPPortLegacy); raw != "" {
-			if n, err := strconv.Atoi(raw); err == nil && n > 0 {
-				port = n
-			}
-		}
-		if d := firstNonEmptyEnv(envTestTriumphSFTPInboundDir, envTestSFTPInboundDirLegacy); d != "" {
-			inboundDir = d
-		}
-	}
-
-	return &TriumphSFTPProvider{
+	p := &TriumphSFTPProvider{
 		username:     cred.Username,
 		password:     cred.Password,
-		host:         host,
-		port:         port,
-		inboundDir:   inboundDir,
+		host:         triumphSFTPHost,
+		port:         triumphSFTPPort,
+		inboundDir:   triumphSFTPInboundDir,
 		providerType: ProviderTriumphSFTP,
 		dialFn:       defaultSFTPDial,
 	}
+	if deployenv.IsProduction() {
+		return p
+	}
+
+	p.host, p.blocked = testHostOrBlock(triumphSFTPHost, envTestTriumphSFTPHost, envTestSFTPHostLegacy)
+	if raw := firstNonEmptyEnv(envTestTriumphSFTPPort, envTestSFTPPortLegacy); raw != "" {
+		if n, err := strconv.Atoi(raw); err == nil && n > 0 {
+			p.port = n
+		}
+	}
+	if d := firstNonEmptyEnv(envTestTriumphSFTPInboundDir, envTestSFTPInboundDirLegacy); d != "" {
+		p.inboundDir = d
+	}
+	return p
 }
 
 // firstNonEmptyEnv returns the first of the named env vars whose trimmed
@@ -126,20 +125,6 @@ func firstNonEmptyEnv(names ...string) string {
 		}
 	}
 	return ""
-}
-
-// isNonProdAppEnv reports whether the current deployment may honour the
-// TEST_*_SFTP_* overrides. Implemented as an allowlist (NOT a deny-list
-// against "prod") so an empty / typo'd APP_ENV is treated as production —
-// overrides are ignored and the real factor endpoint is used. Match is
-// case-insensitive.
-func isNonProdAppEnv() bool {
-	switch strings.ToLower(strings.TrimSpace(os.Getenv("APP_ENV"))) {
-	case "dev", "stage", "staging", "local":
-		return true
-	default:
-		return false
-	}
 }
 
 // defaultSFTPDial is the production sftp dialer; wrapped to satisfy the
@@ -157,6 +142,9 @@ func defaultSFTPDial(ctx context.Context, d sftpDialer) (sftpUploader, error) {
 //   - PDFs: <INVOICE#>.pdf (InvoiceNumber sanitized for filesystem safety)
 //   - CSV:  invoices_YYYYMMDD_HHMMSS.csv (UTC timestamp from batch.SubmittedAt)
 func (p *TriumphSFTPProvider) TestConnection(ctx context.Context) error {
+	if p.blocked != nil {
+		return p.blocked
+	}
 	return testSFTPConnection(ctx, p.dialFn, sftpDialer{
 		Host:         p.host,
 		Port:         p.port,
@@ -167,6 +155,9 @@ func (p *TriumphSFTPProvider) TestConnection(ctx context.Context) error {
 }
 
 func (p *TriumphSFTPProvider) SubmitBatch(ctx context.Context, batch Batch, onProgress ProgressFunc) (SubmitResult, error) {
+	if p.blocked != nil {
+		return SubmitResult{}, p.blocked
+	}
 	if err := batch.validate(); err != nil {
 		return SubmitResult{}, err
 	}

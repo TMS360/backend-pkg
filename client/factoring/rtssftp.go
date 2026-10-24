@@ -3,10 +3,10 @@ package factoring
 import (
 	"context"
 	"fmt"
-	"os"
 	"strconv"
-	"strings"
 	"time"
+
+	"github.com/TMS360/backend-pkg/deployenv"
 )
 
 // RTS Financial SFTP transport constants. RTS chroots each client to their own
@@ -15,9 +15,10 @@ import (
 // spreadsheet (.csv/.xlsx) is the trigger: RTS grabs the folder contents and
 // clears it, so the manifest MUST land last.
 //
-// NewRTSSFTP swaps these defaults for TEST_RTS_SFTP_* env vars when APP_ENV is
-// dev / stage / local (same allowlist as Triumph, separate variables so a
-// stage box can point the two providers at different sftpgo users).
+// Outside Railway production NewRTSSFTP swaps these defaults for
+// TEST_RTS_SFTP_* env vars (same rule as Triumph, separate variables so a
+// stage box can point the two providers at different sftpgo users). With no
+// test host set there, every dial fails with ErrRealServerBlocked.
 const (
 	rtsSFTPHost       = "ftps.rtsfinancial.com"
 	rtsTestSFTPHost   = "ftps.rtsfinancial.com"
@@ -45,6 +46,8 @@ type RTSSFTPProvider struct {
 	providerType ProviderType
 	dialFn       func(ctx context.Context, d sftpDialer) (sftpUploader, error)
 	now          func() time.Time
+	// blocked, when set, refuses every dial (ErrRealServerBlocked).
+	blocked error
 }
 
 // NewRTSSFTP builds an RTSSFTPProvider aimed at the production RTS host.
@@ -57,39 +60,37 @@ func NewRTSSFTP(cred Credential) *RTSSFTPProvider {
 }
 
 // NewRTSTestSFTP is the same adapter as NewRTSSFTP, pointed at the RTS test
-// host. On non-prod (APP_ENV allowlist) both constructors honour
-// TEST_RTS_SFTP_* so golden-tenant / our dev never dial real RTS.
+// host — which is RTS's real server too. Outside Railway production both
+// constructors dial only TEST_RTS_SFTP_* so golden-tenant / our dev never
+// reach real RTS.
 func NewRTSTestSFTP(cred Credential) *RTSSFTPProvider {
 	return newRTSSFTP(cred, rtsTestSFTPHost, ProviderRTSTestSFTP)
 }
 
 func newRTSSFTP(cred Credential, host string, pt ProviderType) *RTSSFTPProvider {
-	port := rtsSFTPPort
-	inboundDir := rtsSFTPInboundDir
-
-	if isNonProdAppEnv() {
-		if h := strings.TrimSpace(os.Getenv(envTestRTSSFTPHost)); h != "" {
-			host = h
-		}
-		if raw := strings.TrimSpace(os.Getenv(envTestRTSSFTPPort)); raw != "" {
-			if n, err := strconv.Atoi(raw); err == nil && n > 0 {
-				port = n
-			}
-		}
-		if d := strings.TrimSpace(os.Getenv(envTestRTSSFTPInboundDir)); d != "" {
-			inboundDir = d
-		}
-	}
-
-	return &RTSSFTPProvider{
+	p := &RTSSFTPProvider{
 		username:     cred.Username,
 		password:     cred.Password,
 		host:         host,
-		port:         port,
-		inboundDir:   inboundDir,
+		port:         rtsSFTPPort,
+		inboundDir:   rtsSFTPInboundDir,
 		providerType: pt,
 		dialFn:       defaultSFTPDial,
 	}
+	if deployenv.IsProduction() {
+		return p
+	}
+
+	p.host, p.blocked = testHostOrBlock(host, envTestRTSSFTPHost)
+	if raw := firstNonEmptyEnv(envTestRTSSFTPPort); raw != "" {
+		if n, err := strconv.Atoi(raw); err == nil && n > 0 {
+			p.port = n
+		}
+	}
+	if d := firstNonEmptyEnv(envTestRTSSFTPInboundDir); d != "" {
+		p.inboundDir = d
+	}
+	return p
 }
 
 // BuildManifest renders the RTS 7-column CSV — the same bytes SubmitBatch
@@ -110,6 +111,9 @@ func (p *RTSSFTPProvider) BuildManifest(invoices []InvoiceLine) ([]byte, error) 
 //     — deterministic, so a reclaimed retry overwrites the same file instead
 //     of producing a second manifest; DEV-840)
 func (p *RTSSFTPProvider) TestConnection(ctx context.Context) error {
+	if p.blocked != nil {
+		return p.blocked
+	}
 	return testSFTPConnection(ctx, p.dialFn, sftpDialer{
 		Host:         p.host,
 		Port:         p.port,
@@ -120,6 +124,9 @@ func (p *RTSSFTPProvider) TestConnection(ctx context.Context) error {
 }
 
 func (p *RTSSFTPProvider) SubmitBatch(ctx context.Context, batch Batch, onProgress ProgressFunc) (SubmitResult, error) {
+	if p.blocked != nil {
+		return SubmitResult{}, p.blocked
+	}
 	if err := batch.validate(); err != nil {
 		return SubmitResult{}, err
 	}

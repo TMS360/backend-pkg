@@ -8,6 +8,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/TMS360/backend-pkg/deployenv"
 )
 
 // PrePass column names, as printed in the weekly spreadsheet. Columns are
@@ -131,22 +133,24 @@ func NewPrePassSFTP(cred Credential) *PrePassSFTP {
 	port := cred.Port
 	dir := strings.TrimSpace(cred.Directory)
 
-	// On non-production deployments point every carrier at our own catcher
+	// Outside Railway production point every carrier at our own catcher
 	// folder regardless of what the database says. Staging databases are
 	// restored from production, so without this a stage run would reach into
-	// the real PrePass account.
+	// the real PrePass account. Production is decided by Railway's own
+	// environment name, never the hand-typed APP_ENV (DEV-3306).
 	var blocked error
-	if isNonProdAppEnv() {
+	if !deployenv.IsProduction() {
 		if v := firstNonEmptyEnv(envTestPrePassHost); v != "" {
 			host = v
 		} else {
 			// Fail closed, not open. The stored host is the carrier's real
 			// PrePass address, and the whole point of a non-prod deployment is
-			// that it never reaches it. A loud error names the missing variable;
-			// a silent dial reads the carrier's toll statements.
-			blocked = fmt.Errorf(
-				"toll: %s is unset on a non-production deployment (APP_ENV=%s) — refusing to dial the stored PrePass host",
-				envTestPrePassHost, os.Getenv("APP_ENV"))
+			// that it never reaches it. A loud error names the missing variable
+			// and the refused host; a silent dial reads the carrier's toll
+			// statements.
+			blocked = fmt.Errorf("%w: %s is unset (%s=%q), refusing to dial %q",
+				ErrRealServerBlocked, envTestPrePassHost, deployenv.RailwayEnvVar, deployenv.Name(), host)
+			host = ""
 		}
 		if v := firstNonEmptyEnv(envTestPrePassPort); v != "" {
 			if n, err := strconv.Atoi(v); err == nil && n > 0 {
@@ -454,16 +458,4 @@ func firstNonEmptyEnv(names ...string) string {
 		}
 	}
 	return ""
-}
-
-// isNonProdAppEnv reports whether the deployment may honour the TEST_* folder
-// overrides. An allowlist, not a deny-list against "prod", so an empty or
-// misspelled APP_ENV is treated as production and the override is ignored.
-func isNonProdAppEnv() bool {
-	switch strings.ToLower(strings.TrimSpace(os.Getenv("APP_ENV"))) {
-	case "dev", "stage", "staging", "local":
-		return true
-	default:
-		return false
-	}
 }

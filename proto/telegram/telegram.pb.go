@@ -620,6 +620,128 @@ func (x *GetDriverAccountsResponse) GetAccounts() []*DriverAccount {
 	return nil
 }
 
+type GetCrewLinkRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	CompanyId     string                 `protobuf:"bytes,1,opt,name=company_id,json=companyId,proto3" json:"company_id,omitempty"`
+	CrewId        string                 `protobuf:"bytes,2,opt,name=crew_id,json=crewId,proto3" json:"crew_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetCrewLinkRequest) Reset() {
+	*x = GetCrewLinkRequest{}
+	mi := &file_telegram_telegram_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetCrewLinkRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetCrewLinkRequest) ProtoMessage() {}
+
+func (x *GetCrewLinkRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_telegram_telegram_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetCrewLinkRequest.ProtoReflect.Descriptor instead.
+func (*GetCrewLinkRequest) Descriptor() ([]byte, []int) {
+	return file_telegram_telegram_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *GetCrewLinkRequest) GetCompanyId() string {
+	if x != nil {
+		return x.CompanyId
+	}
+	return ""
+}
+
+func (x *GetCrewLinkRequest) GetCrewId() string {
+	if x != nil {
+		return x.CrewId
+	}
+	return ""
+}
+
+// CrewLink: linked false means no open link (the other fields are empty).
+// bot_in_group false means Telegram refused the bot last time (last_error).
+type CrewLink struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Linked        bool                   `protobuf:"varint,1,opt,name=linked,proto3" json:"linked,omitempty"`
+	BotInGroup    bool                   `protobuf:"varint,2,opt,name=bot_in_group,json=botInGroup,proto3" json:"bot_in_group,omitempty"`
+	LastError     string                 `protobuf:"bytes,3,opt,name=last_error,json=lastError,proto3" json:"last_error,omitempty"`
+	ChatTitle     string                 `protobuf:"bytes,4,opt,name=chat_title,json=chatTitle,proto3" json:"chat_title,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CrewLink) Reset() {
+	*x = CrewLink{}
+	mi := &file_telegram_telegram_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CrewLink) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CrewLink) ProtoMessage() {}
+
+func (x *CrewLink) ProtoReflect() protoreflect.Message {
+	mi := &file_telegram_telegram_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CrewLink.ProtoReflect.Descriptor instead.
+func (*CrewLink) Descriptor() ([]byte, []int) {
+	return file_telegram_telegram_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *CrewLink) GetLinked() bool {
+	if x != nil {
+		return x.Linked
+	}
+	return false
+}
+
+func (x *CrewLink) GetBotInGroup() bool {
+	if x != nil {
+		return x.BotInGroup
+	}
+	return false
+}
+
+func (x *CrewLink) GetLastError() string {
+	if x != nil {
+		return x.LastError
+	}
+	return ""
+}
+
+func (x *CrewLink) GetChatTitle() string {
+	if x != nil {
+		return x.ChatTitle
+	}
+	return ""
+}
+
 var File_telegram_telegram_proto protoreflect.FileDescriptor
 
 const file_telegram_telegram_proto_rawDesc = "" +
@@ -676,7 +798,19 @@ const file_telegram_telegram_proto_rawDesc = "" +
 	"\tdriver_id\x18\x01 \x01(\tR\bdriverId\x12(\n" +
 	"\x10telegram_user_id\x18\x02 \x01(\x03R\x0etelegramUserId\"P\n" +
 	"\x19GetDriverAccountsResponse\x123\n" +
-	"\baccounts\x18\x01 \x03(\v2\x17.telegram.DriverAccountR\baccounts*a\n" +
+	"\baccounts\x18\x01 \x03(\v2\x17.telegram.DriverAccountR\baccounts\"L\n" +
+	"\x12GetCrewLinkRequest\x12\x1d\n" +
+	"\n" +
+	"company_id\x18\x01 \x01(\tR\tcompanyId\x12\x17\n" +
+	"\acrew_id\x18\x02 \x01(\tR\x06crewId\"\x82\x01\n" +
+	"\bCrewLink\x12\x16\n" +
+	"\x06linked\x18\x01 \x01(\bR\x06linked\x12 \n" +
+	"\fbot_in_group\x18\x02 \x01(\bR\n" +
+	"botInGroup\x12\x1d\n" +
+	"\n" +
+	"last_error\x18\x03 \x01(\tR\tlastError\x12\x1d\n" +
+	"\n" +
+	"chat_title\x18\x04 \x01(\tR\tchatTitle*a\n" +
 	"\x0eDeliveryStatus\x12\x1f\n" +
 	"\x1bDELIVERY_STATUS_UNSPECIFIED\x10\x00\x12\b\n" +
 	"\x04SENT\x10\x01\x12\n" +
@@ -684,13 +818,14 @@ const file_telegram_telegram_proto_rawDesc = "" +
 	"\x06FAILED\x10\x02\x12\f\n" +
 	"\bNO_GROUP\x10\x03\x12\n" +
 	"\n" +
-	"\x06CAUGHT\x10\x042\xb2\x02\n" +
+	"\x06CAUGHT\x10\x042\xf3\x02\n" +
 	"\x0fTelegramService\x12?\n" +
 	"\n" +
 	"SendToCrew\x12\x1b.telegram.SendToCrewRequest\x1a\x14.telegram.SendResult\x12A\n" +
 	"\vEditMessage\x12\x1c.telegram.EditMessageRequest\x1a\x14.telegram.SendResult\x12=\n" +
 	"\tReplyNote\x12\x1a.telegram.ReplyNoteRequest\x1a\x14.telegram.SendResult\x12\\\n" +
-	"\x11GetDriverAccounts\x12\".telegram.GetDriverAccountsRequest\x1a#.telegram.GetDriverAccountsResponseB.Z,github.com/TMS360/backend-pkg/proto/telegramb\x06proto3"
+	"\x11GetDriverAccounts\x12\".telegram.GetDriverAccountsRequest\x1a#.telegram.GetDriverAccountsResponse\x12?\n" +
+	"\vGetCrewLink\x12\x1c.telegram.GetCrewLinkRequest\x1a\x12.telegram.CrewLinkB.Z,github.com/TMS360/backend-pkg/proto/telegramb\x06proto3"
 
 var (
 	file_telegram_telegram_proto_rawDescOnce sync.Once
@@ -705,7 +840,7 @@ func file_telegram_telegram_proto_rawDescGZIP() []byte {
 }
 
 var file_telegram_telegram_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_telegram_telegram_proto_msgTypes = make([]protoimpl.MessageInfo, 8)
+var file_telegram_telegram_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
 var file_telegram_telegram_proto_goTypes = []any{
 	(DeliveryStatus)(0),               // 0: telegram.DeliveryStatus
 	(*Button)(nil),                    // 1: telegram.Button
@@ -716,25 +851,29 @@ var file_telegram_telegram_proto_goTypes = []any{
 	(*GetDriverAccountsRequest)(nil),  // 6: telegram.GetDriverAccountsRequest
 	(*DriverAccount)(nil),             // 7: telegram.DriverAccount
 	(*GetDriverAccountsResponse)(nil), // 8: telegram.GetDriverAccountsResponse
+	(*GetCrewLinkRequest)(nil),        // 9: telegram.GetCrewLinkRequest
+	(*CrewLink)(nil),                  // 10: telegram.CrewLink
 }
 var file_telegram_telegram_proto_depIdxs = []int32{
-	1, // 0: telegram.SendToCrewRequest.buttons:type_name -> telegram.Button
-	1, // 1: telegram.EditMessageRequest.buttons:type_name -> telegram.Button
-	0, // 2: telegram.SendResult.status:type_name -> telegram.DeliveryStatus
-	7, // 3: telegram.GetDriverAccountsResponse.accounts:type_name -> telegram.DriverAccount
-	2, // 4: telegram.TelegramService.SendToCrew:input_type -> telegram.SendToCrewRequest
-	3, // 5: telegram.TelegramService.EditMessage:input_type -> telegram.EditMessageRequest
-	4, // 6: telegram.TelegramService.ReplyNote:input_type -> telegram.ReplyNoteRequest
-	6, // 7: telegram.TelegramService.GetDriverAccounts:input_type -> telegram.GetDriverAccountsRequest
-	5, // 8: telegram.TelegramService.SendToCrew:output_type -> telegram.SendResult
-	5, // 9: telegram.TelegramService.EditMessage:output_type -> telegram.SendResult
-	5, // 10: telegram.TelegramService.ReplyNote:output_type -> telegram.SendResult
-	8, // 11: telegram.TelegramService.GetDriverAccounts:output_type -> telegram.GetDriverAccountsResponse
-	8, // [8:12] is the sub-list for method output_type
-	4, // [4:8] is the sub-list for method input_type
-	4, // [4:4] is the sub-list for extension type_name
-	4, // [4:4] is the sub-list for extension extendee
-	0, // [0:4] is the sub-list for field type_name
+	1,  // 0: telegram.SendToCrewRequest.buttons:type_name -> telegram.Button
+	1,  // 1: telegram.EditMessageRequest.buttons:type_name -> telegram.Button
+	0,  // 2: telegram.SendResult.status:type_name -> telegram.DeliveryStatus
+	7,  // 3: telegram.GetDriverAccountsResponse.accounts:type_name -> telegram.DriverAccount
+	2,  // 4: telegram.TelegramService.SendToCrew:input_type -> telegram.SendToCrewRequest
+	3,  // 5: telegram.TelegramService.EditMessage:input_type -> telegram.EditMessageRequest
+	4,  // 6: telegram.TelegramService.ReplyNote:input_type -> telegram.ReplyNoteRequest
+	6,  // 7: telegram.TelegramService.GetDriverAccounts:input_type -> telegram.GetDriverAccountsRequest
+	9,  // 8: telegram.TelegramService.GetCrewLink:input_type -> telegram.GetCrewLinkRequest
+	5,  // 9: telegram.TelegramService.SendToCrew:output_type -> telegram.SendResult
+	5,  // 10: telegram.TelegramService.EditMessage:output_type -> telegram.SendResult
+	5,  // 11: telegram.TelegramService.ReplyNote:output_type -> telegram.SendResult
+	8,  // 12: telegram.TelegramService.GetDriverAccounts:output_type -> telegram.GetDriverAccountsResponse
+	10, // 13: telegram.TelegramService.GetCrewLink:output_type -> telegram.CrewLink
+	9,  // [9:14] is the sub-list for method output_type
+	4,  // [4:9] is the sub-list for method input_type
+	4,  // [4:4] is the sub-list for extension type_name
+	4,  // [4:4] is the sub-list for extension extendee
+	0,  // [0:4] is the sub-list for field type_name
 }
 
 func init() { file_telegram_telegram_proto_init() }
@@ -748,7 +887,7 @@ func file_telegram_telegram_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_telegram_telegram_proto_rawDesc), len(file_telegram_telegram_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   8,
+			NumMessages:   10,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

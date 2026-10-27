@@ -18,6 +18,9 @@ service TelegramService {
   // GetDriverAccounts returns the Telegram account the office mapped to each
   // driver. Drivers without one are absent from the list.
   rpc GetDriverAccounts(GetDriverAccountsRequest) returns (GetDriverAccountsResponse);
+  // GetCrewLink tells whether a crew has an open group link and whether the
+  // bot is still in that group, without sending anything.
+  rpc GetCrewLink(GetCrewLinkRequest) returns (CrewLink);
 }
 
 // Button is one inline button under a message. action is echoed back on a tap
@@ -87,4 +90,18 @@ message DriverAccount {
 
 message GetDriverAccountsResponse {
   repeated DriverAccount accounts = 1;
+}
+
+message GetCrewLinkRequest {
+  string company_id = 1;
+  string crew_id = 2;
+}
+
+// CrewLink: linked false means no open link (the other fields are empty).
+// bot_in_group false means Telegram refused the bot last time (last_error).
+message CrewLink {
+  bool linked = 1;
+  bool bot_in_group = 2;
+  string last_error = 3;
+  string chat_title = 4;
 }

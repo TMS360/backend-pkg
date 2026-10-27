@@ -478,6 +478,13 @@ const (
 	PermMigrationUnlock   UserPermissionEnum = "migration_unlock"
 	PermMigrationSignoff  UserPermissionEnum = "migration_signoff"
 
+	// PermComplianceRestrictedView gates opening a document whose type is marked
+	// restricted — SSN card, drug test (DEV-3433, BL §17). A reader without it
+	// still sees the row, labelled "Restricted", but never the file. FLAT for the
+	// same reason as PermAssetOutOfServiceOverride above. Held by default by
+	// admin and safety (the compliance desk).
+	PermComplianceRestrictedView UserPermissionEnum = "compliance_restricted_view"
+
 	// PermAssetOutOfServiceOverride gates sending a trip to the driver when the
 	// truck or trailer on it is OUT_OF_SERVICE (DEV-2254). Like its compliance
 	// sibling above it waives ONE dispatch, with a mandatory reason recorded in
@@ -923,6 +930,7 @@ var CustomPermissionCatalog = []CustomPermissionEntry{
 	{Code: string(PermMigrationRollback), Label: "Undo a company migration batch"},
 	{Code: string(PermMigrationUnlock), Label: "Unlock an imported record for editing"},
 	{Code: string(PermMigrationSignoff), Label: "Sign off a company migration before commit"},
+	{Code: string(PermComplianceRestrictedView), Label: "Open restricted documents (SSN card, drug test)"},
 }
 
 // CustomPermissionCodes returns just the flat custom permission codes, in
@@ -1301,11 +1309,11 @@ func DefaultRolePermissions() map[UserRoleEnum][]string {
 		// admin holds all three, like every permission.
 		// owner_escrow_release (DEV-2821): admin only. Releasing escrow moves held
 		// money out and is not reversible, so the accounting role does NOT hold it.
-		UserRoleAdmin:      withExtra(string(PermTripFinancialsEdit), string(PermTripGrossEdit), string(PermTripReassignCommitted), string(PermFileDeleteAny), string(PermReportsRun), string(PermReportsManage), string(PermCallsView), string(PermCallsPlay), string(PermSmsView), string(PermSmsSend), string(PermShipmentBillingApprove), string(PermAuditPlanExclusionEdit), string(PermComplianceDispatchOverride), string(PermAssetOutOfServiceOverride), string(PermTripDelete), string(PermInvoiceUnrecordPayment), string(PermAuditLogView), string(PermGeneralLedgerView), string(PermJournalEntryManage), string(PermVendorBillApproveLevel1), string(PermVendorBillApproveLevel2), string(PermVendorBillApproveLevel3), string(PermVendorBillPaymentVoid), string(PermExpenseApprove), string(PermInvoiceRecordPayment), string(PermMailView), string(PermMailSend), string(PermMailEdit), string(PermStatementReviewResolve), string(PermComplianceCustomerOverride), string(PermOwnerEscrowRelease), string(PermTruckVINCorrect), string(PermMigrationRollback), string(PermMigrationUnlock), string(PermMigrationSignoff)),
+		UserRoleAdmin:      withExtra(string(PermTripFinancialsEdit), string(PermTripGrossEdit), string(PermTripReassignCommitted), string(PermFileDeleteAny), string(PermReportsRun), string(PermReportsManage), string(PermCallsView), string(PermCallsPlay), string(PermSmsView), string(PermSmsSend), string(PermShipmentBillingApprove), string(PermAuditPlanExclusionEdit), string(PermComplianceDispatchOverride), string(PermAssetOutOfServiceOverride), string(PermTripDelete), string(PermInvoiceUnrecordPayment), string(PermAuditLogView), string(PermGeneralLedgerView), string(PermJournalEntryManage), string(PermVendorBillApproveLevel1), string(PermVendorBillApproveLevel2), string(PermVendorBillApproveLevel3), string(PermVendorBillPaymentVoid), string(PermExpenseApprove), string(PermInvoiceRecordPayment), string(PermMailView), string(PermMailSend), string(PermMailEdit), string(PermStatementReviewResolve), string(PermComplianceCustomerOverride), string(PermOwnerEscrowRelease), string(PermTruckVINCorrect), string(PermMigrationRollback), string(PermMigrationUnlock), string(PermMigrationSignoff), string(PermComplianceRestrictedView)),
 		UserRoleManager:    withExtra(string(PermTripReassignCommitted), string(PermFileDeleteAny), string(PermCallsView), string(PermCallsPlay), string(PermSmsView), string(PermSmsSend), string(PermShipmentBillingApprove), string(PermAuditPlanExclusionEdit), string(PermComplianceDispatchOverride), string(PermAssetOutOfServiceOverride), string(PermTripDelete), string(PermAuditLogView), string(PermVendorBillApproveLevel1), string(PermVendorBillApproveLevel2), string(PermInvoiceRecordPayment)),
 		UserRoleAccounting: withExtra(string(PermTripFinancialsEdit), string(PermReportsRun), string(PermReportsManage), string(PermShipmentBillingApprove), string(PermGeneralLedgerView), string(PermJournalEntryManage), string(PermVendorBillApproveLevel1), string(PermExpenseApprove), string(PermInvoiceRecordPayment), string(PermStatementReviewResolve), string(PermComplianceCustomerOverride)),
 		UserRoleFleet:      withExtra(),
-		UserRoleSafety:     withExtra(string(PermComplianceDispatchOverride)),
+		UserRoleSafety:     withExtra(string(PermComplianceDispatchOverride), string(PermComplianceRestrictedView)),
 		UserRoleHr:         withExtra(),
 		// DEV-1409: the auditor gets the same module baseline as its peers. Most of
 		// its governed powers (locked-statement corrections, revised-invoice voids,

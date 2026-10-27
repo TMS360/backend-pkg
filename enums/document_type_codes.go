@@ -61,6 +61,18 @@ const (
 	SystemDocCustomerSuretyBond             SystemDocTypeCode = "CUSTOMER_SURETY_BOND"
 	SystemDocCustomerW9                     SystemDocTypeCode = "CUSTOMER_W9"
 	SystemDocCustomerCertificateOfInsurance SystemDocTypeCode = "CUSTOMER_CERTIFICATE_OF_INSURANCE"
+
+	// Restricted DRIVER papers (DEV-3433) — very private, opened only with
+	// compliance_restricted_view. Neither expires nor is required.
+	SystemDocDriverSSNCard  SystemDocTypeCode = "DRIVER_SSN_CARD"
+	SystemDocDriverDrugTest SystemDocTypeCode = "DRIVER_DRUG_TEST"
+
+	// TRUCK_OWNER (DEV-3433) — a truck owner's own paperwork. Never required and
+	// never part of the dispatch check; the certificate of insurance expires.
+	SystemDocTruckOwnerAgreement              SystemDocTypeCode = "TRUCK_OWNER_AGREEMENT"
+	SystemDocTruckOwnerCertificateOfInsurance SystemDocTypeCode = "TRUCK_OWNER_CERTIFICATE_OF_INSURANCE"
+	SystemDocTruckOwnerW9                     SystemDocTypeCode = "TRUCK_OWNER_W9"
+	SystemDocTruckOwnerOther                  SystemDocTypeCode = "TRUCK_OWNER_OTHER"
 )
 
 func (c SystemDocTypeCode) String() string { return string(c) }
@@ -106,7 +118,13 @@ func (c SystemDocTypeCode) IsValid() bool {
 		SystemDocCustomerCreditApplication,
 		SystemDocCustomerSuretyBond,
 		SystemDocCustomerW9,
-		SystemDocCustomerCertificateOfInsurance:
+		SystemDocCustomerCertificateOfInsurance,
+		SystemDocDriverSSNCard,
+		SystemDocDriverDrugTest,
+		SystemDocTruckOwnerAgreement,
+		SystemDocTruckOwnerCertificateOfInsurance,
+		SystemDocTruckOwnerW9,
+		SystemDocTruckOwnerOther:
 		return true
 	default:
 		return false

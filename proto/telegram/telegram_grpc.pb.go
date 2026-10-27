@@ -25,6 +25,7 @@ const (
 	TelegramService_EditMessage_FullMethodName       = "/telegram.TelegramService/EditMessage"
 	TelegramService_ReplyNote_FullMethodName         = "/telegram.TelegramService/ReplyNote"
 	TelegramService_GetDriverAccounts_FullMethodName = "/telegram.TelegramService/GetDriverAccounts"
+	TelegramService_GetCrewLink_FullMethodName       = "/telegram.TelegramService/GetCrewLink"
 )
 
 // TelegramServiceClient is the client API for TelegramService service.
@@ -44,6 +45,9 @@ type TelegramServiceClient interface {
 	// GetDriverAccounts returns the Telegram account the office mapped to each
 	// driver. Drivers without one are absent from the list.
 	GetDriverAccounts(ctx context.Context, in *GetDriverAccountsRequest, opts ...grpc.CallOption) (*GetDriverAccountsResponse, error)
+	// GetCrewLink tells whether a crew has an open group link and whether the
+	// bot is still in that group, without sending anything.
+	GetCrewLink(ctx context.Context, in *GetCrewLinkRequest, opts ...grpc.CallOption) (*CrewLink, error)
 }
 
 type telegramServiceClient struct {
@@ -94,6 +98,16 @@ func (c *telegramServiceClient) GetDriverAccounts(ctx context.Context, in *GetDr
 	return out, nil
 }
 
+func (c *telegramServiceClient) GetCrewLink(ctx context.Context, in *GetCrewLinkRequest, opts ...grpc.CallOption) (*CrewLink, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CrewLink)
+	err := c.cc.Invoke(ctx, TelegramService_GetCrewLink_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // TelegramServiceServer is the server API for TelegramService service.
 // All implementations must embed UnimplementedTelegramServiceServer
 // for forward compatibility.
@@ -111,6 +125,9 @@ type TelegramServiceServer interface {
 	// GetDriverAccounts returns the Telegram account the office mapped to each
 	// driver. Drivers without one are absent from the list.
 	GetDriverAccounts(context.Context, *GetDriverAccountsRequest) (*GetDriverAccountsResponse, error)
+	// GetCrewLink tells whether a crew has an open group link and whether the
+	// bot is still in that group, without sending anything.
+	GetCrewLink(context.Context, *GetCrewLinkRequest) (*CrewLink, error)
 	mustEmbedUnimplementedTelegramServiceServer()
 }
 
@@ -132,6 +149,9 @@ func (UnimplementedTelegramServiceServer) ReplyNote(context.Context, *ReplyNoteR
 }
 func (UnimplementedTelegramServiceServer) GetDriverAccounts(context.Context, *GetDriverAccountsRequest) (*GetDriverAccountsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetDriverAccounts not implemented")
+}
+func (UnimplementedTelegramServiceServer) GetCrewLink(context.Context, *GetCrewLinkRequest) (*CrewLink, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetCrewLink not implemented")
 }
 func (UnimplementedTelegramServiceServer) mustEmbedUnimplementedTelegramServiceServer() {}
 func (UnimplementedTelegramServiceServer) testEmbeddedByValue()                         {}
@@ -226,6 +246,24 @@ func _TelegramService_GetDriverAccounts_Handler(srv interface{}, ctx context.Con
 	return interceptor(ctx, in, info, handler)
 }
 
+func _TelegramService_GetCrewLink_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetCrewLinkRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(TelegramServiceServer).GetCrewLink(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: TelegramService_GetCrewLink_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(TelegramServiceServer).GetCrewLink(ctx, req.(*GetCrewLinkRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // TelegramService_ServiceDesc is the grpc.ServiceDesc for TelegramService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -248,6 +286,10 @@ var TelegramService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetDriverAccounts",
 			Handler:    _TelegramService_GetDriverAccounts_Handler,
+		},
+		{
+			MethodName: "GetCrewLink",
+			Handler:    _TelegramService_GetCrewLink_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

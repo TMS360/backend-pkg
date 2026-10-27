@@ -51,12 +51,18 @@ const (
 	// ProviderPrePassSFTP is PrePass delivering a weekly spreadsheet to an
 	// SFTP folder. PrePass exposes no API — the file is the whole interface.
 	ProviderPrePassSFTP ProviderType = "prepass_sftp"
+	// ProviderBestPass is BestPass. Today the carrier uploads the portal's
+	// toll export by hand (DEV-3421); the Fleet API pull lands on the same
+	// type later (DEV-3436), so the transponder provider on a truck never has
+	// to change.
+	ProviderBestPass ProviderType = "bestpass_api"
 )
 
 // AllProviderTypes is the canonical list of supported provider types — used by
 // credential validation and by gqlgen for the GraphQL enum.
 var AllProviderTypes = []ProviderType{
 	ProviderPrePassSFTP,
+	ProviderBestPass,
 }
 
 // IsValid reports whether p is a known ProviderType. Use it to validate
@@ -197,6 +203,10 @@ func (c Credential) Redacted() Credential {
 // show it as is, and nothing of the file is stored (DEV-2489).
 var ErrNotPrePassFile = errors.New("This file does not look like a PrePass file") //nolint:staticcheck // user-facing sentence
 
+// ErrNotBestPassFile is the BestPass reader refusing a file whose headers are
+// not BestPass's — the same contract as ErrNotPrePassFile.
+var ErrNotBestPassFile = errors.New("This file does not look like a BestPass file") //nolint:staticcheck // user-facing sentence
+
 // ErrUploadOnly is what an upload-only provider answers to any attempt to dial.
 var ErrUploadOnly = errors.New("toll: upload-only integration has no folder to read")
 
@@ -266,6 +276,12 @@ func RulesFor(pt ProviderType) Rules {
 			RequiresSecret:   true,
 			RequiresHost:     true,
 			FileExtensions:   []string{".xlsx", ".xls", ".csv"},
+		}
+	case ProviderBestPass:
+		// Upload only for now: nothing to dial, so nothing is required.
+		return Rules{
+			Transport:      TransportAPI,
+			FileExtensions: []string{".xlsx", ".xls", ".csv"},
 		}
 	default:
 		return Rules{}

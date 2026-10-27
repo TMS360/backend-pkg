@@ -22,6 +22,8 @@ func NewProviderFromCredential(cred Credential) (Provider, error) {
 	switch cred.ProviderType {
 	case ProviderPrePassSFTP:
 		return NewPrePassSFTP(cred), nil
+	case ProviderBestPass:
+		return BestPass{}, nil
 	default:
 		return nil, fmt.Errorf("toll: provider %q has no implementation yet", cred.ProviderType)
 	}

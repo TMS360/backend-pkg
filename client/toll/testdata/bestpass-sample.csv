@@ -1,0 +1,20 @@
+Post Date,Transaction Desc,Tag No,License Plate,License State,Unit,Cost Center,Entry Date,Entry Time,Entry Plaza,Entry Plaza Name,Entry Lane,Exit Date,Exit Time,Exit Plaza,Exit Plaza Name,Exit Lane,Toll Class,Miles,Amount,Discounted Amount,Fee Amount,Agency,Service,PrePaid,Discounted,Type,Transaction Id,Credit Status,AccountNumber,AccountName
+10/26/2026,Toll,B6010337619,P1262009,IL,TUT7410,Unassigned,,,-,None,,10/25/2026,16:13:20,61,Aurora,,5,,8.45,8.45,0,ILTOLL,E-ZPass Prepaid,Y,N,Toll Usage,1517364223,,59471,SAAD Express LLC
+10/25/2026,Toll,B6010337619,P1262009,IL,TUT7410,Unassigned,,,-,None,,10/24/2026,12:01:12,51,York Rd.,,5,,8.45,8.45,0,ILTOLL,E-ZPass Prepaid,Y,N,Toll Usage,1516979775,,59471,SAAD Express LLC
+10/25/2026,Toll,B6010337619,P1262009,IL,TUT7410,Unassigned,,,-,None,,10/23/2026,19:12:43,37,Joliet Rd.,,5,,3.2,3.2,0,ILTOLL,E-ZPass Prepaid,Y,N,Toll Usage,1516983993,,59471,SAAD Express LLC
+10/24/2026,Toll,B6010337619,P1262009,IL,TUT7410,Unassigned,,,-,None,,10/23/2026,15:16:58,41,163rd St.,,5,,8.45,8.45,0,ILTOLL,E-ZPass Prepaid,Y,N,Toll Usage,1516367383,,59471,SAAD Express LLC
+10/24/2026,Toll,B6010337619,P1262009,IL,TUT7410,Unassigned,,,-,None,,10/23/2026,11:04:26,ECN,East End Crossing - NB,,3,,13.84,13.84,0,RIVERLIN,E-ZPass Prepaid,Y,N,Toll Usage,1516375402,,59471,SAAD Express LLC
+10/23/2026,Toll,B6010337619,P1262009,IL,TUT7410,Unassigned,,,-,None,,10/21/2026,18:33:48,AS,Ghent South,,8,,13,13,0,WVPEDTA,E-ZPass Prepaid,Y,N,Toll Usage,1515590439,,59471,SAAD Express LLC
+10/23/2026,Toll,B6010337619,P1262009,IL,TUT7410,Unassigned,,,-,None,,10/21/2026,18:09:21,B,Pax ,,8,,13,13,0,WVPEDTA,E-ZPass Prepaid,Y,N,Toll Usage,1515590445,,59471,SAAD Express LLC
+10/23/2026,Toll,B6010337619,P1262009,IL,TUT7410,Unassigned,,,-,None,,10/21/2026,17:42:56,C,Chelyan ,,8,,13,13,0,WVPEDTA,E-ZPass Prepaid,Y,N,Toll Usage,1515590455,,59471,SAAD Express LLC
+10/22/2026,Toll,B6010337619,P1262009,IL,TUT7410,Unassigned,,,-,None,,10/20/2026,20:13:16,41,163rd St.,,5,,8.45,8.45,0,ILTOLL,E-ZPass Prepaid,Y,N,Toll Usage,1514828436,,59471,SAAD Express LLC
+10/22/2026,Toll,B6010337619,P1262009,IL,TUT7410,Unassigned,,,-,None,,10/20/2026,20:00:11,36,82nd St.,,5,,8.45,8.45,0,ILTOLL,E-ZPass Prepaid,Y,N,Toll Usage,1514828251,,59471,SAAD Express LLC
+10/22/2026,Toll,B6010337619,P1262009,IL,TUT7410,Unassigned,,,-,None,,10/20/2026,19:46:24,89,Boughton Rd. (Main),,5,,8.45,8.45,0,ILTOLL,E-ZPass Prepaid,Y,N,Toll Usage,1514828690,,59471,SAAD Express LLC
+10/21/2026,Toll,B6010337619,P1262009,IL,TUT7410,Unassigned,,,-,None,,10/20/2026,11:41:01,51,York Rd.,,5,,8.45,8.45,0,ILTOLL,E-ZPass Prepaid,Y,N,Toll Usage,1514050911,,59471,SAAD Express LLC
+10/11/2026,Toll,B6010337619,P1262009,IL,TUT7410,Unassigned,,,-,None,,10/10/2026,15:58:05,39,83rd St.,,5,,8.45,8.45,0,ILTOLL,E-ZPass Prepaid,Y,N,Toll Usage,1507819618,,59471,SAAD Express LLC
+10/11/2026,Toll,B6010337619,P1262009,IL,TUT7410,Unassigned,,,-,None,,10/10/2026,15:45:01,41,163rd St.,,5,,8.45,8.45,0,ILTOLL,E-ZPass Prepaid,Y,N,Toll Usage,1507819703,,59471,SAAD Express LLC
+10/11/2026,Toll,B6010337619,P1262009,IL,TUT7410,Unassigned,,,-,None,,10/9/2026,18:19:42,36,82nd St.,,3,,4.75,4.75,0,ILTOLL,E-ZPass Prepaid,Y,N,Toll Usage,1507824178,,59471,SAAD Express LLC
+10/11/2026,Toll,B6010337619,P1262009,IL,TUT7410,Unassigned,,,-,None,,10/9/2026,17:57:37,52,Meyers Rd.,,3,,4.75,4.75,0,ILTOLL,E-ZPass Prepaid,Y,N,Toll Usage,1507824720,,59471,SAAD Express LLC
+10/10/2026,Toll,B6010337619,P1262009,IL,TUT7410,Unassigned,,,-,None,,10/9/2026,13:24:44,HRN,Houbolt Road Ext NB,,3,,9.15,9.15,0,UBP,E-ZPass Prepaid,Y,N,Toll Usage,1507101448,,59471,SAAD Express LLC
+10/9/2026,Toll,B6010337619,P1262009,IL,TUT7410,Unassigned,,,-,None,,10/6/2026,8:47:15,PGBW-SLTRD-03,South Lower Tarrant Road,3,,,1.36,1.36,0,NTTA,Texas Toll Roads,Y,N,Toll Usage,1506494348,,59471,SAAD Express LLC
+10/7/2026,Toll,B6010337619,P1262009,IL,TUT7410,Unassigned,,,-,None,,10/6/2026,8:41:30,PGBW-MLG12-11,Arkansas Mainlane Gantry,11,,,5.4,5.4,0,NTTA,Texas Toll Roads,Y,N,Toll Usage,1505100326,,59471,SAAD Express LLC

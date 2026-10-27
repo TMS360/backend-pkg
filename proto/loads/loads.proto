@@ -353,6 +353,12 @@ service LoadsService {
   // alone. company_id is passed explicitly (no AuthServerInterceptor), same
   // contract as GetTrailerOwnershipByIDs / ListActiveTruckIDs.
   rpc GetAssetComplianceFacts(GetAssetComplianceFactsRequest) returns (GetAssetComplianceFactsResponse);
+
+  // ── Telegram Ack / Decline tap (called by backend-telegram, DEV-3400) ─────
+  // A crew group member tapped a button under a load message. backend-load
+  // decides whether the tap counts and returns the toast the member sees.
+  // Idempotent per tap_id. company_id is passed explicitly.
+  rpc ApplyDriverAnswer(ApplyDriverAnswerRequest) returns (ApplyDriverAnswerResponse);
 }
 
 message DriverHasActiveTripRequest {
@@ -1603,4 +1609,23 @@ message AssetComplianceFacts {
 message GetAssetComplianceFactsResponse {
   // Keyed by asset id.
   map<string, AssetComplianceFacts> facts_by_id = 1;
+}
+
+// Telegram driver answer (DEV-3400)
+// ─────────────────────────────────────────────────────────────────────────────
+
+message ApplyDriverAnswerRequest {
+  string company_id = 1;
+  string crew_id = 2;
+  // tms-telegram message id (uuid) = SendResult.message_id of the load message.
+  string telegram_message_row_id = 3;
+  int64 telegram_user_id = 4;
+  string name = 5;
+  string username = 6;    // without "@", empty when the member has none
+  string action = 7;      // "ack" or "decline"
+  string tap_id = 8;      // tms-telegram tap id (uuid), the idempotency key
+}
+
+message ApplyDriverAnswerResponse {
+  string toast_text = 1;  // shown verbatim to the member who tapped
 }

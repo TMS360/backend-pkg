@@ -21,9 +21,10 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	TelegramService_SendToCrew_FullMethodName  = "/telegram.TelegramService/SendToCrew"
-	TelegramService_EditMessage_FullMethodName = "/telegram.TelegramService/EditMessage"
-	TelegramService_ReplyNote_FullMethodName   = "/telegram.TelegramService/ReplyNote"
+	TelegramService_SendToCrew_FullMethodName        = "/telegram.TelegramService/SendToCrew"
+	TelegramService_EditMessage_FullMethodName       = "/telegram.TelegramService/EditMessage"
+	TelegramService_ReplyNote_FullMethodName         = "/telegram.TelegramService/ReplyNote"
+	TelegramService_GetDriverAccounts_FullMethodName = "/telegram.TelegramService/GetDriverAccounts"
 )
 
 // TelegramServiceClient is the client API for TelegramService service.
@@ -40,6 +41,9 @@ type TelegramServiceClient interface {
 	EditMessage(ctx context.Context, in *EditMessageRequest, opts ...grpc.CallOption) (*SendResult, error)
 	// ReplyNote posts a short reply to a message sent earlier ("plan replaced").
 	ReplyNote(ctx context.Context, in *ReplyNoteRequest, opts ...grpc.CallOption) (*SendResult, error)
+	// GetDriverAccounts returns the Telegram account the office mapped to each
+	// driver. Drivers without one are absent from the list.
+	GetDriverAccounts(ctx context.Context, in *GetDriverAccountsRequest, opts ...grpc.CallOption) (*GetDriverAccountsResponse, error)
 }
 
 type telegramServiceClient struct {
@@ -80,6 +84,16 @@ func (c *telegramServiceClient) ReplyNote(ctx context.Context, in *ReplyNoteRequ
 	return out, nil
 }
 
+func (c *telegramServiceClient) GetDriverAccounts(ctx context.Context, in *GetDriverAccountsRequest, opts ...grpc.CallOption) (*GetDriverAccountsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetDriverAccountsResponse)
+	err := c.cc.Invoke(ctx, TelegramService_GetDriverAccounts_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // TelegramServiceServer is the server API for TelegramService service.
 // All implementations must embed UnimplementedTelegramServiceServer
 // for forward compatibility.
@@ -94,6 +108,9 @@ type TelegramServiceServer interface {
 	EditMessage(context.Context, *EditMessageRequest) (*SendResult, error)
 	// ReplyNote posts a short reply to a message sent earlier ("plan replaced").
 	ReplyNote(context.Context, *ReplyNoteRequest) (*SendResult, error)
+	// GetDriverAccounts returns the Telegram account the office mapped to each
+	// driver. Drivers without one are absent from the list.
+	GetDriverAccounts(context.Context, *GetDriverAccountsRequest) (*GetDriverAccountsResponse, error)
 	mustEmbedUnimplementedTelegramServiceServer()
 }
 
@@ -112,6 +129,9 @@ func (UnimplementedTelegramServiceServer) EditMessage(context.Context, *EditMess
 }
 func (UnimplementedTelegramServiceServer) ReplyNote(context.Context, *ReplyNoteRequest) (*SendResult, error) {
 	return nil, status.Error(codes.Unimplemented, "method ReplyNote not implemented")
+}
+func (UnimplementedTelegramServiceServer) GetDriverAccounts(context.Context, *GetDriverAccountsRequest) (*GetDriverAccountsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetDriverAccounts not implemented")
 }
 func (UnimplementedTelegramServiceServer) mustEmbedUnimplementedTelegramServiceServer() {}
 func (UnimplementedTelegramServiceServer) testEmbeddedByValue()                         {}
@@ -188,6 +208,24 @@ func _TelegramService_ReplyNote_Handler(srv interface{}, ctx context.Context, de
 	return interceptor(ctx, in, info, handler)
 }
 
+func _TelegramService_GetDriverAccounts_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetDriverAccountsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(TelegramServiceServer).GetDriverAccounts(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: TelegramService_GetDriverAccounts_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(TelegramServiceServer).GetDriverAccounts(ctx, req.(*GetDriverAccountsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // TelegramService_ServiceDesc is the grpc.ServiceDesc for TelegramService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -206,6 +244,10 @@ var TelegramService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ReplyNote",
 			Handler:    _TelegramService_ReplyNote_Handler,
+		},
+		{
+			MethodName: "GetDriverAccounts",
+			Handler:    _TelegramService_GetDriverAccounts_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

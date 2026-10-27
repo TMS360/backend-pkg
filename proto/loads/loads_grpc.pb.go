@@ -67,6 +67,7 @@ const (
 	LoadsService_GetAssetTripMiles_FullMethodName              = "/loads.LoadsService/GetAssetTripMiles"
 	LoadsService_GetTruckSamsaraMiles_FullMethodName           = "/loads.LoadsService/GetTruckSamsaraMiles"
 	LoadsService_GetAssetComplianceFacts_FullMethodName        = "/loads.LoadsService/GetAssetComplianceFacts"
+	LoadsService_ApplyDriverAnswer_FullMethodName              = "/loads.LoadsService/ApplyDriverAnswer"
 )
 
 // LoadsServiceClient is the client API for LoadsService service.
@@ -349,6 +350,11 @@ type LoadsServiceClient interface {
 	// alone. company_id is passed explicitly (no AuthServerInterceptor), same
 	// contract as GetTrailerOwnershipByIDs / ListActiveTruckIDs.
 	GetAssetComplianceFacts(ctx context.Context, in *GetAssetComplianceFactsRequest, opts ...grpc.CallOption) (*GetAssetComplianceFactsResponse, error)
+	// ── Telegram Ack / Decline tap (called by backend-telegram, DEV-3400) ─────
+	// A crew group member tapped a button under a load message. backend-load
+	// decides whether the tap counts and returns the toast the member sees.
+	// Idempotent per tap_id. company_id is passed explicitly.
+	ApplyDriverAnswer(ctx context.Context, in *ApplyDriverAnswerRequest, opts ...grpc.CallOption) (*ApplyDriverAnswerResponse, error)
 }
 
 type loadsServiceClient struct {
@@ -808,6 +814,16 @@ func (c *loadsServiceClient) GetAssetComplianceFacts(ctx context.Context, in *Ge
 	return out, nil
 }
 
+func (c *loadsServiceClient) ApplyDriverAnswer(ctx context.Context, in *ApplyDriverAnswerRequest, opts ...grpc.CallOption) (*ApplyDriverAnswerResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ApplyDriverAnswerResponse)
+	err := c.cc.Invoke(ctx, LoadsService_ApplyDriverAnswer_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // LoadsServiceServer is the server API for LoadsService service.
 // All implementations must embed UnimplementedLoadsServiceServer
 // for forward compatibility.
@@ -1088,6 +1104,11 @@ type LoadsServiceServer interface {
 	// alone. company_id is passed explicitly (no AuthServerInterceptor), same
 	// contract as GetTrailerOwnershipByIDs / ListActiveTruckIDs.
 	GetAssetComplianceFacts(context.Context, *GetAssetComplianceFactsRequest) (*GetAssetComplianceFactsResponse, error)
+	// ── Telegram Ack / Decline tap (called by backend-telegram, DEV-3400) ─────
+	// A crew group member tapped a button under a load message. backend-load
+	// decides whether the tap counts and returns the toast the member sees.
+	// Idempotent per tap_id. company_id is passed explicitly.
+	ApplyDriverAnswer(context.Context, *ApplyDriverAnswerRequest) (*ApplyDriverAnswerResponse, error)
 	mustEmbedUnimplementedLoadsServiceServer()
 }
 
@@ -1229,6 +1250,9 @@ func (UnimplementedLoadsServiceServer) GetTruckSamsaraMiles(context.Context, *Ge
 }
 func (UnimplementedLoadsServiceServer) GetAssetComplianceFacts(context.Context, *GetAssetComplianceFactsRequest) (*GetAssetComplianceFactsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetAssetComplianceFacts not implemented")
+}
+func (UnimplementedLoadsServiceServer) ApplyDriverAnswer(context.Context, *ApplyDriverAnswerRequest) (*ApplyDriverAnswerResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ApplyDriverAnswer not implemented")
 }
 func (UnimplementedLoadsServiceServer) mustEmbedUnimplementedLoadsServiceServer() {}
 func (UnimplementedLoadsServiceServer) testEmbeddedByValue()                      {}
@@ -2036,6 +2060,24 @@ func _LoadsService_GetAssetComplianceFacts_Handler(srv interface{}, ctx context.
 	return interceptor(ctx, in, info, handler)
 }
 
+func _LoadsService_ApplyDriverAnswer_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ApplyDriverAnswerRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(LoadsServiceServer).ApplyDriverAnswer(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: LoadsService_ApplyDriverAnswer_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(LoadsServiceServer).ApplyDriverAnswer(ctx, req.(*ApplyDriverAnswerRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // LoadsService_ServiceDesc is the grpc.ServiceDesc for LoadsService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -2214,6 +2256,10 @@ var LoadsService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetAssetComplianceFacts",
 			Handler:    _LoadsService_GetAssetComplianceFacts_Handler,
+		},
+		{
+			MethodName: "ApplyDriverAnswer",
+			Handler:    _LoadsService_ApplyDriverAnswer_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{

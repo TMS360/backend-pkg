@@ -15,6 +15,16 @@ service TelegramService {
   rpc EditMessage(EditMessageRequest) returns (SendResult);
   // ReplyNote posts a short reply to a message sent earlier ("plan replaced").
   rpc ReplyNote(ReplyNoteRequest) returns (SendResult);
+  // GetDriverAccounts returns the Telegram account the office mapped to each
+  // driver. Drivers without one are absent from the list.
+  rpc GetDriverAccounts(GetDriverAccountsRequest) returns (GetDriverAccountsResponse);
+}
+
+// Button is one inline button under a message. action is echoed back on a tap
+// ("ack", "decline").
+message Button {
+  string text = 1;
+  string action = 2;
 }
 
 message SendToCrewRequest {
@@ -23,6 +33,7 @@ message SendToCrewRequest {
   string idempotency_key = 3;
   string text = 4;
   string parse_mode = 5;  // "HTML" or empty
+  repeated Button buttons = 6;  // one row; empty = no buttons
 }
 
 message EditMessageRequest {
@@ -31,6 +42,10 @@ message EditMessageRequest {
   string idempotency_key = 3;
   string text = 4;
   string parse_mode = 5;
+  // buttons replaces the buttons under the message. Empty and clear_buttons
+  // false keeps whatever the message had; clear_buttons true removes them.
+  repeated Button buttons = 6;
+  bool clear_buttons = 7;
 }
 
 message ReplyNoteRequest {
@@ -58,4 +73,18 @@ message SendResult {
   int64 telegram_message_id = 4;
   string failure_reason = 5;        // Telegram's description, verbatim
   string chat_title = 6;
+}
+
+message GetDriverAccountsRequest {
+  string company_id = 1;
+  repeated string driver_ids = 2;
+}
+
+message DriverAccount {
+  string driver_id = 1;
+  int64 telegram_user_id = 2;
+}
+
+message GetDriverAccountsResponse {
+  repeated DriverAccount accounts = 1;
 }

@@ -23,6 +23,230 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+type TripPlanRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	CompanyId     string                 `protobuf:"bytes,1,opt,name=company_id,json=companyId,proto3" json:"company_id,omitempty"`
+	TripId        string                 `protobuf:"bytes,2,opt,name=trip_id,json=tripId,proto3" json:"trip_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *TripPlanRequest) Reset() {
+	*x = TripPlanRequest{}
+	mi := &file_fuel_fuel_proto_msgTypes[0]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TripPlanRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TripPlanRequest) ProtoMessage() {}
+
+func (x *TripPlanRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_fuel_fuel_proto_msgTypes[0]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TripPlanRequest.ProtoReflect.Descriptor instead.
+func (*TripPlanRequest) Descriptor() ([]byte, []int) {
+	return file_fuel_fuel_proto_rawDescGZIP(), []int{0}
+}
+
+func (x *TripPlanRequest) GetCompanyId() string {
+	if x != nil {
+		return x.CompanyId
+	}
+	return ""
+}
+
+func (x *TripPlanRequest) GetTripId() string {
+	if x != nil {
+		return x.TripId
+	}
+	return ""
+}
+
+type PlanAvailability struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Available     bool                   `protobuf:"varint,1,opt,name=available,proto3" json:"available,omitempty"`
+	Code          string                 `protobuf:"bytes,2,opt,name=code,proto3" json:"code,omitempty"` // PILOT_NOT_CONFIGURED | HERE_NOT_CONFIGURED | NO_TRUCK | ...
+	Reason        string                 `protobuf:"bytes,3,opt,name=reason,proto3" json:"reason,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *PlanAvailability) Reset() {
+	*x = PlanAvailability{}
+	mi := &file_fuel_fuel_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PlanAvailability) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PlanAvailability) ProtoMessage() {}
+
+func (x *PlanAvailability) ProtoReflect() protoreflect.Message {
+	mi := &file_fuel_fuel_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PlanAvailability.ProtoReflect.Descriptor instead.
+func (*PlanAvailability) Descriptor() ([]byte, []int) {
+	return file_fuel_fuel_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *PlanAvailability) GetAvailable() bool {
+	if x != nil {
+		return x.Available
+	}
+	return false
+}
+
+func (x *PlanAvailability) GetCode() string {
+	if x != nil {
+		return x.Code
+	}
+	return ""
+}
+
+func (x *PlanAvailability) GetReason() string {
+	if x != nil {
+		return x.Reason
+	}
+	return ""
+}
+
+type PlanState struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	PlanId        string                 `protobuf:"bytes,1,opt,name=plan_id,json=planId,proto3" json:"plan_id,omitempty"`
+	Status        string                 `protobuf:"bytes,2,opt,name=status,proto3" json:"status,omitempty"` // BUILDING | NEEDS_MANUAL_FUEL | BUILD_FAILED | DRAFT | SENT | SEND_FAILED | NOT_SENT | STALE | CANCELLED
+	Reason        string                 `protobuf:"bytes,3,opt,name=reason,proto3" json:"reason,omitempty"` // why a build or a send did not succeed
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *PlanState) Reset() {
+	*x = PlanState{}
+	mi := &file_fuel_fuel_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PlanState) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PlanState) ProtoMessage() {}
+
+func (x *PlanState) ProtoReflect() protoreflect.Message {
+	mi := &file_fuel_fuel_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PlanState.ProtoReflect.Descriptor instead.
+func (*PlanState) Descriptor() ([]byte, []int) {
+	return file_fuel_fuel_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *PlanState) GetPlanId() string {
+	if x != nil {
+		return x.PlanId
+	}
+	return ""
+}
+
+func (x *PlanState) GetStatus() string {
+	if x != nil {
+		return x.Status
+	}
+	return ""
+}
+
+func (x *PlanState) GetReason() string {
+	if x != nil {
+		return x.Reason
+	}
+	return ""
+}
+
+type SendPlanRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	CompanyId     string                 `protobuf:"bytes,1,opt,name=company_id,json=companyId,proto3" json:"company_id,omitempty"`
+	PlanId        string                 `protobuf:"bytes,2,opt,name=plan_id,json=planId,proto3" json:"plan_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SendPlanRequest) Reset() {
+	*x = SendPlanRequest{}
+	mi := &file_fuel_fuel_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SendPlanRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SendPlanRequest) ProtoMessage() {}
+
+func (x *SendPlanRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_fuel_fuel_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SendPlanRequest.ProtoReflect.Descriptor instead.
+func (*SendPlanRequest) Descriptor() ([]byte, []int) {
+	return file_fuel_fuel_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *SendPlanRequest) GetCompanyId() string {
+	if x != nil {
+		return x.CompanyId
+	}
+	return ""
+}
+
+func (x *SendPlanRequest) GetPlanId() string {
+	if x != nil {
+		return x.PlanId
+	}
+	return ""
+}
+
 type GetTripFuelWarningsRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	CompanyId     string                 `protobuf:"bytes,1,opt,name=company_id,json=companyId,proto3" json:"company_id,omitempty"`
@@ -33,7 +257,7 @@ type GetTripFuelWarningsRequest struct {
 
 func (x *GetTripFuelWarningsRequest) Reset() {
 	*x = GetTripFuelWarningsRequest{}
-	mi := &file_fuel_fuel_proto_msgTypes[0]
+	mi := &file_fuel_fuel_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -45,7 +269,7 @@ func (x *GetTripFuelWarningsRequest) String() string {
 func (*GetTripFuelWarningsRequest) ProtoMessage() {}
 
 func (x *GetTripFuelWarningsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_fuel_fuel_proto_msgTypes[0]
+	mi := &file_fuel_fuel_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -58,7 +282,7 @@ func (x *GetTripFuelWarningsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetTripFuelWarningsRequest.ProtoReflect.Descriptor instead.
 func (*GetTripFuelWarningsRequest) Descriptor() ([]byte, []int) {
-	return file_fuel_fuel_proto_rawDescGZIP(), []int{0}
+	return file_fuel_fuel_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *GetTripFuelWarningsRequest) GetCompanyId() string {
@@ -88,7 +312,7 @@ type TripFuelWarning struct {
 
 func (x *TripFuelWarning) Reset() {
 	*x = TripFuelWarning{}
-	mi := &file_fuel_fuel_proto_msgTypes[1]
+	mi := &file_fuel_fuel_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -100,7 +324,7 @@ func (x *TripFuelWarning) String() string {
 func (*TripFuelWarning) ProtoMessage() {}
 
 func (x *TripFuelWarning) ProtoReflect() protoreflect.Message {
-	mi := &file_fuel_fuel_proto_msgTypes[1]
+	mi := &file_fuel_fuel_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -113,7 +337,7 @@ func (x *TripFuelWarning) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TripFuelWarning.ProtoReflect.Descriptor instead.
 func (*TripFuelWarning) Descriptor() ([]byte, []int) {
-	return file_fuel_fuel_proto_rawDescGZIP(), []int{1}
+	return file_fuel_fuel_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *TripFuelWarning) GetTripId() string {
@@ -160,7 +384,7 @@ type GetTripFuelWarningsResponse struct {
 
 func (x *GetTripFuelWarningsResponse) Reset() {
 	*x = GetTripFuelWarningsResponse{}
-	mi := &file_fuel_fuel_proto_msgTypes[2]
+	mi := &file_fuel_fuel_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -172,7 +396,7 @@ func (x *GetTripFuelWarningsResponse) String() string {
 func (*GetTripFuelWarningsResponse) ProtoMessage() {}
 
 func (x *GetTripFuelWarningsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_fuel_fuel_proto_msgTypes[2]
+	mi := &file_fuel_fuel_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -185,7 +409,7 @@ func (x *GetTripFuelWarningsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetTripFuelWarningsResponse.ProtoReflect.Descriptor instead.
 func (*GetTripFuelWarningsResponse) Descriptor() ([]byte, []int) {
-	return file_fuel_fuel_proto_rawDescGZIP(), []int{2}
+	return file_fuel_fuel_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *GetTripFuelWarningsResponse) GetWarnings() []*TripFuelWarning {
@@ -199,7 +423,23 @@ var File_fuel_fuel_proto protoreflect.FileDescriptor
 
 const file_fuel_fuel_proto_rawDesc = "" +
 	"\n" +
-	"\x0ffuel/fuel.proto\x12\x04fuel\"V\n" +
+	"\x0ffuel/fuel.proto\x12\x04fuel\"I\n" +
+	"\x0fTripPlanRequest\x12\x1d\n" +
+	"\n" +
+	"company_id\x18\x01 \x01(\tR\tcompanyId\x12\x17\n" +
+	"\atrip_id\x18\x02 \x01(\tR\x06tripId\"\\\n" +
+	"\x10PlanAvailability\x12\x1c\n" +
+	"\tavailable\x18\x01 \x01(\bR\tavailable\x12\x12\n" +
+	"\x04code\x18\x02 \x01(\tR\x04code\x12\x16\n" +
+	"\x06reason\x18\x03 \x01(\tR\x06reason\"T\n" +
+	"\tPlanState\x12\x17\n" +
+	"\aplan_id\x18\x01 \x01(\tR\x06planId\x12\x16\n" +
+	"\x06status\x18\x02 \x01(\tR\x06status\x12\x16\n" +
+	"\x06reason\x18\x03 \x01(\tR\x06reason\"I\n" +
+	"\x0fSendPlanRequest\x12\x1d\n" +
+	"\n" +
+	"company_id\x18\x01 \x01(\tR\tcompanyId\x12\x17\n" +
+	"\aplan_id\x18\x02 \x01(\tR\x06planId\"V\n" +
 	"\x1aGetTripFuelWarningsRequest\x12\x1d\n" +
 	"\n" +
 	"company_id\x18\x01 \x01(\tR\tcompanyId\x12\x19\n" +
@@ -211,9 +451,13 @@ const file_fuel_fuel_proto_rawDesc = "" +
 	"\amessage\x18\x04 \x01(\tR\amessage\x12\x17\n" +
 	"\aplan_id\x18\x05 \x01(\tR\x06planId\"P\n" +
 	"\x1bGetTripFuelWarningsResponse\x121\n" +
-	"\bwarnings\x18\x01 \x03(\v2\x15.fuel.TripFuelWarningR\bwarnings2i\n" +
+	"\bwarnings\x18\x01 \x03(\v2\x15.fuel.TripFuelWarningR\bwarnings2\xd9\x02\n" +
 	"\vFuelService\x12Z\n" +
-	"\x13GetTripFuelWarnings\x12 .fuel.GetTripFuelWarningsRequest\x1a!.fuel.GetTripFuelWarningsResponseB*Z(github.com/TMS360/backend-pkg/proto/fuelb\x06proto3"
+	"\x13GetTripFuelWarnings\x12 .fuel.GetTripFuelWarningsRequest\x1a!.fuel.GetTripFuelWarningsResponse\x12D\n" +
+	"\x13GetPlanAvailability\x12\x15.fuel.TripPlanRequest\x1a\x16.fuel.PlanAvailability\x128\n" +
+	"\x0eGetCurrentPlan\x12\x15.fuel.TripPlanRequest\x1a\x0f.fuel.PlanState\x12:\n" +
+	"\x10BuildDefaultPlan\x12\x15.fuel.TripPlanRequest\x1a\x0f.fuel.PlanState\x122\n" +
+	"\bSendPlan\x12\x15.fuel.SendPlanRequest\x1a\x0f.fuel.PlanStateB*Z(github.com/TMS360/backend-pkg/proto/fuelb\x06proto3"
 
 var (
 	file_fuel_fuel_proto_rawDescOnce sync.Once
@@ -227,18 +471,30 @@ func file_fuel_fuel_proto_rawDescGZIP() []byte {
 	return file_fuel_fuel_proto_rawDescData
 }
 
-var file_fuel_fuel_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
+var file_fuel_fuel_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
 var file_fuel_fuel_proto_goTypes = []any{
-	(*GetTripFuelWarningsRequest)(nil),  // 0: fuel.GetTripFuelWarningsRequest
-	(*TripFuelWarning)(nil),             // 1: fuel.TripFuelWarning
-	(*GetTripFuelWarningsResponse)(nil), // 2: fuel.GetTripFuelWarningsResponse
+	(*TripPlanRequest)(nil),             // 0: fuel.TripPlanRequest
+	(*PlanAvailability)(nil),            // 1: fuel.PlanAvailability
+	(*PlanState)(nil),                   // 2: fuel.PlanState
+	(*SendPlanRequest)(nil),             // 3: fuel.SendPlanRequest
+	(*GetTripFuelWarningsRequest)(nil),  // 4: fuel.GetTripFuelWarningsRequest
+	(*TripFuelWarning)(nil),             // 5: fuel.TripFuelWarning
+	(*GetTripFuelWarningsResponse)(nil), // 6: fuel.GetTripFuelWarningsResponse
 }
 var file_fuel_fuel_proto_depIdxs = []int32{
-	1, // 0: fuel.GetTripFuelWarningsResponse.warnings:type_name -> fuel.TripFuelWarning
-	0, // 1: fuel.FuelService.GetTripFuelWarnings:input_type -> fuel.GetTripFuelWarningsRequest
-	2, // 2: fuel.FuelService.GetTripFuelWarnings:output_type -> fuel.GetTripFuelWarningsResponse
-	2, // [2:3] is the sub-list for method output_type
-	1, // [1:2] is the sub-list for method input_type
+	5, // 0: fuel.GetTripFuelWarningsResponse.warnings:type_name -> fuel.TripFuelWarning
+	4, // 1: fuel.FuelService.GetTripFuelWarnings:input_type -> fuel.GetTripFuelWarningsRequest
+	0, // 2: fuel.FuelService.GetPlanAvailability:input_type -> fuel.TripPlanRequest
+	0, // 3: fuel.FuelService.GetCurrentPlan:input_type -> fuel.TripPlanRequest
+	0, // 4: fuel.FuelService.BuildDefaultPlan:input_type -> fuel.TripPlanRequest
+	3, // 5: fuel.FuelService.SendPlan:input_type -> fuel.SendPlanRequest
+	6, // 6: fuel.FuelService.GetTripFuelWarnings:output_type -> fuel.GetTripFuelWarningsResponse
+	1, // 7: fuel.FuelService.GetPlanAvailability:output_type -> fuel.PlanAvailability
+	2, // 8: fuel.FuelService.GetCurrentPlan:output_type -> fuel.PlanState
+	2, // 9: fuel.FuelService.BuildDefaultPlan:output_type -> fuel.PlanState
+	2, // 10: fuel.FuelService.SendPlan:output_type -> fuel.PlanState
+	6, // [6:11] is the sub-list for method output_type
+	1, // [1:6] is the sub-list for method input_type
 	1, // [1:1] is the sub-list for extension type_name
 	1, // [1:1] is the sub-list for extension extendee
 	0, // [0:1] is the sub-list for field type_name
@@ -255,7 +511,7 @@ func file_fuel_fuel_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_fuel_fuel_proto_rawDesc), len(file_fuel_fuel_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   3,
+			NumMessages:   7,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

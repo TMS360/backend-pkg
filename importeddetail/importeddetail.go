@@ -25,14 +25,17 @@ const (
 
 // Detail is one imported value on one record.
 type Detail struct {
-	RecordType   string
-	RecordID     string
-	CompanyID    string
-	Key          string
-	Label        string
-	Value        string // sealed text when Private
-	Private      bool
-	SourceSystem string
-	BatchID      string
-	ImportedAt   time.Time
+	RecordType   string    `gorm:"column:record_type"`
+	RecordID     string    `gorm:"column:record_id"`
+	CompanyID    string    `gorm:"column:company_id"`
+	Key          string    `gorm:"column:key"`
+	Label        string    `gorm:"column:label"`
+	Value        string    `gorm:"column:value"` // sealed text when Private
+	Private      bool      `gorm:"column:private"`
+	SourceSystem string    `gorm:"column:source_system"`
+	BatchID      string    `gorm:"column:migration_batch_id"`
+	ImportedAt   time.Time `gorm:"column:imported_at"`
 }
+
+// TableName is the table every owning service keeps its imported details in.
+func (Detail) TableName() string { return "imported_details" }

@@ -468,6 +468,15 @@ const (
 	// accounting (the desks that own the customer relationship).
 	PermComplianceCustomerOverride UserPermissionEnum = "compliance_customer_override"
 
+	// PermPrivateDataView gates the full value of a private record detail — SSN,
+	// bank and account numbers, birth date, emergency contact, tax details
+	// (DEV-3506, BL §21.21). A reader without it sees dots; a holder sees the
+	// last 4 and may reveal the full value, each reveal audited. FLAT for the
+	// same reason as PermAssetOutOfServiceOverride below: a dotted code under a
+	// module would reach every office role. Held by default by admin,
+	// accounting and hr.
+	PermPrivateDataView UserPermissionEnum = "private_data_view"
+
 	// PermAssetOutOfServiceOverride gates sending a trip to the driver when the
 	// truck or trailer on it is OUT_OF_SERVICE (DEV-2254). Like its compliance
 	// sibling above it waives ONE dispatch, with a mandatory reason recorded in
@@ -910,6 +919,7 @@ var CustomPermissionCatalog = []CustomPermissionEntry{
 	{Code: string(PermExpenseApprove), Label: "Approve, reject and void expenses; set the expense approval threshold"},
 	{Code: string(PermStatementReviewResolve), Label: "Approve or decline a driver pay review"},
 	{Code: string(PermOwnerEscrowRelease), Label: "Release a truck owner's escrow"},
+	{Code: string(PermPrivateDataView), Label: "See private data (SSN, bank, birth date, emergency contact)"},
 }
 
 // CustomPermissionCodes returns just the flat custom permission codes, in
@@ -1284,14 +1294,16 @@ func DefaultRolePermissions() map[UserRoleEnum][]string {
 		// pay review books money on a driver's statement; the old dotted gate was
 		// satisfied by the `accounting` module every office role holds, so a
 		// dispatcher could approve the difference their own miles edit created.
+		// private_data_view (DEV-3506): admin, accounting and hr — the desks that
+		// handle pay, tax and personnel files. Dispatch, safety and fleet do not.
 		// owner_escrow_release (DEV-2821): admin only. Releasing escrow moves held
 		// money out and is not reversible, so the accounting role does NOT hold it.
-		UserRoleAdmin:      withExtra(string(PermTripFinancialsEdit), string(PermTripGrossEdit), string(PermTripReassignCommitted), string(PermFileDeleteAny), string(PermReportsRun), string(PermReportsManage), string(PermCallsView), string(PermCallsPlay), string(PermSmsView), string(PermSmsSend), string(PermShipmentBillingApprove), string(PermAuditPlanExclusionEdit), string(PermComplianceDispatchOverride), string(PermAssetOutOfServiceOverride), string(PermTripDelete), string(PermInvoiceUnrecordPayment), string(PermAuditLogView), string(PermGeneralLedgerView), string(PermJournalEntryManage), string(PermVendorBillApproveLevel1), string(PermVendorBillApproveLevel2), string(PermVendorBillApproveLevel3), string(PermVendorBillPaymentVoid), string(PermExpenseApprove), string(PermInvoiceRecordPayment), string(PermMailView), string(PermMailSend), string(PermMailEdit), string(PermStatementReviewResolve), string(PermComplianceCustomerOverride), string(PermOwnerEscrowRelease), string(PermTruckVINCorrect)),
+		UserRoleAdmin:      withExtra(string(PermTripFinancialsEdit), string(PermTripGrossEdit), string(PermTripReassignCommitted), string(PermFileDeleteAny), string(PermReportsRun), string(PermReportsManage), string(PermCallsView), string(PermCallsPlay), string(PermSmsView), string(PermSmsSend), string(PermShipmentBillingApprove), string(PermAuditPlanExclusionEdit), string(PermComplianceDispatchOverride), string(PermAssetOutOfServiceOverride), string(PermTripDelete), string(PermInvoiceUnrecordPayment), string(PermAuditLogView), string(PermGeneralLedgerView), string(PermJournalEntryManage), string(PermVendorBillApproveLevel1), string(PermVendorBillApproveLevel2), string(PermVendorBillApproveLevel3), string(PermVendorBillPaymentVoid), string(PermExpenseApprove), string(PermInvoiceRecordPayment), string(PermMailView), string(PermMailSend), string(PermMailEdit), string(PermStatementReviewResolve), string(PermComplianceCustomerOverride), string(PermOwnerEscrowRelease), string(PermTruckVINCorrect), string(PermPrivateDataView)),
 		UserRoleManager:    withExtra(string(PermTripReassignCommitted), string(PermFileDeleteAny), string(PermCallsView), string(PermCallsPlay), string(PermSmsView), string(PermSmsSend), string(PermShipmentBillingApprove), string(PermAuditPlanExclusionEdit), string(PermComplianceDispatchOverride), string(PermAssetOutOfServiceOverride), string(PermTripDelete), string(PermAuditLogView), string(PermVendorBillApproveLevel1), string(PermVendorBillApproveLevel2), string(PermInvoiceRecordPayment)),
-		UserRoleAccounting: withExtra(string(PermTripFinancialsEdit), string(PermReportsRun), string(PermReportsManage), string(PermShipmentBillingApprove), string(PermGeneralLedgerView), string(PermJournalEntryManage), string(PermVendorBillApproveLevel1), string(PermExpenseApprove), string(PermInvoiceRecordPayment), string(PermStatementReviewResolve), string(PermComplianceCustomerOverride)),
+		UserRoleAccounting: withExtra(string(PermTripFinancialsEdit), string(PermReportsRun), string(PermReportsManage), string(PermShipmentBillingApprove), string(PermGeneralLedgerView), string(PermJournalEntryManage), string(PermVendorBillApproveLevel1), string(PermExpenseApprove), string(PermInvoiceRecordPayment), string(PermStatementReviewResolve), string(PermComplianceCustomerOverride), string(PermPrivateDataView)),
 		UserRoleFleet:      withExtra(),
 		UserRoleSafety:     withExtra(string(PermComplianceDispatchOverride)),
-		UserRoleHr:         withExtra(),
+		UserRoleHr:         withExtra(string(PermPrivateDataView)),
 		// DEV-1409: the auditor gets the same module baseline as its peers. Most of
 		// its governed powers (locked-statement corrections, revised-invoice voids,
 		// reading the tenant audit log) are gated by role, not by a permission code.

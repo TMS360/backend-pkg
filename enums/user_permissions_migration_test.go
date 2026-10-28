@@ -8,32 +8,23 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// DEV-3428: the three migration codes are flat, admin holds all three, the
-// auditor holds rollback and unlock, and every other role is default-deny.
-func TestMigrationPermissions_DefaultGrants(t *testing.T) {
+// DEV-3488 (reverses DEV-3428's grants): the migration is a dev-team job, so
+// the three migration codes are not grantable and no role holds them by
+// default. The constants stay — three services still gate on migration_unlock,
+// which only platform staff pass now.
+func TestMigrationPermissions_NotGrantableNotDefaulted(t *testing.T) {
 	defaults := enums.DefaultRolePermissions()
-	rollback := string(enums.PermMigrationRollback)
-	unlock := string(enums.PermMigrationUnlock)
-	signoff := string(enums.PermMigrationSignoff)
-
-	for _, code := range []string{rollback, unlock, signoff} {
-		assert.True(t, enums.IsCustomPermissionCode(code), "%s must be grantable", code)
-		assert.True(t, middleware.HasPermission(defaults[enums.UserRoleAdmin], code),
-			"admin should hold %s by default", code)
+	codes := []string{
+		string(enums.PermMigrationRollback),
+		string(enums.PermMigrationUnlock),
+		string(enums.PermMigrationSignoff),
 	}
 
-	assert.True(t, middleware.HasPermission(defaults[enums.UserRoleAuditor], rollback))
-	assert.True(t, middleware.HasPermission(defaults[enums.UserRoleAuditor], unlock))
-	assert.False(t, middleware.HasPermission(defaults[enums.UserRoleAuditor], signoff),
-		"sign-off is the customer admin's approval, not the auditor's")
-
-	for _, role := range []enums.UserRoleEnum{
-		enums.UserRoleManager, enums.UserRoleAccounting, enums.UserRoleFleet,
-		enums.UserRoleSafety, enums.UserRoleHr, enums.UserRoleDispatcher,
-		enums.UserRoleDriver, enums.UserRoleOther,
-	} {
-		for _, code := range []string{rollback, unlock, signoff} {
-			assert.Falsef(t, middleware.HasPermission(defaults[role], code),
+	for _, code := range codes {
+		assert.Falsef(t, enums.IsCustomPermissionCode(code), "%s must not be grantable", code)
+		assert.Falsef(t, enums.IsValidPermissionCode(code), "%s must be refused as an unknown code", code)
+		for role, perms := range defaults {
+			assert.Falsef(t, middleware.HasPermission(perms, code),
 				"%s must not hold %s by default", role, code)
 		}
 	}

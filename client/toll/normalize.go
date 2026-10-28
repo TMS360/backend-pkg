@@ -218,6 +218,14 @@ func HashRow(pt ProviderType, r Row, occurrence int) string {
 	return hex.EncodeToString(sum[:])
 }
 
+// TransactionRowKey is the dedup key of a row the aggregator gave its own
+// transaction id. Nothing else is in it: a re-export with another Post Date or
+// a revised amount is the same transaction (DEV-3421).
+func TransactionRowKey(pt ProviderType, txID string) string {
+	sum := sha256.Sum256([]byte(string(pt) + hashSep + strings.TrimSpace(txID)))
+	return hex.EncodeToString(sum[:])
+}
+
 // assignHashes fills Hash on every row, numbering identical rows so a file
 // that omits exit timestamps still yields distinct keys.
 func assignHashes(pt ProviderType, rows []Row) {

@@ -565,7 +565,7 @@ func TestNewProviderFromCredential(t *testing.T) {
 	require.NoError(t, err)
 	assert.NotNil(t, p)
 
-	_, err = NewProviderFromCredential(Credential{ProviderType: "bestpass_api"})
+	_, err = NewProviderFromCredential(Credential{ProviderType: "ezpass_api"})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "unknown provider_type")
 

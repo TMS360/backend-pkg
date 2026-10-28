@@ -295,3 +295,16 @@ func TestBestPass_APIModeNeedsTheKey(t *testing.T) {
 	assert.Error(t, Credential{ProviderType: ProviderBestPass}.Validate())
 	assert.NoError(t, Credential{ProviderType: ProviderBestPass, Secret: "k"}.Validate())
 }
+
+func TestBestPassAPI_ExitWithOffsetKeepsThePlazaClock(t *testing.T) {
+	tx := sampleTxs(t)[0]
+	tx["exitDateLocal"] = "2026-10-25T16:13:20-05:00"
+	c, _ := newFakeClient(t, &fakeBestPass{txs: []map[string]any{tx}, pageSize: 10})
+
+	res, err := c.Transactions(t.Context(), "59471", window[0], window[1])
+
+	require.NoError(t, err)
+	require.Len(t, res.Rows, 1)
+	assert.Equal(t, time.Date(2026, 10, 25, 16, 13, 20, 0, time.UTC), *res.Rows[0].ExitAt,
+		"the file prints 16:13:20; converting the offset to UTC would make one toll two crossings")
+}

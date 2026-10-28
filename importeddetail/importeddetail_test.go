@@ -1,6 +1,7 @@
 package importeddetail_test
 
 import (
+	"context"
 	"encoding/base64"
 	"testing"
 
@@ -89,4 +90,25 @@ func TestPrivateDataView_DefaultGrants(t *testing.T) {
 	} {
 		assert.Falsef(t, middleware.HasPermission(defaults[role], code), "%s must not hold %s by default", role, code)
 	}
+}
+
+func TestViews_MaskByPermissionAndDegrade(t *testing.T) {
+	setCipher(t)
+	sealed, err := importeddetail.Seal("c1", importeddetail.RecordDriver, "r1", "ssn", "123-45-6789")
+	require.NoError(t, err)
+	details := []importeddetail.Detail{
+		{CompanyID: "c1", RecordType: importeddetail.RecordDriver, RecordID: "r1", Key: "ssn", Value: sealed, Private: true},
+		{CompanyID: "c1", RecordType: importeddetail.RecordDriver, RecordID: "r1", Key: "bad", Value: "tmsimp:v1:garbage", Private: true},
+		{CompanyID: "c1", RecordType: importeddetail.RecordDriver, RecordID: "r1", Key: "telegram_id", Value: "42"},
+	}
+
+	holder := importeddetail.Views(context.Background(), details, true)
+	assert.Equal(t, "•••-••-6789", holder[0].Value)
+	assert.True(t, holder[1].ReadError)
+	assert.Empty(t, holder[1].Value)
+	assert.Equal(t, "42", holder[2].Value)
+
+	other := importeddetail.Views(context.Background(), details, false)
+	assert.Equal(t, "••••••", other[0].Value)
+	assert.Equal(t, "42", other[2].Value)
 }

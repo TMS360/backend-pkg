@@ -25,6 +25,7 @@ const (
 
 // CAUGHT: the real-send lock is closed (not production) — the message went to
 // the catcher chat or only to the log; the crew's group did not get it.
+// QUIET: a respect_quiet_hours reply asked inside quiet hours; nothing sent.
 type DeliveryStatus int32
 
 const (
@@ -33,6 +34,7 @@ const (
 	DeliveryStatus_FAILED                      DeliveryStatus = 2
 	DeliveryStatus_NO_GROUP                    DeliveryStatus = 3
 	DeliveryStatus_CAUGHT                      DeliveryStatus = 4
+	DeliveryStatus_QUIET                       DeliveryStatus = 5
 )
 
 // Enum value maps for DeliveryStatus.
@@ -43,6 +45,7 @@ var (
 		2: "FAILED",
 		3: "NO_GROUP",
 		4: "CAUGHT",
+		5: "QUIET",
 	}
 	DeliveryStatus_value = map[string]int32{
 		"DELIVERY_STATUS_UNSPECIFIED": 0,
@@ -50,6 +53,7 @@ var (
 		"FAILED":                      2,
 		"NO_GROUP":                    3,
 		"CAUGHT":                      4,
+		"QUIET":                       5,
 	}
 )
 
@@ -319,8 +323,12 @@ type ReplyNoteRequest struct {
 	IdempotencyKey string                 `protobuf:"bytes,3,opt,name=idempotency_key,json=idempotencyKey,proto3" json:"idempotency_key,omitempty"`
 	Text           string                 `protobuf:"bytes,4,opt,name=text,proto3" json:"text,omitempty"`
 	ParseMode      string                 `protobuf:"bytes,5,opt,name=parse_mode,json=parseMode,proto3" json:"parse_mode,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// respect_quiet_hours: inside the company's Telegram quiet hours nothing is
+	// sent and nothing is stored under the key; the answer is QUIET, so the
+	// caller asks again later with the same key (DEV-3396 no-answer reminder).
+	RespectQuietHours bool `protobuf:"varint,6,opt,name=respect_quiet_hours,json=respectQuietHours,proto3" json:"respect_quiet_hours,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
 }
 
 func (x *ReplyNoteRequest) Reset() {
@@ -386,6 +394,13 @@ func (x *ReplyNoteRequest) GetParseMode() string {
 		return x.ParseMode
 	}
 	return ""
+}
+
+func (x *ReplyNoteRequest) GetRespectQuietHours() bool {
+	if x != nil {
+		return x.RespectQuietHours
+	}
+	return false
 }
 
 type SendResult struct {
@@ -769,7 +784,7 @@ const file_telegram_telegram_proto_rawDesc = "" +
 	"\n" +
 	"parse_mode\x18\x05 \x01(\tR\tparseMode\x12*\n" +
 	"\abuttons\x18\x06 \x03(\v2\x10.telegram.ButtonR\abuttons\x12#\n" +
-	"\rclear_buttons\x18\a \x01(\bR\fclearButtons\"\xac\x01\n" +
+	"\rclear_buttons\x18\a \x01(\bR\fclearButtons\"\xdc\x01\n" +
 	"\x10ReplyNoteRequest\x12\x1d\n" +
 	"\n" +
 	"company_id\x18\x01 \x01(\tR\tcompanyId\x12\x1d\n" +
@@ -778,7 +793,8 @@ const file_telegram_telegram_proto_rawDesc = "" +
 	"\x0fidempotency_key\x18\x03 \x01(\tR\x0eidempotencyKey\x12\x12\n" +
 	"\x04text\x18\x04 \x01(\tR\x04text\x12\x1d\n" +
 	"\n" +
-	"parse_mode\x18\x05 \x01(\tR\tparseMode\"\xec\x01\n" +
+	"parse_mode\x18\x05 \x01(\tR\tparseMode\x12.\n" +
+	"\x13respect_quiet_hours\x18\x06 \x01(\bR\x11respectQuietHours\"\xec\x01\n" +
 	"\n" +
 	"SendResult\x12\x1d\n" +
 	"\n" +
@@ -810,7 +826,7 @@ const file_telegram_telegram_proto_rawDesc = "" +
 	"\n" +
 	"last_error\x18\x03 \x01(\tR\tlastError\x12\x1d\n" +
 	"\n" +
-	"chat_title\x18\x04 \x01(\tR\tchatTitle*a\n" +
+	"chat_title\x18\x04 \x01(\tR\tchatTitle*l\n" +
 	"\x0eDeliveryStatus\x12\x1f\n" +
 	"\x1bDELIVERY_STATUS_UNSPECIFIED\x10\x00\x12\b\n" +
 	"\x04SENT\x10\x01\x12\n" +
@@ -818,7 +834,8 @@ const file_telegram_telegram_proto_rawDesc = "" +
 	"\x06FAILED\x10\x02\x12\f\n" +
 	"\bNO_GROUP\x10\x03\x12\n" +
 	"\n" +
-	"\x06CAUGHT\x10\x042\xf3\x02\n" +
+	"\x06CAUGHT\x10\x04\x12\t\n" +
+	"\x05QUIET\x10\x052\xf3\x02\n" +
 	"\x0fTelegramService\x12?\n" +
 	"\n" +
 	"SendToCrew\x12\x1b.telegram.SendToCrewRequest\x1a\x14.telegram.SendResult\x12A\n" +

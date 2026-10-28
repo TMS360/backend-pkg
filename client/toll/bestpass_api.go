@@ -11,10 +11,13 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/TMS360/backend-pkg/deployenv"
 )
 
 // BestPassAPIBaseURL is the BestPass Fleet API v1 production endpoint. A
-// credential's BaseURL overrides it (sandbox, tests).
+// credential's BaseURL overrides it outside production only (sandbox, tests):
+// in production the key is never sent anywhere but BestPass.
 const BestPassAPIBaseURL = "https://api.bestpass.com/fleet-api/v1"
 
 // BestPassMaxWindow is the widest post-date window one /transactions call
@@ -55,7 +58,7 @@ type BestPassAPI struct {
 // NewBestPassAPI builds a client from the company's BestPass credential.
 func NewBestPassAPI(cred Credential) *BestPassAPI {
 	base := strings.TrimRight(strings.TrimSpace(cred.BaseURL), "/")
-	if base == "" {
+	if base == "" || deployenv.IsProduction() {
 		base = BestPassAPIBaseURL
 	}
 	return &BestPassAPI{

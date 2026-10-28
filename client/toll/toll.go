@@ -181,6 +181,10 @@ type Credential struct {
 	// a sandbox.
 	BaseURL string `json:"base_url,omitempty"`
 
+	// AccountNumbers is read by API providers that see several accounts with
+	// one key (BestPass): the accounts the company picked to pull.
+	AccountNumbers []string `json:"account_numbers,omitempty"`
+
 	// UploadOnly marks a company that loads the aggregator's files by hand and
 	// has no folder login (DEV-2489). Validate then asks for no transport
 	// settings, the provider refuses to dial, and the folder poll skips it.
@@ -278,9 +282,11 @@ func RulesFor(pt ProviderType) Rules {
 			FileExtensions:   []string{".xlsx", ".xls", ".csv"},
 		}
 	case ProviderBestPass:
-		// Upload only for now: nothing to dial, so nothing is required.
+		// Upload only needs nothing (Validate skips it); the API mode needs
+		// the company's key (DEV-3436).
 		return Rules{
 			Transport:      TransportAPI,
+			RequiresSecret: true,
 			FileExtensions: []string{".xlsx", ".xls", ".csv"},
 		}
 	default:

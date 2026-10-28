@@ -3,6 +3,7 @@ package keycrypt
 import (
 	"fmt"
 	"os"
+	"strings"
 	"sync"
 )
 
@@ -36,6 +37,10 @@ func SetDefault(c *Cipher) {
 	defaultCipher = c
 }
 
+// Default returns the process-wide cipher, loading it from EnvSecret when
+// nothing was installed. Other sealed-value formats (importeddetail) build on it.
+func Default() (*Cipher, error) { return getDefault() }
+
 func getDefault() (*Cipher, error) {
 	defaultMu.RLock()
 	c := defaultCipher
@@ -65,6 +70,11 @@ func settingAAD(companyID, settingKey string) string {
 // sealed one is opened with the process-wide cipher. The error never carries
 // the value.
 func OpenSetting(companyID, settingKey, stored string) (string, error) {
+	// A value sealed in another format (an imported detail, "tmsimp:") is never
+	// a usable key: refuse it instead of handing it out as a plain value.
+	if strings.HasPrefix(stored, "tmsimp:") {
+		return "", ErrUnreadable
+	}
 	if !IsSealed(stored) {
 		return stored, nil
 	}

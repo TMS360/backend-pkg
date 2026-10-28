@@ -57,16 +57,22 @@ message ReplyNoteRequest {
   string idempotency_key = 3;
   string text = 4;
   string parse_mode = 5;
+  // respect_quiet_hours: inside the company's Telegram quiet hours nothing is
+  // sent and nothing is stored under the key; the answer is QUIET, so the
+  // caller asks again later with the same key (DEV-3396 no-answer reminder).
+  bool respect_quiet_hours = 6;
 }
 
 // CAUGHT: the real-send lock is closed (not production) — the message went to
 // the catcher chat or only to the log; the crew's group did not get it.
+// QUIET: a respect_quiet_hours reply asked inside quiet hours; nothing sent.
 enum DeliveryStatus {
   DELIVERY_STATUS_UNSPECIFIED = 0;
   SENT = 1;
   FAILED = 2;
   NO_GROUP = 3;
   CAUGHT = 4;
+  QUIET = 5;
 }
 
 message SendResult {

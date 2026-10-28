@@ -10,6 +10,44 @@ service FuelService {
   // computed from plan status on read (stale plan, failed send). Trips with
   // nothing to say are absent.
   rpc GetTripFuelWarnings(GetTripFuelWarningsRequest) returns (GetTripFuelWarningsResponse);
+
+  // DEV-3397 — the fuel plan sent together with the load. Thin doors over the
+  // plan service: no plan logic lives behind them that the GraphQL API lacks.
+
+  // GetPlanAvailability says whether a plan can be built for the trip now; the
+  // first blocker's code and text when it cannot.
+  rpc GetPlanAvailability(TripPlanRequest) returns (PlanAvailability);
+  // GetCurrentPlan is the trip's newest plan that was not replaced; empty
+  // plan_id when the trip has none.
+  rpc GetCurrentPlan(TripPlanRequest) returns (PlanState);
+  // BuildDefaultPlan starts a build with the company's fuel settings. It returns
+  // at once with status BUILDING; poll GetCurrentPlan for the outcome.
+  rpc BuildDefaultPlan(TripPlanRequest) returns (PlanState);
+  // SendPlan posts a DRAFT plan to the crew's group. A plan already SENT comes
+  // back as it is, without a second message.
+  rpc SendPlan(SendPlanRequest) returns (PlanState);
+}
+
+message TripPlanRequest {
+  string company_id = 1;
+  string trip_id = 2;
+}
+
+message PlanAvailability {
+  bool available = 1;
+  string code = 2;    // PILOT_NOT_CONFIGURED | HERE_NOT_CONFIGURED | NO_TRUCK | ...
+  string reason = 3;
+}
+
+message PlanState {
+  string plan_id = 1;
+  string status = 2;  // BUILDING | NEEDS_MANUAL_FUEL | BUILD_FAILED | DRAFT | SENT | SEND_FAILED | NOT_SENT | STALE | CANCELLED
+  string reason = 3;  // why a build or a send did not succeed
+}
+
+message SendPlanRequest {
+  string company_id = 1;
+  string plan_id = 2;
 }
 
 message GetTripFuelWarningsRequest {

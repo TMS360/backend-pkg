@@ -305,7 +305,8 @@ type LoadsServiceClient interface {
 	ApplyTollDeviceHistory(ctx context.Context, in *ApplyTollDeviceHistoryRequest, opts ...grpc.CallOption) (*ApplyTollDeviceHistoryResponse, error)
 	// DEV-3437: which trucks a toll provider's vehicle list points at. For each
 	// probe: the trucks whose VIN equals vin, the trucks whose normalised plate
-	// equals plate, and the truck already holding (device_provider, device_id).
+	// equals plate, the trucks whose number equals unit (evidence, never a
+	// match), and the truck already holding (device_provider, device_id).
 	// backend-load only reports the candidates; the caller decides whether one
 	// of them may be proposed (exactly one, VIN before plate, never unit).
 	//
@@ -1063,7 +1064,8 @@ type LoadsServiceServer interface {
 	ApplyTollDeviceHistory(context.Context, *ApplyTollDeviceHistoryRequest) (*ApplyTollDeviceHistoryResponse, error)
 	// DEV-3437: which trucks a toll provider's vehicle list points at. For each
 	// probe: the trucks whose VIN equals vin, the trucks whose normalised plate
-	// equals plate, and the truck already holding (device_provider, device_id).
+	// equals plate, the trucks whose number equals unit (evidence, never a
+	// match), and the truck already holding (device_provider, device_id).
 	// backend-load only reports the candidates; the caller decides whether one
 	// of them may be proposed (exactly one, VIN before plate, never unit).
 	//

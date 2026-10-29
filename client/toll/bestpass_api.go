@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -15,10 +16,13 @@ import (
 	"github.com/TMS360/backend-pkg/deployenv"
 )
 
-// BestPassAPIBaseURL is the BestPass Fleet API v1 production endpoint. A
-// credential's BaseURL overrides it outside production only (sandbox, tests):
-// in production the key is never sent anywhere but BestPass.
+// BestPassAPIBaseURL is the BestPass Fleet API v1 production endpoint. Only
+// Railway production calls it; see bestPassBase.
 const BestPassAPIBaseURL = "https://api.bestpass.com/fleet-api/v1"
+
+// envTestBestPassURL points a non-production deployment at a BestPass
+// stand-in, like TEST_PREPASS_SFTP_HOST does for PrePass.
+const envTestBestPassURL = "TEST_BESTPASS_API_URL"
 
 // BestPassMaxWindow is the widest post-date window one /transactions call
 // accepts.
@@ -50,6 +54,8 @@ type BestPassStatement struct {
 // Read only: nothing is ever written to BestPass.
 type BestPassAPI struct {
 	baseURL string
+	// blocked is why this client may not call anything (bestPassBase).
+	blocked error
 	key     string
 	http    *http.Client
 	sleep   func(context.Context, time.Duration) error
@@ -57,16 +63,32 @@ type BestPassAPI struct {
 
 // NewBestPassAPI builds a client from the company's BestPass credential.
 func NewBestPassAPI(cred Credential) *BestPassAPI {
-	base := strings.TrimRight(strings.TrimSpace(cred.BaseURL), "/")
-	if base == "" || deployenv.IsProduction() {
-		base = BestPassAPIBaseURL
-	}
+	base, blocked := bestPassBase(cred.BaseURL)
 	return &BestPassAPI{
 		baseURL: base,
+		blocked: blocked,
 		key:     cred.Secret,
 		http:    &http.Client{Timeout: 60 * time.Second},
 		sleep:   sleepCtx,
 	}
+}
+
+// bestPassBase is where the client may send the key. Production: BestPass
+// itself, whatever the credential says. Anywhere else: only a stand-in — the
+// credential's base URL or TEST_BESTPASS_API_URL — and never BestPass, because
+// dev and staging databases are copies of production and carry real carriers'
+// keys (DEV-3306). Nothing set fails closed with ErrRealServerBlocked.
+func bestPassBase(credURL string) (string, error) {
+	if deployenv.IsProduction() {
+		return BestPassAPIBaseURL, nil
+	}
+	for _, v := range []string{credURL, os.Getenv(envTestBestPassURL)} {
+		if v = strings.TrimRight(strings.TrimSpace(v), "/"); v != "" && v != BestPassAPIBaseURL {
+			return v, nil
+		}
+	}
+	return "", fmt.Errorf("%w: BestPass API — no stand-in base URL and %s is unset (%s=%q), refusing to call %s",
+		ErrRealServerBlocked, envTestBestPassURL, deployenv.RailwayEnvVar, deployenv.Name(), BestPassAPIBaseURL)
 }
 
 // Accounts lists the accounts the key can read. It is also the key check:
@@ -161,6 +183,9 @@ func (c *BestPassAPI) getJSON(ctx context.Context, path string, q url.Values, ds
 }
 
 func (c *BestPassAPI) get(ctx context.Context, path string, q url.Values) (*http.Response, error) {
+	if c.blocked != nil {
+		return nil, c.blocked
+	}
 	u := c.baseURL + path
 	if len(q) > 0 {
 		u += "?" + q.Encode()

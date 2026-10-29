@@ -12,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/TMS360/backend-pkg/deployenv"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -287,8 +288,45 @@ func TestBestPassAPI_AccountsAndStatements(t *testing.T) {
 	assert.Equal(t, "S-1", st[0].Number)
 }
 
-func TestBestPassAPI_DefaultsToProductionURL(t *testing.T) {
-	assert.Equal(t, BestPassAPIBaseURL, NewBestPassAPI(Credential{}).baseURL)
+func TestBestPassAPI_ProductionAlwaysCallsBestPass(t *testing.T) {
+	t.Setenv(deployenv.RailwayEnvVar, "production")
+	c := NewBestPassAPI(Credential{BaseURL: "http://stand-in.test"})
+	assert.Equal(t, BestPassAPIBaseURL, c.baseURL, "a stored base URL never redirects a production key")
+	assert.NoError(t, c.blocked)
+}
+
+// DEV-3306 for BestPass: outside production nothing reaches BestPass. Dev and
+// staging hold copies of real carriers' keys.
+func TestBestPassAPI_OutsideProductionRealBestPassIsBlocked(t *testing.T) {
+	var calls atomic.Int32
+	srv := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) { calls.Add(1) }))
+	t.Cleanup(srv.Close)
+	for _, base := range []string{"", BestPassAPIBaseURL} {
+		t.Setenv(deployenv.RailwayEnvVar, "development")
+		t.Setenv(envTestBestPassURL, "")
+		c := NewBestPassAPI(Credential{ProviderType: ProviderBestPass, Secret: "real-carrier-key", BaseURL: base})
+
+		_, err := c.Accounts(t.Context())
+		require.ErrorIs(t, err, ErrRealServerBlocked, "base %q", base)
+		assert.Contains(t, err.Error(), envTestBestPassURL)
+		_, err = c.Transactions(t.Context(), "59471", window[0], window[1])
+		assert.ErrorIs(t, err, ErrRealServerBlocked)
+		assert.False(t, IsAuthError(err), "a blocked call is not a refused key")
+	}
+	assert.Zero(t, calls.Load())
+}
+
+func TestBestPassAPI_OutsideProductionUsesTheStandIn(t *testing.T) {
+	t.Setenv(deployenv.RailwayEnvVar, "staging")
+	f := &fakeBestPass{}
+	srv := httptest.NewServer(f)
+	t.Cleanup(srv.Close)
+	t.Setenv(envTestBestPassURL, srv.URL)
+
+	_, err := NewBestPassAPI(Credential{ProviderType: ProviderBestPass, Secret: "k"}).Accounts(t.Context())
+
+	require.NoError(t, err, "TEST_BESTPASS_API_URL is the stand-in when the credential names none")
+	assert.EqualValues(t, 1, f.calls.Load())
 }
 
 func TestBestPass_APIModeNeedsTheKey(t *testing.T) {

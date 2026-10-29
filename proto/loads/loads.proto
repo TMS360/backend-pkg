@@ -288,7 +288,8 @@ service LoadsService {
 
   // DEV-3437: which trucks a toll provider's vehicle list points at. For each
   // probe: the trucks whose VIN equals vin, the trucks whose normalised plate
-  // equals plate, and the truck already holding (device_provider, device_id).
+  // equals plate, the trucks whose number equals unit (evidence, never a
+  // match), and the truck already holding (device_provider, device_id).
   // backend-load only reports the candidates; the caller decides whether one
   // of them may be proposed (exactly one, VIN before plate, never unit).
   //
@@ -1418,6 +1419,11 @@ message TruckProbe {
   // report who already holds the device; empty device_id reports nothing.
   string device_provider = 4;
   string device_id = 5;
+  // The provider's own unit number, ALREADY through toll.NormalizeTruckRef.
+  // NEVER a match key: it is only reported so the caller can say "only the
+  // unit matched" instead of "nothing matched". Compared trimmed and
+  // case-insensitively against trucks.number.
+  string unit = 6;
 }
 
 message MatchTrucksByVinOrPlateRequest {
@@ -1435,6 +1441,8 @@ message TruckProbeResult {
   // its unit number so the caller can name it.
   string device_owner_truck_id = 4;
   string device_owner_truck_number = 5;
+  // Every truck whose number equals unit. Evidence only — see TruckProbe.unit.
+  repeated string unit_truck_ids = 6;
 }
 
 message MatchTrucksByVinOrPlateResponse {

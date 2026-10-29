@@ -60,6 +60,7 @@ const (
 	LoadsService_ListFleetAssetIDs_FullMethodName              = "/loads.LoadsService/ListFleetAssetIDs"
 	LoadsService_MatchTollRows_FullMethodName                  = "/loads.LoadsService/MatchTollRows"
 	LoadsService_ApplyTollDeviceHistory_FullMethodName         = "/loads.LoadsService/ApplyTollDeviceHistory"
+	LoadsService_MatchTrucksByVinOrPlate_FullMethodName        = "/loads.LoadsService/MatchTrucksByVinOrPlate"
 	LoadsService_GetLotChargebacksByDispatchers_FullMethodName = "/loads.LoadsService/GetLotChargebacksByDispatchers"
 	LoadsService_GetAssetOdometer_FullMethodName               = "/loads.LoadsService/GetAssetOdometer"
 	LoadsService_RecordAssetOdometer_FullMethodName            = "/loads.LoadsService/RecordAssetOdometer"
@@ -303,6 +304,15 @@ type LoadsServiceClient interface {
 	// A segment a person wrote is never rebuilt. company_id is explicit, same
 	// contract as MatchTollRows.
 	ApplyTollDeviceHistory(ctx context.Context, in *ApplyTollDeviceHistoryRequest, opts ...grpc.CallOption) (*ApplyTollDeviceHistoryResponse, error)
+	// DEV-3437: which trucks a toll provider's vehicle list points at. For each
+	// probe: the trucks whose VIN equals vin, the trucks whose normalised plate
+	// equals plate, and the truck already holding (device_provider, device_id).
+	// backend-load only reports the candidates; the caller decides whether one
+	// of them may be proposed (exactly one, VIN before plate, never unit).
+	//
+	// Read-only, one query for the whole batch. company_id is explicit, same
+	// contract as MatchTollRows.
+	MatchTrucksByVinOrPlate(ctx context.Context, in *MatchTrucksByVinOrPlateRequest, opts ...grpc.CallOption) (*MatchTrucksByVinOrPlateResponse, error)
 	// DEV-1935: the late-trailer-return charges a dispatcher is accountable for,
 	// for a pay period. Accounting puts them on the dispatcher's pay statement.
 	//
@@ -744,6 +754,16 @@ func (c *loadsServiceClient) ApplyTollDeviceHistory(ctx context.Context, in *App
 	return out, nil
 }
 
+func (c *loadsServiceClient) MatchTrucksByVinOrPlate(ctx context.Context, in *MatchTrucksByVinOrPlateRequest, opts ...grpc.CallOption) (*MatchTrucksByVinOrPlateResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(MatchTrucksByVinOrPlateResponse)
+	err := c.cc.Invoke(ctx, LoadsService_MatchTrucksByVinOrPlate_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *loadsServiceClient) GetLotChargebacksByDispatchers(ctx context.Context, in *GetLotChargebacksByDispatchersRequest, opts ...grpc.CallOption) (*GetLotChargebacksByDispatchersResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(GetLotChargebacksByDispatchersResponse)
@@ -1057,6 +1077,15 @@ type LoadsServiceServer interface {
 	// A segment a person wrote is never rebuilt. company_id is explicit, same
 	// contract as MatchTollRows.
 	ApplyTollDeviceHistory(context.Context, *ApplyTollDeviceHistoryRequest) (*ApplyTollDeviceHistoryResponse, error)
+	// DEV-3437: which trucks a toll provider's vehicle list points at. For each
+	// probe: the trucks whose VIN equals vin, the trucks whose normalised plate
+	// equals plate, and the truck already holding (device_provider, device_id).
+	// backend-load only reports the candidates; the caller decides whether one
+	// of them may be proposed (exactly one, VIN before plate, never unit).
+	//
+	// Read-only, one query for the whole batch. company_id is explicit, same
+	// contract as MatchTollRows.
+	MatchTrucksByVinOrPlate(context.Context, *MatchTrucksByVinOrPlateRequest) (*MatchTrucksByVinOrPlateResponse, error)
 	// DEV-1935: the late-trailer-return charges a dispatcher is accountable for,
 	// for a pay period. Accounting puts them on the dispatcher's pay statement.
 	//
@@ -1229,6 +1258,9 @@ func (UnimplementedLoadsServiceServer) MatchTollRows(context.Context, *MatchToll
 }
 func (UnimplementedLoadsServiceServer) ApplyTollDeviceHistory(context.Context, *ApplyTollDeviceHistoryRequest) (*ApplyTollDeviceHistoryResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ApplyTollDeviceHistory not implemented")
+}
+func (UnimplementedLoadsServiceServer) MatchTrucksByVinOrPlate(context.Context, *MatchTrucksByVinOrPlateRequest) (*MatchTrucksByVinOrPlateResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method MatchTrucksByVinOrPlate not implemented")
 }
 func (UnimplementedLoadsServiceServer) GetLotChargebacksByDispatchers(context.Context, *GetLotChargebacksByDispatchersRequest) (*GetLotChargebacksByDispatchersResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetLotChargebacksByDispatchers not implemented")
@@ -1934,6 +1966,24 @@ func _LoadsService_ApplyTollDeviceHistory_Handler(srv interface{}, ctx context.C
 	return interceptor(ctx, in, info, handler)
 }
 
+func _LoadsService_MatchTrucksByVinOrPlate_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(MatchTrucksByVinOrPlateRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(LoadsServiceServer).MatchTrucksByVinOrPlate(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: LoadsService_MatchTrucksByVinOrPlate_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(LoadsServiceServer).MatchTrucksByVinOrPlate(ctx, req.(*MatchTrucksByVinOrPlateRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _LoadsService_GetLotChargebacksByDispatchers_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(GetLotChargebacksByDispatchersRequest)
 	if err := dec(in); err != nil {
@@ -2228,6 +2278,10 @@ var LoadsService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ApplyTollDeviceHistory",
 			Handler:    _LoadsService_ApplyTollDeviceHistory_Handler,
+		},
+		{
+			MethodName: "MatchTrucksByVinOrPlate",
+			Handler:    _LoadsService_MatchTrucksByVinOrPlate_Handler,
 		},
 		{
 			MethodName: "GetLotChargebacksByDispatchers",

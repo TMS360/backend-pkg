@@ -2214,12 +2214,16 @@ func (x *GetCrewAssignmentsHistoryResponse) GetData() []*CrewAssignmentHistoryRo
 // GetDriverCrewHistoryRequest asks "which crews was this driver in between from
 // and to". Bounds are INCLUSIVE calendar days; company_id is mandatory for the
 // same reason as GetCrewAssignmentsHistoryRequest.
+//
+// Field numbers 1, 4, 5 are GetCrewAssignmentsHistoryRequest's on purpose: a
+// caller still pinned to an older backend-pkg can send that message plus
+// driver_id (6) as an unknown field, without a pin bump.
 type GetDriverCrewHistoryRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	CompanyId     string                 `protobuf:"bytes,1,opt,name=company_id,json=companyId,proto3" json:"company_id,omitempty"`
-	DriverId      string                 `protobuf:"bytes,2,opt,name=driver_id,json=driverId,proto3" json:"driver_id,omitempty"`
-	From          string                 `protobuf:"bytes,3,opt,name=from,proto3" json:"from,omitempty"` // YYYY-MM-DD, inclusive
-	To            string                 `protobuf:"bytes,4,opt,name=to,proto3" json:"to,omitempty"`     // YYYY-MM-DD, inclusive
+	From          string                 `protobuf:"bytes,4,opt,name=from,proto3" json:"from,omitempty"` // YYYY-MM-DD, inclusive
+	To            string                 `protobuf:"bytes,5,opt,name=to,proto3" json:"to,omitempty"`     // YYYY-MM-DD, inclusive
+	DriverId      string                 `protobuf:"bytes,6,opt,name=driver_id,json=driverId,proto3" json:"driver_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2261,13 +2265,6 @@ func (x *GetDriverCrewHistoryRequest) GetCompanyId() string {
 	return ""
 }
 
-func (x *GetDriverCrewHistoryRequest) GetDriverId() string {
-	if x != nil {
-		return x.DriverId
-	}
-	return ""
-}
-
 func (x *GetDriverCrewHistoryRequest) GetFrom() string {
 	if x != nil {
 		return x.From
@@ -2278,6 +2275,13 @@ func (x *GetDriverCrewHistoryRequest) GetFrom() string {
 func (x *GetDriverCrewHistoryRequest) GetTo() string {
 	if x != nil {
 		return x.To
+	}
+	return ""
+}
+
+func (x *GetDriverCrewHistoryRequest) GetDriverId() string {
+	if x != nil {
+		return x.DriverId
 	}
 	return ""
 }
@@ -2479,13 +2483,13 @@ const file_teams_teams_proto_rawDesc = "" +
 	"started_at\x18\x06 \x01(\tR\tstartedAt\x12\x19\n" +
 	"\bended_at\x18\a \x01(\tR\aendedAt\"X\n" +
 	"!GetCrewAssignmentsHistoryResponse\x123\n" +
-	"\x04data\x18\x01 \x03(\v2\x1f.teams.CrewAssignmentHistoryRowR\x04data\"}\n" +
+	"\x04data\x18\x01 \x03(\v2\x1f.teams.CrewAssignmentHistoryRowR\x04data\"\x89\x01\n" +
 	"\x1bGetDriverCrewHistoryRequest\x12\x1d\n" +
 	"\n" +
-	"company_id\x18\x01 \x01(\tR\tcompanyId\x12\x1b\n" +
-	"\tdriver_id\x18\x02 \x01(\tR\bdriverId\x12\x12\n" +
-	"\x04from\x18\x03 \x01(\tR\x04from\x12\x0e\n" +
-	"\x02to\x18\x04 \x01(\tR\x02to*h\n" +
+	"company_id\x18\x01 \x01(\tR\tcompanyId\x12\x12\n" +
+	"\x04from\x18\x04 \x01(\tR\x04from\x12\x0e\n" +
+	"\x02to\x18\x05 \x01(\tR\x02to\x12\x1b\n" +
+	"\tdriver_id\x18\x06 \x01(\tR\bdriverIdJ\x04\b\x02\x10\x03J\x04\b\x03\x10\x04*h\n" +
 	"\rCrewAssetType\x12\x1f\n" +
 	"\x1bCREW_ASSET_TYPE_UNSPECIFIED\x10\x00\x12\x19\n" +
 	"\x15CREW_ASSET_TYPE_TRUCK\x10\x01\x12\x1b\n" +

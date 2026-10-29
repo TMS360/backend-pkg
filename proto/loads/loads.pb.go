@@ -6858,8 +6858,13 @@ type TruckProbe struct {
 	// report who already holds the device; empty device_id reports nothing.
 	DeviceProvider string `protobuf:"bytes,4,opt,name=device_provider,json=deviceProvider,proto3" json:"device_provider,omitempty"`
 	DeviceId       string `protobuf:"bytes,5,opt,name=device_id,json=deviceId,proto3" json:"device_id,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// The provider's own unit number, ALREADY through toll.NormalizeTruckRef.
+	// NEVER a match key: it is only reported so the caller can say "only the
+	// unit matched" instead of "nothing matched". Compared trimmed and
+	// case-insensitively against trucks.number.
+	Unit          string `protobuf:"bytes,6,opt,name=unit,proto3" json:"unit,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *TruckProbe) Reset() {
@@ -6927,6 +6932,13 @@ func (x *TruckProbe) GetDeviceId() string {
 	return ""
 }
 
+func (x *TruckProbe) GetUnit() string {
+	if x != nil {
+		return x.Unit
+	}
+	return ""
+}
+
 type MatchTrucksByVinOrPlateRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	CompanyId     string                 `protobuf:"bytes,1,opt,name=company_id,json=companyId,proto3" json:"company_id,omitempty"`
@@ -6990,8 +7002,10 @@ type TruckProbeResult struct {
 	// its unit number so the caller can name it.
 	DeviceOwnerTruckId     string `protobuf:"bytes,4,opt,name=device_owner_truck_id,json=deviceOwnerTruckId,proto3" json:"device_owner_truck_id,omitempty"`
 	DeviceOwnerTruckNumber string `protobuf:"bytes,5,opt,name=device_owner_truck_number,json=deviceOwnerTruckNumber,proto3" json:"device_owner_truck_number,omitempty"`
-	unknownFields          protoimpl.UnknownFields
-	sizeCache              protoimpl.SizeCache
+	// Every truck whose number equals unit. Evidence only — see TruckProbe.unit.
+	UnitTruckIds  []string `protobuf:"bytes,6,rep,name=unit_truck_ids,json=unitTruckIds,proto3" json:"unit_truck_ids,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *TruckProbeResult) Reset() {
@@ -7057,6 +7071,13 @@ func (x *TruckProbeResult) GetDeviceOwnerTruckNumber() string {
 		return x.DeviceOwnerTruckNumber
 	}
 	return ""
+}
+
+func (x *TruckProbeResult) GetUnitTruckIds() []string {
+	if x != nil {
+		return x.UnitTruckIds
+	}
+	return nil
 }
 
 type MatchTrucksByVinOrPlateResponse struct {
@@ -9101,24 +9122,26 @@ const file_loads_loads_proto_rawDesc = "" +
 	"\rdistinct_days\x18\x04 \x01(\x05R\fdistinctDays\"e\n" +
 	"\x11TollDeviceHistory\x12\x1b\n" +
 	"\tdevice_id\x18\x01 \x01(\tR\bdeviceId\x123\n" +
-	"\tstretches\x18\x02 \x03(\v2\x15.loads.TollRefStretchR\tstretches\"\x97\x01\n" +
+	"\tstretches\x18\x02 \x03(\v2\x15.loads.TollRefStretchR\tstretches\"\xab\x01\n" +
 	"\n" +
 	"TruckProbe\x12\x1b\n" +
 	"\tprobe_key\x18\x01 \x01(\tR\bprobeKey\x12\x10\n" +
 	"\x03vin\x18\x02 \x01(\tR\x03vin\x12\x14\n" +
 	"\x05plate\x18\x03 \x01(\tR\x05plate\x12'\n" +
 	"\x0fdevice_provider\x18\x04 \x01(\tR\x0edeviceProvider\x12\x1b\n" +
-	"\tdevice_id\x18\x05 \x01(\tR\bdeviceId\"j\n" +
+	"\tdevice_id\x18\x05 \x01(\tR\bdeviceId\x12\x12\n" +
+	"\x04unit\x18\x06 \x01(\tR\x04unit\"j\n" +
 	"\x1eMatchTrucksByVinOrPlateRequest\x12\x1d\n" +
 	"\n" +
 	"company_id\x18\x01 \x01(\tR\tcompanyId\x12)\n" +
-	"\x06probes\x18\x02 \x03(\v2\x11.loads.TruckProbeR\x06probes\"\xe9\x01\n" +
+	"\x06probes\x18\x02 \x03(\v2\x11.loads.TruckProbeR\x06probes\"\x8f\x02\n" +
 	"\x10TruckProbeResult\x12\x1b\n" +
 	"\tprobe_key\x18\x01 \x01(\tR\bprobeKey\x12\"\n" +
 	"\rvin_truck_ids\x18\x02 \x03(\tR\vvinTruckIds\x12&\n" +
 	"\x0fplate_truck_ids\x18\x03 \x03(\tR\rplateTruckIds\x121\n" +
 	"\x15device_owner_truck_id\x18\x04 \x01(\tR\x12deviceOwnerTruckId\x129\n" +
-	"\x19device_owner_truck_number\x18\x05 \x01(\tR\x16deviceOwnerTruckNumber\"T\n" +
+	"\x19device_owner_truck_number\x18\x05 \x01(\tR\x16deviceOwnerTruckNumber\x12$\n" +
+	"\x0eunit_truck_ids\x18\x06 \x03(\tR\funitTruckIds\"T\n" +
 	"\x1fMatchTrucksByVinOrPlateResponse\x121\n" +
 	"\aresults\x18\x01 \x03(\v2\x17.loads.TruckProbeResultR\aresults\"\x8e\x01\n" +
 	"\x1dApplyTollDeviceHistoryRequest\x12\x1d\n" +

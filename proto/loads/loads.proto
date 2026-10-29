@@ -286,6 +286,16 @@ service LoadsService {
   // contract as MatchTollRows.
   rpc ApplyTollDeviceHistory(ApplyTollDeviceHistoryRequest) returns (ApplyTollDeviceHistoryResponse);
 
+  // DEV-3437: which trucks a toll provider's vehicle list points at. For each
+  // probe: the trucks whose VIN equals vin, the trucks whose normalised plate
+  // equals plate, and the truck already holding (device_provider, device_id).
+  // backend-load only reports the candidates; the caller decides whether one
+  // of them may be proposed (exactly one, VIN before plate, never unit).
+  //
+  // Read-only, one query for the whole batch. company_id is explicit, same
+  // contract as MatchTollRows.
+  rpc MatchTrucksByVinOrPlate(MatchTrucksByVinOrPlateRequest) returns (MatchTrucksByVinOrPlateResponse);
+
   // DEV-1935: the late-trailer-return charges a dispatcher is accountable for,
   // for a pay period. Accounting puts them on the dispatcher's pay statement.
   //
@@ -1389,6 +1399,46 @@ message TollDeviceHistory {
   string device_id = 1;
   // Every non-blank Truck-column number seen for this device, in any order.
   repeated TollRefStretch stretches = 2;
+}
+
+// ── Provider vehicle list (DEV-3437) ────────────────────────────────────────
+
+// TruckProbe is one vehicle of a toll provider's own list, with the
+// transponder the provider says is on it.
+message TruckProbe {
+  // The caller's own handle, echoed back untouched.
+  string probe_key = 1;
+  // As the provider printed it. Compared trimmed and case-insensitively
+  // against trucks.vin. Empty never matches.
+  string vin = 2;
+  // ALREADY normalised by the caller through toll.NormalizePlate, compared
+  // against normalize_plate(trucks.license_plate). Empty never matches.
+  string plate = 3;
+  // The transponder and its aggregator (toll.ProviderType). Only used to
+  // report who already holds the device; empty device_id reports nothing.
+  string device_provider = 4;
+  string device_id = 5;
+}
+
+message MatchTrucksByVinOrPlateRequest {
+  string company_id = 1;
+  repeated TruckProbe probes = 2;
+}
+
+message TruckProbeResult {
+  string probe_key = 1;
+  // Every truck of the company with that VIN — zero, one or several.
+  repeated string vin_truck_ids = 2;
+  // Every truck of the company with that normalised plate.
+  repeated string plate_truck_ids = 3;
+  // The truck (device_provider, device_id) is written on today, if any, and
+  // its unit number so the caller can name it.
+  string device_owner_truck_id = 4;
+  string device_owner_truck_number = 5;
+}
+
+message MatchTrucksByVinOrPlateResponse {
+  repeated TruckProbeResult results = 1;
 }
 
 message ApplyTollDeviceHistoryRequest {

@@ -368,9 +368,14 @@ message GetCrewAssignmentsHistoryResponse {
 // GetDriverCrewHistoryRequest asks "which crews was this driver in between from
 // and to". Bounds are INCLUSIVE calendar days; company_id is mandatory for the
 // same reason as GetCrewAssignmentsHistoryRequest.
+//
+// Field numbers 1, 4, 5 are GetCrewAssignmentsHistoryRequest's on purpose: a
+// caller still pinned to an older backend-pkg can send that message plus
+// driver_id (6) as an unknown field, without a pin bump.
 message GetDriverCrewHistoryRequest {
+  reserved 2, 3;
   string company_id = 1;
-  string driver_id = 2;
-  string from = 3; // YYYY-MM-DD, inclusive
-  string to = 4;   // YYYY-MM-DD, inclusive
+  string from = 4; // YYYY-MM-DD, inclusive
+  string to = 5;   // YYYY-MM-DD, inclusive
+  string driver_id = 6;
 }

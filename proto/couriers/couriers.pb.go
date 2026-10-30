@@ -877,8 +877,12 @@ func (x *GetDriverTypesAtResponse) GetDriverTypes() map[string]int32 {
 }
 
 type ListOfficeUsersRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	CompanyId     string                 `protobuf:"bytes,1,opt,name=company_id,json=companyId,proto3" json:"company_id,omitempty"`
+	state     protoimpl.MessageState `protogen:"open.v1"`
+	CompanyId string                 `protobuf:"bytes,1,opt,name=company_id,json=companyId,proto3" json:"company_id,omitempty"`
+	// true  → only status = ACTIVE (excludes inactive AND banned).
+	// false/absent → historical behaviour: every office user regardless of
+	// status (messaging RBAC, notification broadcast, compliance flag read).
+	ActiveOnly    *bool `protobuf:"varint,2,opt,name=active_only,json=activeOnly,proto3,oneof" json:"active_only,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -918,6 +922,13 @@ func (x *ListOfficeUsersRequest) GetCompanyId() string {
 		return x.CompanyId
 	}
 	return ""
+}
+
+func (x *ListOfficeUsersRequest) GetActiveOnly() bool {
+	if x != nil && x.ActiveOnly != nil {
+		return *x.ActiveOnly
+	}
+	return false
 }
 
 type ListOfficeUsersResponse struct {
@@ -1349,10 +1360,13 @@ const file_couriers_couriers_proto_rawDesc = "" +
 	"\fdriver_types\x18\x01 \x03(\v23.couriers.GetDriverTypesAtResponse.DriverTypesEntryR\vdriverTypes\x1a>\n" +
 	"\x10DriverTypesEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\x05R\x05value:\x028\x01\"7\n" +
+	"\x05value\x18\x02 \x01(\x05R\x05value:\x028\x01\"m\n" +
 	"\x16ListOfficeUsersRequest\x12\x1d\n" +
 	"\n" +
-	"company_id\x18\x01 \x01(\tR\tcompanyId\"4\n" +
+	"company_id\x18\x01 \x01(\tR\tcompanyId\x12$\n" +
+	"\vactive_only\x18\x02 \x01(\bH\x00R\n" +
+	"activeOnly\x88\x01\x01B\x0e\n" +
+	"\f_active_only\"4\n" +
 	"\x17ListOfficeUsersResponse\x12\x19\n" +
 	"\buser_ids\x18\x01 \x03(\tR\auserIds\"i\n" +
 	"\x12ListDriversRequest\x12\x1d\n" +
@@ -1493,6 +1507,7 @@ func file_couriers_couriers_proto_init() {
 	file_couriers_couriers_proto_msgTypes[0].OneofWrappers = []any{}
 	file_couriers_couriers_proto_msgTypes[4].OneofWrappers = []any{}
 	file_couriers_couriers_proto_msgTypes[7].OneofWrappers = []any{}
+	file_couriers_couriers_proto_msgTypes[14].OneofWrappers = []any{}
 	file_couriers_couriers_proto_msgTypes[16].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{

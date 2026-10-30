@@ -189,6 +189,10 @@ message GetDriverTypesAtResponse {
 
 message ListOfficeUsersRequest {
   string company_id = 1;
+  // true  → only status = ACTIVE (excludes inactive AND banned).
+  // false/absent → historical behaviour: every office user regardless of
+  // status (messaging RBAC, notification broadcast, compliance flag read).
+  optional bool active_only = 2;
 }
 
 message ListOfficeUsersResponse {

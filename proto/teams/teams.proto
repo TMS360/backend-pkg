@@ -63,6 +63,13 @@ service TeamsService {
   // UI from the same service method, so the two doors cannot disagree.
   rpc GetCrewAssignmentsHistory(GetCrewAssignmentsHistoryRequest) returns (GetCrewAssignmentsHistoryResponse);
 
+  // DEV-3475: every crew hold one DRIVER was part of between from and to, as the
+  // primary or as the co-driver. Fuel carries only the card-holder, not a truck,
+  // so accounting asks by driver which team he rode in at the purchase instant.
+  // Rows are raw holds, not day-collapsed: started_at / ended_at are exact, and
+  // from / to are the hold's days clipped to the window.
+  rpc GetDriverCrewHistory(GetDriverCrewHistoryRequest) returns (GetCrewAssignmentsHistoryResponse);
+
   // DEV-2524: the saved preferences of the given drivers (what each driver wants
   // to avoid). One entry per requested driver, in request order; a driver with
   // nothing saved comes back as an empty set, never an error. Preferences are
@@ -356,4 +363,19 @@ message CrewAssignmentHistoryRow {
 
 message GetCrewAssignmentsHistoryResponse {
   repeated CrewAssignmentHistoryRow data = 1;
+}
+
+// GetDriverCrewHistoryRequest asks "which crews was this driver in between from
+// and to". Bounds are INCLUSIVE calendar days; company_id is mandatory for the
+// same reason as GetCrewAssignmentsHistoryRequest.
+//
+// Field numbers 1, 4, 5 are GetCrewAssignmentsHistoryRequest's on purpose: a
+// caller still pinned to an older backend-pkg can send that message plus
+// driver_id (6) as an unknown field, without a pin bump.
+message GetDriverCrewHistoryRequest {
+  reserved 2, 3;
+  string company_id = 1;
+  string from = 4; // YYYY-MM-DD, inclusive
+  string to = 5;   // YYYY-MM-DD, inclusive
+  string driver_id = 6;
 }

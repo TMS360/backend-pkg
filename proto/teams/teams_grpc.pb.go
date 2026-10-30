@@ -35,6 +35,7 @@ const (
 	TeamsService_ResolveDriverIDs_FullMethodName              = "/teams.TeamsService/ResolveDriverIDs"
 	TeamsService_GetTeamWeeksForPayroll_FullMethodName        = "/teams.TeamsService/GetTeamWeeksForPayroll"
 	TeamsService_GetCrewAssignmentsHistory_FullMethodName     = "/teams.TeamsService/GetCrewAssignmentsHistory"
+	TeamsService_GetDriverCrewHistory_FullMethodName          = "/teams.TeamsService/GetDriverCrewHistory"
 	TeamsService_GetDriverPreferences_FullMethodName          = "/teams.TeamsService/GetDriverPreferences"
 )
 
@@ -84,6 +85,12 @@ type TeamsServiceClient interface {
 	// The GraphQL query crewAssignmentsHistory serves the same rows to the office
 	// UI from the same service method, so the two doors cannot disagree.
 	GetCrewAssignmentsHistory(ctx context.Context, in *GetCrewAssignmentsHistoryRequest, opts ...grpc.CallOption) (*GetCrewAssignmentsHistoryResponse, error)
+	// DEV-3475: every crew hold one DRIVER was part of between from and to, as the
+	// primary or as the co-driver. Fuel carries only the card-holder, not a truck,
+	// so accounting asks by driver which team he rode in at the purchase instant.
+	// Rows are raw holds, not day-collapsed: started_at / ended_at are exact, and
+	// from / to are the hold's days clipped to the window.
+	GetDriverCrewHistory(ctx context.Context, in *GetDriverCrewHistoryRequest, opts ...grpc.CallOption) (*GetCrewAssignmentsHistoryResponse, error)
 	// DEV-2524: the saved preferences of the given drivers (what each driver wants
 	// to avoid). One entry per requested driver, in request order; a driver with
 	// nothing saved comes back as an empty set, never an error. Preferences are
@@ -229,6 +236,16 @@ func (c *teamsServiceClient) GetCrewAssignmentsHistory(ctx context.Context, in *
 	return out, nil
 }
 
+func (c *teamsServiceClient) GetDriverCrewHistory(ctx context.Context, in *GetDriverCrewHistoryRequest, opts ...grpc.CallOption) (*GetCrewAssignmentsHistoryResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetCrewAssignmentsHistoryResponse)
+	err := c.cc.Invoke(ctx, TeamsService_GetDriverCrewHistory_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *teamsServiceClient) GetDriverPreferences(ctx context.Context, in *GetDriverPreferencesRequest, opts ...grpc.CallOption) (*GetDriverPreferencesResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(GetDriverPreferencesResponse)
@@ -285,6 +302,12 @@ type TeamsServiceServer interface {
 	// The GraphQL query crewAssignmentsHistory serves the same rows to the office
 	// UI from the same service method, so the two doors cannot disagree.
 	GetCrewAssignmentsHistory(context.Context, *GetCrewAssignmentsHistoryRequest) (*GetCrewAssignmentsHistoryResponse, error)
+	// DEV-3475: every crew hold one DRIVER was part of between from and to, as the
+	// primary or as the co-driver. Fuel carries only the card-holder, not a truck,
+	// so accounting asks by driver which team he rode in at the purchase instant.
+	// Rows are raw holds, not day-collapsed: started_at / ended_at are exact, and
+	// from / to are the hold's days clipped to the window.
+	GetDriverCrewHistory(context.Context, *GetDriverCrewHistoryRequest) (*GetCrewAssignmentsHistoryResponse, error)
 	// DEV-2524: the saved preferences of the given drivers (what each driver wants
 	// to avoid). One entry per requested driver, in request order; a driver with
 	// nothing saved comes back as an empty set, never an error. Preferences are
@@ -338,6 +361,9 @@ func (UnimplementedTeamsServiceServer) GetTeamWeeksForPayroll(context.Context, *
 }
 func (UnimplementedTeamsServiceServer) GetCrewAssignmentsHistory(context.Context, *GetCrewAssignmentsHistoryRequest) (*GetCrewAssignmentsHistoryResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetCrewAssignmentsHistory not implemented")
+}
+func (UnimplementedTeamsServiceServer) GetDriverCrewHistory(context.Context, *GetDriverCrewHistoryRequest) (*GetCrewAssignmentsHistoryResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetDriverCrewHistory not implemented")
 }
 func (UnimplementedTeamsServiceServer) GetDriverPreferences(context.Context, *GetDriverPreferencesRequest) (*GetDriverPreferencesResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetDriverPreferences not implemented")
@@ -597,6 +623,24 @@ func _TeamsService_GetCrewAssignmentsHistory_Handler(srv interface{}, ctx contex
 	return interceptor(ctx, in, info, handler)
 }
 
+func _TeamsService_GetDriverCrewHistory_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetDriverCrewHistoryRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(TeamsServiceServer).GetDriverCrewHistory(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: TeamsService_GetDriverCrewHistory_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(TeamsServiceServer).GetDriverCrewHistory(ctx, req.(*GetDriverCrewHistoryRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _TeamsService_GetDriverPreferences_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(GetDriverPreferencesRequest)
 	if err := dec(in); err != nil {
@@ -673,6 +717,10 @@ var TeamsService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetCrewAssignmentsHistory",
 			Handler:    _TeamsService_GetCrewAssignmentsHistory_Handler,
+		},
+		{
+			MethodName: "GetDriverCrewHistory",
+			Handler:    _TeamsService_GetDriverCrewHistory_Handler,
 		},
 		{
 			MethodName: "GetDriverPreferences",

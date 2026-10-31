@@ -51,29 +51,29 @@ func TestBestPass_ReadsTheRealSample(t *testing.T) {
 	require.NoError(t, err)
 	require.Empty(t, res.Errors)
 	require.Len(t, res.Rows, 19)
-	assert.Equal(t, "59471", res.Account)
+	assert.Equal(t, "90001", res.Account)
 
 	first := res.Rows[0]
 	assert.Equal(t, 2, first.RowNumber)
-	assert.Equal(t, "8.45", first.Amount.StringFixed(2))
+	assert.Equal(t, "8.55", first.Amount.StringFixed(2))
 	assert.Equal(t, "Aurora", first.ExitPlaza)
 	assert.Equal(t, "", first.EntryPlaza, `"None" is blank`)
 	assert.Nil(t, first.EntryAt)
 	assert.Equal(t, "ILTOLL", first.Agency)
 	assert.Equal(t, "E-ZPass Prepaid", first.Source)
-	assert.Equal(t, "B6010337619", first.DeviceID)
-	assert.Equal(t, "P1262009", first.Plate)
-	assert.Equal(t, "TUT7410", first.TruckRef)
+	assert.Equal(t, "QATAG0000001", first.DeviceID)
+	assert.Equal(t, "QAPLATE2", first.Plate)
+	assert.Equal(t, "QAUNIT1", first.TruckRef)
 	assert.Equal(t, "5", first.Class)
 	assert.Equal(t, time.Date(2026, 10, 26, 0, 0, 0, 0, time.UTC), first.PostDate)
 	require.NotNil(t, first.ExitAt)
 	assert.Equal(t, time.Date(2026, 10, 25, 16, 13, 20, 0, time.UTC), *first.ExitAt)
-	assert.Equal(t, "1517364223", first.Raw["Transaction Id"])
-	assert.Equal(t, TransactionRowKey(ProviderBestPass, "1517364223"), first.Hash)
+	assert.Equal(t, "900100001", first.Raw["Transaction Id"])
+	assert.Equal(t, TransactionRowKey(ProviderBestPass, "900100001"), first.Hash)
 
-	assert.Equal(t, "13.84", res.Rows[4].Amount.StringFixed(2))
+	assert.Equal(t, "13.94", res.Rows[4].Amount.StringFixed(2))
 	assert.Equal(t, "East End Crossing - NB", res.Rows[4].ExitPlaza)
-	assert.Equal(t, "13.00", res.Rows[5].Amount.StringFixed(2))
+	assert.Equal(t, "13.10", res.Rows[5].Amount.StringFixed(2))
 	assert.Equal(t, "Ghent South", res.Rows[5].ExitPlaza)
 
 	ntta := res.Rows[17]
@@ -150,7 +150,7 @@ func TestBestPass_EdgeFileGoodRowsLoad(t *testing.T) {
 	assert.Equal(t, "9.35", amounts[5], "Amount + Fee when Discounted is blank")
 	assert.Contains(t, amounts, 6, "unknown description loads")
 	assert.Contains(t, amounts, 8, "blank Transaction Id loads on the content key")
-	assert.Equal(t, "8.45", amounts[10], "blank fee is zero")
+	assert.Equal(t, "8.55", amounts[10], "blank fee is zero")
 	assert.Contains(t, amounts, 11)
 	assert.Contains(t, amounts, 12, "same id, same amount: kept, the pool counts it as a duplicate")
 	require.Len(t, res.Rows, 9)
@@ -213,7 +213,7 @@ func TestBestPass_MixedAccountsReadAsOneValueNoAccountEquals(t *testing.T) {
 	h, s := sampleTable(t)
 	res, err := BestPass{}.Parse("mixed.csv", toCSV(t, h, s[0], setCol(h, s[1], "AccountNumber", "11111")))
 	require.NoError(t, err)
-	assert.Equal(t, "11111, 59471", res.Account)
+	assert.Equal(t, "11111, 90001", res.Account)
 }
 
 func TestBestPass_WrongProviderFilesAreRefused(t *testing.T) {

@@ -12,6 +12,7 @@ import (
 	"github.com/TMS360/backend-pkg/observability"
 	"github.com/TMS360/backend-pkg/response"
 	"github.com/TMS360/backend-pkg/validate"
+	"github.com/google/uuid"
 	"github.com/vektah/gqlparser/v2/gqlerror"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -57,6 +58,23 @@ func grpcPublicError(err error) (message, code string, httpStatus int, ok bool) 
 		// separately by isClientCanceled (a caller abort, not a server fault).
 		return "", "", 0, false
 	}
+}
+
+// isInvalidUUIDInput reports whether err is a UUID parse failure, for example
+// gqlgen's UUID scalar rejecting a malformed or empty id argument
+// ("invalid UUID length: 0"). That is caller input, not a server fault, so it
+// must not fall through to the 500-class fallback, which reports it as a
+// Sentry error and masks it as "Internal Server Error".
+func isInvalidUUIDInput(err error) bool {
+	if uuid.IsInvalidLengthError(err) {
+		return true
+	}
+	for e := err; e != nil; e = errors.Unwrap(e) {
+		if e.Error() == "invalid UUID format" {
+			return true
+		}
+	}
+	return false
 }
 
 // statusClientClosedRequest is the de-facto (nginx) status for a request the
@@ -174,6 +192,18 @@ func NewErrorPresenter(isDebug bool) graphql.ErrorPresenterFunc {
 			default:
 				captureWarningFunc(ctx, err)
 			}
+		} else if isInvalidUUIDInput(err) {
+			// A malformed/empty UUID in the request (e.g. updateTruck.input.id = "").
+			// Present it as a clean 400 instead of masking it as a 500, and still
+			// capture it — as a warning with the offending path — so bad callers
+			// remain visible in Sentry without paging anyone.
+			slog.Warn("GraphQL invalid UUID input", "err", err, "path", gqlErr.Path, "request_id", requestID)
+			gqlErr.Message = "Invalid ID: " + err.Error()
+			gqlErr.Extensions = map[string]any{
+				"code":   "BAD_USER_INPUT",
+				"status": http.StatusBadRequest,
+			}
+			captureWarningFunc(ctx, err)
 		} else if msg, code, httpStatus, ok := grpcPublicError(err); ok {
 			// A gRPC status from a downstream subservice carrying a caller-facing
 			// code (bad input / precondition / upstream unavailable). Present it as

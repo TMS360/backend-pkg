@@ -158,11 +158,11 @@ const sftpDailyHeader = "PostingDate,InvoiceDate,CustID,Source,ReadType,PPTagID,
 func TestParse_SFTPDailyCSV(t *testing.T) {
 	// A UTF-8 BOM leads every one of these files.
 	csv := "\xEF\xBB\xBF" + sftpDailyHeader + "\n" +
-		"8/20/26,2026-08-31,577048,EZPass    ,Transponder,785049753,01606764587,707,WVPEDTA,,,,Pax,08/19/26,9:36:24,8,,13.00\n" +
-		"8/20/26,2026-08-31,577048,ELITE     ,Transponder,785026226,01606695783,689,FTE,,,,154 - SR 91,08/19/26,0:45:11,5,,8.85\n"
+		"8/20/26,2026-08-31,90002,EZPass    ,Transponder,900000201,09000000201,901,WVPEDTA,,,,Pax,08/19/26,9:36:24,8,,13.10\n" +
+		"8/20/26,2026-08-31,90002,ELITE     ,Transponder,900000202,09000000202,902,FTE,,,,154 - SR 91,08/19/26,0:45:11,5,,8.95\n"
 
 	p := NewPrePassSFTP(Credential{ProviderType: ProviderPrePassSFTP})
-	res, err := p.Parse("577048_AZSAFILLC_Tolls_From_2026-08-20.csv", []byte(csv))
+	res, err := p.Parse("90002_QACARRIERLLC_Tolls_From_2026-08-20.csv", []byte(csv))
 	require.NoError(t, err, "the daily csv must read, not fail on a missing sheet")
 	require.Empty(t, res.Errors, "no row of a real daily file is unreadable")
 	require.Len(t, res.Rows, 2)
@@ -170,13 +170,13 @@ func TestParse_SFTPDailyCSV(t *testing.T) {
 	first := res.Rows[0]
 	assert.Equal(t, time.Date(2026, 8, 20, 0, 0, 0, 0, time.UTC), first.PostDate,
 		`PostingDate is "8/20/26" — a two-digit year, which is the other half of the bug`)
-	assert.InDelta(t, 13.00, first.Amount.InexactFloat64(), 0.001, "Toll_Amount carries no $")
+	assert.InDelta(t, 13.10, first.Amount.InexactFloat64(), 0.001, "Toll_Amount carries no $")
 	assert.Equal(t, "Pax", first.ExitPlaza)
 	assert.Equal(t, "WVPEDTA", first.Agency)
 	assert.Equal(t, "EZPass", first.Source, "Source arrives padded here too")
-	assert.Equal(t, "785049753", first.DeviceID, "PPTagID is the transponder")
-	assert.Equal(t, "01606764587", first.AgencyRef, "ETagID_Plate is the agency's tag")
-	assert.Equal(t, "707", first.TruckRef, "EquipID is the carrier's own unit")
+	assert.Equal(t, "900000201", first.DeviceID, "PPTagID is the transponder")
+	assert.Equal(t, "09000000201", first.AgencyRef, "ETagID_Plate is the agency's tag")
+	assert.Equal(t, "901", first.TruckRef, "EquipID is the carrier's own unit")
 	assert.Equal(t, ReadTransponder, first.ReadType)
 	assert.Equal(t, "8", first.Class)
 	require.NotNil(t, first.InvoiceDate)
@@ -190,12 +190,12 @@ func TestParse_SFTPDailyCSV(t *testing.T) {
 	// Midnight-hour times are the case a splice can silently drop.
 	require.NotNil(t, res.Rows[1].ExitAt)
 	assert.Equal(t, time.Date(2026, 8, 19, 0, 45, 11, 0, time.UTC), *res.Rows[1].ExitAt)
-	assert.InDelta(t, 8.85, res.Rows[1].Amount.InexactFloat64(), 0.001)
+	assert.InDelta(t, 8.95, res.Rows[1].Amount.InexactFloat64(), 0.001)
 
 	// The jsonb the pool keeps must show the name the FILE used, not the name
 	// we look the column up by — that column is what makes an unmodelled field
 	// recoverable later.
-	assert.Equal(t, "13.00", first.Raw["Toll_Amount"],
+	assert.Equal(t, "13.10", first.Raw["Toll_Amount"],
 		"Raw keeps the file's own header spelling")
 }
 
@@ -203,18 +203,18 @@ func TestParse_SFTPDailyCSV(t *testing.T) {
 // nor the name may decide anything.
 func TestParse_SFTPDailyCSV_BothFilenameStyles(t *testing.T) {
 	csv := sftpDailyHeader + "\n" +
-		"8/9/26,2026-08-31,577048,EZPass,Transponder,777498908,00413887631,887,ILTOLL,,,,Cermak Rd.,08/08/26,9:21:50,5,,8.45\n"
+		"8/9/26,2026-08-31,90002,EZPass,Transponder,900000203,09000000203,903,ILTOLL,,,,Cermak Rd.,08/08/26,9:21:50,5,,8.55\n"
 
 	p := NewPrePassSFTP(Credential{ProviderType: ProviderPrePassSFTP})
 	for _, name := range []string{
-		"577048_AZSAFILLC_Tolls_From_2026-08-20.csv",
-		"2026.08.09_577048_AZSAFILLC_Tolls.csv",
+		"90002_QACARRIERLLC_Tolls_From_2026-08-20.csv",
+		"2026.08.09_90002_QACARRIERLLC_Tolls.csv",
 	} {
 		res, err := p.Parse(name, []byte(csv))
 		require.NoError(t, err, name)
 		require.Len(t, res.Rows, 1, name)
 		assert.Equal(t, time.Date(2026, 8, 9, 0, 0, 0, 0, time.UTC), res.Rows[0].PostDate, name)
-		assert.InDelta(t, 8.45, res.Rows[0].Amount.InexactFloat64(), 0.001, name)
+		assert.InDelta(t, 8.55, res.Rows[0].Amount.InexactFloat64(), 0.001, name)
 	}
 }
 

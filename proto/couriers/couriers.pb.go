@@ -590,10 +590,14 @@ func (x *UpdateCacheResponse) GetSuccess() bool {
 }
 
 type GetUsersByIdsRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	UserIds       []string               `protobuf:"bytes,1,rep,name=user_ids,json=userIds,proto3" json:"user_ids,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state   protoimpl.MessageState `protogen:"open.v1"`
+	UserIds []string               `protobuf:"bytes,1,rep,name=user_ids,json=userIds,proto3" json:"user_ids,omitempty"`
+	// include_deleted also returns soft-deleted users, for callers that only
+	// need a name (a compliance record of a driver who left, DEV-3635). Absent
+	// keeps today's answer, so existing callers are unchanged.
+	IncludeDeleted bool `protobuf:"varint,2,opt,name=include_deleted,json=includeDeleted,proto3" json:"include_deleted,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *GetUsersByIdsRequest) Reset() {
@@ -631,6 +635,13 @@ func (x *GetUsersByIdsRequest) GetUserIds() []string {
 		return x.UserIds
 	}
 	return nil
+}
+
+func (x *GetUsersByIdsRequest) GetIncludeDeleted() bool {
+	if x != nil {
+		return x.IncludeDeleted
+	}
+	return false
 }
 
 type GetUsersByIdsResponse struct {
@@ -1340,9 +1351,10 @@ const file_couriers_couriers_proto_rawDesc = "" +
 	"\x06search\x18\x05 \x01(\tH\x00R\x06search\x88\x01\x01B\t\n" +
 	"\a_search\"/\n" +
 	"\x13UpdateCacheResponse\x12\x18\n" +
-	"\asuccess\x18\x01 \x01(\bR\asuccess\"1\n" +
+	"\asuccess\x18\x01 \x01(\bR\asuccess\"Z\n" +
 	"\x14GetUsersByIdsRequest\x12\x19\n" +
-	"\buser_ids\x18\x01 \x03(\tR\auserIds\"A\n" +
+	"\buser_ids\x18\x01 \x03(\tR\auserIds\x12'\n" +
+	"\x0finclude_deleted\x18\x02 \x01(\bR\x0eincludeDeleted\"A\n" +
 	"\x15GetUsersByIdsResponse\x12(\n" +
 	"\x05users\x18\x01 \x03(\v2\x12.couriers.UserInfoR\x05users\"\xc0\x01\n" +
 	"\bUserInfo\x12\x0e\n" +

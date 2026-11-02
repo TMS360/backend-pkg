@@ -119,7 +119,7 @@ func ParseMoney(s string) (decimal.Decimal, error) {
 // NormalizePlate strips a plate down to the form used for matching: upper
 // case, no punctuation, and with a leading state code removed.
 //
-// Toll files print plates as "IL-P1264873" while the fleet stores "P1264873",
+// Toll files print plates as "IL-QAPLATE3" while the fleet stores "QAPLATE3",
 // so a literal comparison never matches. The state code is only stripped when
 // two letters are followed by a separator — "ABC123" keeps its letters,
 // because there is no way to tell a state prefix from the plate itself once
@@ -169,7 +169,7 @@ func NormalizeTruckRef(s string) string {
 }
 
 // NormalizeDeviceID cleans a transponder id. Unlike a truck number, leading
-// zeros are significant here — the agency tag "01606029503" is not the number
+// zeros are significant here — the agency tag "09000029503" is not the number
 // 1606029503 — so only surrounding whitespace is removed.
 func NormalizeDeviceID(s string) string {
 	return strings.TrimSpace(s)

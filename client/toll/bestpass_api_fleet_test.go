@@ -51,9 +51,9 @@ func TestBestPassAPI_VehiclesAndEquipmentReadEveryPage(t *testing.T) {
 	var seen []url.Values
 	c, _ := newFakeClient(t, &fakeBestPass{hook: fleetHook(vehicles, equipment, &seen)})
 
-	vs, err := c.Vehicles(t.Context(), "59471")
+	vs, err := c.Vehicles(t.Context(), "90001")
 	require.NoError(t, err)
-	es, err := c.Equipment(t.Context(), "59471")
+	es, err := c.Equipment(t.Context(), "90001")
 	require.NoError(t, err)
 
 	require.Len(t, vs, 2)
@@ -68,7 +68,7 @@ func TestBestPassAPI_VehiclesAndEquipmentReadEveryPage(t *testing.T) {
 
 	require.Len(t, seen, 5, "two vehicle pages and three equipment pages")
 	for _, q := range seen {
-		assert.Equal(t, "59471", q.Get("accountNumber"))
+		assert.Equal(t, "90001", q.Get("accountNumber"))
 	}
 	assert.Empty(t, seen[0].Get("activeOnly"))
 	assert.Equal(t, "false", seen[2].Get("activeOnly"), "lost and inactive boxes must come back too")
@@ -78,8 +78,8 @@ func TestBestPassAPI_VehiclesRefusedIsAuthError(t *testing.T) {
 	f := &fakeBestPass{hook: func(w http.ResponseWriter, _ *http.Request) bool { w.WriteHeader(http.StatusForbidden); return true }}
 	c, _ := newFakeClient(t, f)
 
-	_, err := c.Vehicles(t.Context(), "59471")
+	_, err := c.Vehicles(t.Context(), "90001")
 	assert.True(t, IsAuthError(err))
-	_, err = c.Equipment(t.Context(), "59471")
+	_, err = c.Equipment(t.Context(), "90001")
 	assert.True(t, IsAuthError(err))
 }

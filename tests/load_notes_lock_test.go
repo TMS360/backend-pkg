@@ -1,9 +1,11 @@
 package tests
 
 import (
+	"context"
 	"errors"
 	"testing"
 
+	"github.com/TMS360/backend-pkg/cache"
 	"github.com/TMS360/backend-pkg/enums"
 	"github.com/TMS360/backend-pkg/settings"
 	"github.com/go-redis/redis/v8"
@@ -41,4 +43,13 @@ func TestLoadNotesLockOn(t *testing.T) {
 			assert.Equal(t, tc.want, settings.LoadNotesLockOnFrom(reader(tc.v, tc.err)))
 		})
 	}
+}
+
+// No cache client at all (a process that never initialised Redis) reads off
+// instead of panicking.
+func TestLoadNotesLockOnWithoutCacheClientIsOff(t *testing.T) {
+	if cache.Client() != nil {
+		t.Skip("a cache client is initialised in this process")
+	}
+	assert.False(t, settings.LoadNotesLockOn(context.Background()))
 }

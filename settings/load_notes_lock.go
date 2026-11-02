@@ -13,8 +13,13 @@ import (
 
 // LoadNotesLockOn reports whether the company locks load notes 5 minutes after
 // they are written (DEV-3675). Requires an actor in ctx: cache.Get prefixes the
-// key with "{companyID}:". See LoadNotesLockOnFrom for the rule.
+// key with "{companyID}:". See LoadNotesLockOnFrom for the rule. A process with
+// no cache client reads off, like a cache that is down.
 func LoadNotesLockOn(ctx context.Context) bool {
+	if cache.Client() == nil {
+		slog.WarnContext(ctx, "lock load notes: no cache client, treating as off")
+		return false
+	}
 	return LoadNotesLockOnFrom(func(key string, dest *string) error {
 		return cache.Get(ctx, fmt.Sprintf("setting:%s", key), dest)
 	})

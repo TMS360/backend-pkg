@@ -72,8 +72,6 @@ func (gh *Handler) Middleware() gin.HandlerFunc {
 			return
 		}
 
-		fmt.Printf("Received guest token: %s\n", token)
-
 		claims, err := parseGuestToken(token, gh.secret)
 		if err != nil {
 			slog.Debug("guest token parse failed", "error", err)
@@ -81,20 +79,15 @@ func (gh *Handler) Middleware() gin.HandlerFunc {
 			return
 		}
 
-		fmt.Printf("Parsed guest token claims: %+v\n", claims)
-
 		companyID := claims.CompanyID
 
 		key := fmt.Sprintf("%s:share_link:%s", companyID, claims.ShareLinkID)
 		var data ShareLinkRedisData
 		if err := cache.Get(ctx.Request.Context(), key, &data); err != nil {
-			fmt.Printf("share link not found or revoked: %s", claims.ShareLinkID)
 			slog.Debug("share link not found or revoked", "slid", claims.ShareLinkID)
 			ctx.Next()
 			return
 		}
-
-		fmt.Printf("Fetched share link data from Redis: %+v\n", data)
 
 		resourceID, err := uuid.Parse(data.ResourceID)
 		if err != nil {

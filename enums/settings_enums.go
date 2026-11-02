@@ -62,6 +62,12 @@ const (
 	// truck). Missing or unknown reads as "single". Read it through
 	// settings.TruckOwnerPDFModeFor / the ForCompany variant (DEV-2914).
 	CompanySettingsGeneralKeyTruckOwnerPDFMode CompanySettingsGeneralKey = "truck_owner_pdf_mode"
+	// CompanySettingsGeneralKeyLockLoadNotes locks a load note 5 minutes after it
+	// is written: only its author may change or archive it in that window, and
+	// only a company-settings admin (with a reason) may archive it after.
+	// "true" / "false"; missing or unreadable reads as off. Read it through
+	// settings.LoadNotesLockOn (DEV-3675).
+	CompanySettingsGeneralKeyLockLoadNotes CompanySettingsGeneralKey = "lock_load_notes"
 )
 
 var AllCompanySettingsGeneralKey = []CompanySettingsGeneralKey{
@@ -79,13 +85,14 @@ var AllCompanySettingsGeneralKey = []CompanySettingsGeneralKey{
 	CompanySettingsGeneralKeyBrokerDefaultBillingType,
 	CompanySettingsGeneralKeyTollsGroupBy,
 	CompanySettingsGeneralKeyTruckOwnerPDFMode,
+	CompanySettingsGeneralKeyLockLoadNotes,
 }
 
 func (e CompanySettingsGeneralKey) IsValid() bool {
 	switch e {
 	case CompanySettingsGeneralKeyLogo, CompanySettingsGeneralKeyTimezone, CompanySettingsGeneralKeyHazmatEnabled, CompanySettingsGeneralKeyReeferEnabled, CompanySettingsGeneralKeyBrokerHasVerifyShipments, CompanySettingsGeneralKeyTripAssignmentBufferHours, CompanySettingsGeneralKeySamsaraAssetTrackingEnabled, CompanySettingsGeneralKeyUseHereInRisk, CompanySettingsGeneralKeyEmptyMilesWorkflow,
 		CompanySettingsGeneralKeyFirstDayOfWeek, CompanySettingsGeneralKeyFirstDayOfWeekEffectiveFrom, CompanySettingsGeneralKeyBrokerDefaultBillingType,
-		CompanySettingsGeneralKeyTollsGroupBy, CompanySettingsGeneralKeyTruckOwnerPDFMode:
+		CompanySettingsGeneralKeyTollsGroupBy, CompanySettingsGeneralKeyTruckOwnerPDFMode, CompanySettingsGeneralKeyLockLoadNotes:
 		return true
 	}
 	return false

@@ -359,6 +359,12 @@ message CrewAssignmentHistoryRow {
   // ended_at is empty while the crew still holds the asset.
   string started_at = 6;
   string ended_at = 7;
+  // truck_id is the truck the crew held on this row. Filled by
+  // GetDriverCrewHistory only (DEV-2908): a per-mile charge finds the trucks a
+  // driver held in the period, since a trip's truck moves with an unfinished
+  // trip when the crew changes truck. Empty when the crew held no truck, and
+  // always empty on GetCrewAssignmentsHistory (the asset is in the request).
+  string truck_id = 8;
 }
 
 message GetCrewAssignmentsHistoryResponse {

@@ -2082,8 +2082,14 @@ type CrewAssignmentHistoryRow struct {
 	// (RFC3339, with offset), NOT clipped to the window — a per-mile charge splits
 	// a mid-day swap on them, while from/to stay day-granular for asset charges.
 	// ended_at is empty while the crew still holds the asset.
-	StartedAt     string `protobuf:"bytes,6,opt,name=started_at,json=startedAt,proto3" json:"started_at,omitempty"`
-	EndedAt       string `protobuf:"bytes,7,opt,name=ended_at,json=endedAt,proto3" json:"ended_at,omitempty"`
+	StartedAt string `protobuf:"bytes,6,opt,name=started_at,json=startedAt,proto3" json:"started_at,omitempty"`
+	EndedAt   string `protobuf:"bytes,7,opt,name=ended_at,json=endedAt,proto3" json:"ended_at,omitempty"`
+	// truck_id is the truck the crew held on this row. Filled by
+	// GetDriverCrewHistory only (DEV-2908): a per-mile charge finds the trucks a
+	// driver held in the period, since a trip's truck moves with an unfinished
+	// trip when the crew changes truck. Empty when the crew held no truck, and
+	// always empty on GetCrewAssignmentsHistory (the asset is in the request).
+	TruckId       string `protobuf:"bytes,8,opt,name=truck_id,json=truckId,proto3" json:"truck_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2163,6 +2169,13 @@ func (x *CrewAssignmentHistoryRow) GetStartedAt() string {
 func (x *CrewAssignmentHistoryRow) GetEndedAt() string {
 	if x != nil {
 		return x.EndedAt
+	}
+	return ""
+}
+
+func (x *CrewAssignmentHistoryRow) GetTruckId() string {
+	if x != nil {
+		return x.TruckId
 	}
 	return ""
 }
@@ -2472,7 +2485,7 @@ const file_teams_teams_proto_rawDesc = "" +
 	"asset_type\x18\x02 \x01(\x0e2\x14.teams.CrewAssetTypeR\tassetType\x12\x19\n" +
 	"\basset_id\x18\x03 \x01(\tR\aassetId\x12\x12\n" +
 	"\x04from\x18\x04 \x01(\tR\x04from\x12\x0e\n" +
-	"\x02to\x18\x05 \x01(\tR\x02to\"\xed\x01\n" +
+	"\x02to\x18\x05 \x01(\tR\x02to\"\x88\x02\n" +
 	"\x18CrewAssignmentHistoryRow\x12\x17\n" +
 	"\acrew_id\x18\x01 \x01(\tR\x06crewId\x12*\n" +
 	"\x11primary_driver_id\x18\x02 \x01(\tR\x0fprimaryDriverId\x12.\n" +
@@ -2481,7 +2494,8 @@ const file_teams_teams_proto_rawDesc = "" +
 	"\x02to\x18\x05 \x01(\tR\x02to\x12\x1d\n" +
 	"\n" +
 	"started_at\x18\x06 \x01(\tR\tstartedAt\x12\x19\n" +
-	"\bended_at\x18\a \x01(\tR\aendedAt\"X\n" +
+	"\bended_at\x18\a \x01(\tR\aendedAt\x12\x19\n" +
+	"\btruck_id\x18\b \x01(\tR\atruckId\"X\n" +
 	"!GetCrewAssignmentsHistoryResponse\x123\n" +
 	"\x04data\x18\x01 \x03(\v2\x1f.teams.CrewAssignmentHistoryRowR\x04data\"\x89\x01\n" +
 	"\x1bGetDriverCrewHistoryRequest\x12\x1d\n" +

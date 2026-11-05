@@ -824,6 +824,12 @@ message GetTripsForPayBatchResponse {
   // Trips with status=IN_TRANSIT whose reference leg is OUTSIDE the window.
   // Empty when include_in_transit_outside_range=false.
   repeated PayBatchTrip in_transit_outside_range = 2;
+
+  // DEV-3825: finished trips (same statuses as `available`) whose reference stop
+  // has no date at all — no appointment and no driver check-in/check-out — so
+  // they match no pay period. Returned on every call, regardless of the period,
+  // minus `excluded_trip_ids`, so accounting can show them instead of losing them.
+  repeated PayBatchTrip no_stop_date = 3;
 }
 
 message GetTripsByIDsRequest {

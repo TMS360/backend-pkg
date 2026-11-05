@@ -29,6 +29,9 @@ func IdentifyUser(rsaPubKey *rsa.PublicKey) gin.HandlerFunc {
 		ctx.Request = ctx.Request.WithContext(
 			WithClientOrigin(ctx.Request.Context(), ResolveClientOrigin(ctx.Request)),
 		)
+		// DEV-3618: a trusted internal bulk read (X-Internal-Token +
+		// X-Bulk-Read-Limit) may ask list queries for pages above their ceiling.
+		ctx.Request = withRequestBulkReadLimit(ctx.Request)
 
 		// 1. Attempt System User Authentication
 		if authHeader := ctx.GetHeader("Authorization"); authHeader != "" {

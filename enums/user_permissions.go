@@ -477,6 +477,14 @@ const (
 	// accounting and hr.
 	PermPrivateDataView UserPermissionEnum = "private_data_view"
 
+	// PermLoadLayoutsManage gates the company Load page layouts (DEV-3773, BL-27):
+	// publish a layout for a role, restore an earlier version, lock the page,
+	// mark sections required and link a role to a layout. FLAT for the same
+	// reason as PermPrivateDataView: a dotted settings.* code would be implied by
+	// the `settings` module every office role holds. Held by default by admin
+	// only; a company hands it to anyone else in Settings -> Roles.
+	PermLoadLayoutsManage UserPermissionEnum = "load_layouts_manage"
+
 	// PermAssetOutOfServiceOverride gates sending a trip to the driver when the
 	// truck or trailer on it is OUT_OF_SERVICE (DEV-2254). Like its compliance
 	// sibling above it waives ONE dispatch, with a mandatory reason recorded in
@@ -920,6 +928,7 @@ var CustomPermissionCatalog = []CustomPermissionEntry{
 	{Code: string(PermStatementReviewResolve), Label: "Approve or decline a driver pay review"},
 	{Code: string(PermOwnerEscrowRelease), Label: "Release a truck owner's escrow"},
 	{Code: string(PermPrivateDataView), Label: "See private data (SSN, bank, birth date, emergency contact)"},
+	{Code: string(PermLoadLayoutsManage), Label: "Manage company Load page layouts"},
 }
 
 // CustomPermissionCodes returns just the flat custom permission codes, in
@@ -1296,9 +1305,11 @@ func DefaultRolePermissions() map[UserRoleEnum][]string {
 		// dispatcher could approve the difference their own miles edit created.
 		// private_data_view (DEV-3506): admin, accounting and hr — the desks that
 		// handle pay, tax and personnel files. Dispatch, safety and fleet do not.
+		// load_layouts_manage (DEV-3773): admin only. Company Load page layouts
+		// reach every user of a role, so a tenant widens it in Settings -> Roles.
 		// owner_escrow_release (DEV-2821): admin only. Releasing escrow moves held
 		// money out and is not reversible, so the accounting role does NOT hold it.
-		UserRoleAdmin:      withExtra(string(PermTripFinancialsEdit), string(PermTripGrossEdit), string(PermTripReassignCommitted), string(PermFileDeleteAny), string(PermReportsRun), string(PermReportsManage), string(PermCallsView), string(PermCallsPlay), string(PermSmsView), string(PermSmsSend), string(PermShipmentBillingApprove), string(PermAuditPlanExclusionEdit), string(PermComplianceDispatchOverride), string(PermAssetOutOfServiceOverride), string(PermTripDelete), string(PermInvoiceUnrecordPayment), string(PermAuditLogView), string(PermGeneralLedgerView), string(PermJournalEntryManage), string(PermVendorBillApproveLevel1), string(PermVendorBillApproveLevel2), string(PermVendorBillApproveLevel3), string(PermVendorBillPaymentVoid), string(PermExpenseApprove), string(PermInvoiceRecordPayment), string(PermMailView), string(PermMailSend), string(PermMailEdit), string(PermStatementReviewResolve), string(PermComplianceCustomerOverride), string(PermOwnerEscrowRelease), string(PermTruckVINCorrect), string(PermPrivateDataView)),
+		UserRoleAdmin:      withExtra(string(PermTripFinancialsEdit), string(PermTripGrossEdit), string(PermTripReassignCommitted), string(PermFileDeleteAny), string(PermReportsRun), string(PermReportsManage), string(PermCallsView), string(PermCallsPlay), string(PermSmsView), string(PermSmsSend), string(PermShipmentBillingApprove), string(PermAuditPlanExclusionEdit), string(PermComplianceDispatchOverride), string(PermAssetOutOfServiceOverride), string(PermTripDelete), string(PermInvoiceUnrecordPayment), string(PermAuditLogView), string(PermGeneralLedgerView), string(PermJournalEntryManage), string(PermVendorBillApproveLevel1), string(PermVendorBillApproveLevel2), string(PermVendorBillApproveLevel3), string(PermVendorBillPaymentVoid), string(PermExpenseApprove), string(PermInvoiceRecordPayment), string(PermMailView), string(PermMailSend), string(PermMailEdit), string(PermStatementReviewResolve), string(PermComplianceCustomerOverride), string(PermOwnerEscrowRelease), string(PermTruckVINCorrect), string(PermPrivateDataView), string(PermLoadLayoutsManage)),
 		UserRoleManager:    withExtra(string(PermTripReassignCommitted), string(PermFileDeleteAny), string(PermCallsView), string(PermCallsPlay), string(PermSmsView), string(PermSmsSend), string(PermShipmentBillingApprove), string(PermAuditPlanExclusionEdit), string(PermComplianceDispatchOverride), string(PermAssetOutOfServiceOverride), string(PermTripDelete), string(PermAuditLogView), string(PermVendorBillApproveLevel1), string(PermVendorBillApproveLevel2), string(PermInvoiceRecordPayment)),
 		UserRoleAccounting: withExtra(string(PermTripFinancialsEdit), string(PermReportsRun), string(PermReportsManage), string(PermShipmentBillingApprove), string(PermGeneralLedgerView), string(PermJournalEntryManage), string(PermVendorBillApproveLevel1), string(PermExpenseApprove), string(PermInvoiceRecordPayment), string(PermStatementReviewResolve), string(PermComplianceCustomerOverride), string(PermPrivateDataView)),
 		UserRoleFleet:      withExtra(),

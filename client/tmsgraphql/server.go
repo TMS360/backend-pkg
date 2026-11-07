@@ -18,6 +18,9 @@ func NewHandler(es graphql.ExecutableSchema, isDebug bool) *handler.Server {
 	srv.SetErrorPresenter(NewErrorPresenter(isDebug))
 	srv.AroundOperations(validate.OperationMiddleware())
 	srv.AroundFields(validate.Middleware())
+	// Rule warnings of the whole operation ride in extensions.ruleWarnings.
+	srv.AroundOperations(collectRuleWarnings)
+	srv.AroundResponses(attachRuleWarnings)
 
 	// Standard Transports
 	srv.AddTransport(transport.Options{})

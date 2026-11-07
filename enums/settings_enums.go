@@ -164,6 +164,11 @@ const (
 	// (DEV-3292). Per company on purpose: the old single platform key lived in an
 	// env var and leaked, and one shared key means one leak hits every tenant.
 	CompanySettingsIntegrationKeyGeminiAPIKey CompanySettingsIntegrationKey = "gemini_api_key"
+	// CompanySettingsIntegrationKeyFuelGeminiAPIKey is the tenant's own Google
+	// Gemini key for fuel plans: backend-fuel picks fuel stops with it, and
+	// without it falls back to the price pick (DEV-3865). Separate from
+	// gemini_api_key on purpose, so cost and quota of the two features stay apart.
+	CompanySettingsIntegrationKeyFuelGeminiAPIKey CompanySettingsIntegrationKey = "fuel_gemini_api_key"
 )
 
 var AllCompanySettingsIntegrationKey = []CompanySettingsIntegrationKey{
@@ -176,6 +181,7 @@ var AllCompanySettingsIntegrationKey = []CompanySettingsIntegrationKey{
 	CompanySettingsIntegrationKeyRingCentralCredentials,
 	CompanySettingsIntegrationKeySamsaraExtraOrgs,
 	CompanySettingsIntegrationKeyGeminiAPIKey,
+	CompanySettingsIntegrationKeyFuelGeminiAPIKey,
 }
 
 func (e CompanySettingsIntegrationKey) IsValid() bool {
@@ -188,7 +194,8 @@ func (e CompanySettingsIntegrationKey) IsValid() bool {
 		CompanySettingsIntegrationKeyGoogleSheetsAPIKey,
 		CompanySettingsIntegrationKeyRingCentralCredentials,
 		CompanySettingsIntegrationKeySamsaraExtraOrgs,
-		CompanySettingsIntegrationKeyGeminiAPIKey:
+		CompanySettingsIntegrationKeyGeminiAPIKey,
+		CompanySettingsIntegrationKeyFuelGeminiAPIKey:
 		return true
 	}
 	return false

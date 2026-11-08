@@ -16,6 +16,7 @@ func NewHandler(es graphql.ExecutableSchema, isDebug bool) *handler.Server {
 
 	// Apply the shared Error Presenter
 	srv.SetErrorPresenter(NewErrorPresenter(isDebug))
+	srv.AroundOperations(ReadOnlyGuard())
 	srv.AroundOperations(validate.OperationMiddleware())
 	srv.AroundFields(validate.Middleware())
 

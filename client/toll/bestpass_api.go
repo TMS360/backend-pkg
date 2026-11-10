@@ -28,8 +28,11 @@ const envTestBestPassURL = "TEST_BESTPASS_API_URL"
 // accepts.
 const BestPassMaxWindow = 31 * 24 * time.Hour
 
+// Page sizes are the BestPass Fleet API v1 maximums per list: /equipment
+// refuses anything over 5000 with a 400 (DEV-4019); the other lists take 10000.
 const (
-	bestPassPageSize = 10000
+	bestPassListPageSize      = 10000
+	bestPassEquipmentPageSize = 5000
 	// bestPassMaxPages stops a server that never returns a null nextPage.
 	bestPassMaxPages = 1000
 	// bestPassMaxRetryWait caps one Retry-After; the limit is 100 requests a
@@ -46,8 +49,24 @@ type BestPassAccount struct {
 
 // BestPassStatement is one monthly statement of an account.
 type BestPassStatement struct {
-	Number      string    `json:"statementNumber"`
+	Number string `json:"statementNumber"`
+	// DateCreated is zero when BestPass sends no date or one we cannot read.
 	DateCreated time.Time `json:"dateCreated"`
+}
+
+// UnmarshalJSON reads dateCreated with the API date reader: BestPass sends it
+// with no time zone (2026-10-01T01:00:00.817), which time.Time refuses.
+func (s *BestPassStatement) UnmarshalJSON(b []byte) error {
+	var raw struct {
+		Number      string `json:"statementNumber"`
+		DateCreated string `json:"dateCreated"`
+	}
+	if err := json.Unmarshal(b, &raw); err != nil {
+		return err
+	}
+	s.Number = raw.Number
+	s.DateCreated, _ = parseBestPassAPITime(raw.DateCreated, false)
+	return nil
 }
 
 // BestPassAPI reads tolls from the BestPass Fleet API with one company's key.
@@ -126,11 +145,11 @@ func (c *BestPassAPI) StatementTransactions(ctx context.Context, account, statem
 func (c *BestPassAPI) Statements(ctx context.Context, account string) ([]BestPassStatement, error) {
 	q := url.Values{}
 	q.Set("accountNumber", account)
-	return getAllPages[BestPassStatement](ctx, c, "/statements", q)
+	return getAllPages[BestPassStatement](ctx, c, "/statements", q, bestPassListPageSize)
 }
 
 func (c *BestPassAPI) transactions(ctx context.Context, account string, q url.Values) (ParseResult, error) {
-	raws, err := getAllPages[json.RawMessage](ctx, c, "/transactions", q)
+	raws, err := getAllPages[json.RawMessage](ctx, c, "/transactions", q, bestPassListPageSize)
 	if err != nil {
 		return ParseResult{}, err
 	}
@@ -145,12 +164,13 @@ type bestPassPage[T any] struct {
 	Results []T `json:"results"`
 }
 
-// getAllPages walks pageNumber 1, 2, … until nextPage is null.
-func getAllPages[T any](ctx context.Context, c *BestPassAPI, path string, q url.Values) ([]T, error) {
+// getAllPages walks pageNumber 1, 2, … until nextPage is null, asking for
+// pageSize results a page.
+func getAllPages[T any](ctx context.Context, c *BestPassAPI, path string, q url.Values, pageSize int) ([]T, error) {
 	var out []T
 	for page := 1; page <= bestPassMaxPages; page++ {
 		pq := cloneValues(q)
-		pq.Set("pageSize", strconv.Itoa(bestPassPageSize))
+		pq.Set("pageSize", strconv.Itoa(pageSize))
 		pq.Set("pageNumber", strconv.Itoa(page))
 		var p bestPassPage[T]
 		if err := c.getJSON(ctx, path, pq, &p); err != nil {

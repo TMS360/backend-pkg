@@ -2,6 +2,7 @@ package toll
 
 import (
 	"context"
+	"encoding/json"
 	"net/url"
 	"time"
 )
@@ -27,8 +28,24 @@ type BestPassVehicle struct {
 
 // BestPassAssignment is the vehicle a transponder is on, by unit.
 type BestPassAssignment struct {
-	Unit         string     `json:"unit"`
+	Unit string `json:"unit"`
+	// InactiveDate is nil when BestPass sends no date or one we cannot read.
 	InactiveDate *time.Time `json:"inactiveDate"`
+}
+
+// UnmarshalJSON reads inactiveDate with the API date reader: BestPass sends it
+// with no time zone (2024-11-01T00:00:00), which time.Time refuses.
+func (a *BestPassAssignment) UnmarshalJSON(b []byte) error {
+	var raw struct {
+		Unit         string `json:"unit"`
+		InactiveDate string `json:"inactiveDate"`
+	}
+	if err := json.Unmarshal(b, &raw); err != nil {
+		return err
+	}
+	a.Unit = raw.Unit
+	a.InactiveDate = optionalTime(parseBestPassAPITime(raw.InactiveDate, false))
+	return nil
 }
 
 // BestPassEquipment is one transponder of an account. AssignedVehicle names
@@ -52,7 +69,7 @@ func (e BestPassEquipment) AssignedUnit() string {
 func (c *BestPassAPI) Vehicles(ctx context.Context, account string) ([]BestPassVehicle, error) {
 	q := url.Values{}
 	q.Set("accountNumber", account)
-	return getAllPages[BestPassVehicle](ctx, c, "/vehicles", q)
+	return getAllPages[BestPassVehicle](ctx, c, "/vehicles", q, bestPassListPageSize)
 }
 
 // Equipment lists every transponder of one account, inactive and lost ones
@@ -61,5 +78,5 @@ func (c *BestPassAPI) Equipment(ctx context.Context, account string) ([]BestPass
 	q := url.Values{}
 	q.Set("accountNumber", account)
 	q.Set("activeOnly", "false")
-	return getAllPages[BestPassEquipment](ctx, c, "/equipment", q)
+	return getAllPages[BestPassEquipment](ctx, c, "/equipment", q, bestPassEquipmentPageSize)
 }

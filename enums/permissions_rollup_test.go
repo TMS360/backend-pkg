@@ -115,6 +115,7 @@ func TestExpand_ResolvesToLeaves(t *testing.T) {
 	ent := enums.ExpandPermissions([]string{"accounting.invoices"})
 	assert.ElementsMatch(t, []string{
 		"accounting.invoices.view", "accounting.invoices.create", "accounting.invoices.edit",
+		"accounting.invoices.void", // DEV-4176
 	}, ent)
 
 	// leaf / flat / unknown pass through unchanged.

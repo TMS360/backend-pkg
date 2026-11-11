@@ -503,6 +503,34 @@ const (
 	// only; a company hands it to anyone else in Settings -> Roles.
 	PermLoadLayoutsManage UserPermissionEnum = "load_layouts_manage"
 
+	// DEV-4176: codes the services already checked that the role editor did not
+	// offer, so nobody but admin could pass them once AZSAFI moved to single
+	// rights. The dotted ones are new actions/entities in PermissionCatalog, so a
+	// role holding the parent entity or the `accounting`/`settings` module keeps
+	// passing through prefix matching.
+	PermAccountingInvoicesVoid      UserPermissionEnum = "accounting.invoices.void"
+	PermAccountingPayBatchesUnpost  UserPermissionEnum = "accounting.pay_batches.unpost"
+	PermAccountingPayBatchesRestore UserPermissionEnum = "accounting.pay_batches.restore"
+	PermAccountingRelayFuelView     UserPermissionEnum = "accounting.relay_fuel.view"
+	PermAccountingReportConfigsView UserPermissionEnum = "accounting.report_configs.view"
+	PermAccountingReportConfigsEdit UserPermissionEnum = "accounting.report_configs.edit"
+	PermSettingsDocTypesDelete      UserPermissionEnum = "settings.doc_types.delete"
+
+	// DEV-4176: standalone codes registered in CustomPermissionCatalog. They keep
+	// the exact spelling the services check (tms-files, backend-messaging), dots
+	// and hyphen included, because `compliance` and `chat` are NOT modules: a
+	// module would be handed to every built-in role by the baseline. Nobody can
+	// be granted the bare `compliance` / `chat` prefix (it does not validate), so
+	// in practice these match exactly.
+	//
+	// PermComplianceReceiveAlerts: who gets the customer document reminder when
+	// the tenant picked no alert roles (tms-files recipient_resolver).
+	PermComplianceReceiveAlerts UserPermissionEnum = "compliance.receive-alerts"
+	// PermChatRoomsCreateSecret: create or hide a secret chat room.
+	PermChatRoomsCreateSecret UserPermissionEnum = "chat.rooms.create_secret"
+	// PermChatRoomsAudit: see every chat room in the company (audit view).
+	PermChatRoomsAudit UserPermissionEnum = "chat.rooms.audit"
+
 	// PermAssetOutOfServiceOverride gates sending a trip to the driver when the
 	// truck or trailer on it is OUT_OF_SERVICE (DEV-2254). Like its compliance
 	// sibling above it waives ONE dispatch, with a mandatory reason recorded in
@@ -825,7 +853,7 @@ var PermissionCatalog = []PermissionCatalogEntry{
 	{Code: "fleet.maintenance", ParentCode: "fleet", Label: "Maintenance", Actions: []string{"view", "manage"}},
 
 	// === accounting entities ===
-	{Code: "accounting.invoices", ParentCode: "accounting", Label: "Invoices", Actions: []string{"view", "create", "edit"}},
+	{Code: "accounting.invoices", ParentCode: "accounting", Label: "Invoices", Actions: []string{"view", "create", "edit", "void"}},
 	{Code: "accounting.invoice_batches", ParentCode: "accounting", Label: "Invoice batches", Actions: []string{"view", "create", "edit"}},
 	{Code: "accounting.credit_memos", ParentCode: "accounting", Label: "Credit memos", Actions: []string{"view", "create"}},
 	// accounting.credit (DEV-178): the customer credit profile — limit, manual
@@ -837,7 +865,7 @@ var PermissionCatalog = []PermissionCatalogEntry{
 	// sits on the same customer card as the invoice stats.
 	{Code: "accounting.credit", ParentCode: "accounting", Label: "Customer credit", Actions: []string{"edit", "override"}},
 	{Code: "accounting.billing", ParentCode: "accounting", Label: "Billing", Actions: []string{"view"}},
-	{Code: "accounting.pay_batches", ParentCode: "accounting", Label: "Pay batches", Actions: []string{"view", "create", "edit", "delete"}},
+	{Code: "accounting.pay_batches", ParentCode: "accounting", Label: "Pay batches", Actions: []string{"view", "create", "edit", "delete", "unpost", "restore"}},
 	{Code: "accounting.pay_statements", ParentCode: "accounting", Label: "Pay statements", Actions: []string{"view", "create", "edit", "delete"}},
 	{Code: "accounting.statement_trips", ParentCode: "accounting", Label: "Statement trips", Actions: []string{"view", "create", "edit", "delete"}},
 	{Code: "accounting.statement_deductions", ParentCode: "accounting", Label: "Statement deductions", Actions: []string{"create", "edit", "delete"}},
@@ -852,6 +880,12 @@ var PermissionCatalog = []PermissionCatalogEntry{
 	{Code: "accounting.expenses", ParentCode: "accounting", Label: "Expenses", Actions: []string{"view", "create", "edit", "delete"}},
 	{Code: "accounting.profitability", ParentCode: "accounting", Label: "Load profitability", Actions: []string{"view", "edit"}},
 	{Code: "accounting.tax_filings", ParentCode: "accounting", Label: "Tax filings & IFTA", Actions: []string{"view", "edit"}},
+	// DEV-4176: Relay fuel transactions (backend-accounting fuel screens) and
+	// report setups (report_config). Both were checked by the server before they
+	// could be ticked; as `accounting` entities every holder of the module keeps
+	// them through prefix matching.
+	{Code: "accounting.relay_fuel", ParentCode: "accounting", Label: "Relay fuel transactions", Actions: []string{"view"}},
+	{Code: "accounting.report_configs", ParentCode: "accounting", Label: "Report setups", Actions: []string{"view", "edit"}},
 
 	// === customers entities ===
 	{Code: "customers.brokers", ParentCode: "customers", Label: "Brokers", Actions: []string{"view", "create"}},
@@ -859,7 +893,7 @@ var PermissionCatalog = []PermissionCatalogEntry{
 	// === settings entities ===
 	{Code: "settings.files", ParentCode: "settings", Label: "Company files", Actions: []string{"view"}},
 	{Code: "settings.company", ParentCode: "settings", Label: "Company settings", Actions: []string{"view", "edit"}},
-	{Code: "settings.doc_types", ParentCode: "settings", Label: "Document types", Actions: []string{"view", "create", "edit"}},
+	{Code: "settings.doc_types", ParentCode: "settings", Label: "Document types", Actions: []string{"view", "create", "edit", "delete"}},
 	{Code: "settings.team_settings", ParentCode: "settings", Label: "Team settings", Actions: []string{"view", "edit"}},
 	{Code: "settings.driver_app", ParentCode: "settings", Label: "Driver app config", Actions: []string{"view", "edit"}},
 	{Code: "settings.driver_tariffs", ParentCode: "settings", Label: "Driver tariffs", Actions: []string{"view", "create", "edit", "delete"}},
@@ -948,6 +982,9 @@ var CustomPermissionCatalog = []CustomPermissionEntry{
 	{Code: string(PermComplianceRestrictedView), Label: "Open restricted documents (SSN card, drug test)"},
 	{Code: string(PermPrivateDataView), Label: "See private data (SSN, bank, birth date, emergency contact)"},
 	{Code: string(PermLoadLayoutsManage), Label: "Manage company Load page layouts"},
+	{Code: string(PermComplianceReceiveAlerts), Label: "Compliance: receive customer document alerts"},
+	{Code: string(PermChatRoomsCreateSecret), Label: "Chat: create a secret room"},
+	{Code: string(PermChatRoomsAudit), Label: "Chat: see all chat rooms (audit)"},
 }
 
 // CustomPermissionCodes returns just the flat custom permission codes, in
@@ -1178,6 +1215,30 @@ func IsValidPermissionCode(code string) bool {
 	return ok
 }
 
+// devTeamPermissionCodes are checked by the server but deliberately NOT
+// grantable in the role editor: unlocking or rolling back imported records
+// stays with the dev team (DEV-4176 out of scope). They are known, not
+// grantable.
+var devTeamPermissionCodes = map[string]struct{}{
+	string(PermMigrationRollback): {},
+	string(PermMigrationUnlock):   {},
+	string(PermMigrationSignoff):  {},
+}
+
+// IsKnownPermission reports whether a code a service checks (@hasPerm,
+// HasPermission, ...) is one the platform knows: every grantable code
+// (IsValidPermissionCode) plus the dev-team-only migration_* codes. The
+// per-service build check (permcheck) fails on any code for which this is
+// false, so a right can no longer be checked without being tickable in
+// Settings -> Roles (DEV-4176).
+func IsKnownPermission(code string) bool {
+	if IsValidPermissionCode(code) {
+		return true
+	}
+	_, ok := devTeamPermissionCodes[code]
+	return ok
+}
+
 // AllUserPermissions returns every grantable code in the catalog — modules,
 // entities, and synthesized action leaves. Order is not stable; callers that
 // need deterministic order should sort the result.
@@ -1326,14 +1387,18 @@ func DefaultRolePermissions() map[UserRoleEnum][]string {
 		// handle pay, tax and personnel files. Dispatch, safety and fleet do not.
 		// load_layouts_manage (DEV-3773): admin only. Company Load page layouts
 		// reach every user of a role, so a tenant widens it in Settings -> Roles.
+		// compliance.receive-alerts / chat.rooms.* (DEV-4176): the roles that
+		// passed before the codes could be ticked. Alerts: admin and accounting.
+		// Secret rooms: admin and hr; the all-rooms audit view: admin, hr and
+		// auditor — the same roles backend-messaging still lets in by name.
 		// owner_escrow_release (DEV-2821): admin only. Releasing escrow moves held
 		// money out and is not reversible, so the accounting role does NOT hold it.
-		UserRoleAdmin:      withExtra(string(PermTripFinancialsEdit), string(PermTripGrossEdit), string(PermTripReassignCommitted), string(PermFileDeleteAny), string(PermReportsRun), string(PermReportsManage), string(PermCallsView), string(PermCallsPlay), string(PermSmsView), string(PermSmsSend), string(PermShipmentBillingApprove), string(PermAuditPlanExclusionEdit), string(PermComplianceDispatchOverride), string(PermAssetOutOfServiceOverride), string(PermTripDelete), string(PermInvoiceUnrecordPayment), string(PermAuditLogView), string(PermGeneralLedgerView), string(PermJournalEntryManage), string(PermVendorBillApproveLevel1), string(PermVendorBillApproveLevel2), string(PermVendorBillApproveLevel3), string(PermVendorBillPaymentVoid), string(PermExpenseApprove), string(PermInvoiceRecordPayment), string(PermMailView), string(PermMailSend), string(PermMailEdit), string(PermStatementReviewResolve), string(PermComplianceCustomerOverride), string(PermOwnerEscrowRelease), string(PermTruckVINCorrect), string(PermComplianceRestrictedView), string(PermPrivateDataView), string(PermLoadLayoutsManage)),
+		UserRoleAdmin:      withExtra(string(PermTripFinancialsEdit), string(PermTripGrossEdit), string(PermTripReassignCommitted), string(PermFileDeleteAny), string(PermReportsRun), string(PermReportsManage), string(PermCallsView), string(PermCallsPlay), string(PermSmsView), string(PermSmsSend), string(PermShipmentBillingApprove), string(PermAuditPlanExclusionEdit), string(PermComplianceDispatchOverride), string(PermAssetOutOfServiceOverride), string(PermTripDelete), string(PermInvoiceUnrecordPayment), string(PermAuditLogView), string(PermGeneralLedgerView), string(PermJournalEntryManage), string(PermVendorBillApproveLevel1), string(PermVendorBillApproveLevel2), string(PermVendorBillApproveLevel3), string(PermVendorBillPaymentVoid), string(PermExpenseApprove), string(PermInvoiceRecordPayment), string(PermMailView), string(PermMailSend), string(PermMailEdit), string(PermStatementReviewResolve), string(PermComplianceCustomerOverride), string(PermOwnerEscrowRelease), string(PermTruckVINCorrect), string(PermComplianceRestrictedView), string(PermPrivateDataView), string(PermLoadLayoutsManage), string(PermComplianceReceiveAlerts), string(PermChatRoomsCreateSecret), string(PermChatRoomsAudit)),
 		UserRoleManager:    withExtra(string(PermTripReassignCommitted), string(PermFileDeleteAny), string(PermCallsView), string(PermCallsPlay), string(PermSmsView), string(PermSmsSend), string(PermShipmentBillingApprove), string(PermAuditPlanExclusionEdit), string(PermComplianceDispatchOverride), string(PermAssetOutOfServiceOverride), string(PermTripDelete), string(PermAuditLogView), string(PermVendorBillApproveLevel1), string(PermVendorBillApproveLevel2), string(PermInvoiceRecordPayment)),
-		UserRoleAccounting: withExtra(string(PermTripFinancialsEdit), string(PermReportsRun), string(PermReportsManage), string(PermShipmentBillingApprove), string(PermGeneralLedgerView), string(PermJournalEntryManage), string(PermVendorBillApproveLevel1), string(PermExpenseApprove), string(PermInvoiceRecordPayment), string(PermStatementReviewResolve), string(PermComplianceCustomerOverride), string(PermPrivateDataView)),
+		UserRoleAccounting: withExtra(string(PermTripFinancialsEdit), string(PermReportsRun), string(PermReportsManage), string(PermShipmentBillingApprove), string(PermGeneralLedgerView), string(PermJournalEntryManage), string(PermVendorBillApproveLevel1), string(PermExpenseApprove), string(PermInvoiceRecordPayment), string(PermStatementReviewResolve), string(PermComplianceCustomerOverride), string(PermPrivateDataView), string(PermComplianceReceiveAlerts)),
 		UserRoleFleet:      withExtra(),
 		UserRoleSafety:     withExtra(string(PermComplianceDispatchOverride), string(PermComplianceRestrictedView)),
-		UserRoleHr:         withExtra(string(PermPrivateDataView)),
+		UserRoleHr:         withExtra(string(PermPrivateDataView), string(PermChatRoomsCreateSecret), string(PermChatRoomsAudit)),
 		// DEV-1409: the auditor gets the same module baseline as its peers. Most of
 		// its governed powers (locked-statement corrections, revised-invoice voids,
 		// reading the tenant audit log) are gated by role, not by a permission code.
@@ -1342,7 +1407,7 @@ func DefaultRolePermissions() map[UserRoleEnum][]string {
 		// auditor role exists for. (DEV-2094: the code was named in the comments
 		// from the start and never actually seeded, so an auditor-only user was
 		// refused on unrecordPayment.)
-		UserRoleAuditor:    withExtra(string(PermInvoiceUnrecordPayment), string(PermAuditLogView), string(PermGeneralLedgerView), string(PermVendorBillPaymentVoid)),
+		UserRoleAuditor:    withExtra(string(PermInvoiceUnrecordPayment), string(PermAuditLogView), string(PermGeneralLedgerView), string(PermVendorBillPaymentVoid), string(PermChatRoomsAudit)),
 		UserRoleDispatcher: withExtra(string(PermCallsView), string(PermCallsPlay), string(PermSmsView), string(PermSmsSend)),
 		// DEV-2866: the driver gets only what the driver app calls, not the
 		// office module baseline. See DriverRolePermissions.

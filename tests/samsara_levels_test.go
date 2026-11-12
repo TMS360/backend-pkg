@@ -45,7 +45,7 @@ func TestStatsSnapshotAsksExactlyTheRequestedTypes(t *testing.T) {
 	_, err := client.GetAllVehiclesStatsWithTypes(context.Background(),
 		[]string{samsara.StatTypeGPS, samsara.StatTypeDefFluidMilliPercent})
 	require.NoError(t, err)
-	require.Equal(t, "gps,defFluidMilliPercent", got)
+	require.Equal(t, "gps,defLevelMilliPercent", got)
 	require.NotContains(t, got, samsara.StatTypeFuelPercents,
 		"возможность выключена — поле не должно попадать в запрос")
 }
@@ -68,7 +68,7 @@ func TestStatsFeedReadsDefFluidAsMilliPercent(t *testing.T) {
 		got = capturedTypes(t, r)
 		fmt.Fprint(w, `{"data":[{"id":"212","name":"T-1",
 			"gps":[{"time":"2026-09-28T10:00:00Z","latitude":41.1,"longitude":-74.2}],
-			"defFluidMilliPercent":[{"time":"2026-09-28T09:00:00Z","value":41000},
+			"defLevelMilliPercent":[{"time":"2026-09-28T09:00:00Z","value":41000},
 			                        {"time":"2026-09-28T10:00:00Z","value":52500}]}],
 			"pagination":{"hasNextPage":false,"endCursor":"c1"}}`)
 	})
@@ -76,7 +76,7 @@ func TestStatsFeedReadsDefFluidAsMilliPercent(t *testing.T) {
 	result, err := client.GetVehicleStatsFeedWithTypes(context.Background(), "",
 		[]string{samsara.StatTypeGPS, samsara.StatTypeDefFluidMilliPercent})
 	require.NoError(t, err)
-	require.Equal(t, "gps,defFluidMilliPercent", got)
+	require.Equal(t, "gps,defLevelMilliPercent", got)
 	require.Len(t, result.Data, 1)
 	require.NotNil(t, result.Data[0].DefFluidMilliPercent)
 	// Милли-проценты отдаются как есть; в проценты их переводит сервис.
@@ -120,4 +120,30 @@ func TestBadKeyIsNotTreatedAsAPlanRefusal(t *testing.T) {
 	require.True(t, samsara.IsAuthError(err))
 	require.False(t, samsara.IsCapabilityError(err),
 		"401 — это сломанный ключ, интеграцию по нему выключать можно")
+}
+
+// 2026-11-12, AZSAFI on production: Samsara answered 400 "Invalid stat type(s)"
+// and the whole position poll failed. An unknown type must be dropped like a
+// plan refusal, and Samsara's own words must reach the log.
+func TestUnknownStatTypeIsTreatedAsARefusal(t *testing.T) {
+	client := samsaraTestClient(t, func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusBadRequest)
+		fmt.Fprint(w, `{"message":"Invalid stat type(s): defFluidMilliPercent","requestId":"x"}`)
+	})
+
+	_, err := client.GetAllVehiclesStatsWithTypes(context.Background(),
+		[]string{samsara.StatTypeGPS, samsara.StatTypeDefFluidMilliPercent})
+	require.Error(t, err)
+	require.True(t, samsara.IsCapabilityError(err))
+	require.False(t, samsara.IsAuthError(err))
+	require.Equal(t, "Invalid stat type(s): defFluidMilliPercent", samsara.RefusalMessage(err))
+}
+
+func TestDefStatTypeIsSamsarasName(t *testing.T) {
+	require.Equal(t, "defLevelMilliPercent", samsara.StatTypeDefFluidMilliPercent)
+}
+
+func TestRefusalMessageOfNoErrorIsEmpty(t *testing.T) {
+	require.Equal(t, "", samsara.RefusalMessage(nil))
+	require.False(t, samsara.IsCapabilityError(nil))
 }

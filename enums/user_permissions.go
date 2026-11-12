@@ -364,6 +364,14 @@ const (
 	PermCallsView UserPermissionEnum = "calls_view"
 	PermCallsPlay UserPermissionEnum = "calls_play"
 
+	// PermCallsViewHidden lets a role see hidden calls: list them
+	// (includeHidden), open one, play its recording and read its transcript
+	// (DEV-4240). Hiding a call keeps it from "other office users" (BL §8.96),
+	// so calls_view — held by dispatcher, manager and track_and_trace — must not
+	// be enough. Admin holds it by default; a tenant can give it to a custom role
+	// without the admin role. FLAT for the calls_view reason above.
+	PermCallsViewHidden UserPermissionEnum = "calls_view_hidden"
+
 	// PermSmsView / PermSmsSend gate driver texting (DEV-1897). FLAT for exactly
 	// the calls_view reason above: a top-level `sms` module would be auto-granted
 	// to every role at signup, drivers included, and a dot would let a prefix
@@ -953,6 +961,7 @@ var CustomPermissionCatalog = []CustomPermissionEntry{
 	{Code: string(PermMailEdit), Label: "Manage mail (labels, folders, sending identity)"},
 	{Code: string(PermCallsView), Label: "View the call log"},
 	{Code: string(PermCallsPlay), Label: "Play call recordings"},
+	{Code: string(PermCallsViewHidden), Label: "See hidden calls"},
 	{Code: string(PermSmsView), Label: "View driver text messages"},
 	{Code: string(PermSmsSend), Label: "Text a driver"},
 	{Code: string(PermBrokerLoadsView), Label: "Broker portal: view own loads"},
@@ -1332,6 +1341,8 @@ func DefaultRolePermissions() map[UserRoleEnum][]string {
 		// gets NEITHER, deliberately — the log is a record of the office calling
 		// drivers, and a recording is a named person's voice. Keep it that way; if
 		// a tenant wants a wider audience, that is a custom role, not a default.
+		// calls_view_hidden (DEV-4240): admin only. Hidden calls do not play for
+		// other office users (BL §8.96), so manager and dispatcher do not get it.
 		// compliance_dispatch_override (DEV-1880): waiving a missing or lapsed
 		// safety document for one dispatch is a supervisor decision, so admin,
 		// manager and safety hold it. Dispatcher does NOT — and therefore neither
@@ -1393,7 +1404,7 @@ func DefaultRolePermissions() map[UserRoleEnum][]string {
 		// auditor — the same roles backend-messaging still lets in by name.
 		// owner_escrow_release (DEV-2821): admin only. Releasing escrow moves held
 		// money out and is not reversible, so the accounting role does NOT hold it.
-		UserRoleAdmin:      withExtra(string(PermTripFinancialsEdit), string(PermTripGrossEdit), string(PermTripReassignCommitted), string(PermFileDeleteAny), string(PermReportsRun), string(PermReportsManage), string(PermCallsView), string(PermCallsPlay), string(PermSmsView), string(PermSmsSend), string(PermShipmentBillingApprove), string(PermAuditPlanExclusionEdit), string(PermComplianceDispatchOverride), string(PermAssetOutOfServiceOverride), string(PermTripDelete), string(PermInvoiceUnrecordPayment), string(PermAuditLogView), string(PermGeneralLedgerView), string(PermJournalEntryManage), string(PermVendorBillApproveLevel1), string(PermVendorBillApproveLevel2), string(PermVendorBillApproveLevel3), string(PermVendorBillPaymentVoid), string(PermExpenseApprove), string(PermInvoiceRecordPayment), string(PermMailView), string(PermMailSend), string(PermMailEdit), string(PermStatementReviewResolve), string(PermComplianceCustomerOverride), string(PermOwnerEscrowRelease), string(PermTruckVINCorrect), string(PermComplianceRestrictedView), string(PermPrivateDataView), string(PermLoadLayoutsManage), string(PermComplianceReceiveAlerts), string(PermChatRoomsCreateSecret), string(PermChatRoomsAudit)),
+		UserRoleAdmin:      withExtra(string(PermTripFinancialsEdit), string(PermTripGrossEdit), string(PermTripReassignCommitted), string(PermFileDeleteAny), string(PermReportsRun), string(PermReportsManage), string(PermCallsView), string(PermCallsPlay), string(PermCallsViewHidden), string(PermSmsView), string(PermSmsSend), string(PermShipmentBillingApprove), string(PermAuditPlanExclusionEdit), string(PermComplianceDispatchOverride), string(PermAssetOutOfServiceOverride), string(PermTripDelete), string(PermInvoiceUnrecordPayment), string(PermAuditLogView), string(PermGeneralLedgerView), string(PermJournalEntryManage), string(PermVendorBillApproveLevel1), string(PermVendorBillApproveLevel2), string(PermVendorBillApproveLevel3), string(PermVendorBillPaymentVoid), string(PermExpenseApprove), string(PermInvoiceRecordPayment), string(PermMailView), string(PermMailSend), string(PermMailEdit), string(PermStatementReviewResolve), string(PermComplianceCustomerOverride), string(PermOwnerEscrowRelease), string(PermTruckVINCorrect), string(PermComplianceRestrictedView), string(PermPrivateDataView), string(PermLoadLayoutsManage), string(PermComplianceReceiveAlerts), string(PermChatRoomsCreateSecret), string(PermChatRoomsAudit)),
 		UserRoleManager:    withExtra(string(PermTripReassignCommitted), string(PermFileDeleteAny), string(PermCallsView), string(PermCallsPlay), string(PermSmsView), string(PermSmsSend), string(PermShipmentBillingApprove), string(PermAuditPlanExclusionEdit), string(PermComplianceDispatchOverride), string(PermAssetOutOfServiceOverride), string(PermTripDelete), string(PermAuditLogView), string(PermVendorBillApproveLevel1), string(PermVendorBillApproveLevel2), string(PermInvoiceRecordPayment)),
 		UserRoleAccounting: withExtra(string(PermTripFinancialsEdit), string(PermReportsRun), string(PermReportsManage), string(PermShipmentBillingApprove), string(PermGeneralLedgerView), string(PermJournalEntryManage), string(PermVendorBillApproveLevel1), string(PermExpenseApprove), string(PermInvoiceRecordPayment), string(PermStatementReviewResolve), string(PermComplianceCustomerOverride), string(PermPrivateDataView), string(PermComplianceReceiveAlerts)),
 		UserRoleFleet:      withExtra(),

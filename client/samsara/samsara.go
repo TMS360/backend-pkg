@@ -56,11 +56,21 @@ var capabilityRefusalMarkers = []string{
 	"scope",
 }
 
+// invalidStatTypeMarker is Samsara's 400 answer to a `types=` value it does not
+// know ("Invalid stat type(s): defFluidMilliPercent", 2026-11-12).
+const invalidStatTypeMarker = "invalid stat type"
+
 // IsCapabilityError reports whether Samsara refused the request because the
 // tenant's plan or token does not cover the data asked for, rather than because
 // the token is wrong. Callers must keep the integration alive on true: the rest
 // of the tenant's data is still perfectly readable with the same key.
 func IsCapabilityError(err error) bool {
+	// A 400 "Invalid stat type(s): x" means Samsara does not know a type we
+	// asked for. The key still works, so the caller drops the optional types
+	// and keeps the poll going, the same as for a plan refusal.
+	if err != nil && strings.Contains(strings.ToLower(err.Error()), invalidStatTypeMarker) {
+		return true
+	}
 	var ae *AuthError
 	if !errors.As(err, &ae) || ae.StatusCode != http.StatusForbidden {
 		return false
@@ -79,7 +89,19 @@ func IsCapabilityError(err error) bool {
 // body when it is not the usual {"message": "..."} envelope.
 func RefusalMessage(err error) string {
 	var ae *AuthError
+	if err == nil {
+		return ""
+	}
 	if !errors.As(err, &ae) {
+		// A plain "API request failed with status 400: {...}" error carries
+		// Samsara's body after the status; read its message from there.
+		text := err.Error()
+		var envelope struct {
+			Message string `json:"message"`
+		}
+		if i := strings.Index(text, "{"); i >= 0 && json.Unmarshal([]byte(text[i:]), &envelope) == nil {
+			return envelope.Message
+		}
 		return ""
 	}
 	var envelope struct {
@@ -152,7 +174,7 @@ type VehicleLocation struct {
 	FuelPercents *FuelPercent           `json:"fuelPercents"`
 	// Уровень DEF. Приходит только если тип статистики запрошен И тариф
 	// Samsara его покрывает, поэтому указатель, а не значение.
-	DefFluidMilliPercent *DefFluidSample `json:"defFluidMilliPercent,omitempty"`
+	DefFluidMilliPercent *DefFluidSample `json:"defLevelMilliPercent,omitempty"`
 	// Одометр: obd точнее, gps — расчётный запасной вариант.
 	ObdOdometerMeters *OdometerSample `json:"obdOdometerMeters,omitempty"`
 	GpsOdometerMeters *OdometerSample `json:"gpsOdometerMeters,omitempty"`
@@ -171,7 +193,7 @@ type VehicleLocationFeed struct {
 	Gps          []GpsCoordinates       `json:"gps"`          // feed returns array
 	FuelPercents []FuelPercent          `json:"fuelPercents"` // feed returns array
 	// feed returns DEF as an array too
-	DefFluidMilliPercent []DefFluidSample `json:"defFluidMilliPercent,omitempty"`
+	DefFluidMilliPercent []DefFluidSample `json:"defLevelMilliPercent,omitempty"`
 	// feed returns odometer as an array too
 	ObdOdometerMeters []OdometerSample `json:"obdOdometerMeters,omitempty"`
 	GpsOdometerMeters []OdometerSample `json:"gpsOdometerMeters,omitempty"`
@@ -927,7 +949,7 @@ func (c *Client) GetAllVehiclesLocationsWithTime(ctx context.Context, startTime,
 const (
 	StatTypeGPS                  = "gps"
 	StatTypeFuelPercents         = "fuelPercents"
-	StatTypeDefFluidMilliPercent = "defFluidMilliPercent"
+	StatTypeDefFluidMilliPercent = "defLevelMilliPercent"
 	StatTypeObdOdometerMeters    = "obdOdometerMeters"
 	StatTypeGpsOdometerMeters    = "gpsOdometerMeters"
 )

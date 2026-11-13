@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/TMS360/backend-pkg/deployenv"
+	"golang.org/x/crypto/ssh"
 )
 
 // Triumph SFTP transport constants. The per-carrier inbound directory is
@@ -75,6 +76,11 @@ type TriumphSFTPProvider struct {
 	now          func() time.Time
 	// blocked, when set, refuses every dial (ErrRealServerBlocked).
 	blocked error
+
+	// triumph_sftp_v2 only (see triumphsftp_v2.go); zero for triumph_sftp.
+	privateKey        []byte
+	hostKey           ssh.HostKeyCallback
+	hostKeyAlgorithms []string
 }
 
 // NewTriumphSFTP builds a TriumphSFTPProvider for a single submission. Reuse
@@ -142,21 +148,15 @@ func defaultSFTPDial(ctx context.Context, d sftpDialer) (sftpUploader, error) {
 //   - PDFs: <INVOICE#>.pdf (InvoiceNumber sanitized for filesystem safety)
 //   - CSV:  invoices_YYYYMMDD_HHMMSS.csv (UTC timestamp from batch.SubmittedAt)
 func (p *TriumphSFTPProvider) TestConnection(ctx context.Context) error {
-	if p.blocked != nil {
-		return p.blocked
+	if err := p.preflight(); err != nil {
+		return err
 	}
-	return testSFTPConnection(ctx, p.dialFn, sftpDialer{
-		Host:         p.host,
-		Port:         p.port,
-		Username:     p.username,
-		Password:     p.password,
-		ProviderType: p.providerType,
-	})
+	return testSFTPConnection(ctx, p.dialFn, p.dialer())
 }
 
 func (p *TriumphSFTPProvider) SubmitBatch(ctx context.Context, batch Batch, onProgress ProgressFunc) (SubmitResult, error) {
-	if p.blocked != nil {
-		return SubmitResult{}, p.blocked
+	if err := p.preflight(); err != nil {
+		return SubmitResult{}, err
 	}
 	if err := batch.validate(); err != nil {
 		return SubmitResult{}, err
@@ -177,13 +177,7 @@ func (p *TriumphSFTPProvider) SubmitBatch(ctx context.Context, batch Batch, onPr
 	if dial == nil {
 		dial = defaultSFTPDial
 	}
-	client, err := dial(ctx, sftpDialer{
-		Host:         p.host,
-		Port:         p.port,
-		Username:     p.username,
-		Password:     p.password,
-		ProviderType: p.providerType,
-	})
+	client, err := dial(ctx, p.dialer())
 	if err != nil {
 		return SubmitResult{}, err
 	}
@@ -229,4 +223,36 @@ func sanitizePDFName(invoiceNumber string) string {
 	}
 	b.WriteString(".pdf")
 	return b.String()
+}
+
+// preflight runs the checks that must pass before any dial: the DEV-3306
+// block, and for key sign-in providers a private key and a host key check.
+func (p *TriumphSFTPProvider) preflight() error {
+	if p.blocked != nil {
+		return p.blocked
+	}
+	if UsesPrivateKey(p.providerType) {
+		if strings.TrimSpace(string(p.privateKey)) == "" {
+			return ErrPrivateKeyMissing
+		}
+		if p.hostKey == nil {
+			return ErrHostKeyNotPinned
+		}
+	}
+	return nil
+}
+
+// dialer is the connection description for this provider, shared by
+// TestConnection and SubmitBatch.
+func (p *TriumphSFTPProvider) dialer() sftpDialer {
+	return sftpDialer{
+		Host:              p.host,
+		Port:              p.port,
+		Username:          p.username,
+		Password:          p.password,
+		PrivateKey:        p.privateKey,
+		ProviderType:      p.providerType,
+		HostKeyCallback:   p.hostKey,
+		HostKeyAlgorithms: p.hostKeyAlgorithms,
+	}
 }

@@ -31,6 +31,11 @@ service TeamsService {
   // stays with the data owner (teams); backend-load calls this from updateTrip.
   rpc IsDriverCrewAvailable(IsDriverCrewAvailableRequest) returns (IsDriverCrewAvailableResponse);
 
+  // DEV-3835: IsDriverCrewAvailable for many crews over one window, so truck
+  // matching can mark every truck whose driver is unavailable with the same
+  // rule the assign guard runs, in one call per load instead of one per truck.
+  rpc AreDriverCrewsAvailable(AreDriverCrewsAvailableRequest) returns (AreDriverCrewsAvailableResponse);
+
   // Cross-service filtering: returns driver crew IDs matching the filter
   rpc ResolveDriverCrewIDs(DriverCrewFilter) returns (filters.IDsResponse);
 
@@ -248,6 +253,22 @@ message IsDriverCrewAvailableResponse {
   string reason = 3;           // human reason: daily-status name or absence reason
   string source = 4;           // "DAILY_STATUS" | "ABSENCE"
   string driver_id = 5;        // which driver of the crew triggered the block
+}
+
+// DEV-3835: one window, many crews. Dates and times follow IsDriverCrewAvailableRequest.
+message AreDriverCrewsAvailableRequest {
+  repeated string driver_crew_ids = 1;
+  string start_date = 2;          // YYYY-MM-DD, first day to check
+  string end_date = 3;            // YYYY-MM-DD, last day to check
+  optional string from_time = 4;  // HH:MM clock window start; empty = whole-day
+  optional string to_time = 5;    // HH:MM clock window end
+}
+
+// One answer per crew the server could resolve. A crew id it does not know is
+// left out rather than failing the batch; the caller treats a missing crew as
+// "no answer", the same as a failed single check.
+message AreDriverCrewsAvailableResponse {
+  map<string, IsDriverCrewAvailableResponse> by_crew_id = 1;
 }
 
 message GetActiveCrewByDriverRequest {

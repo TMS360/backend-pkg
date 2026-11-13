@@ -33,9 +33,13 @@ type sftpDialer struct {
 	Port            int
 	Username        string
 	Password        string
+	PrivateKey      []byte       // when set, sign in with this key instead of the password
 	ProviderType    ProviderType // reported on AuthError; defaults to ProviderTriumphSFTP if empty
 	DialTimeout     time.Duration
 	HostKeyCallback ssh.HostKeyCallback // nil → ssh.InsecureIgnoreHostKey()
+	// HostKeyAlgorithms, when set, limits the host key types the client asks
+	// for (a pinned key must be of a type the server then presents).
+	HostKeyAlgorithms []string
 }
 
 func dialSFTP(ctx context.Context, d sftpDialer) (*sftpClient, error) {
@@ -45,7 +49,14 @@ func dialSFTP(ctx context.Context, d sftpDialer) (*sftpClient, error) {
 	if d.Username == "" {
 		return nil, errors.New("factoring/sftp: username is empty")
 	}
-	if d.Password == "" {
+	auth := ssh.Password(d.Password)
+	if len(d.PrivateKey) > 0 {
+		signer, err := parsePrivateKey(d.PrivateKey)
+		if err != nil {
+			return nil, err
+		}
+		auth = ssh.PublicKeys(signer)
+	} else if d.Password == "" {
 		return nil, errors.New("factoring/sftp: password is empty")
 	}
 	port := d.Port
@@ -65,22 +76,27 @@ func dialSFTP(ctx context.Context, d sftpDialer) (*sftpClient, error) {
 	}
 
 	cfg := &ssh.ClientConfig{
-		User:            d.Username,
-		Auth:            []ssh.AuthMethod{ssh.Password(d.Password)},
-		HostKeyCallback: hkcb,
-		Timeout:         timeout,
+		User:              d.Username,
+		Auth:              []ssh.AuthMethod{auth},
+		HostKeyCallback:   hkcb,
+		HostKeyAlgorithms: d.HostKeyAlgorithms,
+		Timeout:           timeout,
 	}
 
 	addr := net.JoinHostPort(d.Host, strconv.Itoa(port))
 	dialer := &net.Dialer{Timeout: timeout}
 	tcpConn, err := dialer.DialContext(ctx, "tcp", addr)
 	if err != nil {
-		return nil, fmt.Errorf("factoring/sftp: tcp dial %s: %w", addr, err)
+		return nil, &DialError{Addr: addr, Cause: err}
 	}
 
 	sshConn, chans, reqs, err := ssh.NewClientConn(tcpConn, addr, cfg)
 	if err != nil {
 		_ = tcpConn.Close()
+		var hkErr *HostKeyMismatchError
+		if errors.As(err, &hkErr) {
+			return nil, hkErr
+		}
 		if isSSHAuthFailure(err) {
 			pt := d.ProviderType
 			if pt == "" {

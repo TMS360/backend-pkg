@@ -30,7 +30,7 @@ func NewTestTargetProvider(layout ProviderType, t TestTarget) (Provider, error) 
 		return nil, errors.New("factoring: test target username/password is empty")
 	}
 	switch layout {
-	case ProviderTriumphSFTP:
+	case ProviderTriumphSFTP, ProviderTriumphSFTPV2:
 		return &TriumphSFTPProvider{
 			username: t.Username, password: t.Password,
 			host: t.Host, port: t.Port, inboundDir: t.Dir,

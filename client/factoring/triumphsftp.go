@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/TMS360/backend-pkg/deployenv"
+	"golang.org/x/crypto/ssh"
 )
 
 // Triumph SFTP transport constants. The per-carrier inbound directory is
@@ -71,6 +72,11 @@ type TriumphSFTPProvider struct {
 	now          func() time.Time
 	// blocked, when set, refuses every dial (ErrRealServerBlocked).
 	blocked error
+
+	// triumph_sftp_v2 only (see triumphsftp_v2.go); zero for triumph_sftp.
+	privateKey        []byte
+	hostKey           ssh.HostKeyCallback
+	hostKeyAlgorithms []string
 }
 
 // NewTriumphSFTP builds a TriumphSFTPProvider for a single submission. Reuse
@@ -137,21 +143,15 @@ func defaultSFTPDial(ctx context.Context, d sftpDialer) (sftpUploader, error) {
 //   - PDFs: <INVOICE#>.pdf (InvoiceNumber sanitized for filesystem safety)
 //   - CSV:  invoices_YYYYMMDD_HHMMSS.csv (UTC timestamp from batch.SubmittedAt)
 func (p *TriumphSFTPProvider) TestConnection(ctx context.Context) error {
-	if p.blocked != nil {
-		return p.blocked
+	if err := p.preflight(); err != nil {
+		return err
 	}
-	return testSFTPConnection(ctx, p.dialFn, sftpDialer{
-		Host:         p.host,
-		Port:         p.port,
-		Username:     p.username,
-		Password:     p.password,
-		ProviderType: p.providerType,
-	})
+	return testSFTPConnection(ctx, p.dialFn, p.dialer())
 }
 
 func (p *TriumphSFTPProvider) SubmitBatch(ctx context.Context, batch Batch, onProgress ProgressFunc) (SubmitResult, error) {
-	if p.blocked != nil {
-		return SubmitResult{}, p.blocked
+	if err := p.preflight(); err != nil {
+		return SubmitResult{}, err
 	}
 	if err := batch.validate(); err != nil {
 		return SubmitResult{}, err
@@ -172,13 +172,7 @@ func (p *TriumphSFTPProvider) SubmitBatch(ctx context.Context, batch Batch, onPr
 	if dial == nil {
 		dial = defaultSFTPDial
 	}
-	client, err := dial(ctx, sftpDialer{
-		Host:         p.host,
-		Port:         p.port,
-		Username:     p.username,
-		Password:     p.password,
-		ProviderType: p.providerType,
-	})
+	client, err := dial(ctx, p.dialer())
 	if err != nil {
 		return SubmitResult{}, err
 	}

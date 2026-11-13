@@ -3,6 +3,7 @@ package factoring
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 )
 
 // NewProviderFromCredential returns the concrete Provider implementation that
@@ -16,12 +17,21 @@ func NewProviderFromCredential(cred Credential) (Provider, error) {
 	if !cred.ProviderType.IsValid() {
 		return nil, fmt.Errorf("factoring: unknown provider_type %q", cred.ProviderType)
 	}
-	if cred.Username == "" || cred.Password == "" {
+	if cred.ProviderType == ProviderTriumphSFTPV2 {
+		if cred.Username == "" {
+			return nil, fmt.Errorf("factoring: %s credential missing username", cred.ProviderType)
+		}
+		if strings.TrimSpace(cred.PrivateKey) == "" {
+			return nil, fmt.Errorf("%s: %w", cred.ProviderType, ErrPrivateKeyMissing)
+		}
+	} else if cred.Username == "" || cred.Password == "" {
 		return nil, fmt.Errorf("factoring: %s credential missing username/password", cred.ProviderType)
 	}
 	switch cred.ProviderType {
 	case ProviderTriumphSFTP:
 		return NewTriumphSFTP(cred), nil
+	case ProviderTriumphSFTPV2:
+		return NewTriumphSFTPV2(cred), nil
 	case ProviderRTSSFTP:
 		return NewRTSSFTP(cred), nil
 	case ProviderRTSTestSFTP:

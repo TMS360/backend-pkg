@@ -38,16 +38,27 @@ type ProviderType string
 
 const (
 	ProviderTriumphSFTP ProviderType = "triumph_sftp"
-	ProviderRTSSFTP     ProviderType = "rts_sftp"
-	ProviderRTSTestSFTP ProviderType = "rts_test_sftp"
+	// ProviderTriumphSFTPV2 is Triumph's new SFTP server: same files as
+	// triumph_sftp, key sign-in, pinned host key (DEV-4015).
+	ProviderTriumphSFTPV2 ProviderType = "triumph_sftp_v2"
+	ProviderRTSSFTP       ProviderType = "rts_sftp"
+	ProviderRTSTestSFTP   ProviderType = "rts_test_sftp"
 )
 
 // AllProviderTypes is the canonical list of supported provider types — used by
 // tms360-backend's credential validator and by gqlgen for the GraphQL enum.
 var AllProviderTypes = []ProviderType{
 	ProviderTriumphSFTP,
+	ProviderTriumphSFTPV2,
 	ProviderRTSSFTP,
 	ProviderRTSTestSFTP,
+}
+
+// IsTriumph reports whether pt is a Triumph SFTP provider (old or new server).
+// Use this where the Triumph file layout or invoice layout matters, not for
+// picking the dial host.
+func IsTriumph(pt ProviderType) bool {
+	return pt == ProviderTriumphSFTP || pt == ProviderTriumphSFTPV2
 }
 
 // IsRTS reports whether pt is an RTS Financial SFTP provider (prod or test).
@@ -109,8 +120,11 @@ type Credential struct {
 	Username             string       `json:"username"`
 	AccessKey            string       `json:"access_key,omitempty"`
 	Password             string       `json:"password"`
-	BillingAddress       string       `json:"billing_address,omitempty"`
-	RemitNotice          string       `json:"remit_notice,omitempty"`
+	// PrivateKey is the OpenSSH/PEM private key for key-sign-in providers
+	// (triumph_sftp_v2). Secret: never log it or put it in an error.
+	PrivateKey     string `json:"private_key,omitempty"`
+	BillingAddress string `json:"billing_address,omitempty"`
+	RemitNotice    string `json:"remit_notice,omitempty"`
 }
 
 // Progress is one upload-progress tick reported by a Provider during

@@ -61,6 +61,10 @@ func IsTriumph(pt ProviderType) bool {
 	return pt == ProviderTriumphSFTP || pt == ProviderTriumphSFTPV2
 }
 
+// UsesPrivateKey reports whether pt signs in with a private key instead of a
+// password.
+func UsesPrivateKey(pt ProviderType) bool { return pt == ProviderTriumphSFTPV2 }
+
 // IsRTS reports whether pt is an RTS Financial SFTP provider (prod or test).
 // Use this for rules, invoice PDF profile, and trigger-and-clear behaviour —
 // not for picking the dial host.
@@ -217,6 +221,48 @@ func (e *AuthError) Error() string {
 }
 
 func (e *AuthError) Unwrap() error { return e.Cause }
+
+// HostKeyMismatchError is returned when the server's host key cannot be
+// accepted: it presented a key other than the pinned one (Got and Want are
+// SHA256 fingerprints), or no key type the client accepts (Got is empty).
+// Check with errors.As or IsHostKeyMismatch.
+type HostKeyMismatchError struct {
+	Host string
+	Got  string
+	Want string
+}
+
+func (e *HostKeyMismatchError) Error() string {
+	if e.Got == "" {
+		return fmt.Sprintf("factoring/sftp: host key of %s cannot be checked: the server offers no host key type accepted for the pinned key; connection refused", e.Host)
+	}
+	return fmt.Sprintf("factoring/sftp: host key of %s does not match the pinned key (server %s, pinned %s); connection refused",
+		e.Host, e.Got, e.Want)
+}
+
+// IsHostKeyMismatch reports whether err is (or wraps) a *HostKeyMismatchError.
+func IsHostKeyMismatch(err error) bool {
+	var hk *HostKeyMismatchError
+	return errors.As(err, &hk)
+}
+
+// DialError is a failed TCP connect (network down, blocked, refused, timed
+// out). Check with IsDialError.
+type DialError struct {
+	Addr  string
+	Cause error
+}
+
+func (e *DialError) Error() string {
+	return fmt.Sprintf("factoring/sftp: tcp dial %s: %v", e.Addr, e.Cause)
+}
+func (e *DialError) Unwrap() error { return e.Cause }
+
+// IsDialError reports whether err is (or wraps) a *DialError.
+func IsDialError(err error) bool {
+	var de *DialError
+	return errors.As(err, &de)
+}
 
 // IsAuthError reports whether err (or any error it wraps) is a *AuthError.
 func IsAuthError(err error) bool {

@@ -97,6 +97,9 @@ func dialSFTP(ctx context.Context, d sftpDialer) (*sftpClient, error) {
 		if errors.As(err, &hkErr) {
 			return nil, hkErr
 		}
+		if strings.Contains(err.Error(), "no common algorithm for host key") {
+			return nil, &HostKeyMismatchError{Host: addr}
+		}
 		if isSSHAuthFailure(err) {
 			pt := d.ProviderType
 			if pt == "" {

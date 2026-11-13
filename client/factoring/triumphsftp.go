@@ -224,3 +224,35 @@ func sanitizePDFName(invoiceNumber string) string {
 	b.WriteString(".pdf")
 	return b.String()
 }
+
+// preflight runs the checks that must pass before any dial: the DEV-3306
+// block, and for key sign-in providers a private key and a host key check.
+func (p *TriumphSFTPProvider) preflight() error {
+	if p.blocked != nil {
+		return p.blocked
+	}
+	if UsesPrivateKey(p.providerType) {
+		if strings.TrimSpace(string(p.privateKey)) == "" {
+			return ErrPrivateKeyMissing
+		}
+		if p.hostKey == nil {
+			return ErrHostKeyNotPinned
+		}
+	}
+	return nil
+}
+
+// dialer is the connection description for this provider, shared by
+// TestConnection and SubmitBatch.
+func (p *TriumphSFTPProvider) dialer() sftpDialer {
+	return sftpDialer{
+		Host:              p.host,
+		Port:              p.port,
+		Username:          p.username,
+		Password:          p.password,
+		PrivateKey:        p.privateKey,
+		ProviderType:      p.providerType,
+		HostKeyCallback:   p.hostKey,
+		HostKeyAlgorithms: p.hostKeyAlgorithms,
+	}
+}

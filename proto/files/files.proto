@@ -61,6 +61,8 @@ message GetFilesRequest {
 
 message File {
   string id = 1;
+  // Download link. Empty, except for a BOARD_ATTACHMENT file read by a service
+  // caller (internal token): then a signed link valid for at most 5 minutes (DEV-4362).
   string url = 2;
   string s3_key = 3;
   string bucket = 4;
@@ -73,6 +75,10 @@ message File {
   string document_type_id = 9;
   // Document category (e.g. "SHIPMENT", "DRIVER"). Empty if not classified.
   string category = 10;
+  // The user who uploaded the file. Set only for a BOARD_ATTACHMENT file (DEV-4362).
+  string uploaded_by = 11;
+  // The file's system purpose. Set only for a BOARD_ATTACHMENT file (DEV-4362).
+  string purpose = 12;
 }
 
 message GetFileResponse {

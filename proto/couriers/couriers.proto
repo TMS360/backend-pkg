@@ -151,6 +151,10 @@ message UpdateCacheResponse {
 
 message GetUsersByIdsRequest {
   repeated string user_ids = 1;
+  // include_deleted also returns soft-deleted users, for callers that only
+  // need a name (a compliance record of a driver who left, DEV-3635). Absent
+  // keeps today's answer, so existing callers are unchanged.
+  bool include_deleted = 2;
 }
 
 message GetUsersByIdsResponse {
@@ -189,6 +193,10 @@ message GetDriverTypesAtResponse {
 
 message ListOfficeUsersRequest {
   string company_id = 1;
+  // true  → only status = ACTIVE (excludes inactive AND banned).
+  // false/absent → historical behaviour: every office user regardless of
+  // status (messaging RBAC, notification broadcast, compliance flag read).
+  optional bool active_only = 2;
 }
 
 message ListOfficeUsersResponse {

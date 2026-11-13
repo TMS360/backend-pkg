@@ -9,7 +9,11 @@ import (
 
 // EventPayload defines the standard message format for all Kafka events
 type EventPayload struct {
-	//RequestID     string      `json:"request_id"`
+	// CorrelationID is the X-Request-ID of the request that caused the change
+	// (stamped by tmsdb.writeEvent from middleware.GetRequestID). RMS carries it
+	// to rule decisions, automation fires and their results, so one id finds the
+	// whole chain. Empty for events with no request behind them.
+	CorrelationID string          `json:"correlation_id,omitempty"`
 	EventID       uuid.UUID       `json:"event_id"`
 	ActorID       *uuid.UUID      `json:"actor_id"`
 	CompanyID     *uuid.UUID      `json:"company_id"`

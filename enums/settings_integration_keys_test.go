@@ -54,3 +54,37 @@ func TestRingCentralKeyIsARegisteredIntegrationKey(t *testing.T) {
 	assert.Contains(t, enums.AllCompanySettingsIntegrationKey, key,
 		"must be in the canonical list — audit redaction iterates it, so an absent key leaks the credential")
 }
+
+// DEV-3292: the RC processor reads each company's own Gemini key from Redis at
+// {company_id}:setting:gemini_api_key. Registered here so tms-auth's audit
+// redaction masks it and the settings save/delete paths accept it.
+func TestGeminiKeyIsARegisteredIntegrationKey(t *testing.T) {
+	key := enums.CompanySettingsIntegrationKeyGeminiAPIKey
+
+	require.Equal(t, "gemini_api_key", string(key),
+		"the wire value is the Redis settings suffix the RC processor reads; renaming it orphans every saved key")
+	assert.True(t, key.IsValid(), "must pass enum validation on the settings save and delete paths")
+	assert.Contains(t, enums.AllCompanySettingsIntegrationKey, key,
+		"must be in the canonical list — audit redaction iterates it, so an absent key leaks the secret")
+}
+
+// DEV-3865: backend-fuel reads each company's own fuel Gemini key from Redis at
+// {company_id}:setting:fuel_gemini_api_key. Registered here so tms-auth seals it
+// at rest, masks it in the audit trail, and accepts it on save, test and delete.
+func TestFuelGeminiKeyIsARegisteredIntegrationKey(t *testing.T) {
+	key := enums.CompanySettingsIntegrationKeyFuelGeminiAPIKey
+
+	require.Equal(t, "fuel_gemini_api_key", string(key),
+		"the wire value is the Redis settings suffix backend-fuel reads; renaming it orphans every saved key")
+	assert.True(t, key.IsValid(), "must pass enum validation on the settings save and delete paths")
+	assert.Contains(t, enums.AllCompanySettingsIntegrationKey, key,
+		"must be in the canonical list — audit redaction iterates it, so an absent key leaks the secret")
+}
+
+// The fuel key is its own key, NOT the rate-confirmation one: the PM keeps the
+// cost and quota of fuel plans apart from rate-confirmation reading.
+func TestFuelGeminiKeyIsSeparateFromRateConfirmationKey(t *testing.T) {
+	assert.NotEqual(t,
+		enums.CompanySettingsIntegrationKeyGeminiAPIKey,
+		enums.CompanySettingsIntegrationKeyFuelGeminiAPIKey)
+}

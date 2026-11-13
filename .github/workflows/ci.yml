@@ -2,7 +2,7 @@
 # reusable workflow in TMS360/.github. The unit job is inlined.
 # No private modules, so there is no G_TOKEN step.
 # No goose scripts, so there is no migration check.
-# gofmt stays with DEV-2409 (one file is already unformatted).
+# gofmt (DEV-2409): same script as the shared go-service-ci.yml gofmt job.
 name: CI
 
 on:
@@ -16,6 +16,40 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+  # DEV-2409: its own job, not a step of "vet + unit tests", so branch protection does not
+  # require it until it has been green for a while. Generated code (*_gen.go, generated.go,
+  # anything under generated/) is skipped. Every bad file is named in the log and as an
+  # annotation on the PR. Fix locally with: gofmt -w <file>
+  gofmt:
+    name: gofmt
+    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: false
+
+      - name: gofmt
+        shell: bash
+        run: |
+          set -euo pipefail
+          files=$(git ls-files '*.go' | grep -vE '_gen\.go$|(^|/)generated(/|\.go$)' || true)
+          if [ -z "$files" ]; then
+            echo "No Go files to check."
+            exit 0
+          fi
+          bad=$(gofmt -l $files)
+          if [ -n "$bad" ]; then
+            for f in $bad; do echo "::error file=$f::not gofmt-formatted — run: gofmt -w $f"; done
+            echo "❌ gofmt found unformatted files:"
+            echo "$bad"
+            exit 1
+          fi
+          echo "✅ All Go files are gofmt-formatted."
+
   unit:
     name: vet + unit tests
     runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}

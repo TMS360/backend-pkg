@@ -56,11 +56,21 @@ var capabilityRefusalMarkers = []string{
 	"scope",
 }
 
+// invalidStatTypeMarker is Samsara's 400 answer to a `types=` value it does not
+// know ("Invalid stat type(s): defFluidMilliPercent", 2026-11-12).
+const invalidStatTypeMarker = "invalid stat type"
+
 // IsCapabilityError reports whether Samsara refused the request because the
 // tenant's plan or token does not cover the data asked for, rather than because
 // the token is wrong. Callers must keep the integration alive on true: the rest
 // of the tenant's data is still perfectly readable with the same key.
 func IsCapabilityError(err error) bool {
+	// A 400 "Invalid stat type(s): x" means Samsara does not know a type we
+	// asked for. The key still works, so the caller drops the optional types
+	// and keeps the poll going, the same as for a plan refusal.
+	if err != nil && strings.Contains(strings.ToLower(err.Error()), invalidStatTypeMarker) {
+		return true
+	}
 	var ae *AuthError
 	if !errors.As(err, &ae) || ae.StatusCode != http.StatusForbidden {
 		return false
@@ -79,7 +89,19 @@ func IsCapabilityError(err error) bool {
 // body when it is not the usual {"message": "..."} envelope.
 func RefusalMessage(err error) string {
 	var ae *AuthError
+	if err == nil {
+		return ""
+	}
 	if !errors.As(err, &ae) {
+		// A plain "API request failed with status 400: {...}" error carries
+		// Samsara's body after the status; read its message from there.
+		text := err.Error()
+		var envelope struct {
+			Message string `json:"message"`
+		}
+		if i := strings.Index(text, "{"); i >= 0 && json.Unmarshal([]byte(text[i:]), &envelope) == nil {
+			return envelope.Message
+		}
 		return ""
 	}
 	var envelope struct {
@@ -152,7 +174,7 @@ type VehicleLocation struct {
 	FuelPercents *FuelPercent           `json:"fuelPercents"`
 	// Уровень DEF. Приходит только если тип статистики запрошен И тариф
 	// Samsara его покрывает, поэтому указатель, а не значение.
-	DefFluidMilliPercent *DefFluidSample `json:"defFluidMilliPercent,omitempty"`
+	DefFluidMilliPercent *DefFluidSample `json:"defLevelMilliPercent,omitempty"`
 	// Одометр: obd точнее, gps — расчётный запасной вариант.
 	ObdOdometerMeters *OdometerSample `json:"obdOdometerMeters,omitempty"`
 	GpsOdometerMeters *OdometerSample `json:"gpsOdometerMeters,omitempty"`
@@ -171,7 +193,7 @@ type VehicleLocationFeed struct {
 	Gps          []GpsCoordinates       `json:"gps"`          // feed returns array
 	FuelPercents []FuelPercent          `json:"fuelPercents"` // feed returns array
 	// feed returns DEF as an array too
-	DefFluidMilliPercent []DefFluidSample `json:"defFluidMilliPercent,omitempty"`
+	DefFluidMilliPercent []DefFluidSample `json:"defLevelMilliPercent,omitempty"`
 	// feed returns odometer as an array too
 	ObdOdometerMeters []OdometerSample `json:"obdOdometerMeters,omitempty"`
 	GpsOdometerMeters []OdometerSample `json:"gpsOdometerMeters,omitempty"`
@@ -927,7 +949,7 @@ func (c *Client) GetAllVehiclesLocationsWithTime(ctx context.Context, startTime,
 const (
 	StatTypeGPS                  = "gps"
 	StatTypeFuelPercents         = "fuelPercents"
-	StatTypeDefFluidMilliPercent = "defFluidMilliPercent"
+	StatTypeDefFluidMilliPercent = "defLevelMilliPercent"
 	StatTypeObdOdometerMeters    = "obdOdometerMeters"
 	StatTypeGpsOdometerMeters    = "gpsOdometerMeters"
 )
@@ -988,31 +1010,40 @@ func (c *Client) GetVehicleStatsFeed(ctx context.Context, cursor string) (*Vehic
 	return c.GetVehicleStatsFeedWithTypes(ctx, cursor, nil)
 }
 
+// MaxStatsFeedPagesPerCall caps how many feed pages one call follows. On a
+// live fleet hasNextPage stays true for hours, so an uncapped loop held every
+// GPS point in memory until Samsara answered 429 and the whole sweep was
+// discarded. The caller stores EndCursor and continues on its next tick.
+const MaxStatsFeedPagesPerCall = 20
+
 // GetVehicleStatsFeedWithTypes — фид с составом types от вызывающего. Курсор
 // привязан к составу: сменил набор — начинай с пустого курсора.
+// Follows at most MaxStatsFeedPagesPerCall pages; HasMore says the feed has
+// pages past EndCursor. A request error after at least one page returns the
+// pages collected so far together with the error, so the caller can keep
+// EndCursor instead of losing the sweep.
 func (c *Client) GetVehicleStatsFeedWithTypes(ctx context.Context, cursor string, types []string) (*VehicleStatsFeedResult, error) {
-	var allData []VehicleLocation
-	currentCursor := cursor
+	result := &VehicleStatsFeedResult{EndCursor: cursor}
 
-	for {
-		page, err := c.fetchStatsFeedPage(ctx, currentCursor, types)
+	for pages := 0; pages < MaxStatsFeedPagesPerCall; pages++ {
+		page, err := c.fetchStatsFeedPage(ctx, result.EndCursor, types)
 		if err != nil {
-			return nil, err
+			if pages == 0 {
+				return nil, err
+			}
+			return result, err
 		}
 
-		allData = append(allData, page.Data...)
-		currentCursor = page.Pagination.EndCursor
+		result.Data = append(result.Data, page.Data...)
+		result.EndCursor = page.Pagination.EndCursor
+		result.HasMore = page.Pagination.HasNextPage && page.Pagination.EndCursor != ""
 
-		if !page.Pagination.HasNextPage {
+		if !result.HasMore {
 			break
 		}
 	}
 
-	return &VehicleStatsFeedResult{
-		Data:      allData,
-		EndCursor: currentCursor,
-		HasMore:   false,
-	}, nil
+	return result, nil
 }
 
 // fetchStatsFeedPage fetches a single page of the gps/fuel stats feed.

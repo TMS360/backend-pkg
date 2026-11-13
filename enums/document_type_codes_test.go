@@ -47,6 +47,12 @@ func TestSystemDocTypeCode_IsValid_CoversAllConstants(t *testing.T) {
 		SystemDocCustomerW9,
 		SystemDocCustomerCertificateOfInsurance,
 		SystemDocDriverPreviousEmployment,
+		SystemDocDriverSSNCard,
+		SystemDocDriverDrugTest,
+		SystemDocTruckOwnerAgreement,
+		SystemDocTruckOwnerCertificateOfInsurance,
+		SystemDocTruckOwnerW9,
+		SystemDocTruckOwnerOther,
 	}
 	for _, c := range all {
 		if !c.IsValid() {

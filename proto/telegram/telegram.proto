@@ -15,6 +15,19 @@ service TelegramService {
   rpc EditMessage(EditMessageRequest) returns (SendResult);
   // ReplyNote posts a short reply to a message sent earlier ("plan replaced").
   rpc ReplyNote(ReplyNoteRequest) returns (SendResult);
+  // GetDriverAccounts returns the Telegram account the office mapped to each
+  // driver. Drivers without one are absent from the list.
+  rpc GetDriverAccounts(GetDriverAccountsRequest) returns (GetDriverAccountsResponse);
+  // GetCrewLink tells whether a crew has an open group link and whether the
+  // bot is still in that group, without sending anything.
+  rpc GetCrewLink(GetCrewLinkRequest) returns (CrewLink);
+}
+
+// Button is one inline button under a message. action is echoed back on a tap
+// ("ack", "decline").
+message Button {
+  string text = 1;
+  string action = 2;
 }
 
 message SendToCrewRequest {
@@ -23,6 +36,7 @@ message SendToCrewRequest {
   string idempotency_key = 3;
   string text = 4;
   string parse_mode = 5;  // "HTML" or empty
+  repeated Button buttons = 6;  // one row; empty = no buttons
 }
 
 message EditMessageRequest {
@@ -31,6 +45,10 @@ message EditMessageRequest {
   string idempotency_key = 3;
   string text = 4;
   string parse_mode = 5;
+  // buttons replaces the buttons under the message. Empty and clear_buttons
+  // false keeps whatever the message had; clear_buttons true removes them.
+  repeated Button buttons = 6;
+  bool clear_buttons = 7;
 }
 
 message ReplyNoteRequest {
@@ -39,16 +57,22 @@ message ReplyNoteRequest {
   string idempotency_key = 3;
   string text = 4;
   string parse_mode = 5;
+  // respect_quiet_hours: inside the company's Telegram quiet hours nothing is
+  // sent and nothing is stored under the key; the answer is QUIET, so the
+  // caller asks again later with the same key (DEV-3396 no-answer reminder).
+  bool respect_quiet_hours = 6;
 }
 
 // CAUGHT: the real-send lock is closed (not production) — the message went to
 // the catcher chat or only to the log; the crew's group did not get it.
+// QUIET: a respect_quiet_hours reply asked inside quiet hours; nothing sent.
 enum DeliveryStatus {
   DELIVERY_STATUS_UNSPECIFIED = 0;
   SENT = 1;
   FAILED = 2;
   NO_GROUP = 3;
   CAUGHT = 4;
+  QUIET = 5;
 }
 
 message SendResult {
@@ -58,4 +82,32 @@ message SendResult {
   int64 telegram_message_id = 4;
   string failure_reason = 5;        // Telegram's description, verbatim
   string chat_title = 6;
+}
+
+message GetDriverAccountsRequest {
+  string company_id = 1;
+  repeated string driver_ids = 2;
+}
+
+message DriverAccount {
+  string driver_id = 1;
+  int64 telegram_user_id = 2;
+}
+
+message GetDriverAccountsResponse {
+  repeated DriverAccount accounts = 1;
+}
+
+message GetCrewLinkRequest {
+  string company_id = 1;
+  string crew_id = 2;
+}
+
+// CrewLink: linked false means no open link (the other fields are empty).
+// bot_in_group false means Telegram refused the bot last time (last_error).
+message CrewLink {
+  bool linked = 1;
+  bool bot_in_group = 2;
+  string last_error = 3;
+  string chat_title = 4;
 }

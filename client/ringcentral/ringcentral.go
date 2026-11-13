@@ -55,12 +55,41 @@ var ErrInvalidCredentials = errors.New("ringcentral: invalid credentials")
 // RingCentral console with the scope added. Telling the tenant to "reconnect"
 // sends them to rotate secrets that were never wrong.
 //
-// Only FetchRecording distinguishes it today. The shared get helper still maps
-// 403 to ErrInvalidCredentials, because ListPhoneNumbers (DEV-1757) and the
-// Settings screen behind it classify on that sentinel and would fall through to
-// "RingCentral could not be reached" if a new one appeared underneath them.
-// Widening that is a change to DEV-1751/DEV-1757's own surface — its own ticket.
+// A 403 from any read matches it (DEV-3365). The same error still matches
+// ErrInvalidCredentials too (see forbiddenError), so a caller written before
+// the split keeps its old behaviour; a caller that wants the right message
+// checks ErrInsufficientPermissions first.
 var ErrInsufficientPermissions = errors.New("ringcentral: app is missing a required permission")
+
+// forbiddenError is what a 403 on a read returns. It answers errors.Is for
+// BOTH sentinels: new callers can tell "missing permission" apart, and the
+// callers that only know ErrInvalidCredentials see no change.
+type forbiddenError struct{}
+
+func (forbiddenError) Error() string { return ErrInsufficientPermissions.Error() }
+
+func (forbiddenError) Is(target error) bool {
+	return target == ErrInsufficientPermissions || target == ErrInvalidCredentials
+}
+
+// Permission is one RingCentral app permission TMS360 needs: the id the token
+// response lists, and the name the developer console shows an admin.
+type Permission struct {
+	ID   string
+	Name string
+}
+
+// RequiredPermissions is every permission a company's app needs for the
+// features TMS360 offers. Order is the order an admin is told about them.
+var RequiredPermissions = []Permission{
+	{ID: "ReadAccounts", Name: "Read Accounts"},
+	{ID: "ReadCallLog", Name: "Read Call Log"},
+	{ID: "ReadCallRecording", Name: "Read Call Recording"},
+	{ID: "ReadMessages", Name: "Read Messages"},
+	{ID: "SMS", Name: "SMS"},
+	{ID: "Faxes", Name: "Faxes"},
+	{ID: "SubscriptionWebhook", Name: "WebHook Subscriptions"},
+}
 
 // AuthError carries the rejected response so the caller can log the reason
 // (never the credential) when RingCentral refuses the token exchange.
@@ -114,6 +143,10 @@ type tokenResponse struct {
 	TokenType   string `json:"token_type"`
 	ExpiresIn   int    `json:"expires_in"`
 	OwnerID     string `json:"owner_id"`
+	// Scope is the space-separated list of permissions the app was granted.
+	// A pointer: an empty list (no permissions at all) is not the same answer
+	// as no list.
+	Scope *string `json:"scope"`
 }
 
 // errorResponse is the OAuth error payload RingCentral returns on a rejection.
@@ -318,11 +351,43 @@ func (c *Client) TestConnection(ctx context.Context) error {
 	return err
 }
 
+// MissingPermissions logs in and returns the RequiredPermissions the app was
+// not granted, read from the token response — no extra call to RingCentral.
+// A login failure is returned as TestConnection would return it. An empty
+// scope means the app has no permissions, so every one is missing (seen live on
+// the first customer's app). Only a response with no scope field returns nil:
+// we cannot tell, so we do not warn.
+func (c *Client) MissingPermissions(ctx context.Context) ([]Permission, error) {
+	tok, err := c.tokenExchange(ctx)
+	if err != nil {
+		if IsAuthError(err) {
+			return nil, ErrInvalidCredentials
+		}
+		return nil, err
+	}
+	if tok.Scope == nil {
+		return nil, nil
+	}
+	granted := strings.Fields(*tok.Scope)
+	have := make(map[string]bool, len(granted))
+	for _, s := range granted {
+		have[s] = true
+	}
+	var missing []Permission
+	for _, p := range RequiredPermissions {
+		if !have[p.ID] {
+			missing = append(missing, p)
+		}
+	}
+	return missing, nil
+}
+
 // isAuthRejection separates "your credentials are wrong" from "the request or
 // the platform was wrong". RingCentral answers a revoked or expired JWT with
-// 400 invalid_grant, not 401, so status alone is not enough.
+// 400 invalid_grant, not 401, so status alone is not enough. A JWT deleted in
+// the developer console answers 404 "Personal API Key is not found" (DEV-3365).
 func isAuthRejection(status int, code string) bool {
-	if status == http.StatusUnauthorized || status == http.StatusForbidden {
+	if status == http.StatusUnauthorized || status == http.StatusForbidden || status == http.StatusNotFound {
 		return true
 	}
 	if status == http.StatusBadRequest {

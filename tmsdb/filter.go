@@ -5,6 +5,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/TMS360/backend-pkg/middleware"
 	"gorm.io/gorm"
 )
 
@@ -718,6 +719,20 @@ func snakeToCamel(s string) string {
 // PAGINATION
 // ============================================================================
 
+// pageCeiling is the biggest page Paginate serves: the list's own maxLimit,
+// lifted to the trusted bulk-read limit when the statement's context carries
+// one (DEV-3618, middleware.WithBulkReadLimit). It only ever raises the
+// ceiling — a list that already allows more keeps its own.
+func (fb *FilterBuilder) pageCeiling() int {
+	ceiling := fb.maxLimit
+	if fb.db != nil && fb.db.Statement != nil {
+		if bulk := middleware.BulkReadLimit(fb.db.Statement.Context); bulk > ceiling {
+			ceiling = bulk
+		}
+	}
+	return ceiling
+}
+
 // Paginate применяет пагинацию. Call it after Count(), the way FindWithCount
 // does — Count() deliberately ignores whatever page is set.
 //
@@ -730,8 +745,8 @@ func snakeToCamel(s string) string {
 func (fb *FilterBuilder) Paginate(p *PaginationInput) *FilterBuilder {
 	limit := p.GetLimit()
 
-	if limit > fb.maxLimit {
-		limit = fb.maxLimit
+	if ceiling := fb.pageCeiling(); limit > ceiling {
+		limit = ceiling
 		if p != nil {
 			p.Limit = int32(limit)
 		}

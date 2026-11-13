@@ -74,13 +74,27 @@ func permConstants(t *testing.T) map[string]string {
 	return out
 }
 
+// staffOnlyPermConstants are declared on purpose and NOT grantable: platform
+// staff (super_admin) pass a check on them, no customer role can be given them.
+// Each entry names the ticket that made it staff-only. Keep the list short.
+var staffOnlyPermConstants = map[string]string{
+	"PermMigrationRollback": "DEV-3488: migration is a dev-team job, never a customer power",
+	"PermMigrationUnlock":   "DEV-3488: unlock is staff-only; tasks, accounting and files still gate on it",
+	"PermMigrationSignoff":  "DEV-3488: migration is a dev-team job, never a customer power",
+}
+
 // AC1 (library half): no code exists on one side only — every declared constant
-// is a grantable catalog code.
+// is a grantable catalog code, except the staff-only ones above.
 func TestEveryPermConstantIsGrantable(t *testing.T) {
 	consts := permConstants(t)
 	require.NotEmpty(t, consts, "the parser must find the Perm* constants, or this guardrail is vacuous")
 
 	for name, code := range consts {
+		if _, staffOnly := staffOnlyPermConstants[name]; staffOnly {
+			assert.Falsef(t, enums.IsValidPermissionCode(code),
+				"%s is listed staff-only but is grantable — drop it from staffOnlyPermConstants", name)
+			continue
+		}
 		assert.Truef(t, enums.IsValidPermissionCode(code),
 			"%s = %q is declared but not grantable: add it to PermissionCatalog (an entity's Actions) "+
 				"or fix the constant — a code nobody can grant is a phantom", name, code)

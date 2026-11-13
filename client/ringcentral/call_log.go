@@ -180,12 +180,9 @@ type callLogPage struct {
 // The detailed view is requested because the simple one omits the recording
 // pointer and the extension ids, which are the two things attribution needs.
 //
-// ErrInvalidCredentials means the stored credential no longer authenticates —
-// and, for now, ALSO means "the app is missing the ReadCallLog scope", because
-// the shared get helper maps 401 and 403 to the same sentinel and widening that
-// would regress how DEV-1757's Settings screen classifies a failure. So a
-// tenant whose app lacks the scope is told to reconnect, which will not help.
-// See ErrInsufficientPermissions; splitting the two is its own ticket.
+// ErrInvalidCredentials means the stored credential no longer authenticates.
+// ErrInsufficientPermissions means the app lacks the ReadCallLog permission;
+// that error also matches ErrInvalidCredentials, so check it first (DEV-3365).
 func (c *Client) ListCallLog(ctx context.Context, q CallLogQuery) (CallLog, error) {
 	if q.From.IsZero() || q.To.IsZero() {
 		return CallLog{}, fmt.Errorf("ringcentral: call log window requires both From and To")

@@ -147,6 +147,10 @@ type UserClaims struct {
 	ActorType ActorType  `json:"actor_type"`
 	Roles     []string   `json:"roles"`
 
+	// ReadOnly marks a token that may only read: every mutation made with it is
+	// rejected by tmsgraphql.ReadOnlyGuard. Set on the RMS service identity.
+	ReadOnly bool `json:"ro,omitempty"`
+
 	// --- Guest/Share Fields ---
 	Resource   string    `json:"res,omitempty"`
 	ResourceID uuid.UUID `json:"res_id,omitempty"`

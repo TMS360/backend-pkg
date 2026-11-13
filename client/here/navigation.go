@@ -20,7 +20,9 @@ type TruckNavRequest struct {
 	Avoid         *AvoidOptions
 	Lang          string // default "en-US"
 	Currency      string // default "USD"
+	Units         string // instruction text units; default "imperial"
 	Alternatives  int
+	OriginCourse  *float64 // direction of travel at Origin, degrees from north; nil = unknown
 }
 
 // TruckNavMultiStopRequest is the multi-stop variant; all stops in one HERE call.
@@ -31,6 +33,7 @@ type TruckNavMultiStopRequest struct {
 	Avoid         *AvoidOptions
 	Lang          string
 	Currency      string
+	Units         string
 	Alternatives  int
 }
 
@@ -85,13 +88,13 @@ func NewNavigationService(client *Client) NavigationService {
 }
 
 // navReturnOptions is the fixed set of HERE `return=` fields needed for navigation.
+// "spans" and "notices" are not valid `return=` values: HERE answers 400
+// E605001 for the whole request. Section notices come back without asking.
 var navReturnOptions = []string{
 	"polyline",
 	"summary",
 	"actions",
 	"instructions",
-	"spans",
-	"notices",
 	"travelSummary",
 }
 
@@ -120,6 +123,8 @@ func (s *navigationService) BuildTruckRoute(ctx context.Context, req TruckNavReq
 		Avoid:         req.Avoid,
 		Alternatives:  req.Alternatives,
 		Lang:          lang,
+		Units:         navUnits(req.Units),
+		OriginCourse:  req.OriginCourse,
 	}
 
 	resp, err := s.client.GetRoute(ctx, rr)
@@ -159,6 +164,7 @@ func (s *navigationService) BuildTruckRouteMultiStop(ctx context.Context, req Tr
 		Avoid:         req.Avoid,
 		Lang:          req.Lang,
 		Currency:      req.Currency,
+		Units:         req.Units,
 		Alternatives:  req.Alternatives,
 	}
 
@@ -184,6 +190,7 @@ func (s *navigationService) BuildTruckRouteMultiStop(ctx context.Context, req Tr
 		Avoid:         rr.Avoid,
 		Alternatives:  rr.Alternatives,
 		Lang:          lang,
+		Units:         navUnits(rr.Units),
 	}
 
 	resp, err := s.client.GetRoute(ctx, low)
@@ -220,6 +227,15 @@ func (s *navigationService) RerouteFrom(
 		DepartureTime: departureTime,
 		Truck:         truck,
 	})
+}
+
+// navUnits picks the HERE `units=` for instruction text ("Go for 500 ft").
+// Lengths in the response stay in metres either way.
+func navUnits(u string) string {
+	if u == "" {
+		return "imperial"
+	}
+	return u
 }
 
 // cloneTruck returns a pointer to a copy when at least one field is set,

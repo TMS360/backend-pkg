@@ -155,6 +155,7 @@ func (m *GormTransactionManager) writeEvent(ctx context.Context, b *EventBuilder
 		Changes:        changes,
 		Reason:         b.reason,
 		ActorIP:        actorIP,
+		CorrelationID:  middleware.GetRequestID(ctx),
 		UserAgent:      userAgent,
 		Timestamp:      time.Now(),
 		RootEntityType: rootType,

@@ -62,6 +62,12 @@ const (
 	// truck). Missing or unknown reads as "single". Read it through
 	// settings.TruckOwnerPDFModeFor / the ForCompany variant (DEV-2914).
 	CompanySettingsGeneralKeyTruckOwnerPDFMode CompanySettingsGeneralKey = "truck_owner_pdf_mode"
+	// CompanySettingsGeneralKeyLockLoadNotes locks a load note 5 minutes after it
+	// is written: only its author may change or archive it in that window, and
+	// only a company-settings admin (with a reason) may archive it after.
+	// "true" / "false"; missing or unreadable reads as off. Read it through
+	// settings.LoadNotesLockOn (DEV-3675).
+	CompanySettingsGeneralKeyLockLoadNotes CompanySettingsGeneralKey = "lock_load_notes"
 )
 
 var AllCompanySettingsGeneralKey = []CompanySettingsGeneralKey{
@@ -79,13 +85,14 @@ var AllCompanySettingsGeneralKey = []CompanySettingsGeneralKey{
 	CompanySettingsGeneralKeyBrokerDefaultBillingType,
 	CompanySettingsGeneralKeyTollsGroupBy,
 	CompanySettingsGeneralKeyTruckOwnerPDFMode,
+	CompanySettingsGeneralKeyLockLoadNotes,
 }
 
 func (e CompanySettingsGeneralKey) IsValid() bool {
 	switch e {
 	case CompanySettingsGeneralKeyLogo, CompanySettingsGeneralKeyTimezone, CompanySettingsGeneralKeyHazmatEnabled, CompanySettingsGeneralKeyReeferEnabled, CompanySettingsGeneralKeyBrokerHasVerifyShipments, CompanySettingsGeneralKeyTripAssignmentBufferHours, CompanySettingsGeneralKeySamsaraAssetTrackingEnabled, CompanySettingsGeneralKeyUseHereInRisk, CompanySettingsGeneralKeyEmptyMilesWorkflow,
 		CompanySettingsGeneralKeyFirstDayOfWeek, CompanySettingsGeneralKeyFirstDayOfWeekEffectiveFrom, CompanySettingsGeneralKeyBrokerDefaultBillingType,
-		CompanySettingsGeneralKeyTollsGroupBy, CompanySettingsGeneralKeyTruckOwnerPDFMode:
+		CompanySettingsGeneralKeyTollsGroupBy, CompanySettingsGeneralKeyTruckOwnerPDFMode, CompanySettingsGeneralKeyLockLoadNotes:
 		return true
 	}
 	return false
@@ -159,6 +166,16 @@ const (
 	// the same reason as every other key: tms-auth's audit redaction iterates this
 	// list, so an unregistered key would write live tokens into an audit event.
 	CompanySettingsIntegrationKeySamsaraExtraOrgs CompanySettingsIntegrationKey = "samsara_extra_orgs"
+	// CompanySettingsIntegrationKeyGeminiAPIKey is the tenant's own Google Gemini
+	// key, used by the RC processor to read uploaded rate confirmations
+	// (DEV-3292). Per company on purpose: the old single platform key lived in an
+	// env var and leaked, and one shared key means one leak hits every tenant.
+	CompanySettingsIntegrationKeyGeminiAPIKey CompanySettingsIntegrationKey = "gemini_api_key"
+	// CompanySettingsIntegrationKeyFuelGeminiAPIKey is the tenant's own Google
+	// Gemini key for fuel plans: backend-fuel picks fuel stops with it, and
+	// without it falls back to the price pick (DEV-3865). Separate from
+	// gemini_api_key on purpose, so cost and quota of the two features stay apart.
+	CompanySettingsIntegrationKeyFuelGeminiAPIKey CompanySettingsIntegrationKey = "fuel_gemini_api_key"
 )
 
 var AllCompanySettingsIntegrationKey = []CompanySettingsIntegrationKey{
@@ -170,6 +187,8 @@ var AllCompanySettingsIntegrationKey = []CompanySettingsIntegrationKey{
 	CompanySettingsIntegrationKeyGoogleSheetsAPIKey,
 	CompanySettingsIntegrationKeyRingCentralCredentials,
 	CompanySettingsIntegrationKeySamsaraExtraOrgs,
+	CompanySettingsIntegrationKeyGeminiAPIKey,
+	CompanySettingsIntegrationKeyFuelGeminiAPIKey,
 }
 
 func (e CompanySettingsIntegrationKey) IsValid() bool {
@@ -181,7 +200,9 @@ func (e CompanySettingsIntegrationKey) IsValid() bool {
 		CompanySettingsIntegrationKeyGoogleMapsAPIKey,
 		CompanySettingsIntegrationKeyGoogleSheetsAPIKey,
 		CompanySettingsIntegrationKeyRingCentralCredentials,
-		CompanySettingsIntegrationKeySamsaraExtraOrgs:
+		CompanySettingsIntegrationKeySamsaraExtraOrgs,
+		CompanySettingsIntegrationKeyGeminiAPIKey,
+		CompanySettingsIntegrationKeyFuelGeminiAPIKey:
 		return true
 	}
 	return false

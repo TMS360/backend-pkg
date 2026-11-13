@@ -139,11 +139,11 @@ func TestParse_ColumnsAreAddressedByNameNotPosition(t *testing.T) {
 
 	wide := buildXLSX(t, []testSheet{{name: "Sheet1", rows: [][]any{
 		wideHeader(),
-		wideRow(postDay, exitTime, "777751461", "01606029503", "206", "82nd St.", 7.7),
+		wideRow(postDay, exitTime, "900001461", "09000029503", "206", "82nd St.", 7.7),
 	}}})
 	narrow := buildXLSX(t, []testSheet{{name: "Sheet1", rows: [][]any{
 		narrowHeader(),
-		narrowRow(postDay, exitTime, "777751461", "01606029503", "206", "82nd St.", 7.7),
+		narrowRow(postDay, exitTime, "900001461", "09000029503", "206", "82nd St.", 7.7),
 	}}})
 
 	wideRes, err := p.Parse("wide.xlsx", wide)
@@ -157,8 +157,8 @@ func TestParse_ColumnsAreAddressedByNameNotPosition(t *testing.T) {
 	require.Empty(t, narrowRes.Errors)
 
 	w, n := wideRes.Rows[0], narrowRes.Rows[0]
-	assert.Equal(t, "777751461", w.DeviceID)
-	assert.Equal(t, "01606029503", w.AgencyRef)
+	assert.Equal(t, "900001461", w.DeviceID)
+	assert.Equal(t, "09000029503", w.AgencyRef)
 	assert.Equal(t, "206", w.TruckRef)
 	assert.Equal(t, "82nd St.", w.ExitPlaza)
 	assert.Equal(t, "7.70", w.Amount.StringFixed(2))
@@ -181,13 +181,13 @@ func TestHash_SameCrossingInDifferentLayoutsHashesEqual(t *testing.T) {
 
 	wide, err := p.Parse("wide.xlsx", buildXLSX(t, []testSheet{{name: "Sheet1", rows: [][]any{
 		wideHeader(),
-		wideRow(postDay, exitTime, "777751461", "01606029503", "206", "82nd St.", 7.7),
+		wideRow(postDay, exitTime, "900001461", "09000029503", "206", "82nd St.", 7.7),
 	}}}))
 	require.NoError(t, err)
 
 	narrow, err := p.Parse("narrow.xlsx", buildXLSX(t, []testSheet{{name: "Sheet1", rows: [][]any{
 		narrowHeader(),
-		narrowRow(postDay, exitTime, "777751461", "01606029503", "206", "82nd St.", 7.7),
+		narrowRow(postDay, exitTime, "900001461", "09000029503", "206", "82nd St.", 7.7),
 	}}}))
 	require.NoError(t, err)
 
@@ -199,10 +199,10 @@ func TestHash_DifferentCrossingsDiffer(t *testing.T) {
 	p := newTestProvider()
 	res, err := p.Parse("f.xlsx", buildXLSX(t, []testSheet{{name: "Sheet1", rows: [][]any{
 		narrowHeader(),
-		narrowRow(postDay, exitTime, "777751461", "01606029503", "206", "82nd St.", 7.7),
-		narrowRow(postDay, exitTime.Add(time.Minute), "777751461", "01606029503", "206", "82nd St.", 7.7),
-		narrowRow(postDay, exitTime, "777751461", "01606029503", "206", "95th St.", 7.7),
-		narrowRow(postDay, exitTime, "777751461", "01606029503", "206", "82nd St.", 5.8),
+		narrowRow(postDay, exitTime, "900001461", "09000029503", "206", "82nd St.", 7.7),
+		narrowRow(postDay, exitTime.Add(time.Minute), "900001461", "09000029503", "206", "82nd St.", 7.7),
+		narrowRow(postDay, exitTime, "900001461", "09000029503", "206", "95th St.", 7.7),
+		narrowRow(postDay, exitTime, "900001461", "09000029503", "206", "82nd St.", 5.8),
 	}}}))
 	require.NoError(t, err)
 	require.Len(t, res.Rows, 4)
@@ -219,8 +219,8 @@ func TestHash_DifferentCrossingsDiffer(t *testing.T) {
 func TestHash_IdenticalRowsAreNumbered(t *testing.T) {
 	p := newTestProvider()
 	row := []any{
-		serial(postDay), "2024-08-31", "EZPass", "Transponder", "777751461",
-		"01606029503", "206", "ILTOLL",
+		serial(postDay), "2024-08-31", "EZPass", "Transponder", "900001461",
+		"09000029503", "206", "ILTOLL",
 		"", nil, nil,
 		"82nd St.", nil, nil, 7.7,
 	}
@@ -243,7 +243,7 @@ func TestParse_CoverSheetIsSkippedAndAccountExtracted(t *testing.T) {
 		}},
 		{name: "Data", rows: [][]any{
 			narrowHeader(),
-			narrowRow(postDay, exitTime, "777751461", "01606029503", "206", "82nd St.", 7.7),
+			narrowRow(postDay, exitTime, "900001461", "09000029503", "206", "82nd St.", 7.7),
 		}},
 	})
 
@@ -255,7 +255,7 @@ func TestParse_CoverSheetIsSkippedAndAccountExtracted(t *testing.T) {
 
 func TestParse_PlateRowHasNoDeviceAndNormalisedPlate(t *testing.T) {
 	p := newTestProvider()
-	row := narrowRow(postDay, exitTime, "", "IL-P1264873", "470", "SR836 EAST", 0.56000000000000005)
+	row := narrowRow(postDay, exitTime, "", "IL-QAPLATE3", "470", "SR836 EAST", 0.56000000000000005)
 	row[3] = "Plate"
 
 	res, err := p.Parse("f.xlsx", buildXLSX(t, []testSheet{{name: "Sheet1", rows: [][]any{
@@ -267,8 +267,8 @@ func TestParse_PlateRowHasNoDeviceAndNormalisedPlate(t *testing.T) {
 	got := res.Rows[0]
 	assert.Equal(t, ReadPlate, got.ReadType)
 	assert.Empty(t, got.DeviceID, "a plate read carries no transponder id")
-	assert.Equal(t, "IL-P1264873", got.AgencyRef, "the raw plate is kept verbatim for audit")
-	assert.Equal(t, "P1264873", got.Plate)
+	assert.Equal(t, "IL-QAPLATE3", got.AgencyRef, "the raw plate is kept verbatim for audit")
+	assert.Equal(t, "QAPLATE3", got.Plate)
 	// The spreadsheet stores $0.56 as 0.56000000000000005; parsing through a
 	// float and summing a few thousand of those drifts the week total.
 	assert.Equal(t, "0.56", got.Amount.StringFixed(2))
@@ -278,7 +278,7 @@ func TestParse_ZeroAmountRowIsKept(t *testing.T) {
 	p := newTestProvider()
 	res, err := p.Parse("f.xlsx", buildXLSX(t, []testSheet{{name: "Sheet1", rows: [][]any{
 		narrowHeader(),
-		narrowRow(postDay, exitTime, "777751461", "01606029503", "206", "SR836", 0),
+		narrowRow(postDay, exitTime, "900001461", "09000029503", "206", "SR836", 0),
 	}}}))
 	require.NoError(t, err)
 	require.Len(t, res.Rows, 1, "a $0.00 read is a real record and must be stored")
@@ -290,7 +290,7 @@ func TestParse_DatesAndTimes(t *testing.T) {
 	p := newTestProvider()
 	res, err := p.Parse("f.xlsx", buildXLSX(t, []testSheet{{name: "Sheet1", rows: [][]any{
 		narrowHeader(),
-		narrowRow(postDay, exitTime, "777751461", "01606029503", "206", "82nd St.", 7.7),
+		narrowRow(postDay, exitTime, "900001461", "09000029503", "206", "82nd St.", 7.7),
 	}}}))
 	require.NoError(t, err)
 	got := res.Rows[0]
@@ -306,14 +306,14 @@ func TestParse_DatesAndTimes(t *testing.T) {
 
 func TestParse_BadRowIsCollectedNotFatal(t *testing.T) {
 	p := newTestProvider()
-	bad := narrowRow(postDay, exitTime, "777751461", "01606029503", "206", "82nd St.", 7.7)
+	bad := narrowRow(postDay, exitTime, "900001461", "09000029503", "206", "82nd St.", 7.7)
 	bad[0] = "not a date"
 
 	res, err := p.Parse("f.xlsx", buildXLSX(t, []testSheet{{name: "Sheet1", rows: [][]any{
 		narrowHeader(),
-		narrowRow(postDay, exitTime, "777751461", "01606029503", "206", "82nd St.", 7.7),
+		narrowRow(postDay, exitTime, "900001461", "09000029503", "206", "82nd St.", 7.7),
 		bad,
-		narrowRow(postDay, exitTime, "777751462", "01606029504", "207", "95th St.", 5.8),
+		narrowRow(postDay, exitTime, "900001462", "09000029504", "207", "95th St.", 5.8),
 	}}}))
 	require.NoError(t, err, "one unreadable row must not cost the whole file")
 	assert.Len(t, res.Rows, 2)
@@ -329,9 +329,9 @@ func TestParse_BlankRowsAreSkippedNotReported(t *testing.T) {
 	// one exercises the skip path.
 	res, err := p.Parse("f.xlsx", buildXLSX(t, []testSheet{{name: "Sheet1", rows: [][]any{
 		narrowHeader(),
-		narrowRow(postDay, exitTime, "777751461", "01606029503", "206", "82nd St.", 7.7),
+		narrowRow(postDay, exitTime, "900001461", "09000029503", "206", "82nd St.", 7.7),
 		{"", "", ""},
-		narrowRow(postDay, exitTime, "777751462", "01606029504", "207", "95th St.", 5.8),
+		narrowRow(postDay, exitTime, "900001462", "09000029504", "207", "95th St.", 5.8),
 	}}}))
 	require.NoError(t, err)
 	assert.Len(t, res.Rows, 2)
@@ -343,7 +343,7 @@ func TestParse_CSVUsesTheSameParser(t *testing.T) {
 	p := newTestProvider()
 	csv := "Post Date,Invoice Date,Source,Read Type,PP Device ID,Toll Device ID or Plate," +
 		"Truck ID,Agency,Entry Plaza,Entry Date,Entry Time,Exit Plaza,Exit Date,Exit Time,Toll $\n" +
-		"2024-09-02,2024-08-31,EZPass,Transponder,777751461,01606029503,008,ILTOLL,,,,82nd St.,2024-08-31 17:23:46,,7.70\n"
+		"2024-09-02,2024-08-31,EZPass,Transponder,900001461,09000029503,008,ILTOLL,,,,82nd St.,2024-08-31 17:23:46,,7.70\n"
 
 	res, err := p.Parse("weekly.csv", []byte(csv))
 	require.NoError(t, err)
@@ -353,7 +353,7 @@ func TestParse_CSVUsesTheSameParser(t *testing.T) {
 	assert.Equal(t, "2024-09-02", got.PostDate.Format("2006-01-02"))
 	assert.Equal(t, "7.70", got.Amount.StringFixed(2))
 	assert.Equal(t, "8", got.TruckRef, "leading zeros are dropped from the unit number")
-	assert.Equal(t, "01606029503", got.AgencyRef, "leading zeros are significant in a device id")
+	assert.Equal(t, "09000029503", got.AgencyRef, "leading zeros are significant in a device id")
 }
 
 func TestParse_NoDataSheetIsAnError(t *testing.T) {
@@ -368,7 +368,7 @@ func TestParse_RawRowIsPreserved(t *testing.T) {
 	p := newTestProvider()
 	res, err := p.Parse("f.xlsx", buildXLSX(t, []testSheet{{name: "Sheet1", rows: [][]any{
 		wideHeader(),
-		wideRow(postDay, exitTime, "777751461", "01606029503", "206", "82nd St.", 7.7),
+		wideRow(postDay, exitTime, "900001461", "09000029503", "206", "82nd St.", 7.7),
 	}}}))
 	require.NoError(t, err)
 
@@ -385,10 +385,10 @@ func TestParse_RawRowIsPreserved(t *testing.T) {
 
 func TestNormalizePlate(t *testing.T) {
 	cases := map[string]string{
-		"IL-P1264873": "P1264873",
-		"IL P1264873": "P1264873",
-		"il-p1264873": "P1264873",
-		"P1264873":    "P1264873",
+		"IL-QAPLATE3": "QAPLATE3",
+		"IL QAPLATE3": "QAPLATE3",
+		"il-qaplate3": "QAPLATE3",
+		"QAPLATE3":    "QAPLATE3",
 		"ABC123":      "ABC123", // no separator: not a state prefix, keep it
 		// Three letters then a dash is a plate with punctuation, not a state
 		// prefix — a state code is always two letters, so nothing is stripped.
@@ -732,28 +732,28 @@ func TestNewPrePassSFTP_NonProdWithCatcherOverrideDialsTheCatcher(t *testing.T) 
 
 // The hash of a posted row is the dedup key of the whole pool history. It must
 // not move when the reader learns to accept unposted rows, or the next re-sent
-// file would land every old crossing a second time. The value was taken from
-// the reader before DEV-2489.
+// file would land every old crossing a second time. The value comes from the
+// formula of the reader before DEV-2489, recomputed for the anonymised ids.
 func TestHash_PostedRowHashIsUnchanged(t *testing.T) {
 	p := newTestProvider()
 	res, err := p.Parse("f.xlsx", buildXLSX(t, []testSheet{{name: "Sheet1", rows: [][]any{
 		narrowHeader(),
-		narrowRow(postDay, exitTime, "777751461", "01606029503", "206", "82nd St.", 7.7),
+		narrowRow(postDay, exitTime, "900001461", "09000029503", "206", "82nd St.", 7.7),
 	}}}))
 	require.NoError(t, err)
 	require.Len(t, res.Rows, 1)
-	assert.Equal(t, "6ad644d7edac7f57f1fc97c2631e84d49448315b29d85925468d83b3f2061c2c", res.Rows[0].Hash)
+	assert.Equal(t, "eceb46f3ae6dc351762db1f28ba09fa11156db4307600dcd70cf05dd4a84a031", res.Rows[0].Hash)
 }
 
 // A portal export by Exit date carries crossings PrePass has not posted yet.
 // They are rows, not errors; a row with neither date is still an error.
 func TestParse_RowWithoutPostDateIsKeptWhenItHasAnExit(t *testing.T) {
 	p := newTestProvider()
-	unposted := narrowRow(postDay, exitTime, "777751461", "01606029503", "206", "82nd St.", -7.7)
+	unposted := narrowRow(postDay, exitTime, "900001461", "09000029503", "206", "82nd St.", -7.7)
 	unposted[0] = nil
-	undated := narrowRow(postDay, exitTime, "777751462", "01606029504", "207", "95th St.", 5.8)
+	undated := narrowRow(postDay, exitTime, "900001462", "09000029504", "207", "95th St.", 5.8)
 	undated[0], undated[12], undated[13] = nil, nil, nil
-	yearOld := narrowRow(postDay, exitTime.AddDate(-1, 0, 0), "777751463", "01606029505", "208", "82nd St.", 3.1)
+	yearOld := narrowRow(postDay, exitTime.AddDate(-1, 0, 0), "900001463", "09000029505", "208", "82nd St.", 3.1)
 	yearOld[0] = ""
 
 	res, err := p.Parse("by-exit.xlsx", buildXLSX(t, []testSheet{{name: "Sheet1", rows: [][]any{
@@ -776,7 +776,7 @@ func TestParse_RowWithoutPostDateIsKeptWhenItHasAnExit(t *testing.T) {
 func TestParse_FileWithoutPostDateColumnIsAPrePassFile(t *testing.T) {
 	p := newTestProvider()
 	csv := "Read Type,PP Device ID,Toll Device ID or Plate,Truck ID,Agency,Exit Plaza,Exit Date,Toll $\n" +
-		"Transponder,777751461,01606029503,206,ILTOLL,82nd St.,2024-08-31 17:23:46,7.70\n"
+		"Transponder,900001461,09000029503,206,ILTOLL,82nd St.,2024-08-31 17:23:46,7.70\n"
 	res, err := p.Parse("by-exit.csv", []byte(csv))
 	require.NoError(t, err)
 	require.Len(t, res.Rows, 1)

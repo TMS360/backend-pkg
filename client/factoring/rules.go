@@ -52,6 +52,12 @@ func RulesFor(pt ProviderType) ProviderRules {
 			RequireAllFields:            true,
 			TriggerAndClear:             true,
 		}
+	case pt == ProviderTriumphSFTPV2:
+		// Held for a person after a crash instead of re-shipped automatically.
+		// Stays until Triumph confirms how the new folder treats files: if its
+		// poller takes the files and clears the folder, a re-ship would be a
+		// second submission.
+		return ProviderRules{TriggerAndClear: true}
 	default:
 		return ProviderRules{}
 	}

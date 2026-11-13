@@ -17,7 +17,7 @@ func NewProviderFromCredential(cred Credential) (Provider, error) {
 	if !cred.ProviderType.IsValid() {
 		return nil, fmt.Errorf("factoring: unknown provider_type %q", cred.ProviderType)
 	}
-	if cred.ProviderType == ProviderTriumphSFTPV2 {
+	if UsesPrivateKey(cred.ProviderType) {
 		if cred.Username == "" {
 			return nil, fmt.Errorf("factoring: %s credential missing username", cred.ProviderType)
 		}

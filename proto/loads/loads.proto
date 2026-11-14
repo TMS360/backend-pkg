@@ -619,6 +619,11 @@ message Trip {
   string status_raw = 19;
   string driver_crew_id = 20;
   string secondary_driver_id = 21;
+  // DEV-4323: the trip truck's own height (inches) and axle count, set only
+  // when the office entered them. backend-fuel builds the truck-legal HERE
+  // route from them; a missing value means the standard profile.
+  optional int32 truck_height_inches = 22;
+  optional int32 truck_axle_count = 23;
 }
 
 // Trip stop

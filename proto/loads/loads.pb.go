@@ -2548,6 +2548,11 @@ type Trip struct {
 	StatusRaw         string `protobuf:"bytes,19,opt,name=status_raw,json=statusRaw,proto3" json:"status_raw,omitempty"`
 	DriverCrewId      string `protobuf:"bytes,20,opt,name=driver_crew_id,json=driverCrewId,proto3" json:"driver_crew_id,omitempty"`
 	SecondaryDriverId string `protobuf:"bytes,21,opt,name=secondary_driver_id,json=secondaryDriverId,proto3" json:"secondary_driver_id,omitempty"`
+	// DEV-4323: the trip truck's own height (inches) and axle count, set only
+	// when the office entered them. backend-fuel builds the truck-legal HERE
+	// route from them; a missing value means the standard profile.
+	TruckHeightInches *int32 `protobuf:"varint,22,opt,name=truck_height_inches,json=truckHeightInches,proto3,oneof" json:"truck_height_inches,omitempty"`
+	TruckAxleCount    *int32 `protobuf:"varint,23,opt,name=truck_axle_count,json=truckAxleCount,proto3,oneof" json:"truck_axle_count,omitempty"`
 	unknownFields     protoimpl.UnknownFields
 	sizeCache         protoimpl.SizeCache
 }
@@ -2727,6 +2732,20 @@ func (x *Trip) GetSecondaryDriverId() string {
 		return x.SecondaryDriverId
 	}
 	return ""
+}
+
+func (x *Trip) GetTruckHeightInches() int32 {
+	if x != nil && x.TruckHeightInches != nil {
+		return *x.TruckHeightInches
+	}
+	return 0
+}
+
+func (x *Trip) GetTruckAxleCount() int32 {
+	if x != nil && x.TruckAxleCount != nil {
+		return *x.TruckAxleCount
+	}
+	return 0
 }
 
 // Trip stop
@@ -8713,7 +8732,7 @@ const file_loads_loads_proto_rawDesc = "" +
 	"\x0eappointment_to\x18\t \x01(\v2\x1a.google.protobuf.TimestampR\rappointmentTo\x12A\n" +
 	"\x0eactual_arrival\x18\n" +
 	" \x01(\v2\x1a.google.protobuf.TimestampR\ractualArrival\x12E\n" +
-	"\x10actual_departure\x18\v \x01(\v2\x1a.google.protobuf.TimestampR\x0factualDeparture\"\x90\a\n" +
+	"\x10actual_departure\x18\v \x01(\v2\x1a.google.protobuf.TimestampR\x0factualDeparture\"\xa1\b\n" +
 	"\x04Trip\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1f\n" +
 	"\vshipment_id\x18\x02 \x01(\tR\n" +
@@ -8744,8 +8763,12 @@ const file_loads_loads_proto_rawDesc = "" +
 	"\n" +
 	"status_raw\x18\x13 \x01(\tR\tstatusRaw\x12$\n" +
 	"\x0edriver_crew_id\x18\x14 \x01(\tR\fdriverCrewId\x12.\n" +
-	"\x13secondary_driver_id\x18\x15 \x01(\tR\x11secondaryDriverIdB\x1d\n" +
-	"\x1b_empty_miles_not_calculated\"\xb6\x04\n" +
+	"\x13secondary_driver_id\x18\x15 \x01(\tR\x11secondaryDriverId\x123\n" +
+	"\x13truck_height_inches\x18\x16 \x01(\x05H\x01R\x11truckHeightInches\x88\x01\x01\x12-\n" +
+	"\x10truck_axle_count\x18\x17 \x01(\x05H\x02R\x0etruckAxleCount\x88\x01\x01B\x1d\n" +
+	"\x1b_empty_miles_not_calculatedB\x16\n" +
+	"\x14_truck_height_inchesB\x13\n" +
+	"\x11_truck_axle_count\"\xb6\x04\n" +
 	"\bTripStop\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x17\n" +
 	"\atrip_id\x18\x02 \x01(\tR\x06tripId\x12\x15\n" +

@@ -580,6 +580,9 @@ type ReadTruckNowResponse struct {
 	// moved since the fuel value (a parked truck keeps an old fuel value).
 	FuelLatitude  *float64 `protobuf:"fixed64,9,opt,name=fuel_latitude,json=fuelLatitude,proto3,oneof" json:"fuel_latitude,omitempty"`
 	FuelLongitude *float64 `protobuf:"fixed64,10,opt,name=fuel_longitude,json=fuelLongitude,proto3,oneof" json:"fuel_longitude,omitempty"`
+	// FRESH / STALE of fuel_time by the same rule as stored readings (older than
+	// 3 x the company's location interval = STALE); NO_DATA without a fuel value.
+	FuelState     FuelLevelState `protobuf:"varint,11,opt,name=fuel_state,json=fuelState,proto3,enum=trackers.FuelLevelState" json:"fuel_state,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -682,6 +685,13 @@ func (x *ReadTruckNowResponse) GetFuelLongitude() float64 {
 		return *x.FuelLongitude
 	}
 	return 0
+}
+
+func (x *ReadTruckNowResponse) GetFuelState() FuelLevelState {
+	if x != nil {
+		return x.FuelState
+	}
+	return FuelLevelState_FUEL_LEVEL_STATE_UNSPECIFIED
 }
 
 type GetLatestFuelLevelsRequest struct {
@@ -2769,7 +2779,7 @@ const file_trackers_trackers_proto_rawDesc = "" +
 	"\x13ReadTruckNowRequest\x12\x1d\n" +
 	"\n" +
 	"company_id\x18\x01 \x01(\tR\tcompanyId\x12\x19\n" +
-	"\btruck_id\x18\x02 \x01(\tR\atruckId\"\xa4\x04\n" +
+	"\btruck_id\x18\x02 \x01(\tR\atruckId\"\xdd\x04\n" +
 	"\x14ReadTruckNowResponse\x12\x1c\n" +
 	"\tavailable\x18\x01 \x01(\bR\tavailable\x12\x1f\n" +
 	"\blatitude\x18\x02 \x01(\x01H\x00R\blatitude\x88\x01\x01\x12!\n" +
@@ -2782,7 +2792,9 @@ const file_trackers_trackers_proto_rawDesc = "" +
 	"\bdef_time\x18\b \x01(\v2\x1a.google.protobuf.TimestampR\adefTime\x12(\n" +
 	"\rfuel_latitude\x18\t \x01(\x01H\x04R\ffuelLatitude\x88\x01\x01\x12*\n" +
 	"\x0efuel_longitude\x18\n" +
-	" \x01(\x01H\x05R\rfuelLongitude\x88\x01\x01B\v\n" +
+	" \x01(\x01H\x05R\rfuelLongitude\x88\x01\x01\x127\n" +
+	"\n" +
+	"fuel_state\x18\v \x01(\x0e2\x18.trackers.FuelLevelStateR\tfuelStateB\v\n" +
 	"\t_latitudeB\f\n" +
 	"\n" +
 	"_longitudeB\x0f\n" +
@@ -3058,64 +3070,65 @@ var file_trackers_trackers_proto_depIdxs = []int32{
 	42, // 7: trackers.ReadTruckNowResponse.gps_time:type_name -> google.protobuf.Timestamp
 	42, // 8: trackers.ReadTruckNowResponse.fuel_time:type_name -> google.protobuf.Timestamp
 	42, // 9: trackers.ReadTruckNowResponse.def_time:type_name -> google.protobuf.Timestamp
-	1,  // 10: trackers.TruckFuelLevel.fuel_state:type_name -> trackers.FuelLevelState
-	1,  // 11: trackers.TruckFuelLevel.def_state:type_name -> trackers.FuelLevelState
-	42, // 12: trackers.TruckFuelLevel.measured_at:type_name -> google.protobuf.Timestamp
-	42, // 13: trackers.TruckFuelLevel.def_measured_at:type_name -> google.protobuf.Timestamp
-	10, // 14: trackers.GetLatestFuelLevelsResponse.levels:type_name -> trackers.TruckFuelLevel
-	15, // 15: trackers.GetVehicleRoutesRequest.queries:type_name -> trackers.GetVehicleRouteRequest
-	14, // 16: trackers.GetVehicleRoutesResponse.routes:type_name -> trackers.VehicleRoute
-	16, // 17: trackers.VehicleRoute.points:type_name -> trackers.RoutePoint
-	42, // 18: trackers.GetVehicleRouteRequest.from:type_name -> google.protobuf.Timestamp
-	42, // 19: trackers.GetVehicleRouteRequest.to:type_name -> google.protobuf.Timestamp
-	42, // 20: trackers.RoutePoint.gps_time:type_name -> google.protobuf.Timestamp
-	16, // 21: trackers.GetVehicleRouteResponse.points:type_name -> trackers.RoutePoint
-	18, // 22: trackers.SaveEstimatedRouteRequest.legs:type_name -> trackers.EstimatedRouteLeg
-	18, // 23: trackers.GetEstimatedRouteResponse.legs:type_name -> trackers.EstimatedRouteLeg
-	26, // 24: trackers.GetActiveTripStopsResponse.stops:type_name -> trackers.TripStopInfo
-	26, // 25: trackers.GetTripStopsResponse.stops:type_name -> trackers.TripStopInfo
-	42, // 26: trackers.StopETA.planned_arrival:type_name -> google.protobuf.Timestamp
-	30, // 27: trackers.ApplyRouteETAsRequest.etas:type_name -> trackers.StopETA
-	0,  // 28: trackers.OdometerReadingInput.type:type_name -> trackers.VehicleType
-	42, // 29: trackers.OdometerReadingInput.read_at:type_name -> google.protobuf.Timestamp
-	2,  // 30: trackers.OdometerReadingResult.status:type_name -> trackers.OdometerReadingResult.Status
-	35, // 31: trackers.RecordOdometerReadingsRequest.readings:type_name -> trackers.OdometerReadingInput
-	36, // 32: trackers.RecordOdometerReadingsResponse.results:type_name -> trackers.OdometerReadingResult
-	42, // 33: trackers.DriverDutyStatus.since:type_name -> google.protobuf.Timestamp
-	40, // 34: trackers.GetCurrentDutyStatusResponse.statuses:type_name -> trackers.DriverDutyStatus
-	3,  // 35: trackers.TrackersService.StreamVehicleVINs:input_type -> trackers.StreamVehicleVINsRequest
-	25, // 36: trackers.TrackersService.GetActiveTripStops:input_type -> trackers.GetActiveTripStopsRequest
-	28, // 37: trackers.TrackersService.GetTripStops:input_type -> trackers.GetTripStopsRequest
-	31, // 38: trackers.TrackersService.ApplyRouteETAs:input_type -> trackers.ApplyRouteETAsRequest
-	33, // 39: trackers.TrackersService.GetDeadheadOrigin:input_type -> trackers.GetDeadheadOriginRequest
-	37, // 40: trackers.TrackersService.RecordOdometerReadings:input_type -> trackers.RecordOdometerReadingsRequest
-	15, // 41: trackers.VehiclePositionService.GetVehicleRoute:input_type -> trackers.GetVehicleRouteRequest
-	12, // 42: trackers.VehiclePositionService.GetVehicleRoutes:input_type -> trackers.GetVehicleRoutesRequest
-	19, // 43: trackers.VehiclePositionService.SaveEstimatedRoute:input_type -> trackers.SaveEstimatedRouteRequest
-	21, // 44: trackers.VehiclePositionService.GetEstimatedRoute:input_type -> trackers.GetEstimatedRouteRequest
-	23, // 45: trackers.VehiclePositionService.LookupGeocodeCache:input_type -> trackers.LookupGeocodeCacheRequest
-	39, // 46: trackers.VehiclePositionService.GetCurrentDutyStatus:input_type -> trackers.GetCurrentDutyStatusRequest
-	9,  // 47: trackers.VehiclePositionService.GetLatestFuelLevels:input_type -> trackers.GetLatestFuelLevelsRequest
-	7,  // 48: trackers.VehiclePositionService.ReadTruckNow:input_type -> trackers.ReadTruckNowRequest
-	4,  // 49: trackers.TrackersService.StreamVehicleVINs:output_type -> trackers.VehicleVIN
-	27, // 50: trackers.TrackersService.GetActiveTripStops:output_type -> trackers.GetActiveTripStopsResponse
-	29, // 51: trackers.TrackersService.GetTripStops:output_type -> trackers.GetTripStopsResponse
-	32, // 52: trackers.TrackersService.ApplyRouteETAs:output_type -> trackers.ApplyRouteETAsResponse
-	34, // 53: trackers.TrackersService.GetDeadheadOrigin:output_type -> trackers.GetDeadheadOriginResponse
-	38, // 54: trackers.TrackersService.RecordOdometerReadings:output_type -> trackers.RecordOdometerReadingsResponse
-	17, // 55: trackers.VehiclePositionService.GetVehicleRoute:output_type -> trackers.GetVehicleRouteResponse
-	13, // 56: trackers.VehiclePositionService.GetVehicleRoutes:output_type -> trackers.GetVehicleRoutesResponse
-	20, // 57: trackers.VehiclePositionService.SaveEstimatedRoute:output_type -> trackers.SaveEstimatedRouteResponse
-	22, // 58: trackers.VehiclePositionService.GetEstimatedRoute:output_type -> trackers.GetEstimatedRouteResponse
-	24, // 59: trackers.VehiclePositionService.LookupGeocodeCache:output_type -> trackers.LookupGeocodeCacheResponse
-	41, // 60: trackers.VehiclePositionService.GetCurrentDutyStatus:output_type -> trackers.GetCurrentDutyStatusResponse
-	11, // 61: trackers.VehiclePositionService.GetLatestFuelLevels:output_type -> trackers.GetLatestFuelLevelsResponse
-	8,  // 62: trackers.VehiclePositionService.ReadTruckNow:output_type -> trackers.ReadTruckNowResponse
-	49, // [49:63] is the sub-list for method output_type
-	35, // [35:49] is the sub-list for method input_type
-	35, // [35:35] is the sub-list for extension type_name
-	35, // [35:35] is the sub-list for extension extendee
-	0,  // [0:35] is the sub-list for field type_name
+	1,  // 10: trackers.ReadTruckNowResponse.fuel_state:type_name -> trackers.FuelLevelState
+	1,  // 11: trackers.TruckFuelLevel.fuel_state:type_name -> trackers.FuelLevelState
+	1,  // 12: trackers.TruckFuelLevel.def_state:type_name -> trackers.FuelLevelState
+	42, // 13: trackers.TruckFuelLevel.measured_at:type_name -> google.protobuf.Timestamp
+	42, // 14: trackers.TruckFuelLevel.def_measured_at:type_name -> google.protobuf.Timestamp
+	10, // 15: trackers.GetLatestFuelLevelsResponse.levels:type_name -> trackers.TruckFuelLevel
+	15, // 16: trackers.GetVehicleRoutesRequest.queries:type_name -> trackers.GetVehicleRouteRequest
+	14, // 17: trackers.GetVehicleRoutesResponse.routes:type_name -> trackers.VehicleRoute
+	16, // 18: trackers.VehicleRoute.points:type_name -> trackers.RoutePoint
+	42, // 19: trackers.GetVehicleRouteRequest.from:type_name -> google.protobuf.Timestamp
+	42, // 20: trackers.GetVehicleRouteRequest.to:type_name -> google.protobuf.Timestamp
+	42, // 21: trackers.RoutePoint.gps_time:type_name -> google.protobuf.Timestamp
+	16, // 22: trackers.GetVehicleRouteResponse.points:type_name -> trackers.RoutePoint
+	18, // 23: trackers.SaveEstimatedRouteRequest.legs:type_name -> trackers.EstimatedRouteLeg
+	18, // 24: trackers.GetEstimatedRouteResponse.legs:type_name -> trackers.EstimatedRouteLeg
+	26, // 25: trackers.GetActiveTripStopsResponse.stops:type_name -> trackers.TripStopInfo
+	26, // 26: trackers.GetTripStopsResponse.stops:type_name -> trackers.TripStopInfo
+	42, // 27: trackers.StopETA.planned_arrival:type_name -> google.protobuf.Timestamp
+	30, // 28: trackers.ApplyRouteETAsRequest.etas:type_name -> trackers.StopETA
+	0,  // 29: trackers.OdometerReadingInput.type:type_name -> trackers.VehicleType
+	42, // 30: trackers.OdometerReadingInput.read_at:type_name -> google.protobuf.Timestamp
+	2,  // 31: trackers.OdometerReadingResult.status:type_name -> trackers.OdometerReadingResult.Status
+	35, // 32: trackers.RecordOdometerReadingsRequest.readings:type_name -> trackers.OdometerReadingInput
+	36, // 33: trackers.RecordOdometerReadingsResponse.results:type_name -> trackers.OdometerReadingResult
+	42, // 34: trackers.DriverDutyStatus.since:type_name -> google.protobuf.Timestamp
+	40, // 35: trackers.GetCurrentDutyStatusResponse.statuses:type_name -> trackers.DriverDutyStatus
+	3,  // 36: trackers.TrackersService.StreamVehicleVINs:input_type -> trackers.StreamVehicleVINsRequest
+	25, // 37: trackers.TrackersService.GetActiveTripStops:input_type -> trackers.GetActiveTripStopsRequest
+	28, // 38: trackers.TrackersService.GetTripStops:input_type -> trackers.GetTripStopsRequest
+	31, // 39: trackers.TrackersService.ApplyRouteETAs:input_type -> trackers.ApplyRouteETAsRequest
+	33, // 40: trackers.TrackersService.GetDeadheadOrigin:input_type -> trackers.GetDeadheadOriginRequest
+	37, // 41: trackers.TrackersService.RecordOdometerReadings:input_type -> trackers.RecordOdometerReadingsRequest
+	15, // 42: trackers.VehiclePositionService.GetVehicleRoute:input_type -> trackers.GetVehicleRouteRequest
+	12, // 43: trackers.VehiclePositionService.GetVehicleRoutes:input_type -> trackers.GetVehicleRoutesRequest
+	19, // 44: trackers.VehiclePositionService.SaveEstimatedRoute:input_type -> trackers.SaveEstimatedRouteRequest
+	21, // 45: trackers.VehiclePositionService.GetEstimatedRoute:input_type -> trackers.GetEstimatedRouteRequest
+	23, // 46: trackers.VehiclePositionService.LookupGeocodeCache:input_type -> trackers.LookupGeocodeCacheRequest
+	39, // 47: trackers.VehiclePositionService.GetCurrentDutyStatus:input_type -> trackers.GetCurrentDutyStatusRequest
+	9,  // 48: trackers.VehiclePositionService.GetLatestFuelLevels:input_type -> trackers.GetLatestFuelLevelsRequest
+	7,  // 49: trackers.VehiclePositionService.ReadTruckNow:input_type -> trackers.ReadTruckNowRequest
+	4,  // 50: trackers.TrackersService.StreamVehicleVINs:output_type -> trackers.VehicleVIN
+	27, // 51: trackers.TrackersService.GetActiveTripStops:output_type -> trackers.GetActiveTripStopsResponse
+	29, // 52: trackers.TrackersService.GetTripStops:output_type -> trackers.GetTripStopsResponse
+	32, // 53: trackers.TrackersService.ApplyRouteETAs:output_type -> trackers.ApplyRouteETAsResponse
+	34, // 54: trackers.TrackersService.GetDeadheadOrigin:output_type -> trackers.GetDeadheadOriginResponse
+	38, // 55: trackers.TrackersService.RecordOdometerReadings:output_type -> trackers.RecordOdometerReadingsResponse
+	17, // 56: trackers.VehiclePositionService.GetVehicleRoute:output_type -> trackers.GetVehicleRouteResponse
+	13, // 57: trackers.VehiclePositionService.GetVehicleRoutes:output_type -> trackers.GetVehicleRoutesResponse
+	20, // 58: trackers.VehiclePositionService.SaveEstimatedRoute:output_type -> trackers.SaveEstimatedRouteResponse
+	22, // 59: trackers.VehiclePositionService.GetEstimatedRoute:output_type -> trackers.GetEstimatedRouteResponse
+	24, // 60: trackers.VehiclePositionService.LookupGeocodeCache:output_type -> trackers.LookupGeocodeCacheResponse
+	41, // 61: trackers.VehiclePositionService.GetCurrentDutyStatus:output_type -> trackers.GetCurrentDutyStatusResponse
+	11, // 62: trackers.VehiclePositionService.GetLatestFuelLevels:output_type -> trackers.GetLatestFuelLevelsResponse
+	8,  // 63: trackers.VehiclePositionService.ReadTruckNow:output_type -> trackers.ReadTruckNowResponse
+	50, // [50:64] is the sub-list for method output_type
+	36, // [36:50] is the sub-list for method input_type
+	36, // [36:36] is the sub-list for extension type_name
+	36, // [36:36] is the sub-list for extension extendee
+	0,  // [0:36] is the sub-list for field type_name
 }
 
 func init() { file_trackers_trackers_proto_init() }

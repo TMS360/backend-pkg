@@ -140,6 +140,9 @@ message ReadTruckNowResponse {
   // moved since the fuel value (a parked truck keeps an old fuel value).
   optional double fuel_latitude = 9;
   optional double fuel_longitude = 10;
+  // FRESH / STALE of fuel_time by the same rule as stored readings (older than
+  // 3 x the company's location interval = STALE); NO_DATA without a fuel value.
+  FuelLevelState fuel_state = 11;
 }
 
 message GetLatestFuelLevelsRequest {

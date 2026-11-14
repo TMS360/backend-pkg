@@ -358,6 +358,7 @@ const (
 	VehiclePositionService_LookupGeocodeCache_FullMethodName   = "/trackers.VehiclePositionService/LookupGeocodeCache"
 	VehiclePositionService_GetCurrentDutyStatus_FullMethodName = "/trackers.VehiclePositionService/GetCurrentDutyStatus"
 	VehiclePositionService_GetLatestFuelLevels_FullMethodName  = "/trackers.VehiclePositionService/GetLatestFuelLevels"
+	VehiclePositionService_ReadTruckNow_FullMethodName         = "/trackers.VehiclePositionService/ReadTruckNow"
 )
 
 // VehiclePositionServiceClient is the client API for VehiclePositionService service.
@@ -388,6 +389,11 @@ type VehiclePositionServiceClient interface {
 	// A narrow answer on purpose: GetVehicleRoute fails on big windows
 	// ("message larger than max"). Scoped by company_id from the request.
 	GetLatestFuelLevels(ctx context.Context, in *GetLatestFuelLevelsRequest, opts ...grpc.CallOption) (*GetLatestFuelLevelsResponse, error)
+	// ReadTruckNow asks Samsara for one truck's position, fuel % and DEF % right
+	// now (one stats call, 5 s limit). Each value carries the time Samsara gave.
+	// available = false when the truck has no Samsara link or Samsara failed;
+	// the caller then uses the stored reading. Nothing is written (DEV-4313).
+	ReadTruckNow(ctx context.Context, in *ReadTruckNowRequest, opts ...grpc.CallOption) (*ReadTruckNowResponse, error)
 }
 
 type vehiclePositionServiceClient struct {
@@ -468,6 +474,16 @@ func (c *vehiclePositionServiceClient) GetLatestFuelLevels(ctx context.Context, 
 	return out, nil
 }
 
+func (c *vehiclePositionServiceClient) ReadTruckNow(ctx context.Context, in *ReadTruckNowRequest, opts ...grpc.CallOption) (*ReadTruckNowResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ReadTruckNowResponse)
+	err := c.cc.Invoke(ctx, VehiclePositionService_ReadTruckNow_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // VehiclePositionServiceServer is the server API for VehiclePositionService service.
 // All implementations must embed UnimplementedVehiclePositionServiceServer
 // for forward compatibility.
@@ -496,6 +512,11 @@ type VehiclePositionServiceServer interface {
 	// A narrow answer on purpose: GetVehicleRoute fails on big windows
 	// ("message larger than max"). Scoped by company_id from the request.
 	GetLatestFuelLevels(context.Context, *GetLatestFuelLevelsRequest) (*GetLatestFuelLevelsResponse, error)
+	// ReadTruckNow asks Samsara for one truck's position, fuel % and DEF % right
+	// now (one stats call, 5 s limit). Each value carries the time Samsara gave.
+	// available = false when the truck has no Samsara link or Samsara failed;
+	// the caller then uses the stored reading. Nothing is written (DEV-4313).
+	ReadTruckNow(context.Context, *ReadTruckNowRequest) (*ReadTruckNowResponse, error)
 	mustEmbedUnimplementedVehiclePositionServiceServer()
 }
 
@@ -526,6 +547,9 @@ func (UnimplementedVehiclePositionServiceServer) GetCurrentDutyStatus(context.Co
 }
 func (UnimplementedVehiclePositionServiceServer) GetLatestFuelLevels(context.Context, *GetLatestFuelLevelsRequest) (*GetLatestFuelLevelsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetLatestFuelLevels not implemented")
+}
+func (UnimplementedVehiclePositionServiceServer) ReadTruckNow(context.Context, *ReadTruckNowRequest) (*ReadTruckNowResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ReadTruckNow not implemented")
 }
 func (UnimplementedVehiclePositionServiceServer) mustEmbedUnimplementedVehiclePositionServiceServer() {
 }
@@ -675,6 +699,24 @@ func _VehiclePositionService_GetLatestFuelLevels_Handler(srv interface{}, ctx co
 	return interceptor(ctx, in, info, handler)
 }
 
+func _VehiclePositionService_ReadTruckNow_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ReadTruckNowRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(VehiclePositionServiceServer).ReadTruckNow(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: VehiclePositionService_ReadTruckNow_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(VehiclePositionServiceServer).ReadTruckNow(ctx, req.(*ReadTruckNowRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // VehiclePositionService_ServiceDesc is the grpc.ServiceDesc for VehiclePositionService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -709,6 +751,10 @@ var VehiclePositionService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetLatestFuelLevels",
 			Handler:    _VehiclePositionService_GetLatestFuelLevels_Handler,
+		},
+		{
+			MethodName: "ReadTruckNow",
+			Handler:    _VehiclePositionService_ReadTruckNow_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

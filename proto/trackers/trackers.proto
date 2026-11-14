@@ -114,6 +114,32 @@ service VehiclePositionService {
   // A narrow answer on purpose: GetVehicleRoute fails on big windows
   // ("message larger than max"). Scoped by company_id from the request.
   rpc GetLatestFuelLevels(GetLatestFuelLevelsRequest) returns (GetLatestFuelLevelsResponse);
+
+  // ReadTruckNow asks Samsara for one truck's position, fuel % and DEF % right
+  // now (one stats call, 5 s limit). Each value carries the time Samsara gave.
+  // available = false when the truck has no Samsara link or Samsara failed;
+  // the caller then uses the stored reading. Nothing is written (DEV-4313).
+  rpc ReadTruckNow(ReadTruckNowRequest) returns (ReadTruckNowResponse);
+}
+
+message ReadTruckNowRequest {
+  string company_id = 1;
+  string truck_id = 2;
+}
+
+message ReadTruckNowResponse {
+  bool available = 1;
+  optional double latitude = 2;
+  optional double longitude = 3;
+  google.protobuf.Timestamp gps_time = 4;
+  optional double fuel_percent = 5;
+  google.protobuf.Timestamp fuel_time = 6;
+  optional double def_percent = 7;
+  google.protobuf.Timestamp def_time = 8;
+  // Stored position nearest fuel_time, so a caller can tell whether the truck
+  // moved since the fuel value (a parked truck keeps an old fuel value).
+  optional double fuel_latitude = 9;
+  optional double fuel_longitude = 10;
 }
 
 message GetLatestFuelLevelsRequest {

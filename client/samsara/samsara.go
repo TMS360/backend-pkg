@@ -979,7 +979,16 @@ func (c *Client) GetAllVehiclesStats(ctx context.Context) ([]VehicleLocation, er
 // GetAllVehiclesStatsWithTypes — то же самое, но состав types задаёт
 // вызывающий: тенант платит только за те величины, которые включил.
 func (c *Client) GetAllVehiclesStatsWithTypes(ctx context.Context, types []string) ([]VehicleLocation, error) {
+	return c.GetVehiclesStatsWithTypes(ctx, types, nil)
+}
+
+// GetVehiclesStatsWithTypes — то же самое для выбранных машин (Samsara ID);
+// пустой vehicleIDs — весь парк. Одна машина = один запрос (DEV-4313).
+func (c *Client) GetVehiclesStatsWithTypes(ctx context.Context, types []string, vehicleIDs []string) ([]VehicleLocation, error) {
 	path := "/fleet/vehicles/stats?types=" + statTypesParam(types)
+	if len(vehicleIDs) > 0 {
+		path += "&vehicleIds=" + strings.Join(vehicleIDs, ",")
+	}
 
 	resp, err := c.doRequest(ctx, http.MethodGet, path, nil)
 	if err != nil {

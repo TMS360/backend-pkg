@@ -463,6 +463,11 @@ message GetRecentBrokerIDsResponse {
 // Request to get a shipment by ID
 message GetShipmentRequest {
   string shipment_id = 1;
+  // DEV-4422: the caller's company. When set, backend-load answers only for a
+  // shipment of this company (another company's id reads as not found).
+  // backend-load's gRPC server runs without an interceptor, so the company is
+  // passed explicitly. Empty keeps the old, unscoped answer.
+  string company_id = 2;
 }
 
 // DEV-1859. company_id is the CARRIER's tenant — the copy lives on their board,
@@ -505,6 +510,10 @@ message ListShipmentsResponse {
 // Request to get a trip by ID
 message GetTripRequest {
   string trip_id = 1;
+  // DEV-4422: the caller's company. When set, backend-load answers only for a
+  // trip whose load belongs to this company (another company's trip reads as
+  // not found). Empty keeps the old, unscoped answer.
+  string company_id = 2;
 }
 
 // Trip response

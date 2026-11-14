@@ -624,6 +624,12 @@ message Trip {
   // route from them; a missing value means the standard profile.
   optional int32 truck_height_inches = 22;
   optional int32 truck_axle_count = 23;
+  // DEV-4315: the trip truck's own fuel numbers, set only when the office
+  // entered them; backend-fuel uses them over the company fuel settings. Tank
+  // is usable gallons (what the truck takes from empty on the gauge).
+  optional double truck_fuel_tank_gallons = 24;
+  optional double truck_fuel_mpg = 25;
+  optional double truck_fuel_floor_gallons = 26;
 }
 
 // Trip stop

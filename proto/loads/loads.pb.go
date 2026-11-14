@@ -2553,8 +2553,14 @@ type Trip struct {
 	// route from them; a missing value means the standard profile.
 	TruckHeightInches *int32 `protobuf:"varint,22,opt,name=truck_height_inches,json=truckHeightInches,proto3,oneof" json:"truck_height_inches,omitempty"`
 	TruckAxleCount    *int32 `protobuf:"varint,23,opt,name=truck_axle_count,json=truckAxleCount,proto3,oneof" json:"truck_axle_count,omitempty"`
-	unknownFields     protoimpl.UnknownFields
-	sizeCache         protoimpl.SizeCache
+	// DEV-4315: the trip truck's own fuel numbers, set only when the office
+	// entered them; backend-fuel uses them over the company fuel settings. Tank
+	// is usable gallons (what the truck takes from empty on the gauge).
+	TruckFuelTankGallons  *float64 `protobuf:"fixed64,24,opt,name=truck_fuel_tank_gallons,json=truckFuelTankGallons,proto3,oneof" json:"truck_fuel_tank_gallons,omitempty"`
+	TruckFuelMpg          *float64 `protobuf:"fixed64,25,opt,name=truck_fuel_mpg,json=truckFuelMpg,proto3,oneof" json:"truck_fuel_mpg,omitempty"`
+	TruckFuelFloorGallons *float64 `protobuf:"fixed64,26,opt,name=truck_fuel_floor_gallons,json=truckFuelFloorGallons,proto3,oneof" json:"truck_fuel_floor_gallons,omitempty"`
+	unknownFields         protoimpl.UnknownFields
+	sizeCache             protoimpl.SizeCache
 }
 
 func (x *Trip) Reset() {
@@ -2744,6 +2750,27 @@ func (x *Trip) GetTruckHeightInches() int32 {
 func (x *Trip) GetTruckAxleCount() int32 {
 	if x != nil && x.TruckAxleCount != nil {
 		return *x.TruckAxleCount
+	}
+	return 0
+}
+
+func (x *Trip) GetTruckFuelTankGallons() float64 {
+	if x != nil && x.TruckFuelTankGallons != nil {
+		return *x.TruckFuelTankGallons
+	}
+	return 0
+}
+
+func (x *Trip) GetTruckFuelMpg() float64 {
+	if x != nil && x.TruckFuelMpg != nil {
+		return *x.TruckFuelMpg
+	}
+	return 0
+}
+
+func (x *Trip) GetTruckFuelFloorGallons() float64 {
+	if x != nil && x.TruckFuelFloorGallons != nil {
+		return *x.TruckFuelFloorGallons
 	}
 	return 0
 }
@@ -8732,7 +8759,8 @@ const file_loads_loads_proto_rawDesc = "" +
 	"\x0eappointment_to\x18\t \x01(\v2\x1a.google.protobuf.TimestampR\rappointmentTo\x12A\n" +
 	"\x0eactual_arrival\x18\n" +
 	" \x01(\v2\x1a.google.protobuf.TimestampR\ractualArrival\x12E\n" +
-	"\x10actual_departure\x18\v \x01(\v2\x1a.google.protobuf.TimestampR\x0factualDeparture\"\xa1\b\n" +
+	"\x10actual_departure\x18\v \x01(\v2\x1a.google.protobuf.TimestampR\x0factualDeparture\"\x92\n" +
+	"\n" +
 	"\x04Trip\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1f\n" +
 	"\vshipment_id\x18\x02 \x01(\tR\n" +
@@ -8765,10 +8793,16 @@ const file_loads_loads_proto_rawDesc = "" +
 	"\x0edriver_crew_id\x18\x14 \x01(\tR\fdriverCrewId\x12.\n" +
 	"\x13secondary_driver_id\x18\x15 \x01(\tR\x11secondaryDriverId\x123\n" +
 	"\x13truck_height_inches\x18\x16 \x01(\x05H\x01R\x11truckHeightInches\x88\x01\x01\x12-\n" +
-	"\x10truck_axle_count\x18\x17 \x01(\x05H\x02R\x0etruckAxleCount\x88\x01\x01B\x1d\n" +
+	"\x10truck_axle_count\x18\x17 \x01(\x05H\x02R\x0etruckAxleCount\x88\x01\x01\x12:\n" +
+	"\x17truck_fuel_tank_gallons\x18\x18 \x01(\x01H\x03R\x14truckFuelTankGallons\x88\x01\x01\x12)\n" +
+	"\x0etruck_fuel_mpg\x18\x19 \x01(\x01H\x04R\ftruckFuelMpg\x88\x01\x01\x12<\n" +
+	"\x18truck_fuel_floor_gallons\x18\x1a \x01(\x01H\x05R\x15truckFuelFloorGallons\x88\x01\x01B\x1d\n" +
 	"\x1b_empty_miles_not_calculatedB\x16\n" +
 	"\x14_truck_height_inchesB\x13\n" +
-	"\x11_truck_axle_count\"\xb6\x04\n" +
+	"\x11_truck_axle_countB\x1a\n" +
+	"\x18_truck_fuel_tank_gallonsB\x11\n" +
+	"\x0f_truck_fuel_mpgB\x1b\n" +
+	"\x19_truck_fuel_floor_gallons\"\xb6\x04\n" +
 	"\bTripStop\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x17\n" +
 	"\atrip_id\x18\x02 \x01(\tR\x06tripId\x12\x15\n" +

@@ -1414,8 +1414,13 @@ func (x *GetRecentBrokerIDsResponse) GetBrokerIds() []string {
 
 // Request to get a shipment by ID
 type GetShipmentRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	ShipmentId    string                 `protobuf:"bytes,1,opt,name=shipment_id,json=shipmentId,proto3" json:"shipment_id,omitempty"`
+	state      protoimpl.MessageState `protogen:"open.v1"`
+	ShipmentId string                 `protobuf:"bytes,1,opt,name=shipment_id,json=shipmentId,proto3" json:"shipment_id,omitempty"`
+	// DEV-4422: the caller's company. When set, backend-load answers only for a
+	// shipment of this company (another company's id reads as not found).
+	// backend-load's gRPC server runs without an interceptor, so the company is
+	// passed explicitly. Empty keeps the old, unscoped answer.
+	CompanyId     string `protobuf:"bytes,2,opt,name=company_id,json=companyId,proto3" json:"company_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1453,6 +1458,13 @@ func (*GetShipmentRequest) Descriptor() ([]byte, []int) {
 func (x *GetShipmentRequest) GetShipmentId() string {
 	if x != nil {
 		return x.ShipmentId
+	}
+	return ""
+}
+
+func (x *GetShipmentRequest) GetCompanyId() string {
+	if x != nil {
+		return x.CompanyId
 	}
 	return ""
 }
@@ -1759,8 +1771,12 @@ func (x *ListShipmentsResponse) GetTotal() int32 {
 
 // Request to get a trip by ID
 type GetTripRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	TripId        string                 `protobuf:"bytes,1,opt,name=trip_id,json=tripId,proto3" json:"trip_id,omitempty"`
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	TripId string                 `protobuf:"bytes,1,opt,name=trip_id,json=tripId,proto3" json:"trip_id,omitempty"`
+	// DEV-4422: the caller's company. When set, backend-load answers only for a
+	// trip whose load belongs to this company (another company's trip reads as
+	// not found). Empty keeps the old, unscoped answer.
+	CompanyId     string `protobuf:"bytes,2,opt,name=company_id,json=companyId,proto3" json:"company_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1798,6 +1814,13 @@ func (*GetTripRequest) Descriptor() ([]byte, []int) {
 func (x *GetTripRequest) GetTripId() string {
 	if x != nil {
 		return x.TripId
+	}
+	return ""
+}
+
+func (x *GetTripRequest) GetCompanyId() string {
+	if x != nil {
+		return x.CompanyId
 	}
 	return ""
 }
@@ -8638,10 +8661,12 @@ const file_loads_loads_proto_rawDesc = "" +
 	"\x05limit\x18\x14 \x01(\x05R\x05limit\";\n" +
 	"\x1aGetRecentBrokerIDsResponse\x12\x1d\n" +
 	"\n" +
-	"broker_ids\x18\x01 \x03(\tR\tbrokerIds\"5\n" +
+	"broker_ids\x18\x01 \x03(\tR\tbrokerIds\"T\n" +
 	"\x12GetShipmentRequest\x12\x1f\n" +
 	"\vshipment_id\x18\x01 \x01(\tR\n" +
-	"shipmentId\"h\n" +
+	"shipmentId\x12\x1d\n" +
+	"\n" +
+	"company_id\x18\x02 \x01(\tR\tcompanyId\"h\n" +
 	"\x1fGetBrokerCopyCancelStateRequest\x12\x1d\n" +
 	"\n" +
 	"company_id\x18\x01 \x01(\tR\tcompanyId\x12&\n" +
@@ -8662,9 +8687,11 @@ const file_loads_loads_proto_rawDesc = "" +
 	"\ato_date\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\x06toDate\"\\\n" +
 	"\x15ListShipmentsResponse\x12-\n" +
 	"\tshipments\x18\x01 \x03(\v2\x0f.loads.ShipmentR\tshipments\x12\x14\n" +
-	"\x05total\x18\x02 \x01(\x05R\x05total\")\n" +
+	"\x05total\x18\x02 \x01(\x05R\x05total\"H\n" +
 	"\x0eGetTripRequest\x12\x17\n" +
-	"\atrip_id\x18\x01 \x01(\tR\x06tripId\"/\n" +
+	"\atrip_id\x18\x01 \x01(\tR\x06tripId\x12\x1d\n" +
+	"\n" +
+	"company_id\x18\x02 \x01(\tR\tcompanyId\"/\n" +
 	"\fTripResponse\x12\x1f\n" +
 	"\x04trip\x18\x01 \x01(\v2\v.loads.TripR\x04trip\"\xb0\x02\n" +
 	"\x10ListTripsRequest\x12\x14\n" +

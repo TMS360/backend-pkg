@@ -102,8 +102,34 @@ type RouteSection struct {
 	Notices  []RouteNotice `json:"notices,omitempty"`
 	Language string        `json:"language,omitempty"`
 
-	// Tolls is filled only with `return=tolls`; the route facts need presence alone.
-	Tolls []json.RawMessage `json:"tolls,omitempty"`
+	// Tolls is filled only with `return=tolls`.
+	Tolls       []RouteToll       `json:"tolls,omitempty"`
+	TollSystems []RouteTollSystem `json:"tollSystems,omitempty"`
+}
+
+// RouteToll is one toll HERE expects on a section; each fare is one way to pay it.
+type RouteToll struct {
+	CountryCode string     `json:"countryCode,omitempty"`
+	TollSystem  string     `json:"tollSystem,omitempty"`
+	Fares       []TollFare `json:"fares,omitempty"`
+}
+
+// TollFare is a price option of a toll; ConvertedPrice is in the request's currency.
+type TollFare struct {
+	Name           string     `json:"name,omitempty"`
+	Price          *TollPrice `json:"price,omitempty"`
+	ConvertedPrice *TollPrice `json:"convertedPrice,omitempty"`
+}
+
+// TollPrice is an amount in a currency.
+type TollPrice struct {
+	Value    float64 `json:"value"`
+	Currency string  `json:"currency,omitempty"`
+}
+
+// RouteTollSystem names a toll operator of a section.
+type RouteTollSystem struct {
+	Name string `json:"name"`
 }
 
 type LocationInfo struct {

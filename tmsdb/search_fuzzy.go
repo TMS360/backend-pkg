@@ -1,6 +1,15 @@
 package tmsdb
 
-import "gorm.io/gorm"
+import (
+	"strings"
+
+	"gorm.io/gorm"
+)
+
+// likeEscaper escapes the LIKE wildcards and the escape character itself with
+// backslash, PostgreSQL's default LIKE escape, so typed "%", "_" and "\" match
+// only themselves in the substring half of SearchFuzzy (DEV-4320).
+var likeEscaper = strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`)
 
 // SearchFuzzy matches term against every column with a substring test OR a
 // trigram word-similarity test:
@@ -24,6 +33,10 @@ import "gorm.io/gorm"
 // default 0.6 — the search stays correct and indexed, just less forgiving of
 // typos.
 //
+// The term is escaped for the ILIKE half, so "%", "_" and "\" match only
+// themselves. The `%>` half takes the raw term: trigram matching has no
+// wildcards.
+//
 // term is a pointer to mirror Search: nil or empty is a no-op, so a caller can
 // pass an optional filter field straight through. Columns may be expressions
 // (e.g. "shipment_number::TEXT"), but only a plain column or an indexed
@@ -33,7 +46,7 @@ func (fb *FilterBuilder) SearchFuzzy(term *string, columns ...string) *FilterBui
 		return fb
 	}
 
-	pattern := "%" + *term + "%"
+	pattern := "%" + likeEscaper.Replace(*term) + "%"
 	query := fb.db.Session(&gorm.Session{NewDB: true})
 
 	for i, col := range columns {

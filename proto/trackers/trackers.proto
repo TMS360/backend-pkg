@@ -97,6 +97,12 @@ service VehiclePositionService {
   // GetEstimatedRoute retrieves estimated route polylines for a trip
   rpc GetEstimatedRoute(GetEstimatedRouteRequest) returns (GetEstimatedRouteResponse);
 
+  // GetEstimatedRoutes returns the stored routes of many trips in one call
+  // (DEV-4042: a trip list reads its routes at once, not one call per trip).
+  // A trip with no stored route is absent from the answer. With
+  // without_polyline the legs carry no polyline and no coordinates.
+  rpc GetEstimatedRoutes(GetEstimatedRoutesRequest) returns (GetEstimatedRoutesResponse);
+
   // LookupGeocodeCache returns a previously cached HERE geocoding result so the
   // caller can avoid a paid HERE API call. The result is the same JSON payload
   // the caller would have built from the live HERE response.
@@ -263,6 +269,15 @@ message GetEstimatedRouteResponse {
   repeated EstimatedRouteLeg legs = 2;
   int32 total_distance_meters = 3;
   int32 total_duration_seconds = 4;
+}
+
+message GetEstimatedRoutesRequest {
+  repeated string trip_ids = 1;
+  bool without_polyline = 2; // leave out polyline and coordinates of every leg
+}
+
+message GetEstimatedRoutesResponse {
+  repeated GetEstimatedRouteResponse routes = 1; // one per trip that has a stored route
 }
 
 // Geocode cache messages — a cross-company cache of HERE geocoding results

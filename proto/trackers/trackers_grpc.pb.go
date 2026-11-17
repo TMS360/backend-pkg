@@ -355,6 +355,7 @@ const (
 	VehiclePositionService_GetVehicleRoutes_FullMethodName     = "/trackers.VehiclePositionService/GetVehicleRoutes"
 	VehiclePositionService_SaveEstimatedRoute_FullMethodName   = "/trackers.VehiclePositionService/SaveEstimatedRoute"
 	VehiclePositionService_GetEstimatedRoute_FullMethodName    = "/trackers.VehiclePositionService/GetEstimatedRoute"
+	VehiclePositionService_GetEstimatedRoutes_FullMethodName   = "/trackers.VehiclePositionService/GetEstimatedRoutes"
 	VehiclePositionService_LookupGeocodeCache_FullMethodName   = "/trackers.VehiclePositionService/LookupGeocodeCache"
 	VehiclePositionService_GetCurrentDutyStatus_FullMethodName = "/trackers.VehiclePositionService/GetCurrentDutyStatus"
 	VehiclePositionService_GetLatestFuelLevels_FullMethodName  = "/trackers.VehiclePositionService/GetLatestFuelLevels"
@@ -374,6 +375,11 @@ type VehiclePositionServiceClient interface {
 	SaveEstimatedRoute(ctx context.Context, in *SaveEstimatedRouteRequest, opts ...grpc.CallOption) (*SaveEstimatedRouteResponse, error)
 	// GetEstimatedRoute retrieves estimated route polylines for a trip
 	GetEstimatedRoute(ctx context.Context, in *GetEstimatedRouteRequest, opts ...grpc.CallOption) (*GetEstimatedRouteResponse, error)
+	// GetEstimatedRoutes returns the stored routes of many trips in one call
+	// (DEV-4042: a trip list reads its routes at once, not one call per trip).
+	// A trip with no stored route is absent from the answer. With
+	// without_polyline the legs carry no polyline and no coordinates.
+	GetEstimatedRoutes(ctx context.Context, in *GetEstimatedRoutesRequest, opts ...grpc.CallOption) (*GetEstimatedRoutesResponse, error)
 	// LookupGeocodeCache returns a previously cached HERE geocoding result so the
 	// caller can avoid a paid HERE API call. The result is the same JSON payload
 	// the caller would have built from the live HERE response.
@@ -444,6 +450,16 @@ func (c *vehiclePositionServiceClient) GetEstimatedRoute(ctx context.Context, in
 	return out, nil
 }
 
+func (c *vehiclePositionServiceClient) GetEstimatedRoutes(ctx context.Context, in *GetEstimatedRoutesRequest, opts ...grpc.CallOption) (*GetEstimatedRoutesResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetEstimatedRoutesResponse)
+	err := c.cc.Invoke(ctx, VehiclePositionService_GetEstimatedRoutes_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *vehiclePositionServiceClient) LookupGeocodeCache(ctx context.Context, in *LookupGeocodeCacheRequest, opts ...grpc.CallOption) (*LookupGeocodeCacheResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(LookupGeocodeCacheResponse)
@@ -497,6 +513,11 @@ type VehiclePositionServiceServer interface {
 	SaveEstimatedRoute(context.Context, *SaveEstimatedRouteRequest) (*SaveEstimatedRouteResponse, error)
 	// GetEstimatedRoute retrieves estimated route polylines for a trip
 	GetEstimatedRoute(context.Context, *GetEstimatedRouteRequest) (*GetEstimatedRouteResponse, error)
+	// GetEstimatedRoutes returns the stored routes of many trips in one call
+	// (DEV-4042: a trip list reads its routes at once, not one call per trip).
+	// A trip with no stored route is absent from the answer. With
+	// without_polyline the legs carry no polyline and no coordinates.
+	GetEstimatedRoutes(context.Context, *GetEstimatedRoutesRequest) (*GetEstimatedRoutesResponse, error)
 	// LookupGeocodeCache returns a previously cached HERE geocoding result so the
 	// caller can avoid a paid HERE API call. The result is the same JSON payload
 	// the caller would have built from the live HERE response.
@@ -538,6 +559,9 @@ func (UnimplementedVehiclePositionServiceServer) SaveEstimatedRoute(context.Cont
 }
 func (UnimplementedVehiclePositionServiceServer) GetEstimatedRoute(context.Context, *GetEstimatedRouteRequest) (*GetEstimatedRouteResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetEstimatedRoute not implemented")
+}
+func (UnimplementedVehiclePositionServiceServer) GetEstimatedRoutes(context.Context, *GetEstimatedRoutesRequest) (*GetEstimatedRoutesResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetEstimatedRoutes not implemented")
 }
 func (UnimplementedVehiclePositionServiceServer) LookupGeocodeCache(context.Context, *LookupGeocodeCacheRequest) (*LookupGeocodeCacheResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method LookupGeocodeCache not implemented")
@@ -645,6 +669,24 @@ func _VehiclePositionService_GetEstimatedRoute_Handler(srv interface{}, ctx cont
 	return interceptor(ctx, in, info, handler)
 }
 
+func _VehiclePositionService_GetEstimatedRoutes_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetEstimatedRoutesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(VehiclePositionServiceServer).GetEstimatedRoutes(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: VehiclePositionService_GetEstimatedRoutes_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(VehiclePositionServiceServer).GetEstimatedRoutes(ctx, req.(*GetEstimatedRoutesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _VehiclePositionService_LookupGeocodeCache_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(LookupGeocodeCacheRequest)
 	if err := dec(in); err != nil {
@@ -739,6 +781,10 @@ var VehiclePositionService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetEstimatedRoute",
 			Handler:    _VehiclePositionService_GetEstimatedRoute_Handler,
+		},
+		{
+			MethodName: "GetEstimatedRoutes",
+			Handler:    _VehiclePositionService_GetEstimatedRoutes_Handler,
 		},
 		{
 			MethodName: "LookupGeocodeCache",

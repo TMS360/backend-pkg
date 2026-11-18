@@ -73,6 +73,8 @@ func TestRedactedLogger_FailingWriteLogsNoValue(t *testing.T) {
 	require.NotContains(t, logged, secretCell, "the value is not in the log")
 	require.Contains(t, logged, "UPDATE board_cells SET note = $1 WHERE id = $2", "the statement keeps its placeholders")
 	require.Contains(t, logged, "postgres error 22P02, table board_cells, column note, constraint board_cells_note_key")
+	require.Contains(t, logged, "log_redact_test.go:", "the line names the code that ran the statement")
+	require.NotContains(t, logged, "/log_redact.go:", "not the logger itself")
 
 	var pgErr *pgconn.PgError
 	require.True(t, errors.As(err, &pgErr), "the caller still gets the real error")

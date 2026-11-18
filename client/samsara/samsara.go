@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 	"time"
@@ -20,6 +21,11 @@ import (
 // ErrInvalidCredentials is returned by TestConnection when the Samsara API
 // rejects the configured API key with a 401 or 403 status.
 var ErrInvalidCredentials = errors.New("samsara: invalid credentials")
+
+// ErrNotFound is returned by doRequest when Samsara responds with 404.
+// Deletes treat it as success: the resource is already gone, which is the
+// state the caller wanted anyway.
+var ErrNotFound = errors.New("samsara: not found")
 
 // AuthError is returned by doRequest when Samsara responds with 401 or 403.
 // Callers use IsAuthError to detect this case and stop polling the tenant.
@@ -39,6 +45,74 @@ func IsAuthError(err error) bool {
 	return errors.As(err, &ae)
 }
 
+// capabilityRefusalMarkers — слова, которыми Samsara отвечает "этой величины у
+// вас нет по тарифу/скоупу", а не "ключ неверный". Ключ у тенанта при этом
+// рабочий, поэтому такой отказ НЕЛЬЗЯ трактовать как поломку интеграции.
+var capabilityRefusalMarkers = []string{
+	"license",
+	"entitle",
+	"not enabled",
+	"permission",
+	"scope",
+}
+
+// invalidStatTypeMarker is Samsara's 400 answer to a `types=` value it does not
+// know ("Invalid stat type(s): defFluidMilliPercent", 2026-11-12).
+const invalidStatTypeMarker = "invalid stat type"
+
+// IsCapabilityError reports whether Samsara refused the request because the
+// tenant's plan or token does not cover the data asked for, rather than because
+// the token is wrong. Callers must keep the integration alive on true: the rest
+// of the tenant's data is still perfectly readable with the same key.
+func IsCapabilityError(err error) bool {
+	// A 400 "Invalid stat type(s): x" means Samsara does not know a type we
+	// asked for. The key still works, so the caller drops the optional types
+	// and keeps the poll going, the same as for a plan refusal.
+	if err != nil && strings.Contains(strings.ToLower(err.Error()), invalidStatTypeMarker) {
+		return true
+	}
+	var ae *AuthError
+	if !errors.As(err, &ae) || ae.StatusCode != http.StatusForbidden {
+		return false
+	}
+	body := strings.ToLower(ae.Body)
+	for _, marker := range capabilityRefusalMarkers {
+		if strings.Contains(body, marker) {
+			return true
+		}
+	}
+	return false
+}
+
+// RefusalMessage returns Samsara's own wording for a refusal, so the operator
+// sees what Samsara said and not a message we invented. Falls back to the raw
+// body when it is not the usual {"message": "..."} envelope.
+func RefusalMessage(err error) string {
+	var ae *AuthError
+	if err == nil {
+		return ""
+	}
+	if !errors.As(err, &ae) {
+		// A plain "API request failed with status 400: {...}" error carries
+		// Samsara's body after the status; read its message from there.
+		text := err.Error()
+		var envelope struct {
+			Message string `json:"message"`
+		}
+		if i := strings.Index(text, "{"); i >= 0 && json.Unmarshal([]byte(text[i:]), &envelope) == nil {
+			return envelope.Message
+		}
+		return ""
+	}
+	var envelope struct {
+		Message string `json:"message"`
+	}
+	if jsonErr := json.Unmarshal([]byte(ae.Body), &envelope); jsonErr == nil && envelope.Message != "" {
+		return envelope.Message
+	}
+	return strings.TrimSpace(ae.Body)
+}
+
 // VehicleInfo - информация о транспортном средстве
 type VehicleInfo struct {
 	ID   string `json:"id"`
@@ -47,7 +121,8 @@ type VehicleInfo struct {
 }
 
 type VehicleListResponse struct {
-	Data []VehicleInfo `json:"data"`
+	Data       []VehicleInfo `json:"data"`
+	Pagination Pagination    `json:"pagination,omitempty"`
 }
 
 // GpsCoordinates - GPS координаты транспорта
@@ -73,6 +148,22 @@ type FuelPercent struct {
 	Time  string  `json:"time"`
 }
 
+// OdometerSample - одно показание одометра {time, value} в метрах.
+// Samsara отдаёт его на том же /fleet/vehicles/stats, что и GPS (DEV-2251).
+type OdometerSample struct {
+	Value float64 `json:"value"`
+	Time  string  `json:"time"`
+}
+
+// DefFluidSample - одно показание уровня DEF (жидкость для очистки выхлопа).
+// Samsara отдаёт его в МИЛЛИ-процентах: 52000 означает 52%. Имя типа
+// статистики и единица зафиксированы здесь, чтобы делить на 1000 приходилось
+// ровно в одном месте.
+type DefFluidSample struct {
+	Value float64 `json:"value"`
+	Time  string  `json:"time"`
+}
+
 // VehicleLocation - местоположение транспорта с GPS
 type VehicleLocation struct {
 	ID           string                 `json:"id"`
@@ -81,6 +172,12 @@ type VehicleLocation struct {
 	ExternalIDs  map[string]interface{} `json:"externalIds,omitempty"`
 	Gps          *GpsCoordinates        `json:"gps"`
 	FuelPercents *FuelPercent           `json:"fuelPercents"`
+	// Уровень DEF. Приходит только если тип статистики запрошен И тариф
+	// Samsara его покрывает, поэтому указатель, а не значение.
+	DefFluidMilliPercent *DefFluidSample `json:"defLevelMilliPercent,omitempty"`
+	// Одометр: obd точнее, gps — расчётный запасной вариант.
+	ObdOdometerMeters *OdometerSample `json:"obdOdometerMeters,omitempty"`
+	GpsOdometerMeters *OdometerSample `json:"gpsOdometerMeters,omitempty"`
 }
 
 type VehicleLocationResponse struct {
@@ -95,6 +192,11 @@ type VehicleLocationFeed struct {
 	ExternalIDs  map[string]interface{} `json:"externalIds,omitempty"`
 	Gps          []GpsCoordinates       `json:"gps"`          // feed returns array
 	FuelPercents []FuelPercent          `json:"fuelPercents"` // feed returns array
+	// feed returns DEF as an array too
+	DefFluidMilliPercent []DefFluidSample `json:"defLevelMilliPercent,omitempty"`
+	// feed returns odometer as an array too
+	ObdOdometerMeters []OdometerSample `json:"obdOdometerMeters,omitempty"`
+	GpsOdometerMeters []OdometerSample `json:"gpsOdometerMeters,omitempty"`
 }
 
 type VehicleLocationFeedResponse struct {
@@ -326,17 +428,23 @@ type AlertEvent struct {
 	} `json:"driver,omitempty"`
 }
 
-// Alert Trigger Type IDs
+// Alert Trigger Type IDs.
+// Значения сверены с developers.samsara.com/reference/getconfigurations (DEV-1989).
+// До этого пять из них были неверными: заказывая "простой двигателя" по id 1020,
+// мы на самом деле просили выезд из геозоны по всему парку.
 const (
-	TriggerTypeInsideGeofence   = 1017 // Внутри геозоны
-	TriggerTypeOutsideGeofence  = 1018 // Вне геозоны
-	TriggerTypeMovement         = 1019 // Начало движения
+	TriggerTypeMovement        = 1013 // Asset starts moving
+	TriggerTypeInsideGeofence  = 1014 // Inside Geofence
+	TriggerTypeEngineIdle      = 1019 // Vehicle Engine Idle
+	TriggerTypeOutsideGeofence = 1020 // Outside Geofence
+	TriggerTypeEngineOn        = 1021 // Asset Engine On
+	TriggerTypeEngineOff       = 1022 // Asset Engine Off
+	TriggerTypeHarshEvent      = 1023 // Harsh Event
+	TriggerTypeFaultCode       = 1029 // Fault Code
+
+	// Ниже — не сверено с документацией (DEV-1989 сверял только список выше).
+	// Ничего из этого мы сейчас в Samsara не отправляем.
 	TriggerTypeSpeedAbove       = 1001 // Превышение скорости
-	TriggerTypeEngineIdle       = 1020 // Простой двигателя
-	TriggerTypeEngineOn         = 1021 // Двигатель включен
-	TriggerTypeEngineOff        = 1022 // Двигатель выключен
-	TriggerTypeHarshEvent       = 1023 // Резкое событие (торможение/ускорение)
-	TriggerTypeFaultCode        = 1031 // Код неисправности
 	TriggerTypeTemperatureAbove = 1033 // Температура выше порога
 	TriggerTypeTemperatureBelow = 1034 // Температура ниже порога
 	TriggerTypeHumidityAbove    = 1035 // Влажность выше порога
@@ -623,6 +731,12 @@ func (c *Client) doRequest(ctx context.Context, method, path string, body io.Rea
 		}
 	}
 
+	if resp.StatusCode == http.StatusNotFound {
+		defer resp.Body.Close()
+		bodyBytes, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("%w: API request failed with status 404: %s", ErrNotFound, string(bodyBytes))
+	}
+
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		defer resp.Body.Close()
 		bodyBytes, _ := io.ReadAll(resp.Body)
@@ -651,6 +765,52 @@ func (c *Client) ListVehicles(ctx context.Context) (vehicles []VehicleInfo, err 
 	}
 
 	return listResponse.Data, nil
+}
+
+// GetAllVehicles проходит все страницы /fleet/vehicles.
+// ListVehicles читает только первую страницу и оставлен как есть ради существующих
+// вызывающих; для парка больше одной страницы нужен этот метод.
+func (c *Client) GetAllVehicles(ctx context.Context) ([]VehicleInfo, error) {
+	var all []VehicleInfo
+	cursor := ""
+
+	for {
+		page, err := c.listVehiclesPage(ctx, cursor)
+		if err != nil {
+			return nil, err
+		}
+
+		all = append(all, page.Data...)
+
+		if !page.Pagination.HasNextPage || page.Pagination.EndCursor == "" {
+			return all, nil
+		}
+		cursor = page.Pagination.EndCursor
+	}
+}
+
+func (c *Client) listVehiclesPage(ctx context.Context, cursor string) (result *VehicleListResponse, err error) {
+	path := "/fleet/vehicles"
+	if cursor != "" {
+		path = fmt.Sprintf("%s?after=%s", path, url.QueryEscape(cursor))
+	}
+
+	resp, err := c.doRequest(ctx, http.MethodGet, path, nil)
+	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		if closeErr := resp.Body.Close(); closeErr != nil && err == nil {
+			err = fmt.Errorf("failed to close response body: %w", closeErr)
+		}
+	}()
+
+	var listResponse VehicleListResponse
+	if decodeErr := json.NewDecoder(resp.Body).Decode(&listResponse); decodeErr != nil {
+		return nil, fmt.Errorf("failed to decode response: %w", decodeErr)
+	}
+
+	return &listResponse, nil
 }
 
 // GetVehiclesStats получает GPS статистику для указанных транспортов (по Samsara ID, НЕ по VIN!)
@@ -782,10 +942,53 @@ func (c *Client) GetAllVehiclesLocationsWithTime(ctx context.Context, startTime,
 	return response.Data, nil
 }
 
-// GetAllVehiclesStats получает GPS статистику для ВСЕХ транспортных средств сразу.
-// Использует endpoint /fleet/vehicles/stats?types=gps без фильтрации по ID.
+// Типы статистики позиционного запроса. Одометр едет тем же запросом, что и
+// GPS: отдельный опрос стоил бы второй сети на компанию за тик и разъехался бы
+// по времени с позицией (DEV-2251). Уровни топлива и DEF едут там же по той же
+// причине — они поля уже выполняемого запроса, а не отдельный алерт (DEV-2006).
+const (
+	StatTypeGPS                  = "gps"
+	StatTypeFuelPercents         = "fuelPercents"
+	StatTypeDefFluidMilliPercent = "defLevelMilliPercent"
+	StatTypeObdOdometerMeters    = "obdOdometerMeters"
+	StatTypeGpsOdometerMeters    = "gpsOdometerMeters"
+)
+
+// DefaultLocationStatTypes — набор для вызывающих, которые не решают состав
+// сами. Совпадает с тем, что запрашивалось до DEV-2006, чтобы их поведение не
+// поменялось.
+func DefaultLocationStatTypes() []string {
+	return []string{StatTypeGPS, StatTypeFuelPercents, StatTypeObdOdometerMeters, StatTypeGpsOdometerMeters}
+}
+
+// statTypesParam собирает значение параметра types, подставляя набор по
+// умолчанию для пустого списка — пустой types Samsara отвергает.
+func statTypesParam(types []string) string {
+	if len(types) == 0 {
+		types = DefaultLocationStatTypes()
+	}
+	return strings.Join(types, ",")
+}
+
+// GetAllVehiclesStats получает статистику для ВСЕХ транспортных средств сразу
+// в наборе типов по умолчанию.
 func (c *Client) GetAllVehiclesStats(ctx context.Context) ([]VehicleLocation, error) {
-	path := "/fleet/vehicles/stats?types=gps,fuelPercents"
+	return c.GetAllVehiclesStatsWithTypes(ctx, nil)
+}
+
+// GetAllVehiclesStatsWithTypes — то же самое, но состав types задаёт
+// вызывающий: тенант платит только за те величины, которые включил.
+func (c *Client) GetAllVehiclesStatsWithTypes(ctx context.Context, types []string) ([]VehicleLocation, error) {
+	return c.GetVehiclesStatsWithTypes(ctx, types, nil)
+}
+
+// GetVehiclesStatsWithTypes — то же самое для выбранных машин (Samsara ID);
+// пустой vehicleIDs — весь парк. Одна машина = один запрос (DEV-4313).
+func (c *Client) GetVehiclesStatsWithTypes(ctx context.Context, types []string, vehicleIDs []string) ([]VehicleLocation, error) {
+	path := "/fleet/vehicles/stats?types=" + statTypesParam(types)
+	if len(vehicleIDs) > 0 {
+		path += "&vehicleIds=" + strings.Join(vehicleIDs, ",")
+	}
 
 	resp, err := c.doRequest(ctx, http.MethodGet, path, nil)
 	if err != nil {
@@ -813,35 +1016,50 @@ type VehicleStatsFeedResult struct {
 // Subsequent calls (cursor=endCursor): returns only changes since last call.
 // Returns all pages in one call by following pagination automatically.
 func (c *Client) GetVehicleStatsFeed(ctx context.Context, cursor string) (*VehicleStatsFeedResult, error) {
-	var allData []VehicleLocation
-	currentCursor := cursor
+	return c.GetVehicleStatsFeedWithTypes(ctx, cursor, nil)
+}
 
-	for {
-		page, err := c.fetchStatsFeedPage(ctx, currentCursor)
+// MaxStatsFeedPagesPerCall caps how many feed pages one call follows. On a
+// live fleet hasNextPage stays true for hours, so an uncapped loop held every
+// GPS point in memory until Samsara answered 429 and the whole sweep was
+// discarded. The caller stores EndCursor and continues on its next tick.
+const MaxStatsFeedPagesPerCall = 20
+
+// GetVehicleStatsFeedWithTypes — фид с составом types от вызывающего. Курсор
+// привязан к составу: сменил набор — начинай с пустого курсора.
+// Follows at most MaxStatsFeedPagesPerCall pages; HasMore says the feed has
+// pages past EndCursor. A request error after at least one page returns the
+// pages collected so far together with the error, so the caller can keep
+// EndCursor instead of losing the sweep.
+func (c *Client) GetVehicleStatsFeedWithTypes(ctx context.Context, cursor string, types []string) (*VehicleStatsFeedResult, error) {
+	result := &VehicleStatsFeedResult{EndCursor: cursor}
+
+	for pages := 0; pages < MaxStatsFeedPagesPerCall; pages++ {
+		page, err := c.fetchStatsFeedPage(ctx, result.EndCursor, types)
 		if err != nil {
-			return nil, err
+			if pages == 0 {
+				return nil, err
+			}
+			return result, err
 		}
 
-		allData = append(allData, page.Data...)
-		currentCursor = page.Pagination.EndCursor
+		result.Data = append(result.Data, page.Data...)
+		result.EndCursor = page.Pagination.EndCursor
+		result.HasMore = page.Pagination.HasNextPage && page.Pagination.EndCursor != ""
 
-		if !page.Pagination.HasNextPage {
+		if !result.HasMore {
 			break
 		}
 	}
 
-	return &VehicleStatsFeedResult{
-		Data:      allData,
-		EndCursor: currentCursor,
-		HasMore:   false,
-	}, nil
+	return result, nil
 }
 
 // fetchStatsFeedPage fetches a single page of the gps/fuel stats feed.
 // Feed returns gps as array (not single object like snapshot), so we parse
 // with VehicleLocationFeedResponse and convert to VehicleLocationResponse.
-func (c *Client) fetchStatsFeedPage(ctx context.Context, cursor string) (*VehicleLocationResponse, error) {
-	path := "/fleet/vehicles/stats/feed?types=gps,fuelPercents"
+func (c *Client) fetchStatsFeedPage(ctx context.Context, cursor string, types []string) (*VehicleLocationResponse, error) {
+	path := "/fleet/vehicles/stats/feed?types=" + statTypesParam(types)
 	if cursor != "" {
 		path += "&after=" + cursor
 	}
@@ -864,10 +1082,6 @@ func (c *Client) fetchStatsFeedPage(ctx context.Context, cursor string) (*Vehicl
 		Pagination: feedResponse.Pagination,
 	}
 	for _, v := range feedResponse.Data {
-		if len(v.Gps) == 0 {
-			continue
-		}
-
 		// Take latest fuel percent reading for this vehicle
 		var fuelPercent *FuelPercent
 		if len(v.FuelPercents) > 0 {
@@ -875,19 +1089,62 @@ func (c *Client) fetchStatsFeedPage(ctx context.Context, cursor string) (*Vehicl
 			fuelPercent = &fp
 		}
 
+		// Latest DEF reading for this vehicle, same rule as fuel.
+		var defFluid *DefFluidSample
+		if len(v.DefFluidMilliPercent) > 0 {
+			df := v.DefFluidMilliPercent[len(v.DefFluidMilliPercent)-1]
+			defFluid = &df
+		}
+
+		obd := lastOdometerSample(v.ObdOdometerMeters)
+		gpsOdo := lastOdometerSample(v.GpsOdometerMeters)
+
+		// A truck parked in a yard reports an odometer without a fresh GPS point.
+		// Dropping the whole vehicle here used to lose that reading; emit one
+		// entry with a nil Gps instead — position consumers already skip those
+		// (DEV-2251).
+		if len(v.Gps) == 0 {
+			if obd == nil && gpsOdo == nil {
+				continue
+			}
+			result.Data = append(result.Data, VehicleLocation{
+				ID:                   v.ID,
+				Name:                 v.Name,
+				ExternalIDs:          v.ExternalIDs,
+				FuelPercents:         fuelPercent,
+				DefFluidMilliPercent: defFluid,
+				ObdOdometerMeters:    obd,
+				GpsOdometerMeters:    gpsOdo,
+			})
+			continue
+		}
+
 		for i := range v.Gps {
 			gps := v.Gps[i]
 			result.Data = append(result.Data, VehicleLocation{
-				ID:           v.ID,
-				Name:         v.Name,
-				ExternalIDs:  v.ExternalIDs,
-				Gps:          &gps,
-				FuelPercents: fuelPercent,
+				ID:                   v.ID,
+				Name:                 v.Name,
+				ExternalIDs:          v.ExternalIDs,
+				Gps:                  &gps,
+				FuelPercents:         fuelPercent,
+				DefFluidMilliPercent: defFluid,
+				ObdOdometerMeters:    obd,
+				GpsOdometerMeters:    gpsOdo,
 			})
 		}
 	}
 
 	return result, nil
+}
+
+// lastOdometerSample returns the newest reading of a feed window, or nil when
+// the window is empty. The feed is chronological, so the tail is the newest.
+func lastOdometerSample(samples []OdometerSample) *OdometerSample {
+	if len(samples) == 0 {
+		return nil
+	}
+	s := samples[len(samples)-1]
+	return &s
 }
 
 // ============================================================================
@@ -1674,11 +1931,16 @@ func (c *Client) UpdateAlertConfiguration(ctx context.Context, alertID string, u
 	return &alertResponse.Data, nil
 }
 
-// DeleteAlertConfiguration удаляет конфигурацию алерта
+// DeleteAlertConfiguration удаляет конфигурацию алерта.
+// 404 не ошибка: конфигурации уже нет, а это и есть нужное состояние, поэтому
+// повторный проход уборки не валится на том, что кто-то удалил алерт руками.
 func (c *Client) DeleteAlertConfiguration(ctx context.Context, alertID string) error {
 	path := fmt.Sprintf("/alerts/configurations/%s", alertID)
 	resp, err := c.doRequest(ctx, http.MethodDelete, path, nil)
 	if err != nil {
+		if errors.Is(err, ErrNotFound) {
+			return nil
+		}
 		return err
 	}
 	defer func() {
@@ -1688,6 +1950,52 @@ func (c *Client) DeleteAlertConfiguration(ctx context.Context, alertID string) e
 	}()
 
 	return nil
+}
+
+// ListAlertConfigurations возвращает одну страницу конфигураций алертов.
+// cursor — pagination.endCursor из предыдущего ответа; пустая строка = первая страница.
+func (c *Client) ListAlertConfigurations(ctx context.Context, cursor string) (result *AlertConfigurationListResponse, err error) {
+	path := "/alerts/configurations"
+	if cursor != "" {
+		path = fmt.Sprintf("%s?after=%s", path, url.QueryEscape(cursor))
+	}
+
+	resp, err := c.doRequest(ctx, http.MethodGet, path, nil)
+	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		if closeErr := resp.Body.Close(); closeErr != nil && err == nil {
+			err = fmt.Errorf("failed to close response body: %w", closeErr)
+		}
+	}()
+
+	var listResponse AlertConfigurationListResponse
+	if decodeErr := json.NewDecoder(resp.Body).Decode(&listResponse); decodeErr != nil {
+		return nil, fmt.Errorf("failed to decode response: %w", decodeErr)
+	}
+
+	return &listResponse, nil
+}
+
+// GetAllAlertConfigurations проходит все страницы и возвращает конфигурации целиком.
+func (c *Client) GetAllAlertConfigurations(ctx context.Context) ([]AlertConfiguration, error) {
+	var all []AlertConfiguration
+	cursor := ""
+
+	for {
+		page, err := c.ListAlertConfigurations(ctx, cursor)
+		if err != nil {
+			return nil, err
+		}
+
+		all = append(all, page.Data...)
+
+		if !page.Pagination.HasNextPage || page.Pagination.EndCursor == "" {
+			return all, nil
+		}
+		cursor = page.Pagination.EndCursor
+	}
 }
 
 // CreateGeofenceAlert создаёт алерт для входа/выхода из геозоны

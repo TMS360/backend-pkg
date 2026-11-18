@@ -14,7 +14,25 @@ service LoadsService {
   // Get driver performance metrics
   rpc GetDriverTripDetails (GetDriverTripDetailsRequest) returns (GetDriverTripDetailsResponse);
 
+  // DriverHasActiveTrip
+  rpc DriverHasActiveTrip (DriverHasActiveTripRequest) returns (DriverHasActiveTripResponse);
+
+  // DEV-896: absence-side advisory check. Returns slim summaries of
+  // active-dispatch trips assigned to the driver (as main OR secondary
+  // driver) whose pickup→delivery calendar window overlaps
+  // [start_date, end_date] inclusive. Read-only; callers surface warnings
+  // and must never block the absence write on this.
+  rpc GetTripsOverlappingWindow (GetTripsOverlappingWindowRequest) returns (GetTripsOverlappingWindowResponse);
+
   rpc GetRecentBrokerIDs(GetRecentBrokerIDsRequest) returns (GetRecentBrokerIDsResponse);
+
+  // DEV-1859: may a broker still pull back the load they covered with this
+  // carrier? tms-mediator asks before it uncovers, because an invoiced load
+  // must not vanish from the carrier's board.
+  //
+  // backend-load answers with the SAME gate that a real cancel runs, so the
+  // rule lives in one place instead of being restated on the broker side.
+  rpc GetBrokerCopyCancelState (GetBrokerCopyCancelStateRequest) returns (GetBrokerCopyCancelStateResponse);
 
   // Get shipment by ID
   rpc GetShipment(GetShipmentRequest) returns (ShipmentResponse);
@@ -76,7 +94,7 @@ service LoadsService {
 
   // Returns trips eligible for MANUAL addition to a Driver Pay Statement:
   //   - trips.main_driver_id == driver_id
-  //   - shipment.status IN (DELIVERED, COMPLETED, READY_FOR_BILLING)
+  //   - shipment.status IN (DELIVERED, COMPLETED, READY_FOR_BILLING, INVOICED, PAID, TONU)
   // No period filter (unlike GetTripsForPayBatch). Caller (accounting) performs
   // busy-statement / busy-batch exclusion in-memory after the response, so the
   // request stays minimal.
@@ -102,11 +120,21 @@ service LoadsService {
 
   // Returns every order_file attached to a shipment — files on the shipment
   // itself, on its trips, and on the trip stops — in one flat list. Each
-  // row carries document_type (POD / RATE_CON / BOL / INVOICE / OTHER) so
+  // row carries document_type (POD / RC / BOL / INVOICE / OTHER) so
   // the caller (backend-accounting) can pick the kinds it needs (e.g. merge
   // POD + RC into the invoice PDF, or attach them to a factoring batch).
   rpc GetShipmentFiles(GetShipmentFilesRequest)
       returns (GetShipmentFilesResponse);
+
+  // Attaches an existing backend-files file to a shipment as an order_files
+  // row — the write twin of GetShipmentFiles. Called by backend-accounting
+  // (createRevisedInvoice) to auto-attach operator-supplied evidence files so
+  // the frontend does not need a separate attachOrderFile round-trip.
+  // company_id / uploaded_by are explicit because backend-load runs without an
+  // AuthServerInterceptor: the server validates shipment ownership against
+  // company_id and builds a synthetic actor from uploaded_by.
+  rpc AttachShipmentFile(AttachShipmentFileRequest)
+      returns (AttachShipmentFileResponse);
 
   // Returns the trip IDs belonging to a single shipment (1 shipment → N trips
   // через split-сценарии). Used by backend-accounting Financial Summary
@@ -114,6 +142,269 @@ service LoadsService {
   // Reuses filters.IDsResponse — payload is just a list of UUID strings.
   rpc GetTripIDsByShipment(GetTripIDsByShipmentRequest)
       returns (filters.IDsResponse);
+
+  // ── Customer Load Stats (used by backend-accounting, DEV-738) ──────────
+  // Per-customer shipment aggregates for the broker-dependency panel:
+  // stage counters + 8-month loads trend + company-wide denominator.
+  // Counts shipments by status; all money aggregates stay in accounting.
+  // company_id is passed explicitly (backend-load's gRPC server runs
+  // without an AuthServerInterceptor), same contract as
+  // GetShipmentsReadyForBillingRequest.company_id.
+  rpc GetCustomerLoadStats(GetCustomerLoadStatsRequest)
+      returns (GetCustomerLoadStatsResponse);
+
+  // ── Truck identifier resolution (used by tms-files compliance list, DEV-1463) ──
+  // Returns the IDs of the company's trucks whose unit number, license plate, or
+  // VIN match the free-text search. company_id is passed explicitly (backend-load's
+  // gRPC server runs without an AuthServerInterceptor, so there is no actor to
+  // scope by), same contract as GetTripIDsByShipment / GetCustomerLoadStats.
+  rpc ResolveTruckIDs(ResolveTruckIDsRequest) returns (filters.IDsResponse);
+
+  // ── Truck owner lookup (used by backend-accounting pay batch, DEV-1919) ──
+  // Answers "who owns each of these trucks" for a whole batch of trucks in one
+  // call. backend-accounting builds a weekly pay batch from hundreds of trips;
+  // the owner is needed per trip's truck, and a per-truck RPC across a service
+  // boundary is the thing this exists to avoid.
+  //
+  // Only trucks whose ownership is TRUCK_OWNER appear in the response. A truck
+  // the company owns, or leases from a leasing company, is simply ABSENT from
+  // the map — absence is the answer, not an error, and the caller must read it
+  // as "no owner settlement for this truck" rather than retrying.
+  //
+  // backend-load stays the only place that knows whose truck it is; accounting
+  // keeps only a snapshot of what it is told here, on the statement it writes.
+  //
+  // company_id is passed explicitly (backend-load's gRPC server runs without an
+  // AuthServerInterceptor, so there is no actor to scope by), same contract as
+  // ResolveTruckIDs / GetTripIDsByShipment / GetCustomerLoadStats.
+  rpc GetTruckOwnersByTruckIDs(GetTruckOwnersByTruckIDsRequest)
+      returns (GetTruckOwnersByTruckIDsResponse);
+
+  // ── Vehicle unit numbers by id (used by tms-teams crew save, DEV-2273) ──
+  // Answers "what unit number do these trucks / trailers carry" for a whole
+  // batch in one call. tms-teams stores the number next to the id on the
+  // crew-week slice, so its Planning Board search stays a local SQL predicate
+  // instead of a call into backend-load on every keystroke.
+  //
+  // Ids that belong to another tenant, do not exist, or carry a blank number
+  // are ABSENT from the maps — absence is the answer, not an error, and the
+  // caller must read it as "no number known" rather than retrying.
+  //
+  // company_id is passed explicitly (backend-load's gRPC server runs without an
+  // AuthServerInterceptor, so there is no actor to scope by), same contract as
+  // ResolveTruckIDs / GetTruckOwnersByTruckIDs.
+  rpc GetVehicleNumbersByIDs(GetVehicleNumbersByIDsRequest)
+      returns (GetVehicleNumbersByIDsResponse);
+
+  // ── Trailer ownership (used by backend-accounting asset charges, DEV-2241) ──
+  // Answers "is this trailer ours" for a batch of trailers. A LOT trailer
+  // (loaner / customer-owned) is not ours to put a recurring charge on, and
+  // accounting has no trailer table of its own to check.
+  //
+  // Deliberately NOT folded into GetVehicleNumbersByIDs: that map drops a
+  // trailer whose unit number is blank, and reading "absent" as "not ours"
+  // would refuse a company trailer somebody forgot to number. Here absence
+  // means only "no such trailer in this tenant".
+  //
+  // company_id is passed explicitly (backend-load's gRPC server runs without an
+  // AuthServerInterceptor, so there is no actor to scope by), same contract as
+  // GetTruckOwnersByTruckIDs / GetVehicleNumbersByIDs.
+  rpc GetTrailerOwnershipByIDs(GetTrailerOwnershipByIDsRequest)
+      returns (GetTrailerOwnershipByIDsResponse);
+
+  // ── Trucks of an owner (used by backend-accounting rehome, DEV-2257) ──────
+  // The forward direction of GetTruckOwnersByTruckIDs: "which trucks does each
+  // of these owners hold". The rehome preview starts from an owner's contract
+  // line and has to name the truck the money moves onto, so inverting the
+  // existing map would mean asking for every truck in the fleet first.
+  //
+  // An owner with no live truck is ABSENT from the map — absence is the answer
+  // ("nothing to move this line onto"), not an error. An owner with several
+  // trucks returns all of them; accounting refuses to guess which one and makes
+  // the operator pick.
+  //
+  // company_id is passed explicitly (backend-load's gRPC server runs without an
+  // AuthServerInterceptor, so there is no actor to scope by), same contract as
+  // GetTruckOwnersByTruckIDs / GetVehicleNumbersByIDs.
+  rpc GetTruckIDsByOwnerIDs(GetTruckIDsByOwnerIDsRequest)
+      returns (GetTruckIDsByOwnerIDsResponse);
+
+  // ── Active trucks (used by the tms-teams audit-check producer, DEV-2445) ──
+  // Lists the company's trucks whose CURRENT asset status is active — the fleet
+  // the "truck-day with no driver" check is asked about. A retired or sold
+  // truck is left out, so a day it stood without a driver makes no check; the
+  // status is read as of NOW on purpose (the ticket: marking a truck retired
+  // stops new checks, the ones already opened stay).
+  //
+  // company_id is passed explicitly (backend-load's gRPC server runs without an
+  // AuthServerInterceptor, so there is no actor to scope by), same contract as
+  // GetTruckOwnersByTruckIDs / GetVehicleNumbersByIDs.
+  rpc ListActiveTruckIDs(ListActiveTruckIDsRequest)
+      returns (ListActiveTruckIDsResponse);
+
+  // ── Live fleet (used by the tms-files missing-document summary, DEV-2553) ──
+  // Lists every truck and trailer of the company that is still in the fleet,
+  // in one call: the daily compliance job asks "which assets have no required
+  // document", and tms-files only knows assets that already have a document.
+  // RETIRED and deleted assets are left out; OUT_OF_SERVICE ones stay in (a
+  // temporary stop does not excuse missing paperwork, same as the expiry
+  // reminders).
+  //
+  // company_id is passed explicitly (backend-load's gRPC server runs without an
+  // AuthServerInterceptor, so there is no actor to scope by), same contract as
+  // ListActiveTruckIDs / GetVehicleNumbersByIDs.
+  rpc ListFleetAssetIDs(ListFleetAssetIDsRequest)
+      returns (ListFleetAssetIDsResponse);
+
+  // ── Toll row → truck / trip matching (backend-accounting, DEV-1793) ──────
+  // Resolves a WHOLE ingested toll file in one call. A weekly PrePass export is
+  // 240-470 rows; a per-row RPC across a service boundary is the thing this
+  // exists to avoid.
+  //
+  // For each row it answers two questions: which truck does this crossing
+  // belong to (by toll device id, or by normalised plate when the plaza
+  // photographed the plate instead), and which trip covered the truck at that
+  // moment. It never guesses: two candidate trucks, or two trips covering the
+  // same moment, come back as "conflict" for a person to settle.
+  //
+  // Read-only — backend-load stores nothing and writes no device onto a truck.
+  // company_id is passed explicitly (backend-load's gRPC server runs without an
+  // AuthServerInterceptor, so there is no actor to scope by), same contract as
+  // ResolveTruckIDs / GetTripIDsByShipment / GetCustomerLoadStats.
+  rpc MatchTollRows(MatchTollRowsRequest) returns (MatchTollRowsResponse);
+
+  // DEV-2586: write what the toll file shows about a transponder nobody has
+  // dated by hand. backend-accounting groups its unmatched crossings per
+  // device and Truck-column number; backend-load decides per device:
+  //   - no segment of the id in the company: a clean move (stretches in
+  //     strict day order, each on at least two days, newest on a fleet truck
+  //     with no box of this provider) becomes closed segments plus an open
+  //     one from the newest stretch's first day. Anything else writes nothing.
+  //   - one open segment, never closed, dated after the beginning of time, and
+  //     at most one Truck-column number: its start moves to the zero instant.
+  // A segment a person wrote is never rebuilt. company_id is explicit, same
+  // contract as MatchTollRows.
+  rpc ApplyTollDeviceHistory(ApplyTollDeviceHistoryRequest) returns (ApplyTollDeviceHistoryResponse);
+
+  // DEV-3437: which trucks a toll provider's vehicle list points at. For each
+  // probe: the trucks whose VIN equals vin, the trucks whose normalised plate
+  // equals plate, the trucks whose number equals unit (evidence, never a
+  // match), and the truck already holding (device_provider, device_id).
+  // backend-load only reports the candidates; the caller decides whether one
+  // of them may be proposed (exactly one, VIN before plate, never unit).
+  //
+  // Read-only, one query for the whole batch. company_id is explicit, same
+  // contract as MatchTollRows.
+  rpc MatchTrucksByVinOrPlate(MatchTrucksByVinOrPlateRequest) returns (MatchTrucksByVinOrPlateResponse);
+
+  // DEV-1935: the late-trailer-return charges a dispatcher is accountable for,
+  // for a pay period. Accounting puts them on the dispatcher's pay statement.
+  //
+  // The only existing read is getLotChargebacks(trailerId) over GraphQL, gated
+  // on a fleet permission — keyed by trailer, which is the wrong axis for
+  // payroll and the wrong gate for accounting.
+  //
+  // company_id is passed explicitly, same contract as MatchTollRows /
+  // ResolveTruckIDs: backend-load's gRPC server runs without an
+  // AuthServerInterceptor, so there is no actor to scope by.
+  rpc GetLotChargebacksByDispatchers(GetLotChargebacksByDispatchersRequest) returns (GetLotChargebacksByDispatchersResponse);
+
+  // ── Fleet maintenance (backend-tasks, DEV-2252) ──────────────────────────
+  // A maintenance work order is a Task in backend-tasks, but everything it has
+  // to read or move about the equipment lives here: the odometer (DEV-2250),
+  // the ACTIVE / OUT_OF_SERVICE status (DEV-2254) and the recorded trip miles.
+  // These four RPCs are that seam. There is no GraphQL client between services,
+  // so the work order cannot reach the mutations a person uses.
+  //
+  // PERMISSIONS ARE CHECKED BY THE CALLER. backend-load's gRPC server runs
+  // without an AuthServerInterceptor, so these calls carry no actor and no
+  // perms: backend-tasks gates the work-order mutation on
+  // fleet.maintenance.manage before it ever gets here. company_id and actor_id
+  // are therefore passed explicitly on every one of them — same contract as
+  // MatchTollRows / GetLotChargebacksByDispatchers.
+
+  // The asset's current odometer, for the due calculation and the maintenance
+  // tab. An asset that has never been read is NOT an error — has_reading comes
+  // back false and the caller falls back to trip miles.
+  rpc GetAssetOdometer(GetAssetOdometerRequest) returns (GetAssetOdometerResponse);
+
+  // Record the odometer read off the meter when a work order is completed.
+  // It goes through the same guarded path as the manual recordOdometer, so a
+  // reading BELOW the one on record is refused with ODOMETER_REGRESSION unless
+  // a reason is given — the work-order form carries that reason.
+  rpc RecordAssetOdometer(RecordAssetOdometerRequest) returns (RecordAssetOdometerResponse);
+
+  // Take the asset off the road, or put it back. Called when a work order is
+  // blocked out-of-service and when the last such order clears. Calling it
+  // twice with the same status is safe and silent, exactly as the mutation is.
+  //
+  // Refuses a RETIRED asset: that one comes back through unretireAsset, and no
+  // work order may quietly resurrect it.
+  rpc SetAssetStatus(SetAssetStatusRequest) returns (SetAssetStatusResponse);
+
+  // Recorded trip miles for an asset since a date — the mileage fallback for a
+  // truck no telematics feed reaches, or whose feed has gone quiet (BL-7 §7.5).
+  // The caller adds this to the last service record's odometer.
+  rpc GetAssetTripMiles(GetAssetTripMilesRequest) returns (GetAssetTripMilesResponse);
+
+  // Miles a truck drove between two instants by its Samsara odometer (DEV-2907):
+  // the last Samsara reading at or before `to` minus the one the period starts
+  // from. Manual and trip-estimate readings are never read. Answered from the
+  // stored reading history only; Samsara itself is not called.
+  rpc GetTruckSamsaraMiles(GetTruckSamsaraMilesRequest) returns (GetTruckSamsaraMilesResponse);
+
+  // ── Compliance facts by id (used by backend-files, DEV-2565) ──────────────
+  // Answers "is this asset retired, and is this truck leased" for a whole page
+  // of one asset class in one call. The compliance flag is None for a retired
+  // asset and Not applicable for a leased truck (the lessor keeps its papers),
+  // and backend-files holds neither fact.
+  //
+  // Ids that belong to another tenant or do not exist are ABSENT from the map —
+  // absence is "unknown", and the caller judges such an id on its documents
+  // alone. company_id is passed explicitly (no AuthServerInterceptor), same
+  // contract as GetTrailerOwnershipByIDs / ListActiveTruckIDs.
+  rpc GetAssetComplianceFacts(GetAssetComplianceFactsRequest) returns (GetAssetComplianceFactsResponse);
+
+  // ── Telegram Ack / Decline tap (called by backend-telegram, DEV-3400) ─────
+  // A crew group member tapped a button under a load message. backend-load
+  // decides whether the tap counts and returns the toast the member sees.
+  // Idempotent per tap_id. company_id is passed explicitly.
+  rpc ApplyDriverAnswer(ApplyDriverAnswerRequest) returns (ApplyDriverAnswerResponse);
+}
+
+message DriverHasActiveTripRequest {
+  string driver_crew_id  = 1;
+}
+
+message DriverHasActiveTripResponse {
+  bool        has_active_trip = 1;
+  TripDetails active_trip      = 2; // nil/unset если has_active_trip = false
+}
+
+// ── Absence/trip overlap advisory (DEV-896) ────────────────────────────
+
+message GetTripsOverlappingWindowRequest {
+  string driver_id  = 1; // matches trips.main_driver_id OR trips.secondary_driver_id
+  string start_date = 2; // YYYY-MM-DD, inclusive
+  string end_date   = 3; // YYYY-MM-DD, inclusive
+}
+
+// Slim trip summary for absence-overlap warnings. Dates are the trip's
+// calendar window (pickup day .. delivery day); status is the backend-load
+// trip status string (ASSIGNED..LEAVING_STOP).
+message TripOverlapSummary {
+  string trip_id        = 1;
+  string shipment_id    = 2;
+  string load_number    = 3; // shipment.load_id, "" if unset
+  string trip_number    = 4; // display number, "" if unset
+  string status         = 5;
+  string pickup_date    = 6; // YYYY-MM-DD — trip window start
+  string delivery_date  = 7; // YYYY-MM-DD — trip window end
+  string driver_crew_id = 8; // "" if the trip somehow has no crew
+}
+
+message GetTripsOverlappingWindowResponse {
+  repeated TripOverlapSummary trips = 1;
 }
 
 message ShipmentFilterRequest {
@@ -153,6 +444,11 @@ message TripDetails {
   double distance = 6;
   string started_at = 7;   // ISO Timestamp
   string finished_at = 8;  // ISO Timestamp (nullable/empty if active)
+  string status = 9;                  // trip status; needed so the audit upsert's status_rank guard admits a resync
+  string pickup_appointment_at = 10;  // ISO Timestamp of the first pickup leg appointment start; the audit board's bucketing key (empty if none)
+  string delivery_appointment_to = 11; // ISO Timestamp of the last delivery leg appointment end; the driver-timeline segment's planned to_time (empty if none)
+  string first_pickup_checked_out_at = 12;  // ISO Timestamp of the check-out at the first cargo pickup stop; where the real ENROUTE run starts (empty until checked out)
+  string last_delivery_checked_out_at = 13; // ISO Timestamp of the check-out at the last delivery stop; where the real ENROUTE run ends (empty until checked out)
 }
 
 message GetRecentBrokerIDsRequest {
@@ -167,6 +463,28 @@ message GetRecentBrokerIDsResponse {
 // Request to get a shipment by ID
 message GetShipmentRequest {
   string shipment_id = 1;
+  // DEV-4422: the caller's company. When set, backend-load answers only for a
+  // shipment of this company (another company's id reads as not found).
+  // backend-load's gRPC server runs without an interceptor, so the company is
+  // passed explicitly. Empty keeps the old, unscoped answer.
+  string company_id = 2;
+}
+
+// DEV-1859. company_id is the CARRIER's tenant — the copy lives on their board,
+// not the broker's, and backend-load scopes the lookup to it.
+message GetBrokerCopyCancelStateRequest {
+  string company_id      = 1;
+  string broker_offer_id = 2;
+}
+
+message GetBrokerCopyCancelStateResponse {
+  // false when no load was ever copied for this offer. The broker is then free
+  // to uncover: there is nothing on the carrier's board to take away.
+  bool found       = 1;
+  string shipment_id = 2;
+  bool cancellable = 3;
+  // Why not, in words a broker can read. Empty when cancellable.
+  string reason    = 4;
 }
 
 // Shipment response
@@ -192,6 +510,10 @@ message ListShipmentsResponse {
 // Request to get a trip by ID
 message GetTripRequest {
   string trip_id = 1;
+  // DEV-4422: the caller's company. When set, backend-load answers only for a
+  // trip whose load belongs to this company (another company's trip reads as
+  // not found). Empty keeps the old, unscoped answer.
+  string company_id = 2;
 }
 
 // Trip response
@@ -297,6 +619,26 @@ message Trip {
   google.protobuf.Timestamp end_time = 15;
   google.protobuf.Timestamp created_at = 16;
   google.protobuf.Timestamp updated_at = 17;
+  // DEV-1577. true ⇒ trips.empty_miles IS NULL (deferred, ещё не посчитан).
+  // См. PayBatchTrip.empty_miles_not_calculated — та же семантика и та же причина
+  // быть отдельным полем, а не optional на empty_miles.
+  optional bool empty_miles_not_calculated = 18;
+  // Exact domain TripStatus (ASSIGNED, LEAVING_STOP, ...); `status` above is
+  // the coarse pb enum.
+  string status_raw = 19;
+  string driver_crew_id = 20;
+  string secondary_driver_id = 21;
+  // DEV-4323: the trip truck's own height (inches) and axle count, set only
+  // when the office entered them. backend-fuel builds the truck-legal HERE
+  // route from them; a missing value means the standard profile.
+  optional int32 truck_height_inches = 22;
+  optional int32 truck_axle_count = 23;
+  // DEV-4315: the trip truck's own fuel numbers, set only when the office
+  // entered them; backend-fuel uses them over the company fuel settings. Tank
+  // is usable gallons (what the truck takes from empty on the gauge).
+  optional double truck_fuel_tank_gallons = 24;
+  optional double truck_fuel_mpg = 25;
+  optional double truck_fuel_floor_gallons = 26;
 }
 
 // Trip stop
@@ -502,6 +844,12 @@ message GetTripsForPayBatchResponse {
   // Trips with status=IN_TRANSIT whose reference leg is OUTSIDE the window.
   // Empty when include_in_transit_outside_range=false.
   repeated PayBatchTrip in_transit_outside_range = 2;
+
+  // DEV-3825: finished trips (same statuses as `available`) whose reference stop
+  // has no date at all — no appointment and no driver check-in/check-out — so
+  // they match no pay period. Returned on every call, regardless of the period,
+  // minus `excluded_trip_ids`, so accounting can show them instead of losing them.
+  repeated PayBatchTrip no_stop_date = 3;
 }
 
 message GetTripsByIDsRequest {
@@ -523,7 +871,8 @@ message GetUnbilledDriverTripsRequest {
 
 message GetUnbilledDriverTripsResponse {
   // Trips of `driver_id` where shipment.status IN
-  // (DELIVERED, COMPLETED, READY_FOR_BILLING). No period filter applied.
+  // (DELIVERED, COMPLETED, READY_FOR_BILLING, INVOICED, PAID, TONU).
+  // No period filter applied.
   repeated PayBatchTrip trips = 1;
 }
 
@@ -600,6 +949,12 @@ message ShipmentBillingItem {
   string pickup_facility_name   = 21;
   string delivery_facility_name = 22;
 
+  // All stops (every leg by leg_sequence), for the full multi-stop invoice
+  // list. The renderer iterates these; the flat pickup_*/delivery_* fields
+  // above stay populated for wire-compat and paper-overlay of first/last.
+  // Empty on older backend-load payloads — accounting falls back to first/last.
+  repeated ShipmentBillingStop stops = 23;
+
   // Money.
   double total_amount       = 16;         // shipment.total_pay
 
@@ -610,10 +965,67 @@ message ShipmentBillingItem {
   string mc_number              = 18;
   string factoring_company_name = 19;
   string factoring_remit_to     = 20;
+
+  // DEV-2301. Set when the load was copied from a broker offer; "" when the
+  // office created it. Accounting refuses to take a load back out of TONU in
+  // that case — the broker has to offer it again, and reviving the carrier's
+  // copy on its own would leave the two systems disagreeing about who has it.
+  // Empty on older backend-load payloads, which reads as "not from a broker":
+  // the guard then lets the restore through, which is the pre-DEV-2301
+  // behaviour rather than a new false refusal.
+  string broker_offer_id        = 24;
+}
+
+// One stop of a shipment's route (one leg), for the full multi-stop invoice
+// list. Ordered by leg_sequence in ShipmentBillingItem.stops.
+message ShipmentBillingStop {
+  string address                 = 1;  // leg.location
+  string facility_name           = 2;  // "" when unset
+  google.protobuf.Timestamp date = 3;  // COALESCE(trip_stop.checked_in_at, leg.appointment_from)
+  string stop_type               = 4;  // "PICKUP" | "DELIVERY" (leg.stop_type)
+}
+
+// ── Customer Load Stats messages (backend-accounting, DEV-738) ─────────
+
+message GetCustomerLoadStatsRequest {
+  // Tenant scope — accounting passes the caller's company_id (from JWT)
+  // because backend-load's gRPC server runs without AuthServerInterceptor.
+  string company_id  = 1;
+  string customer_id = 2;
+
+  // Period window, tested against the shipment's pickup date (first leg's
+  // appointment_from, leg_sequence=1). Both nil ⇒ LIFETIME (no date filter).
+  optional google.protobuf.Timestamp period_from = 3;
+  optional google.protobuf.Timestamp period_to   = 4;
+
+  // Start of the 8-month monthly-trend window (month-truncated). The trend is
+  // always the trailing 8 months, independent of the period window above.
+  google.protobuf.Timestamp trend_from = 5;
+}
+
+message GetCustomerLoadStatsResponse {
+  // Customer-scoped stage counters, period-filtered by pickup date.
+  int64 doing_now             = 1;  // DISPATCHED, ACCEPTED, IN_TRANSIT
+  int64 did                   = 2;  // DELIVERED, COMPLETED, READY_FOR_BILLING, INVOICED, PAID, TONU
+  int64 cancelled             = 3;  // CANCELLED
+  int64 customer_active_loads = 4;  // all statuses in period (dependency numerator)
+
+  // Company-wide denominator: all statuses in period, NO customer filter.
+  int64 company_active_loads  = 5;
+
+  // Trailing-8-month loads count for this customer, bucketed by pickup month.
+  // Server returns only months that have data; accounting zero-fills to 8 and
+  // merges in per-month revenue.
+  repeated MonthlyLoads monthly_trend = 6;
+}
+
+message MonthlyLoads {
+  string month       = 1;  // "2006-01" (year-month key)
+  int64  loads_count = 2;
 }
 
 // ── Shipment Files (backend-accounting) ─────────────────────────────
-// Used to fetch all documents (POD / RATE_CON / BOL / INVOICE / OTHER) tied
+// Used to fetch all documents (POD / RC / BOL / INVOICE / OTHER) tied
 // to a shipment — the same flat list that backend-load aggregates over
 // shipment-level + trip-level + trip-stop-level order_files. Accounting
 // filters by document_type to merge attachments into invoice / factoring
@@ -625,7 +1037,7 @@ message GetShipmentFilesRequest {
 
 message ShipmentFile {
   string file_id       = 1;  // UUID in backend-files
-  string document_type = 2;  // "POD" | "RATE_CON" | "BOL" | "INVOICE" | "OTHER"
+  string document_type = 2;  // "POD" | "RC" | "BOL" | "INVOICE" | "OTHER" (canonical SystemDocTypeCode)
   string entity_type   = 3;  // "SHIPMENT" | "TRIP" | "TRIP_STOP"
   string entity_id     = 4;  // UUID of the parent entity (for diagnostics)
 }
@@ -634,12 +1046,190 @@ message GetShipmentFilesResponse {
   repeated ShipmentFile files = 1;
 }
 
+// Request for AttachShipmentFile. document_type / document_type_id must be
+// supplied together (backend-load trusts the pair verbatim); when BOTH are
+// absent backend-load resolves them from backend-files by file_id. Supplying
+// only one of the two is an InvalidArgument.
+message AttachShipmentFileRequest {
+  string company_id  = 1;  // tenant; stamped into order_files.company_id
+  string shipment_id = 2;
+  string file_id     = 3;  // UUID in backend-files
+  string uploaded_by = 4;  // acting user; becomes order_files.uploaded_by
+  optional string document_type    = 5;  // e.g. "RC" (doc-type name; legacy "RATE_CON" accepted)
+  optional string document_type_id = 6;  // backend-files document type UUID
+  // false → a file already attached to another load (or to this load under a
+  // different doc type) is rejected with ALREADY_EXISTS instead of silently
+  // creating a second row; true bypasses that duplicate warning.
+  bool confirm_duplicate = 7;
+}
+
+message AttachShipmentFileResponse {
+  ShipmentFile file = 1;
+}
+
 // Request for GetTripIDsByShipment. company_id is passed explicitly because
 // backend-load currently runs without an AuthServerInterceptor; backend-load
 // validates that shipment_id belongs to the tenant before returning trip IDs.
 message GetTripIDsByShipmentRequest {
   string company_id  = 1;
   string shipment_id = 2;
+}
+
+message ResolveTruckIDsRequest {
+  string company_id = 1;
+  string search     = 2; // free text matched against unit number / plate / VIN
+}
+
+// ── Truck owner (DEV-1919) ──────────────────────────────────────────────────
+
+message GetTruckOwnersByTruckIDsRequest {
+  // Same semantics as ResolveTruckIDsRequest.company_id.
+  string company_id = 1;
+  // Empty list is a valid request and returns an empty map, not an error: the
+  // caller does not have to special-case a batch that happens to have no trucks.
+  repeated string truck_ids = 2;
+}
+
+message GetTruckOwnersByTruckIDsResponse {
+  // Keyed by truck id. Trucks with COMPANY or LEASED ownership, and truck ids
+  // that belong to another tenant or do not exist, are absent from the map.
+  //
+  // A map rather than a repeated pair because one owner routinely holds several
+  // trucks, and the caller's next move is always a lookup by truck id.
+  map<string, TruckOwner> owners_by_truck_id = 1;
+}
+
+// ── Vehicle unit numbers (DEV-2273) ─────────────────────────────────────────
+
+message GetVehicleNumbersByIDsRequest {
+  // Same semantics as ResolveTruckIDsRequest.company_id.
+  string company_id = 1;
+  // Either list may be empty, and so may both: an empty request returns empty
+  // maps, not an error, so a caller with only trailers to resolve does not have
+  // to special-case the truck half.
+  repeated string truck_ids = 2;
+  repeated string trailer_ids = 3;
+}
+
+message GetVehicleNumbersByIDsResponse {
+  // Keyed by truck / trailer id. An id from another tenant, an id that does not
+  // exist, and a vehicle whose unit number is blank are all absent: the caller
+  // writes down "the number I was told", and a blank is not a number.
+  map<string, string> truck_numbers_by_id = 1;
+  map<string, string> trailer_numbers_by_id = 2;
+  // DEV-3048: which of the requested ids are SOFT-DELETED trucks / trailers of
+  // the company. A deleted truck keeps its number in truck_numbers_by_id (its
+  // tolls and charges must still say whose they were, DEV-2835), so a caller
+  // cannot read "named" as "alive" — this is the explicit answer. Ids of
+  // another tenant and ids that never existed are not listed here either:
+  // absence still means "unknown", not "deleted".
+  repeated string deleted_truck_ids = 3;
+  repeated string deleted_trailer_ids = 4;
+}
+
+// DEV-2241: which of these trailers the company owns.
+message GetTrailerOwnershipByIDsRequest {
+  string company_id = 1;
+  repeated string trailer_ids = 2;
+}
+
+message GetTrailerOwnershipByIDsResponse {
+  // Keyed by trailer id. true = company trailer, false = LOT (loaner /
+  // customer-owned). A trailer of another tenant, or one that does not exist,
+  // is ABSENT — absence is "unknown", never "not ours": the caller must refuse
+  // to guess rather than silently charging or silently refusing.
+  map<string, bool> is_company_by_id = 1;
+}
+
+message GetTruckIDsByOwnerIDsRequest {
+  string company_id = 1;
+  // Empty list is a valid request and returns an empty map, not an error.
+  repeated string owner_ids = 2;
+}
+
+message GetTruckIDsByOwnerIDsResponse {
+  // Keyed by owner id. Owners with no live truck are absent from the map.
+  map<string, TruckIDList> truck_ids_by_owner_id = 1;
+}
+
+// TruckIDList exists only because proto3 maps cannot hold a repeated value.
+message TruckIDList {
+  repeated string truck_ids = 1;
+  // Unit numbers, index-aligned with truck_ids. The preview names the truck the
+  // operator will pick ("Truck 301"), and a second round-trip for the numbers
+  // would be one call per owner.
+  repeated string numbers = 2;
+}
+
+message ListActiveTruckIDsRequest {
+  string company_id = 1;
+}
+
+message ListActiveTruckIDsResponse {
+  // Every currently-active truck of the company, no paging: the producer walks
+  // the whole fleet per tick and a fleet is hundreds of trucks, not millions.
+  repeated string truck_ids = 1;
+  // Unit numbers, index-aligned with truck_ids — the check card names the truck
+  // ("Truck 1094"), and a second round-trip for the number would be one call
+  // per truck. Blank when the truck has no number on record.
+  repeated string numbers = 2;
+  // When each truck joined the fleet (RFC3339, UTC), index-aligned with
+  // truck_ids. The no-driver producer asks nothing about a day before it: a
+  // truck added today did not "stand empty" last week (DEV-2445). Blank when
+  // unknown — the caller then keeps its own window.
+  repeated string created_at = 3;
+}
+
+message ListFleetAssetIDsRequest {
+  string company_id = 1;
+}
+
+message ListFleetAssetIDsResponse {
+  // No paging: a fleet is hundreds of assets, and the caller makes one call per
+  // company per day.
+  repeated string truck_ids   = 1;
+  repeated string trailer_ids = 2;
+}
+
+// TruckOwner is the third party that owns a truck our driver drives. It is NOT
+// a driver employment type: a person can be an owner-operator on their own
+// truck A (driver type 6) and the owner of truck B that a company driver runs.
+// Ownership of the equipment and the driver's pay model are independent, and
+// this message describes only the former.
+//
+// Carries exactly what accounting needs to pay them — identity, where the money
+// goes, and how to reach them. Phone, DOT and address stay in backend-load;
+// nothing on the settlement path reads them.
+message TruckOwner {
+  string id   = 1;
+  string name = 2;
+
+  // Who the check is made out to. Often differs from `name` (the operating
+  // name) and is the string that must appear on the settlement PDF.
+  string pay_to_name = 3;
+
+  // May be empty: an owner running under the carrier's authority has no MC of
+  // their own, and refusing to pay them over a blank field would be wrong.
+  string mc_number = 4;
+
+  // May be empty. An owner with no email cannot be sent a statement PDF; that
+  // is the caller's problem to report, not a reason to omit them here.
+  string email = 5;
+
+  // false ⇒ deactivated. Deactivation does NOT unlink their trucks, so an
+  // inactive owner can still legitimately appear here for a past period.
+  bool is_active = 6;
+
+  // Set when this owner is also one of our drivers. Their own trips — the ones
+  // where THEY are the driver — are already paid on their driver statement and
+  // must be excluded from the owner settlement, which is what this field exists
+  // to make possible.
+  optional string driver_user_id = 7;
+
+  // Whether that driver is still active. Absent (not false) when backend-load
+  // could not reach the people service: "unknown" and "inactive" are different
+  // answers, and a money path must not read the first as the second.
+  optional bool driver_is_active = 8;
 }
 
 // Детали trip-а, нужные backend-accounting чтобы создать pay_batch
@@ -670,5 +1260,456 @@ message PayBatchTrip {
   double driver_gross = 18;  // расчётная зарплата водителя (если известна)
   double rate         = 19;  // shipment.rpm
   string truck_unit   = 20;  // truck.license / number, "" если нет
+
+  optional string shipment_id = 21;  // trip.shipment_id (UUID), для backend-accounting trip→shipment маппинга
+  optional string secondary_driver_id = 22;  // trip.secondary_driver_id (team driver), если есть
+  optional string truck_id = 23;  // trip.truck_id (UUID), для backend-accounting truck-фильтра стейтментов
+
+  // Order Split (DEV-881/882). Признаки и величины сплит-груза (один shipment,
+  // разделённый между несколькими водителями через recovery-трип).
+  string trip_status           = 24;  // статус самого трипа (вкл. COMPLETED_WITH_ISSUES — split-трип первого водителя)
+  double shipment_total_miles  = 25;  // исходные общие (loaded) мили груза = знаменатель доли водителя
+  double shipment_load_rate    = 26;  // ставка груза целиком (load_pay) = база percentage-доли и сверки
+  bool   shipment_has_issues   = 27;  // груз вёлся с проблемами (split/recovery)
+  optional string parent_trip_id = 28;  // trip.parent_trip_id (UUID) у recovery-трипа сплита
+
+  // DEV-1577. true ⇒ trips.empty_miles IS NULL: порожний пробег ещё НЕ посчитан
+  // (компания в режиме deferred, диспетчер не нажал Calculate). empty_miles выше
+  // в этом случае несёт 0 и означать «ноль миль» НЕ может — потребитель обязан
+  // отказать, а не платить по нулю.
+  //
+  // Отдельное поле, а не optional на empty_miles: в proto3 нулевой double не
+  // сериализуется, поэтому старый сервер отдавал бы легитимный «empty = 0» как
+  // отсутствующее значение и новый клиент блокировал бы нормальные трипы на
+  // денежном пути. Отсутствие ЭТОГО поля у старого сервера = false = не блокирует.
+  optional bool empty_miles_not_calculated = 29;
+
+  // DEV-3101. trip.trailer_id (UUID) — the trip's trailer now; absent when the
+  // trip has no trailer. Lets backend-accounting refuse a vendor bill line that
+  // names a trip and a trailer that is not that trip's.
+  optional string trailer_id = 30;
 }
 
+
+// ── Toll matching (DEV-1793) ────────────────────────────────────────────────
+
+// TollMatchRow is one toll-road crossing offered for resolution.
+message TollMatchRow {
+  // The caller's own handle for this row (toll_events.id, or the row hash when
+  // suggesting a device). Echoed back untouched — backend-load neither parses
+  // nor stores it.
+  string row_key = 1;
+
+  // The aggregator's transponder id, verbatim from the file. Empty when the
+  // plaza photographed the plate instead of reading a transponder. Leading
+  // zeros are significant: agency tag "01606029503" is not "1606029503".
+  string device_id = 2;
+
+  // The plate, ALREADY normalised by the caller through toll.NormalizePlate
+  // (leading state code and punctuation stripped). Empty unless the file's
+  // Read Type was Plate. Compared against normalize_plate(trucks.license_plate),
+  // the SQL twin of that function.
+  string plate = 3;
+
+  // The carrier's own truck number as printed in the file, already through
+  // toll.NormalizeTruckRef (leading zeros dropped, "N/A" and friends emptied).
+  //
+  // NEVER a match key — aggregators carry stale and foreign numbers here, and
+  // the ticket is explicit that it is a CHECK only. It is sent so the response
+  // can report whether it resolves to a truck, which is one of the four checks
+  // behind proposing a device id for a truck that has none. Matching MUST NOT
+  // consult it.
+  string truck_ref = 4;
+
+  // The plaza crossing time as printed in the file, which carries NO time zone
+  // — it is the PLAZA's wall clock, not the carrier's. Not an instant; the
+  // server widens it into a band. Unset when the file carried no exit time.
+  optional google.protobuf.Timestamp exit_at = 5;
+
+  // The aggregator's billing date. Used as a (far coarser) trip window when
+  // exit_at is unset. It can be up to 18 days later than the crossing, so a row
+  // resolved this way is always flagged in `reason`.
+  google.protobuf.Timestamp post_date = 6;
+
+  // Which aggregator issued device_id.
+  //
+  // A transponder id alone does not identify a box — the PAIR does. Two
+  // aggregators can mint the same id string for two physically different
+  // transponders sitting on two different trucks, and a carrier can run both
+  // programmes at once, so matching on the bare id would collapse them.
+  //
+  // Empty means "match the id under any aggregator", which is what a caller
+  // predating this field sends; the server treats it as unconstrained rather
+  // than as no-match, so an older client keeps working.
+  string device_provider = 7;
+
+  // truck_id short-circuits the truck step: the caller already knows the truck
+  // and wants only the trip and the crew resolved for it (DEV-2049 — an
+  // accountant assigning a batch of crossings whose transponder is not on any
+  // truck yet).
+  //
+  // When set, device_id and plate are NOT consulted for the match at all: this
+  // is a decision a person made, and letting the transponder overrule it would
+  // defeat the point. The trip step is unchanged — same crossing band, same
+  // ranking, so a forced truck and a matched truck resolve their trip by
+  // exactly one rule.
+  //
+  // Empty (what every caller predating this field sends) means "resolve the
+  // truck the usual way".
+  string truck_id = 8;
+}
+
+message MatchTollRowsRequest {
+  string company_id = 1;
+  repeated TollMatchRow rows = 2;
+}
+
+// TollMatchResult is the outcome for one row. `status` mirrors
+// backend-accounting's TollMatchStatus strings exactly, so the caller stores it
+// verbatim instead of keeping a mapping table in step with this file.
+message TollMatchResult {
+  string row_key = 1;
+
+  // Empty when no truck — or more than one — could be identified. Populated
+  // even when status is "unmatched" because no trip covered the crossing: the
+  // truck is still the best fact known about the row, and it is what a person
+  // needs in order to fix it.
+  string truck_id = 2;
+  // The fleet's own unit number for truck_id, so the caller can cross-check the
+  // file's "Truck ID" column. Empty when truck_id is empty. The cross-check
+  // never changes the match.
+  string truck_number = 3;
+
+  // Empty when no trip covers the crossing, or when more than one does.
+  string trip_id = 4;
+  string driver_id = 5;            // trips.main_driver_id
+  string secondary_driver_id = 6;  // trips.secondary_driver_id — team trips only
+
+  // "matched" | "unmatched" | "conflict".
+  string status = 7;
+  // Machine-readable why: "device" | "plate" | "device+plate" | "no_truck" |
+  // "two_trucks" | "no_trip" | "two_trips", suffixed with ";post_date" when the
+  // trip window came from post_date because the file carried no exit time.
+  string reason = 8;
+
+  // ── device-suggestion evidence ──────────────────────────────────────────
+  // Never used to match. These answer the "should we PROPOSE writing this
+  // device onto this truck" question in the same round trip, so the caller
+  // needs neither a second RPC nor a copy of the fleet in its own database.
+
+  // The truck whose unit number equals truck_ref, when EXACTLY one does.
+  // Empty for zero or for several — an ambiguous number is not evidence.
+  string truck_ref_truck_id = 9;
+  // The single trip of THAT truck covering the crossing. Empty for zero or for
+  // several.
+  string truck_ref_trip_id = 10;
+  // The truck device_id is already written on, if any. Non-empty means the
+  // device is taken and nothing should be proposed.
+  string device_owner_truck_id = 11;
+  // The license plate of the truck_ref truck (the one in truck_ref_truck_id), as
+  // stored — NOT normalised. Empty when that truck has no plate, and when
+  // truck_ref resolved to zero or several trucks. Lets the caller propose a
+  // plate only onto a truck that has none.
+  string truck_ref_plate = 12;
+}
+
+message MatchTollRowsResponse {
+  repeated TollMatchResult results = 1;
+}
+
+// TollRefStretch is the days one Truck-column number was seen on one device,
+// among crossings no truck holds yet. Days are UTC midnights of the crossing
+// date (exit date, else post date).
+message TollRefStretch {
+  // Through toll.NormalizeTruckRef; never empty.
+  string truck_ref = 1;
+  google.protobuf.Timestamp first_day = 2;
+  google.protobuf.Timestamp last_day = 3;
+  int32 distinct_days = 4;
+}
+
+message TollDeviceHistory {
+  string device_id = 1;
+  // Every non-blank Truck-column number seen for this device, in any order.
+  repeated TollRefStretch stretches = 2;
+}
+
+// ── Provider vehicle list (DEV-3437) ────────────────────────────────────────
+
+// TruckProbe is one vehicle of a toll provider's own list, with the
+// transponder the provider says is on it.
+message TruckProbe {
+  // The caller's own handle, echoed back untouched.
+  string probe_key = 1;
+  // As the provider printed it. Compared trimmed and case-insensitively
+  // against trucks.vin. Empty never matches.
+  string vin = 2;
+  // ALREADY normalised by the caller through toll.NormalizePlate, compared
+  // against normalize_plate(trucks.license_plate). Empty never matches.
+  string plate = 3;
+  // The transponder and its aggregator (toll.ProviderType). Only used to
+  // report who already holds the device; empty device_id reports nothing.
+  string device_provider = 4;
+  string device_id = 5;
+  // The provider's own unit number, ALREADY through toll.NormalizeTruckRef.
+  // NEVER a match key: it is only reported so the caller can say "only the
+  // unit matched" instead of "nothing matched". Compared trimmed and
+  // case-insensitively against trucks.number.
+  string unit = 6;
+}
+
+message MatchTrucksByVinOrPlateRequest {
+  string company_id = 1;
+  repeated TruckProbe probes = 2;
+}
+
+message TruckProbeResult {
+  string probe_key = 1;
+  // Every truck of the company with that VIN — zero, one or several.
+  repeated string vin_truck_ids = 2;
+  // Every truck of the company with that normalised plate.
+  repeated string plate_truck_ids = 3;
+  // The truck (device_provider, device_id) is written on today, if any, and
+  // its unit number so the caller can name it.
+  string device_owner_truck_id = 4;
+  string device_owner_truck_number = 5;
+  // Every truck whose number equals unit. Evidence only — see TruckProbe.unit.
+  repeated string unit_truck_ids = 6;
+}
+
+message MatchTrucksByVinOrPlateResponse {
+  repeated TruckProbeResult results = 1;
+}
+
+message ApplyTollDeviceHistoryRequest {
+  string company_id = 1;
+  // Which aggregator issued every device_id below.
+  string provider = 2;
+  repeated TollDeviceHistory devices = 3;
+}
+
+// TollDeviceHistoryWritten names a device whose segments changed, and the
+// earliest day they now cover: the caller re-matches that device from there.
+message TollDeviceHistoryWritten {
+  string device_id = 1;
+  google.protobuf.Timestamp since = 2;
+}
+
+message ApplyTollDeviceHistoryResponse {
+  repeated TollDeviceHistoryWritten written = 1;
+}
+
+// GetLotChargebacksByDispatchersRequest asks for the charges attributed to the
+// named dispatchers whose accrual day falls in [from, to].
+message GetLotChargebacksByDispatchersRequest {
+  string company_id = 1;
+  repeated string dispatcher_ids = 2;
+  string from = 3; // YYYY-MM-DD, inclusive, against accrual_date
+  string to = 4;   // YYYY-MM-DD, inclusive
+}
+
+// LotChargebackForDispatcher is one late day charged to one dispatcher.
+//
+// Only the DISPATCHER kind is reported. The sibling BROKER rows are the fine the
+// broker bills the carrier and belong to no dispatcher's pay. And only ACTIVE
+// rows: a voided charge has been forgiven by a manager, so it must not reach a
+// pay statement.
+message LotChargebackForDispatcher {
+  string id = 1;
+  string dispatcher_id = 2;
+  string trailer_id = 3;
+  // trip_id is empty when the trailer's LOT clock was started without a trip —
+  // e.g. lot_pickup_at corrected by hand.
+  string trip_id = 4;
+  string accrual_date = 5; // YYYY-MM-DD, the single late day this row charges for
+
+  // amount_cents is CENTS, not dollars. backend-load stores this column as an
+  // integer number of cents while accounting works in NUMERIC(14,4) — the name
+  // says so on purpose, because reading it as dollars overcharges by 100x.
+  int32 amount_cents = 6;
+}
+
+message GetLotChargebacksByDispatchersResponse {
+  repeated LotChargebackForDispatcher data = 1;
+}
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Fleet maintenance (DEV-2252)
+// ─────────────────────────────────────────────────────────────────────────────
+
+// MaintenanceAssetType names which kind of equipment an id refers to. Spelled
+// as the enum rather than a string so a truck id can never be read as a trailer.
+enum MaintenanceAssetType {
+  MAINTENANCE_ASSET_TYPE_UNSPECIFIED = 0;
+  MAINTENANCE_ASSET_TYPE_TRUCK = 1;
+  MAINTENANCE_ASSET_TYPE_TRAILER = 2;
+}
+
+// AssetStatus mirrors backend-load's AssetStatus. RETIRED is deliberately
+// absent from the SET direction (see SetAssetStatusRequest) but present here so
+// the response can report an asset that is already retired.
+enum AssetStatus {
+  ASSET_STATUS_UNSPECIFIED = 0;
+  ASSET_STATUS_ACTIVE = 1;
+  ASSET_STATUS_OUT_OF_SERVICE = 2;
+  ASSET_STATUS_RETIRED = 3;
+}
+
+message GetAssetOdometerRequest {
+  string company_id = 1;
+  MaintenanceAssetType asset_type = 2;
+  string asset_id = 3;
+}
+
+message GetAssetOdometerResponse {
+  // False when the asset has no reading at all. The other fields are then zero
+  // — a caller must check this rather than treat 0 miles as a real odometer.
+  bool has_reading = 1;
+  double miles = 2;
+  // When the meter was read, not when the row was written.
+  google.protobuf.Timestamp read_at = 3;
+  // Where it came from: "samsara", "manual", "trip_estimate".
+  string source = 4;
+  // True when the reading came from a gateway that has been quiet for over 48
+  // hours, i.e. the mileage is a guess and the caller should prefer trip miles.
+  bool stale = 5;
+}
+
+message RecordAssetOdometerRequest {
+  string company_id = 1;
+  string actor_id = 2;
+  MaintenanceAssetType asset_type = 3;
+  string asset_id = 4;
+  double miles = 5;
+  // When the meter was read. Empty means now; it may not be in the future.
+  google.protobuf.Timestamp read_at = 6;
+  // Why this reading is lower than the one on record. Required ONLY for a
+  // reading that goes backwards; without it such a reading is refused.
+  string reason = 7;
+}
+
+message RecordAssetOdometerResponse {
+  // The asset's CURRENT reading after the write, which is not necessarily the
+  // one just sent: a reading older than the one on record is kept in the
+  // history without becoming current.
+  double current_miles = 1;
+  // True when the write was refused because it went backwards with no reason.
+  // The caller turns this into ODOMETER_REGRESSION for the user; it is not a
+  // transport error, so it is reported in-band rather than as a gRPC status.
+  bool regression_refused = 2;
+}
+
+message SetAssetStatusRequest {
+  string company_id = 1;
+  string actor_id = 2;
+  MaintenanceAssetType asset_type = 3;
+  string asset_id = 4;
+  // ACTIVE or OUT_OF_SERVICE only. RETIRED is refused — retiring ends somebody's
+  // recurring charges and has rules of its own.
+  AssetStatus status = 5;
+  // Mandatory, recorded in the asset's history, and shown to the dispatcher who
+  // is later refused because of it. The work order names itself here.
+  string reason = 6;
+}
+
+message SetAssetStatusResponse {
+  AssetStatus status = 1;
+  // False when the asset was already in the requested status: nothing was
+  // written, no history entry added and no event published.
+  bool changed = 2;
+  // Set when the change was refused rather than applied — a retired asset. The
+  // caller decides what to tell the user; the work order itself still stands.
+  string refusal_code = 3;
+}
+
+message GetAssetTripMilesRequest {
+  string company_id = 1;
+  MaintenanceAssetType asset_type = 2;
+  string asset_id = 3;
+  // Miles are summed over trips from this instant (inclusive) to now.
+  google.protobuf.Timestamp since = 4;
+}
+
+message GetAssetTripMilesResponse {
+  double miles = 1;
+  // How many trips the figure came from. Zero trips is a legitimate answer of
+  // zero miles, not a missing one.
+  int32 trip_count = 2;
+}
+
+message GetTruckSamsaraMilesRequest {
+  string company_id = 1;
+  string truck_id = 2;
+  // The period, both ends required, `to` after `from`.
+  google.protobuf.Timestamp from = 3;
+  google.protobuf.Timestamp to = 4;
+}
+
+// SamsaraMilesReason says why GetTruckSamsaraMiles has no number. UNSPECIFIED
+// is the answer WITH a number.
+enum SamsaraMilesReason {
+  SAMSARA_MILES_REASON_UNSPECIFIED = 0;
+  // The truck has no Samsara reading at or before `to`.
+  SAMSARA_MILES_REASON_NO_READINGS = 1;
+  // A Samsara reading inside the period is lower than the one before it.
+  SAMSARA_MILES_REASON_ODOMETER_ROLLBACK = 2;
+  // End reading minus start reading is zero or less.
+  SAMSARA_MILES_REASON_NON_POSITIVE_DELTA = 3;
+}
+
+message GetTruckSamsaraMilesResponse {
+  // Meaningful only when reason is UNSPECIFIED; zero otherwise, and a caller
+  // must check reason rather than treat 0 as miles driven.
+  double miles = 1;
+  SamsaraMilesReason reason = 2;
+  // The two readings the answer stands on, so the caller can show how fresh
+  // they are. Start is the last reading at or before `from`, or the first one
+  // inside the period when there is none. Both are absent with NO_READINGS and
+  // present with every other reason.
+  double start_miles = 3;
+  google.protobuf.Timestamp start_read_at = 4;
+  double end_miles = 5;
+  google.protobuf.Timestamp end_read_at = 6;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Compliance facts (DEV-2565)
+// ─────────────────────────────────────────────────────────────────────────────
+
+message GetAssetComplianceFactsRequest {
+  string company_id = 1;
+  MaintenanceAssetType asset_type = 2;
+  // Empty list is a valid request and returns an empty map, not an error.
+  repeated string asset_ids = 3;
+}
+
+message AssetComplianceFacts {
+  AssetStatus status = 1;
+  // True only for a truck whose ownership is LEASED. Always false for a trailer.
+  bool leased = 2;
+}
+
+message GetAssetComplianceFactsResponse {
+  // Keyed by asset id.
+  map<string, AssetComplianceFacts> facts_by_id = 1;
+}
+
+// Telegram driver answer (DEV-3400)
+// ─────────────────────────────────────────────────────────────────────────────
+
+message ApplyDriverAnswerRequest {
+  string company_id = 1;
+  string crew_id = 2;
+  // tms-telegram message id (uuid) = SendResult.message_id of the load message.
+  string telegram_message_row_id = 3;
+  int64 telegram_user_id = 4;
+  string name = 5;
+  string username = 6;    // without "@", empty when the member has none
+  string action = 7;      // "ack" or "decline"
+  string tap_id = 8;      // tms-telegram tap id (uuid), the idempotency key
+}
+
+message ApplyDriverAnswerResponse {
+  string toast_text = 1;  // shown verbatim to the member who tapped
+}

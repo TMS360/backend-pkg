@@ -64,10 +64,28 @@ func TestBuildTruckRoute_URLContainsTruckParams(t *testing.T) {
 	if q.Get("vehicle[shippedHazardousGoods]") != "flammable" {
 		t.Errorf("hazmat=%q, want flammable", q.Get("vehicle[shippedHazardousGoods]"))
 	}
-	ret := q.Get("return")
-	for _, must := range []string{"actions", "instructions", "polyline", "spans", "notices"} {
-		if !strings.Contains(ret, must) {
+	assertNavReturn(t, q.Get("return"))
+	if q.Get("units") != "imperial" {
+		t.Errorf("units=%q, want imperial", q.Get("units"))
+	}
+}
+
+// assertNavReturn checks the HERE `return=` list: the navigation fields are
+// there, and no value HERE rejects with 400 E605001 (spans has its own param).
+func assertNavReturn(t *testing.T, ret string) {
+	t.Helper()
+	got := map[string]bool{}
+	for _, v := range strings.Split(ret, ",") {
+		got[v] = true
+	}
+	for _, must := range []string{"actions", "instructions", "polyline", "summary"} {
+		if !got[must] {
 			t.Errorf("return=%q missing %q", ret, must)
+		}
+	}
+	for _, bad := range []string{"spans", "notices"} {
+		if got[bad] {
+			t.Errorf("return=%q has %q, which HERE rejects", ret, bad)
 		}
 	}
 }
@@ -95,6 +113,10 @@ func TestBuildTruckRouteMultiStop_SingleHTTPCallWithVia(t *testing.T) {
 	via := got.URL.Query()["via"]
 	if len(via) != 2 {
 		t.Fatalf("via count=%d, want 2 (got %v)", len(via), via)
+	}
+	assertNavReturn(t, got.URL.Query().Get("return"))
+	if u := got.URL.Query().Get("units"); u != "imperial" {
+		t.Errorf("units=%q, want imperial", u)
 	}
 }
 
@@ -166,5 +188,34 @@ func TestSanitizeOffset(t *testing.T) {
 		if got := sanitizeOffset(c.off, c.length); got != c.want {
 			t.Errorf("sanitizeOffset(%d,%d)=%d, want %d", c.off, c.length, got, c.want)
 		}
+	}
+}
+
+func TestBuildTruckRoute_OriginCourse(t *testing.T) {
+	body := `{"routes":[{"id":"r1","sections":[{"id":"s1","summary":{"length":1000,"duration":120,"baseDuration":100},"polyline":""}]}]}`
+	course := 271.6
+	for _, tc := range []struct {
+		name   string
+		course *float64
+		want   string
+	}{
+		{"no course keeps the plain point", nil, "41.000000,69.000000"},
+		{"course is sent rounded with the point", &course, "41.000000,69.000000;course=272"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var got *http.Request
+			svc := newTestNavService(t, body, &got)
+			_, err := svc.BuildTruckRoute(context.Background(), TruckNavRequest{
+				Origin:       Coordinates{Latitude: 41.0, Longitude: 69.0},
+				Destination:  Coordinates{Latitude: 41.5, Longitude: 69.5},
+				OriginCourse: tc.course,
+			})
+			if err != nil {
+				t.Fatalf("unexpected err: %v", err)
+			}
+			if o := got.URL.Query().Get("origin"); o != tc.want {
+				t.Errorf("origin=%q, want %q", o, tc.want)
+			}
+		})
 	}
 }

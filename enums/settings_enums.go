@@ -11,28 +11,88 @@ type CompanySettingsGeneralKey string
 
 const (
 	CompanySettingsGeneralKeyLogo                      CompanySettingsGeneralKey = "logo"
+	CompanySettingsGeneralKeyTimezone                  CompanySettingsGeneralKey = "timezone"
 	CompanySettingsGeneralKeyHazmatEnabled             CompanySettingsGeneralKey = "hazmat_enabled"
 	CompanySettingsGeneralKeyReeferEnabled             CompanySettingsGeneralKey = "reefer_enabled"
 	CompanySettingsGeneralKeyBrokerHasVerifyShipments  CompanySettingsGeneralKey = "broker_has_verify_shipments"
 	CompanySettingsGeneralKeyTripAssignmentBufferHours CompanySettingsGeneralKey = "trip_assignment_buffer_hours"
 	// CompanySettingsGeneralKeySamsaraAssetTrackingEnabled decides where recorded
-	// mileage comes from: Samsara GPS actual when on (default), HERE road-distance
-	// estimate when off. Default-on preserves current behaviour for existing tenants.
+	// mileage comes from: Samsara GPS actual when on, HERE road-distance estimate
+	// when off. It is only ever on while the company has an active samsara_api_key;
+	// with a key, an unsaved switch means on (DEV-2570, settings.SamsaraAssetTrackingOnFrom).
 	CompanySettingsGeneralKeySamsaraAssetTrackingEnabled CompanySettingsGeneralKey = "samsara_asset_tracking_enabled"
+	// CompanySettingsGeneralKeyUseHereInRisk decides whether the trip risk worker
+	// may make the automatic (paid) HERE routing call when a trip looks high-risk.
+	// Default OFF: risk scoring still works off the free required-speed estimate and
+	// the ETA stays a placeholder until an admin opts in. Per-company.
+	CompanySettingsGeneralKeyUseHereInRisk CompanySettingsGeneralKey = "use_here_in_risk"
+	// CompanySettingsGeneralKeyEmptyMilesWorkflow decides when a trip's empty
+	// (deadhead) miles get written. "auto" keeps the historical behaviour — every
+	// lifecycle step that can change the deadhead origin recomputes and persists
+	// the number. "deferred" leaves empty miles NULL until dispatch has checked the
+	// origin and explicitly calculated, so nothing invents a mileage the driver
+	// then gets paid on (DEV-1573/DEV-1577). Missing row reads as "auto": tenants
+	// that predate the setting must not change behaviour on deploy.
+	CompanySettingsGeneralKeyEmptyMilesWorkflow CompanySettingsGeneralKey = "empty_miles_workflow"
+	// CompanySettingsGeneralKeyFirstDayOfWeek is the weekday a company's week
+	// starts on: "monday" (the default, and what every service counted before
+	// DEV-1909) or "sunday". Read it through settings.FirstDayOfWeekFor / the
+	// ForCompany variant — never by counting weekdays locally.
+	CompanySettingsGeneralKeyFirstDayOfWeek CompanySettingsGeneralKey = "first_day_of_week"
+	// CompanySettingsGeneralKeyFirstDayOfWeekEffectiveFrom is the date (YYYY-MM-DD)
+	// the new first day starts to count from. Weeks that begin BEFORE it keep the
+	// old day, which is what keeps already-stored weeks readable: changing the
+	// setting must never re-cut a week that payroll has already been run on.
+	CompanySettingsGeneralKeyFirstDayOfWeekEffectiveFrom CompanySettingsGeneralKey = "first_day_of_week_effective_from"
+	// CompanySettingsGeneralKeyBrokerDefaultBillingType is the billing type a new
+	// broker's CustomerBilling starts from, so the accountant isn't asked every
+	// time. One of enums.BillingType's five values, or empty (no default — ask
+	// each time). Never backfilled and never written at broker create: the
+	// invoice-batch review reads it only as a prefill (DEV-2281).
+	CompanySettingsGeneralKeyBrokerDefaultBillingType CompanySettingsGeneralKey = "broker_default_billing_type"
+	// CompanySettingsGeneralKeyTollsGroupBy is the date a statement's Tolls tab
+	// groups crossings into weeks by: "exit" (the default — the week the truck
+	// drove) or "post" (the week the agency posted it). Missing or unknown
+	// reads as "exit". Grouping only; it never changes what was charged
+	// (DEV-2490).
+	CompanySettingsGeneralKeyTollsGroupBy CompanySettingsGeneralKey = "tolls_group_by"
+	// CompanySettingsGeneralKeyTruckOwnerPDFMode is how a Truck Owner settlement
+	// PDF is packaged: "single" (the default — one PDF, summary page first, then
+	// one section per truck) or "per_truck" (a summary PDF plus one PDF per
+	// truck). Missing or unknown reads as "single". Read it through
+	// settings.TruckOwnerPDFModeFor / the ForCompany variant (DEV-2914).
+	CompanySettingsGeneralKeyTruckOwnerPDFMode CompanySettingsGeneralKey = "truck_owner_pdf_mode"
+	// CompanySettingsGeneralKeyLockLoadNotes locks a load note 5 minutes after it
+	// is written: only its author may change or archive it in that window, and
+	// only a company-settings admin (with a reason) may archive it after.
+	// "true" / "false"; missing or unreadable reads as off. Read it through
+	// settings.LoadNotesLockOn (DEV-3675).
+	CompanySettingsGeneralKeyLockLoadNotes CompanySettingsGeneralKey = "lock_load_notes"
 )
 
 var AllCompanySettingsGeneralKey = []CompanySettingsGeneralKey{
 	CompanySettingsGeneralKeyLogo,
+	CompanySettingsGeneralKeyTimezone,
 	CompanySettingsGeneralKeyHazmatEnabled,
 	CompanySettingsGeneralKeyReeferEnabled,
 	CompanySettingsGeneralKeyBrokerHasVerifyShipments,
 	CompanySettingsGeneralKeyTripAssignmentBufferHours,
 	CompanySettingsGeneralKeySamsaraAssetTrackingEnabled,
+	CompanySettingsGeneralKeyUseHereInRisk,
+	CompanySettingsGeneralKeyEmptyMilesWorkflow,
+	CompanySettingsGeneralKeyFirstDayOfWeek,
+	CompanySettingsGeneralKeyFirstDayOfWeekEffectiveFrom,
+	CompanySettingsGeneralKeyBrokerDefaultBillingType,
+	CompanySettingsGeneralKeyTollsGroupBy,
+	CompanySettingsGeneralKeyTruckOwnerPDFMode,
+	CompanySettingsGeneralKeyLockLoadNotes,
 }
 
 func (e CompanySettingsGeneralKey) IsValid() bool {
 	switch e {
-	case CompanySettingsGeneralKeyLogo, CompanySettingsGeneralKeyHazmatEnabled, CompanySettingsGeneralKeyReeferEnabled, CompanySettingsGeneralKeyBrokerHasVerifyShipments, CompanySettingsGeneralKeyTripAssignmentBufferHours, CompanySettingsGeneralKeySamsaraAssetTrackingEnabled:
+	case CompanySettingsGeneralKeyLogo, CompanySettingsGeneralKeyTimezone, CompanySettingsGeneralKeyHazmatEnabled, CompanySettingsGeneralKeyReeferEnabled, CompanySettingsGeneralKeyBrokerHasVerifyShipments, CompanySettingsGeneralKeyTripAssignmentBufferHours, CompanySettingsGeneralKeySamsaraAssetTrackingEnabled, CompanySettingsGeneralKeyUseHereInRisk, CompanySettingsGeneralKeyEmptyMilesWorkflow,
+		CompanySettingsGeneralKeyFirstDayOfWeek, CompanySettingsGeneralKeyFirstDayOfWeekEffectiveFrom, CompanySettingsGeneralKeyBrokerDefaultBillingType,
+		CompanySettingsGeneralKeyTollsGroupBy, CompanySettingsGeneralKeyTruckOwnerPDFMode, CompanySettingsGeneralKeyLockLoadNotes:
 		return true
 	}
 	return false
@@ -80,6 +140,42 @@ const (
 	CompanySettingsIntegrationKeySamsaraAPIKey   CompanySettingsIntegrationKey = "samsara_api_key"
 	CompanySettingsIntegrationKeyRelayAPIKey     CompanySettingsIntegrationKey = "relay_api_key"
 	CompanySettingsIntegrationKeyUSPSCredentials CompanySettingsIntegrationKey = "usps_credentials"
+	// CompanySettingsIntegrationKeyGoogleMapsAPIKey is the tenant's Google Maps
+	// Platform key, used only as a fallback after a classified HERE failure.
+	CompanySettingsIntegrationKeyGoogleMapsAPIKey CompanySettingsIntegrationKey = "google_maps_api_key"
+	// CompanySettingsIntegrationKeyGoogleSheetsAPIKey is the tenant's Google API
+	// key for the Sheets connector (DEV-1723): a board reads a spreadsheet range
+	// through it. Deliberately SEPARATE from the Maps key — the two are different
+	// integrations with different lifecycles, and sharing one credential would mean
+	// revoking a spreadsheet also breaks geocoding. The Sheets API reads only
+	// link-shared spreadsheets with an API key; a private sheet needs a service
+	// account, which is a different credential shape and a later ticket.
+	CompanySettingsIntegrationKeyGoogleSheetsAPIKey CompanySettingsIntegrationKey = "google_sheets_api_key"
+	// CompanySettingsIntegrationKeyRingCentralCredentials is the tenant's own
+	// RingCentral phone system (DEV-1751). Multi-field like usps_credentials: the
+	// value is a JSON object (client id/secret + the JWT credential, plus an
+	// optional sandbox host) read back through provider.JSONClientProvider, not a
+	// bare API key. One row per company — a RingCentral account is never shared
+	// across tenants.
+	CompanySettingsIntegrationKeyRingCentralCredentials CompanySettingsIntegrationKey = "ringcentral_credentials"
+	// CompanySettingsIntegrationKeySamsaraExtraOrgs holds the ADDITIONAL Samsara
+	// organizations of a company that runs more than one Samsara org under one MC
+	// (DEV-2056). The value is a JSON list of samsara.ExtraOrg (id, name, token,
+	// is_active); the company's primary token stays where it always was, in
+	// samsara_api_key, so every existing reader is untouched. Registered here for
+	// the same reason as every other key: tms-auth's audit redaction iterates this
+	// list, so an unregistered key would write live tokens into an audit event.
+	CompanySettingsIntegrationKeySamsaraExtraOrgs CompanySettingsIntegrationKey = "samsara_extra_orgs"
+	// CompanySettingsIntegrationKeyGeminiAPIKey is the tenant's own Google Gemini
+	// key, used by the RC processor to read uploaded rate confirmations
+	// (DEV-3292). Per company on purpose: the old single platform key lived in an
+	// env var and leaked, and one shared key means one leak hits every tenant.
+	CompanySettingsIntegrationKeyGeminiAPIKey CompanySettingsIntegrationKey = "gemini_api_key"
+	// CompanySettingsIntegrationKeyFuelGeminiAPIKey is the tenant's own Google
+	// Gemini key for fuel plans: backend-fuel picks fuel stops with it, and
+	// without it falls back to the price pick (DEV-3865). Separate from
+	// gemini_api_key on purpose, so cost and quota of the two features stay apart.
+	CompanySettingsIntegrationKeyFuelGeminiAPIKey CompanySettingsIntegrationKey = "fuel_gemini_api_key"
 )
 
 var AllCompanySettingsIntegrationKey = []CompanySettingsIntegrationKey{
@@ -87,6 +183,12 @@ var AllCompanySettingsIntegrationKey = []CompanySettingsIntegrationKey{
 	CompanySettingsIntegrationKeySamsaraAPIKey,
 	CompanySettingsIntegrationKeyRelayAPIKey,
 	CompanySettingsIntegrationKeyUSPSCredentials,
+	CompanySettingsIntegrationKeyGoogleMapsAPIKey,
+	CompanySettingsIntegrationKeyGoogleSheetsAPIKey,
+	CompanySettingsIntegrationKeyRingCentralCredentials,
+	CompanySettingsIntegrationKeySamsaraExtraOrgs,
+	CompanySettingsIntegrationKeyGeminiAPIKey,
+	CompanySettingsIntegrationKeyFuelGeminiAPIKey,
 }
 
 func (e CompanySettingsIntegrationKey) IsValid() bool {
@@ -94,7 +196,13 @@ func (e CompanySettingsIntegrationKey) IsValid() bool {
 	case CompanySettingsIntegrationKeyHereAPIKey,
 		CompanySettingsIntegrationKeySamsaraAPIKey,
 		CompanySettingsIntegrationKeyRelayAPIKey,
-		CompanySettingsIntegrationKeyUSPSCredentials:
+		CompanySettingsIntegrationKeyUSPSCredentials,
+		CompanySettingsIntegrationKeyGoogleMapsAPIKey,
+		CompanySettingsIntegrationKeyGoogleSheetsAPIKey,
+		CompanySettingsIntegrationKeyRingCentralCredentials,
+		CompanySettingsIntegrationKeySamsaraExtraOrgs,
+		CompanySettingsIntegrationKeyGeminiAPIKey,
+		CompanySettingsIntegrationKeyFuelGeminiAPIKey:
 		return true
 	}
 	return false
@@ -185,6 +293,72 @@ func (e *CompanySettingsScoringKey) UnmarshalJSON(b []byte) error {
 }
 
 func (e CompanySettingsScoringKey) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
+}
+
+type CompanySettingsSplitTripKey string
+
+const (
+	// CompanySettingsSplitTripKeyMaxRecoveryRadiusMiles is the soft radius (miles)
+	// used to score drivers when searching for a recovery driver during a split.
+	// Default 250 when unset.
+	CompanySettingsSplitTripKeyMaxRecoveryRadiusMiles CompanySettingsSplitTripKey = "max_recovery_radius_miles"
+	// CompanySettingsSplitTripKeySplitMarginWarningThreshold warns when the total
+	// driver pay exceeds load pay by more than this margin. Default 0 when unset.
+	CompanySettingsSplitTripKeySplitMarginWarningThreshold CompanySettingsSplitTripKey = "split_margin_warning_threshold"
+	// CompanySettingsSplitTripKeyDeadheadRatePerMile overrides the per-mile deadhead
+	// rate. Unset (null) means use the driver's own rate.
+	CompanySettingsSplitTripKeyDeadheadRatePerMile CompanySettingsSplitTripKey = "deadhead_rate_per_mile"
+)
+
+var AllCompanySettingsSplitTripKey = []CompanySettingsSplitTripKey{
+	CompanySettingsSplitTripKeyMaxRecoveryRadiusMiles,
+	CompanySettingsSplitTripKeySplitMarginWarningThreshold,
+	CompanySettingsSplitTripKeyDeadheadRatePerMile,
+}
+
+func (e CompanySettingsSplitTripKey) IsValid() bool {
+	switch e {
+	case CompanySettingsSplitTripKeyMaxRecoveryRadiusMiles,
+		CompanySettingsSplitTripKeySplitMarginWarningThreshold,
+		CompanySettingsSplitTripKeyDeadheadRatePerMile:
+		return true
+	}
+	return false
+}
+
+func (e CompanySettingsSplitTripKey) String() string {
+	return string(e)
+}
+
+func (e *CompanySettingsSplitTripKey) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = CompanySettingsSplitTripKey(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid CompanySettingsSplitTripKey", str)
+	}
+	return nil
+}
+
+func (e CompanySettingsSplitTripKey) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *CompanySettingsSplitTripKey) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e CompanySettingsSplitTripKey) MarshalJSON() ([]byte, error) {
 	var buf bytes.Buffer
 	e.MarshalGQL(&buf)
 	return buf.Bytes(), nil

@@ -6,8 +6,10 @@ import (
 	"reflect"
 	"sync"
 
+	"github.com/TMS360/backend-pkg/consts"
 	"github.com/TMS360/backend-pkg/middleware"
 	"github.com/TMS360/backend-pkg/tmsdb/model"
+	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
@@ -15,6 +17,52 @@ import (
 type tenantConfig struct {
 	isScoped bool
 	isShared bool
+}
+
+type scopeDecision int
+
+const (
+	// scopeGlobal runs the query with no company filter at all.
+	scopeGlobal scopeDecision = iota
+	// scopeCompany filters to one tenant.
+	scopeCompany
+	// scopeReject refuses the query: this actor should have had a tenant.
+	scopeReject
+)
+
+// decideScope answers which tenant an actor may see.
+//
+// The interesting case is the system actor, because it is two different callers
+// wearing one name:
+//
+//   - A cross-tenant sweep — a poller, the outbox relay, a seeder — built by
+//     WithSystemActor. It carries no JWT and therefore no claims, and it has to
+//     stay global or it reads nothing at all.
+//   - One service answering an RPC on behalf of ONE tenant. The internal-token
+//     interceptor puts that tenant in claims from x-company-id, and it is the
+//     only tenant those rows may come from.
+//
+// Both used to return unscoped, which is how backend-files handed any tenant's
+// file to any service that knew the uuid. The presence of a company in the
+// claims is what tells them apart.
+func decideScope(actor *consts.Actor) (scopeDecision, uuid.UUID) {
+	if actor.IsSuperAdmin() {
+		return scopeGlobal, uuid.Nil
+	}
+
+	hasCompany := actor.Claims != nil && actor.Claims.CompanyID != nil
+
+	if actor.IsSystem {
+		if !hasCompany {
+			return scopeGlobal, uuid.Nil
+		}
+		return scopeCompany, *actor.Claims.CompanyID
+	}
+
+	if !hasCompany {
+		return scopeReject, uuid.Nil
+	}
+	return scopeCompany, *actor.Claims.CompanyID
 }
 
 // TenantScopePlugin enforces tenant isolation on all database queries
@@ -86,10 +134,11 @@ func (t *TenantScopePlugin) applyScope(db *gorm.DB, isRead bool) {
 	if actor == nil {
 		return
 	}
-	if actor.IsSystem || actor.IsSuperAdmin() {
+	decision, companyID := decideScope(actor)
+	switch decision {
+	case scopeGlobal:
 		return
-	}
-	if actor.Claims.CompanyID == nil {
+	case scopeReject:
 		db.AddError(errors.New("tenant_plugin: non-admin actor missing company_id"))
 		return
 	}
@@ -113,7 +162,6 @@ func (t *TenantScopePlugin) applyScope(db *gorm.DB, isRead bool) {
 
 	// 6. Apply Security Clause
 	quotedTable := db.Statement.Quote(tableName)
-	companyID := *actor.Claims.CompanyID
 
 	if isRead && config.isShared {
 		// READ on a Shared table: User sees their company records OR system records

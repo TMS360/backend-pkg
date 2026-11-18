@@ -77,3 +77,54 @@ func TestBuildTriumphCSV_ErrorsOnMissingInvoiceNumber(t *testing.T) {
 	}})
 	require.Error(t, err)
 }
+
+func TestBuildRTSCSV_HeaderAndColumns(t *testing.T) {
+	csvBytes, err := BuildRTSCSV("truckco1", []InvoiceLine{{
+		DebtorName:    "ABC Logistics, LLC",
+		InvoiceNumber: "INV-2026-00042",
+		InvoiceDate:   time.Date(2026, 1, 31, 0, 0, 0, 0, time.UTC),
+		PONumber:      "SH-00000069",
+		AmountUSD:     1200.0,
+	}})
+	require.NoError(t, err)
+
+	lines := strings.Split(string(csvBytes), "\r\n")
+	require.Len(t, lines, 3, "expected header + 1 row + trailing empty")
+	assert.Equal(t, "Client,Invoice#,DebtorNo,Debtor Name,Load #,InvDate,InvAmt", lines[0])
+	// Client = SFTP username; DebtorNo mirrors Debtor Name (no mapping yet).
+	assert.Equal(t, `truckco1,INV-2026-00042,"ABC Logistics, LLC","ABC Logistics, LLC",SH-00000069,01/31/2026,1200.00`, lines[1])
+	assert.Equal(t, "", lines[2])
+}
+
+func TestBuildRTSCSV_AmountAndDateFormatting(t *testing.T) {
+	csvBytes, err := BuildRTSCSV("c", []InvoiceLine{{
+		DebtorName:    "X",
+		InvoiceNumber: "INV-1",
+		InvoiceDate:   time.Date(2026, 12, 5, 0, 0, 0, 0, time.UTC),
+		PONumber:      "PO1",
+		AmountUSD:     1234.5,
+	}})
+	require.NoError(t, err)
+	// MM/DD/YYYY zero-padded; two decimals, no thousands separators.
+	assert.Contains(t, string(csvBytes), ",12/05/2026,1234.50\r\n")
+}
+
+func TestBuildRTSCSV_ErrorsOnBlankClientNumber(t *testing.T) {
+	_, err := BuildRTSCSV("   ", []InvoiceLine{{
+		DebtorName: "X", InvoiceNumber: "INV-1", InvoiceDate: time.Now(), PONumber: "p", AmountUSD: 1,
+	}})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "client number")
+}
+
+func TestBuildRTSCSV_ErrorsOnEmptyInvoices(t *testing.T) {
+	_, err := BuildRTSCSV("c", nil)
+	require.Error(t, err)
+}
+
+func TestBuildRTSCSV_ErrorsOnMissingInvoiceNumber(t *testing.T) {
+	_, err := BuildRTSCSV("c", []InvoiceLine{{
+		DebtorName: "X", InvoiceNumber: "", InvoiceDate: time.Now(), PONumber: "p", AmountUSD: 1,
+	}})
+	require.Error(t, err)
+}

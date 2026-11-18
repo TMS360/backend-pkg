@@ -1,0 +1,29 @@
+"""
+One column filter, used by lists that let every column filter and sort.
+
+`field` is the column name the list publishes (the same name accepted by
+`sort`). Exactly one of the typed filters below must be sent, and it must match
+the column's type — a text filter on a date column is refused, as is a field the
+list does not publish. Sending none of them is a no-op.
+
+Entries combine with AND, both with each other and with the list's own typed
+filter argument, which keeps working unchanged.
+
+Examples:
+- { field: "number", text: { contains: "1042", mode: insensitive } }
+- { field: "createdAt", date: { gte: "2026-01-01T00:00:00Z" } }
+"""
+input ColumnFilterInput {
+    """Column name as published by the list (camelCase, e.g. "createdAt")."""
+    field: String!
+    """Filter for a text column."""
+    text: StringFilter
+    """Filter for a numeric column."""
+    number: FloatFilter
+    """Filter for a date / timestamp column."""
+    date: DateTimeFilter
+    """Filter for an identifier column."""
+    id: IDFilter
+    """Filter for a yes/no column."""
+    bool: BoolFilter
+}

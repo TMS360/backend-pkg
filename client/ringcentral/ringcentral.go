@@ -1,0 +1,417 @@
+// Package ringcentral is a thin client for the RingCentral REST API, scoped to
+// what a per-company integration needs: exchange the tenant's server-side
+// credentials for an access token and report whether they still work.
+//
+// Authentication uses the JWT auth flow — the only server-to-server flow
+// RingCentral still offers (the password grant is retired). The company stores
+// a client id/secret pair plus a JWT credential minted in the RingCentral
+// developer console; POST /restapi/oauth/token exchanges them for a short-lived
+// bearer token. A revoked or expired JWT surfaces as ErrInvalidCredentials,
+// which is exactly the "sign in again" signal the Settings screen shows.
+//
+// The client mirrors the usps/here/samsara packages: thin Client,
+// AuthError/IsAuthError for credential failures, errors wrapped with %w, no
+// logger inside (the caller decides what to log). Secrets are never put in a
+// URL, an error message, or a log line.
+package ringcentral
+
+import (
+	"context"
+	"encoding/base64"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"io"
+	"net/http"
+	"net/url"
+	"strings"
+	"sync"
+	"time"
+)
+
+const (
+	// DefaultServerURL is the RingCentral production platform host. A company on
+	// the free developer sandbox overrides it with the devtest host.
+	DefaultServerURL = "https://platform.ringcentral.com"
+	// SandboxServerURL is the developer sandbox host, accepted so a tenant can
+	// rehearse the integration before going live.
+	SandboxServerURL = "https://platform.devtest.ringcentral.com"
+
+	tokenPath = "/restapi/oauth/token"
+	// jwtGrantType is RingCentral's JWT auth flow grant (RFC 7523).
+	jwtGrantType = "urn:ietf:params:oauth:grant-type:jwt-bearer"
+
+	defaultTimeout = 30 * time.Second
+)
+
+// ErrInvalidCredentials is returned when RingCentral rejects the company's
+// credentials — a wrong client id/secret, or a JWT that was revoked or expired.
+var ErrInvalidCredentials = errors.New("ringcentral: invalid credentials")
+
+// ErrInsufficientPermissions means the credential authenticates perfectly well
+// but the RingCentral app itself was never granted the scope the call needs
+// (ReadCallLog, ReadCallRecording). It is a different problem from a revoked
+// credential and has a different fix: the app must be re-approved in the
+// RingCentral console with the scope added. Telling the tenant to "reconnect"
+// sends them to rotate secrets that were never wrong.
+//
+// A 403 from any read matches it (DEV-3365). The same error still matches
+// ErrInvalidCredentials too (see forbiddenError), so a caller written before
+// the split keeps its old behaviour; a caller that wants the right message
+// checks ErrInsufficientPermissions first.
+var ErrInsufficientPermissions = errors.New("ringcentral: app is missing a required permission")
+
+// forbiddenError is what a 403 on a read returns. It answers errors.Is for
+// BOTH sentinels: new callers can tell "missing permission" apart, and the
+// callers that only know ErrInvalidCredentials see no change.
+type forbiddenError struct{}
+
+func (forbiddenError) Error() string { return ErrInsufficientPermissions.Error() }
+
+func (forbiddenError) Is(target error) bool {
+	return target == ErrInsufficientPermissions || target == ErrInvalidCredentials
+}
+
+// Permission is one RingCentral app permission TMS360 needs: the id the token
+// response lists, and the name the developer console shows an admin.
+type Permission struct {
+	ID   string
+	Name string
+}
+
+// RequiredPermissions is every permission a company's app needs for the
+// features TMS360 offers. Order is the order an admin is told about them.
+var RequiredPermissions = []Permission{
+	{ID: "ReadAccounts", Name: "Read Accounts"},
+	{ID: "ReadCallLog", Name: "Read Call Log"},
+	{ID: "ReadCallRecording", Name: "Read Call Recording"},
+	{ID: "ReadMessages", Name: "Read Messages"},
+	{ID: "SMS", Name: "SMS"},
+	{ID: "Faxes", Name: "Faxes"},
+	{ID: "SubscriptionWebhook", Name: "WebHook Subscriptions"},
+}
+
+// AuthError carries the rejected response so the caller can log the reason
+// (never the credential) when RingCentral refuses the token exchange.
+type AuthError struct {
+	StatusCode int
+	// Code is RingCentral's OAuth error slug (invalid_grant, invalid_client, …).
+	Code string
+	Body string
+}
+
+func (e *AuthError) Error() string {
+	return fmt.Sprintf("ringcentral auth failed (status %d, error=%s): %s", e.StatusCode, e.Code, e.Body)
+}
+
+// IsAuthError reports whether err (or any error it wraps) is an *AuthError.
+func IsAuthError(err error) bool {
+	var ae *AuthError
+	return errors.As(err, &ae)
+}
+
+// Cred holds one company's RingCentral server-side credentials. Stored as a
+// JSON object at {company_id}:setting:ringcentral_credentials and consumed via
+// provider.JSONClientProvider, the same shape USPS uses.
+type Cred struct {
+	ClientID     string `json:"client_id"`
+	ClientSecret string `json:"client_secret"`
+	// JWT is the credential minted in the RingCentral developer console for
+	// this app + this RingCentral account. It is long-lived but revocable.
+	JWT string `json:"jwt"`
+	// ServerURL selects production or sandbox. Empty means production.
+	ServerURL string `json:"server_url,omitempty"`
+}
+
+// Validate reports the first missing required field, so a save can be refused
+// before anything is written.
+func (c Cred) Validate() error {
+	switch {
+	case strings.TrimSpace(c.ClientID) == "":
+		return errors.New("ringcentral: client_id is required")
+	case strings.TrimSpace(c.ClientSecret) == "":
+		return errors.New("ringcentral: client_secret is required")
+	case strings.TrimSpace(c.JWT) == "":
+		return errors.New("ringcentral: jwt is required")
+	}
+	return nil
+}
+
+// tokenResponse is the raw OAuth2 token payload.
+type tokenResponse struct {
+	AccessToken string `json:"access_token"`
+	TokenType   string `json:"token_type"`
+	ExpiresIn   int    `json:"expires_in"`
+	OwnerID     string `json:"owner_id"`
+	// Scope is the space-separated list of permissions the app was granted.
+	// A pointer: an empty list (no permissions at all) is not the same answer
+	// as no list.
+	Scope *string `json:"scope"`
+}
+
+// errorResponse is the OAuth error payload RingCentral returns on a rejection.
+type errorResponse struct {
+	Error            string `json:"error"`
+	ErrorDescription string `json:"error_description"`
+	Message          string `json:"message"`
+}
+
+// Client is a low-level RingCentral API client for one company.
+type Client struct {
+	httpClient *http.Client
+	serverURL  string
+	cred       Cred
+
+	// reuseToken is opt-in and off everywhere in production on purpose (see
+	// AccessToken). ReuseAccessToken turns it on for a short-lived, single-run
+	// tool that would otherwise spend one token exchange per call and be cut off
+	// by RingCentral's auth rate limit mid-run.
+	reuseToken  bool
+	tokenMu     sync.Mutex
+	tokenValue  string
+	tokenExpiry time.Time
+
+	// bearer holds a token obtained elsewhere — a person's own access token
+	// from the authorization-code flow (DEV-2111). When it is set there is no
+	// credential to exchange: this client IS that person for as long as the
+	// token lives, and renewing it is the caller's job, because only the caller
+	// holds the refresh token and the row to write the rotated one back to.
+	bearer      string
+	bearerOwner string
+	bearerTTL   time.Duration
+}
+
+// ReuseAccessToken makes this client hold one access token for as long as
+// RingCentral says it is valid, instead of exchanging the JWT on every call.
+//
+// It is deliberately opt-in. A long-running service must keep exchanging: a
+// credential revoked in the RingCentral console has to surface as a failure on
+// the next call, and a cached token would hide that for up to an hour. A tool
+// that performs a handful of calls and exits has the opposite problem — six
+// exchanges in a row hit the auth rate limit (HTTP 429) and the run dies
+// halfway, which is how DEV-1895 lost its third data point.
+func (c *Client) ReuseAccessToken() {
+	c.tokenMu.Lock()
+	defer c.tokenMu.Unlock()
+	c.reuseToken = true
+}
+
+// NewClientWithCred builds a Client for the given company credentials. The
+// credential is validated up front so a half-filled integration fails fast
+// instead of producing a confusing RingCentral error.
+func NewClientWithCred(cred Cred) (*Client, error) {
+	if err := cred.Validate(); err != nil {
+		return nil, err
+	}
+	server := strings.TrimSpace(cred.ServerURL)
+	if server == "" {
+		server = DefaultServerURL
+	}
+	return &Client{
+		httpClient: &http.Client{Timeout: defaultTimeout},
+		serverURL:  strings.TrimRight(server, "/"),
+		cred:       cred,
+	}, nil
+}
+
+// NewClientWithBearer builds a Client that authenticates as an already-issued
+// access token instead of exchanging a company credential (DEV-2111).
+//
+// This is what makes "Nancy texts from Nancy's number" possible at all: every
+// read and write in this package asks AccessToken for a bearer, so handing it
+// one issued to Nancy turns the whole client into Nancy without duplicating a
+// single endpoint.
+//
+// ownerExtensionID is the owner_id RingCentral returned with the token. It is
+// passed in rather than discovered because a bearer client has no token
+// exchange to read it back from.
+//
+// ttl is how much life the token has left; it is reported by AccessToken so a
+// caller minting a short-lived token for the browser can say when it dies.
+func NewClientWithBearer(serverURL, accessToken, ownerExtensionID string, ttl time.Duration) (*Client, error) {
+	if strings.TrimSpace(accessToken) == "" {
+		return nil, errors.New("ringcentral: access token is required")
+	}
+	server := strings.TrimSpace(serverURL)
+	if server == "" {
+		server = DefaultServerURL
+	}
+	return &Client{
+		httpClient:  &http.Client{Timeout: defaultTimeout},
+		serverURL:   strings.TrimRight(server, "/"),
+		bearer:      accessToken,
+		bearerOwner: ownerExtensionID,
+		bearerTTL:   ttl,
+	}, nil
+}
+
+// AccessToken exchanges the stored credentials for a short-lived bearer token.
+// Callers that place calls or pull the call log use this; nothing is cached
+// unless ReuseAccessToken was called, because the credential can be revoked in
+// the RingCentral console at any moment and a stale token would hide that.
+func (c *Client) AccessToken(ctx context.Context) (string, time.Duration, error) {
+	// A bearer client has nothing to exchange — it was handed the token.
+	if c.bearer != "" {
+		return c.bearer, c.bearerTTL, nil
+	}
+	if tok, ttl, ok := c.cachedToken(); ok {
+		return tok, ttl, nil
+	}
+
+	tok, err := c.tokenExchange(ctx)
+	if err != nil {
+		return "", 0, err
+	}
+	ttl := time.Duration(tok.ExpiresIn) * time.Second
+	c.rememberToken(tok.AccessToken, ttl)
+	return tok.AccessToken, ttl, nil
+}
+
+// cachedToken returns the held token while it has comfortably more than a
+// minute left, so a run cannot hand out a token that expires mid-request.
+func (c *Client) cachedToken() (string, time.Duration, bool) {
+	c.tokenMu.Lock()
+	defer c.tokenMu.Unlock()
+	if !c.reuseToken || c.tokenValue == "" {
+		return "", 0, false
+	}
+	ttl := time.Until(c.tokenExpiry)
+	if ttl <= time.Minute {
+		return "", 0, false
+	}
+	return c.tokenValue, ttl, true
+}
+
+func (c *Client) rememberToken(token string, ttl time.Duration) {
+	c.tokenMu.Lock()
+	defer c.tokenMu.Unlock()
+	if !c.reuseToken {
+		return
+	}
+	c.tokenValue = token
+	c.tokenExpiry = time.Now().Add(ttl)
+}
+
+// tokenExchange performs the JWT grant and returns the whole token payload.
+// AccessToken keeps the two fields nearly every caller wants; the full payload
+// also carries owner_id, which is the extension the credential belongs to.
+func (c *Client) tokenExchange(ctx context.Context) (tokenResponse, error) {
+	form := url.Values{}
+	form.Set("grant_type", jwtGrantType)
+	form.Set("assertion", c.cred.JWT)
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.serverURL+tokenPath, strings.NewReader(form.Encode()))
+	if err != nil {
+		return tokenResponse{}, fmt.Errorf("ringcentral: failed to create token request: %w", err)
+	}
+	// Client id/secret go in the Basic header, never in the URL or the body,
+	// so they cannot leak through a proxy access log.
+	basic := base64.StdEncoding.EncodeToString([]byte(c.cred.ClientID + ":" + c.cred.ClientSecret))
+	req.Header.Set("Authorization", "Basic "+basic)
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("Accept", "application/json")
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return tokenResponse{}, fmt.Errorf("ringcentral: network error: %w", err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	body, _ := io.ReadAll(resp.Body)
+
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		var er errorResponse
+		_ = json.Unmarshal(body, &er)
+		if isAuthRejection(resp.StatusCode, er.Error) {
+			return tokenResponse{}, &AuthError{StatusCode: resp.StatusCode, Code: er.Error, Body: describe(er, body)}
+		}
+		return tokenResponse{}, fmt.Errorf("ringcentral: token request failed with status %d: %s", resp.StatusCode, describe(er, body))
+	}
+
+	var tok tokenResponse
+	if err := json.Unmarshal(body, &tok); err != nil {
+		return tokenResponse{}, fmt.Errorf("ringcentral: failed to decode token response: %w", err)
+	}
+	if tok.AccessToken == "" {
+		return tokenResponse{}, errors.New("ringcentral: token response missing access_token")
+	}
+
+	return tok, nil
+}
+
+// TestConnection reports whether the stored credentials still authenticate.
+// ErrInvalidCredentials means RingCentral rejected them (wrong app credentials,
+// or a revoked/expired JWT) — the tenant has to reconnect. Any other error is a
+// transport or platform problem and says nothing about the credential.
+func (c *Client) TestConnection(ctx context.Context) error {
+	_, _, err := c.AccessToken(ctx)
+	if IsAuthError(err) {
+		return ErrInvalidCredentials
+	}
+	return err
+}
+
+// MissingPermissions logs in and returns the RequiredPermissions the app was
+// not granted, read from the token response — no extra call to RingCentral.
+// A login failure is returned as TestConnection would return it. An empty
+// scope means the app has no permissions, so every one is missing (seen live on
+// the first customer's app). Only a response with no scope field returns nil:
+// we cannot tell, so we do not warn.
+func (c *Client) MissingPermissions(ctx context.Context) ([]Permission, error) {
+	tok, err := c.tokenExchange(ctx)
+	if err != nil {
+		if IsAuthError(err) {
+			return nil, ErrInvalidCredentials
+		}
+		return nil, err
+	}
+	if tok.Scope == nil {
+		return nil, nil
+	}
+	granted := strings.Fields(*tok.Scope)
+	have := make(map[string]bool, len(granted))
+	for _, s := range granted {
+		have[s] = true
+	}
+	var missing []Permission
+	for _, p := range RequiredPermissions {
+		if !have[p.ID] {
+			missing = append(missing, p)
+		}
+	}
+	return missing, nil
+}
+
+// isAuthRejection separates "your credentials are wrong" from "the request or
+// the platform was wrong". RingCentral answers a revoked or expired JWT with
+// 400 invalid_grant, not 401, so status alone is not enough. A JWT deleted in
+// the developer console answers 404 "Personal API Key is not found" (DEV-3365).
+func isAuthRejection(status int, code string) bool {
+	if status == http.StatusUnauthorized || status == http.StatusForbidden || status == http.StatusNotFound {
+		return true
+	}
+	if status == http.StatusBadRequest {
+		switch code {
+		case "invalid_grant", "invalid_client", "unauthorized_client", "invalid_request_credentials":
+			return true
+		}
+	}
+	return false
+}
+
+// describe prefers RingCentral's own error text and falls back to the raw body,
+// truncated so a surprise HTML error page cannot flood a log line.
+func describe(er errorResponse, body []byte) string {
+	switch {
+	case er.ErrorDescription != "":
+		return er.ErrorDescription
+	case er.Message != "":
+		return er.Message
+	}
+	const max = 256
+	s := strings.TrimSpace(string(body))
+	if len(s) > max {
+		return s[:max]
+	}
+	return s
+}

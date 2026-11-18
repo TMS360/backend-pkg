@@ -121,18 +121,28 @@ func ErrorPresenter() graphql.ErrorPresenterFunc {
 
 func Middleware() graphql.FieldMiddleware {
 	return func(ctx context.Context, next graphql.Resolver) (interface{}, error) {
-		result, err := next(ctx)
-
 		// Only check on resolver fields (root mutations/queries) where input
 		// validation actually runs.  Skip trivial field accessors (Truck.id,
 		// Truck.name, …) to avoid per-field context lookup + atomic load on
 		// every single response field.
-		if fc := graphql.GetFieldContext(ctx); fc != nil && fc.IsResolver {
-			if ve := GetValidationErrors(ctx); ve != nil && ve.HasErrors() {
-				return nil, ve
-			}
+		fc := graphql.GetFieldContext(ctx)
+		if fc == nil || !fc.IsResolver {
+			return next(ctx)
 		}
 
+		// Arguments (and their @validate rules) are parsed before this
+		// middleware runs, so a refused input is already recorded here. Refuse
+		// it BEFORE the resolver: running it first saved the row and then
+		// answered "Validation failed" (DEV-2973: a driver was created with a
+		// malformed email while the caller was told the create failed).
+		if ve := GetValidationErrors(ctx); ve != nil && ve.HasErrors() {
+			return nil, ve
+		}
+
+		result, err := next(ctx)
+		if ve := GetValidationErrors(ctx); ve != nil && ve.HasErrors() {
+			return nil, ve
+		}
 		return result, err
 	}
 }

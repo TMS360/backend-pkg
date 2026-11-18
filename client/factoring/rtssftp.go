@@ -1,0 +1,175 @@
+package factoring
+
+import (
+	"context"
+	"fmt"
+	"strconv"
+	"time"
+
+	"github.com/TMS360/backend-pkg/deployenv"
+)
+
+// RTS Financial SFTP transport constants. RTS chroots each client to their own
+// home directory and their poller watches it directly — there is no inbound
+// subfolder; files are dropped at the root of the session. The upload of a
+// spreadsheet (.csv/.xlsx) is the trigger: RTS grabs the folder contents and
+// clears it, so the manifest MUST land last.
+//
+// Outside Railway production NewRTSSFTP swaps these defaults for
+// TEST_RTS_SFTP_* env vars (same rule as Triumph, separate variables so a
+// stage box can point the two providers at different sftpgo users). With no
+// test host set there, every dial fails with ErrRealServerBlocked.
+const (
+	rtsSFTPHost       = "ftps.rtsfinancial.com"
+	rtsTestSFTPHost   = "ftps.rtsfinancial.com"
+	rtsSFTPPort       = 22
+	rtsSFTPInboundDir = "" // chrooted home dir; EnsureDir("") is a documented no-op
+
+	envTestRTSSFTPHost       = "TEST_RTS_SFTP_HOST"
+	envTestRTSSFTPPort       = "TEST_RTS_SFTP_PORT"
+	envTestRTSSFTPInboundDir = "TEST_RTS_SFTP_INBOUND_DIR"
+)
+
+// RTSSFTPProvider implements Provider for RTS Financial's FTPS/SFTP invoice
+// upload (we use the SFTP flavour, port 22). The drop is one-way: PDFs first
+// (one per invoice, named <invoice number>.pdf), then the 7-column CSV
+// manifest last. RTS enforces batch rules server-side (no duplicates, ≤999
+// records, no blanks, no non-positive amounts) — SubmitBatch pre-validates
+// via ValidateInvoicesForProvider so the trigger never fires on a batch RTS
+// would reject.
+type RTSSFTPProvider struct {
+	username     string
+	password     string
+	host         string
+	port         int
+	inboundDir   string
+	providerType ProviderType
+	dialFn       func(ctx context.Context, d sftpDialer) (sftpUploader, error)
+	now          func() time.Time
+	// blocked, when set, refuses every dial (ErrRealServerBlocked).
+	blocked error
+}
+
+// NewRTSSFTP builds an RTSSFTPProvider aimed at the production RTS host.
+// Reuse across calls is safe (no internal state); the connection is opened
+// and closed inside each SubmitBatch. Reads only Username + Password from
+// the universal Credential — the username doubles as the RTS "Client Number"
+// (first CSV column). AccessKey is ignored (it is not a host).
+func NewRTSSFTP(cred Credential) *RTSSFTPProvider {
+	return newRTSSFTP(cred, rtsSFTPHost, ProviderRTSSFTP)
+}
+
+// NewRTSTestSFTP is the same adapter as NewRTSSFTP, pointed at the RTS test
+// host — which is RTS's real server too. Outside Railway production both
+// constructors dial only TEST_RTS_SFTP_* so golden-tenant / our dev never
+// reach real RTS.
+func NewRTSTestSFTP(cred Credential) *RTSSFTPProvider {
+	return newRTSSFTP(cred, rtsTestSFTPHost, ProviderRTSTestSFTP)
+}
+
+func newRTSSFTP(cred Credential, host string, pt ProviderType) *RTSSFTPProvider {
+	p := &RTSSFTPProvider{
+		username:     cred.Username,
+		password:     cred.Password,
+		host:         host,
+		port:         rtsSFTPPort,
+		inboundDir:   rtsSFTPInboundDir,
+		providerType: pt,
+		dialFn:       defaultSFTPDial,
+	}
+	if deployenv.IsProduction() {
+		return p
+	}
+
+	p.host, p.blocked = testHostOrBlock(host, envTestRTSSFTPHost)
+	if raw := firstNonEmptyEnv(envTestRTSSFTPPort); raw != "" {
+		if n, err := strconv.Atoi(raw); err == nil && n > 0 {
+			p.port = n
+		}
+	}
+	if d := firstNonEmptyEnv(envTestRTSSFTPInboundDir); d != "" {
+		p.inboundDir = d
+	}
+	return p
+}
+
+// BuildManifest renders the RTS 7-column CSV — the same bytes SubmitBatch
+// ships. Client Number (column 1) is the SFTP username from the credential.
+func (p *RTSSFTPProvider) BuildManifest(invoices []InvoiceLine) ([]byte, error) {
+	return BuildRTSCSV(p.username, invoices)
+}
+
+// SubmitBatch uploads every invoice PDF first, then the CSV manifest last.
+// Order is load-bearing for RTS: the spreadsheet upload triggers the transfer
+// and the folder is cleared, so any file landing after the CSV is lost.
+// Provider rules are validated BEFORE dialing — a non-compliant batch never
+// reaches RTS at all (structured *BatchValidationError names the offender).
+//
+// File naming:
+//   - PDFs: <INVOICE#>.pdf (InvoiceNumber sanitized for filesystem safety)
+//   - CSV:  invoices_YYYYMMDD_HHMMSS.csv (UTC timestamp from batch.SubmittedAt
+//     — deterministic, so a reclaimed retry overwrites the same file instead
+//     of producing a second manifest; DEV-840)
+func (p *RTSSFTPProvider) TestConnection(ctx context.Context) error {
+	if p.blocked != nil {
+		return p.blocked
+	}
+	return testSFTPConnection(ctx, p.dialFn, sftpDialer{
+		Host:         p.host,
+		Port:         p.port,
+		Username:     p.username,
+		Password:     p.password,
+		ProviderType: p.providerType,
+	})
+}
+
+func (p *RTSSFTPProvider) SubmitBatch(ctx context.Context, batch Batch, onProgress ProgressFunc) (SubmitResult, error) {
+	if p.blocked != nil {
+		return SubmitResult{}, p.blocked
+	}
+	if err := batch.validate(); err != nil {
+		return SubmitResult{}, err
+	}
+	if err := ValidateInvoicesForProvider(p.providerType, batch.Invoices); err != nil {
+		return SubmitResult{}, err
+	}
+
+	csvBytes, err := p.BuildManifest(batch.Invoices)
+	if err != nil {
+		return SubmitResult{}, err
+	}
+
+	timestamp := batch.SubmittedAt
+	if timestamp.IsZero() {
+		timestamp = p.clock()
+	}
+	csvFileName := fmt.Sprintf("invoices_%s.csv", timestamp.UTC().Format("20060102_150405"))
+
+	dial := p.dialFn
+	if dial == nil {
+		dial = defaultSFTPDial
+	}
+	client, err := dial(ctx, sftpDialer{
+		Host:         p.host,
+		Port:         p.port,
+		Username:     p.username,
+		Password:     p.password,
+		ProviderType: p.providerType,
+	})
+	if err != nil {
+		return SubmitResult{}, err
+	}
+	defer client.Close()
+
+	if err := client.EnsureDir(p.inboundDir); err != nil {
+		return SubmitResult{}, err
+	}
+	return shipBatch(ctx, client, p.inboundDir, batch.PDFs, csvFileName, csvBytes, onProgress)
+}
+
+func (p *RTSSFTPProvider) clock() time.Time {
+	if p.now != nil {
+		return p.now()
+	}
+	return time.Now()
+}

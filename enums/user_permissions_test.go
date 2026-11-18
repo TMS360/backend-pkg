@@ -1,0 +1,304 @@
+package enums_test
+
+import (
+	"testing"
+
+	"github.com/TMS360/backend-pkg/enums"
+	"github.com/TMS360/backend-pkg/middleware"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+)
+
+// Custom (flat) permission codes must validate, so the assignPermissionsTo
+// {User,Role} mutations accept them and the frontend can grant/revoke them.
+func TestCustomPermissions_AreValidGrantableCodes(t *testing.T) {
+	for _, code := range enums.CustomPermissionCodes() {
+		assert.Truef(t, enums.IsValidPermissionCode(code), "custom code %q must validate", code)
+		assert.Truef(t, enums.IsCustomPermissionCode(code), "%q must be reported as custom", code)
+	}
+	assert.Contains(t, enums.CustomPermissionCodes(), string(enums.PermTripFinancialsEdit))
+	assert.Contains(t, enums.CustomPermissionCodes(), string(enums.PermTripFinancialsApprove))
+}
+
+// Standard hierarchical codes must NOT be misreported as custom.
+func TestIsCustomPermissionCode_StandardCodesAreNotCustom(t *testing.T) {
+	for _, code := range []string{"shipments", "accounting", "accounting.statement_trips.edit"} {
+		assert.Falsef(t, enums.IsCustomPermissionCode(code), "%q must not be custom", code)
+	}
+}
+
+// A flat custom code resolves by EXACT match in HasPermission: no module
+// implies it via prefix, and holding it grants exactly itself.
+func TestCustomPermission_ResolvesByExactMatchOnly(t *testing.T) {
+	edit := string(enums.PermTripFinancialsEdit)
+
+	// Holder of the exact code passes; @hasPerm(["trip_financials_edit"]) works.
+	assert.True(t, middleware.HasPermission([]string{edit}, edit))
+
+	// No standard module (or the whole default set) can imply it.
+	for _, m := range enums.ModulePermissionCodes() {
+		assert.Falsef(t, middleware.HasPermission([]string{m}, edit),
+			"module %q must not imply custom %q", m, edit)
+	}
+	assert.False(t, middleware.HasPermission(enums.ModulePermissionCodes(), edit))
+
+	// It implies nothing else, and is not implied by the sibling custom code.
+	assert.False(t, middleware.HasPermission([]string{edit}, string(enums.PermTripFinancialsApprove)))
+}
+
+// A flat code has no ancestors, so CompactHierarchy must keep it intact (never
+// dropped as a redundant child) — otherwise a grant would silently vanish.
+func TestCompactHierarchy_KeepsFlatCustomCodes(t *testing.T) {
+	in := []string{"accounting", "accounting.invoices.create", string(enums.PermTripFinancialsEdit)}
+	got := middleware.CompactHierarchy(in)
+	assert.Contains(t, got, string(enums.PermTripFinancialsEdit))
+	assert.Contains(t, got, "accounting")
+	assert.NotContains(t, got, "accounting.invoices.create") // child collapsed under its module
+}
+
+// Custom codes are NOT auto-granted: they are absent from the module set every
+// role receives on signup.
+func TestCustomPermissions_NotInDefaultModuleGrant(t *testing.T) {
+	modules := enums.ModulePermissionCodes()
+	require.NotEmpty(t, modules)
+	for _, code := range enums.CustomPermissionCodes() {
+		assert.NotContains(t, modules, code)
+	}
+}
+
+// AllUserPermissions surfaces custom codes too, so any "everything" enumeration
+// stays complete.
+func TestAllUserPermissions_IncludesCustom(t *testing.T) {
+	all := enums.AllUserPermissions()
+	for _, code := range enums.CustomPermissionCodes() {
+		assert.Contains(t, all, code)
+	}
+}
+
+// DEV-1256 / BL §7.5 grant matrix: trip_financials_edit is held by default by
+// admin and accounting; the regular dispatcher does NOT get it; and
+// trip_financials_approve is not seeded to anyone.
+func TestDefaultRolePermissions_TripFinancialsMatrix(t *testing.T) {
+	defaults := enums.DefaultRolePermissions()
+	modules := enums.ModulePermissionCodes()
+	edit := string(enums.PermTripFinancialsEdit)
+	approve := string(enums.PermTripFinancialsApprove)
+
+	// admin + accounting: modules + edit. Accounting's `fleet` is narrowed to
+	// everything but maintenance (DEV-2502).
+	assert.Subset(t, defaults[enums.UserRoleAdmin], modules, "admin keeps module defaults")
+	assert.Subset(t, defaults[enums.UserRoleAccounting], baselineWithoutFleetMaintenance(), "accounting keeps module defaults")
+	for _, role := range []enums.UserRoleEnum{enums.UserRoleAdmin, enums.UserRoleAccounting} {
+		assert.Containsf(t, defaults[role], edit, "%s must hold trip_financials_edit", role)
+	}
+
+	// dispatcher: modules only, NO edit (the divergence being fixed).
+	assert.Subset(t, defaults[enums.UserRoleDispatcher], baselineWithoutFleetMaintenance())
+	assert.NotContains(t, defaults[enums.UserRoleDispatcher], edit,
+		"dispatcher must NOT hold trip_financials_edit by default")
+
+	// approve is not default-seeded to any role (kept grantable via custom roles).
+	for role, perms := range defaults {
+		assert.NotContainsf(t, perms, approve, "%s must not be default-seeded trip_financials_approve", role)
+	}
+
+	// super_admin bypasses checks → intentionally has no default grant.
+	_, ok := defaults[enums.UserRoleSuperAdmin]
+	assert.False(t, ok, "super_admin must not be seeded (it bypasses permission checks)")
+}
+
+// DEV-1226 / DEV-1227: trip_reassign_committed is a registered custom code held
+// by manager (dispatch manager) and admin by default, but NOT by the regular
+// dispatcher.
+func TestTripReassignCommitted_RegisteredAndManagerDefault(t *testing.T) {
+	code := string(enums.PermTripReassignCommitted)
+	assert.Equal(t, "trip_reassign_committed", code)
+	assert.True(t, enums.IsValidPermissionCode(code), "must validate so custom roles can grant it")
+	assert.True(t, enums.IsCustomPermissionCode(code))
+
+	defaults := enums.DefaultRolePermissions()
+	assert.Contains(t, defaults[enums.UserRoleManager], code, "manager holds it by default")
+	assert.Contains(t, defaults[enums.UserRoleAdmin], code, "admin holds it by default")
+	assert.NotContains(t, defaults[enums.UserRoleDispatcher], code, "dispatcher must NOT hold it")
+
+	// Flat code → exact match only: no module grant implies it.
+	for _, m := range enums.ModulePermissionCodes() {
+		assert.Falsef(t, middleware.HasPermission([]string{m}, code), "module %q must not imply %q", m, code)
+	}
+	assert.True(t, middleware.HasPermission([]string{code}, code))
+}
+
+// The returned slices must be independent copies — mutating one role's grant
+// must not leak into another's shared module baseline.
+func TestDefaultRolePermissions_SlicesAreIndependent(t *testing.T) {
+	defaults := enums.DefaultRolePermissions()
+	disp := defaults[enums.UserRoleDispatcher]
+	if len(disp) > 0 {
+		disp[0] = "mutated"
+	}
+	assert.NotContains(t, enums.DefaultRolePermissions()[enums.UserRoleAccounting], "mutated")
+}
+
+// file_delete_any (file-delete coverage) gates removing a file attachment the
+// actor did not upload, or one past the 24h uploader window. It must be a FLAT
+// code: every built-in role — driver included — is seeded the whole module
+// baseline, and HasPermission matches hierarchically, so a dotted
+// "shipments.trip_files.delete" would be satisfied by any driver holding
+// "shipments" and could not express "office only".
+func TestFileDeleteAny_IsFlatAndSupervisorOnly(t *testing.T) {
+	code := string(enums.PermFileDeleteAny)
+	assert.Equal(t, "file_delete_any", code)
+	assert.True(t, enums.IsValidPermissionCode(code), "must validate so custom roles can grant it")
+	assert.True(t, enums.IsCustomPermissionCode(code))
+
+	defaults := enums.DefaultRolePermissions()
+	assert.Contains(t, defaults[enums.UserRoleAdmin], code, "admin holds it by default")
+	assert.Contains(t, defaults[enums.UserRoleManager], code, "manager holds it by default")
+	for _, role := range []enums.UserRoleEnum{
+		enums.UserRoleDriver, enums.UserRoleDispatcher, enums.UserRoleAccounting, enums.UserRoleOther,
+	} {
+		assert.NotContainsf(t, defaults[role], code, "role %s must NOT hold %s by default", role, code)
+	}
+
+	// The whole point: no module grant, and no full default driver grant set,
+	// may imply it.
+	for _, m := range enums.ModulePermissionCodes() {
+		assert.Falsef(t, middleware.HasPermission([]string{m}, code), "module %q must not imply %q", m, code)
+	}
+	assert.False(t, middleware.HasPermission(defaults[enums.UserRoleDriver], code),
+		"the driver default grant set must not imply %q", code)
+	assert.True(t, middleware.HasPermission([]string{code}, code))
+}
+
+// BL-22 §22.1 (Dynamic Report Builder): reports_run / reports_manage are FLAT
+// custom codes held by default by admin + accounting only. They must be flat so
+// no module prefix satisfies them and external/portal roles never resolve them —
+// this is exactly the ticket AC "the broker portal role must never be granted
+// reports.run / reports.manage". There is no dedicated broker-portal role in the
+// codebase; UserRoleCustomer is its analogue (external actor) and, being absent
+// from DefaultRolePermissions, receives no default grant at all.
+func TestReportsPermissions_FlatAndAdminAccountingOnly(t *testing.T) {
+	run := string(enums.PermReportsRun)
+	manage := string(enums.PermReportsManage)
+	assert.Equal(t, "reports_run", run)
+	assert.Equal(t, "reports_manage", manage)
+
+	for _, code := range []string{run, manage} {
+		assert.Truef(t, enums.IsValidPermissionCode(code), "%q must validate so custom roles can grant it", code)
+		assert.Truef(t, enums.IsCustomPermissionCode(code), "%q must be a flat custom code", code)
+	}
+
+	defaults := enums.DefaultRolePermissions()
+	// admin + accounting hold both by default.
+	for _, role := range []enums.UserRoleEnum{enums.UserRoleAdmin, enums.UserRoleAccounting} {
+		assert.Containsf(t, defaults[role], run, "%s must hold reports_run", role)
+		assert.Containsf(t, defaults[role], manage, "%s must hold reports_manage", role)
+	}
+	// every other seeded role holds neither.
+	for _, role := range []enums.UserRoleEnum{
+		enums.UserRoleManager, enums.UserRoleFleet, enums.UserRoleSafety, enums.UserRoleHr,
+		enums.UserRoleAuditor, enums.UserRoleDispatcher, enums.UserRoleDriver, enums.UserRoleOther,
+	} {
+		assert.NotContainsf(t, defaults[role], run, "role %s must NOT hold reports_run by default", role)
+		assert.NotContainsf(t, defaults[role], manage, "role %s must NOT hold reports_manage by default", role)
+	}
+
+	// The "broker portal" AC: an external/portal actor (customer) is absent from
+	// the default map → no grant, and cannot resolve either code by any means.
+	assert.NotContains(t, defaults, enums.UserRoleCustomer, "customer (portal actor) gets no default grant")
+	for _, code := range []string{run, manage} {
+		// No module — nor the whole default set of a non-privileged role — implies it.
+		for _, m := range enums.ModulePermissionCodes() {
+			assert.Falsef(t, middleware.HasPermission([]string{m}, code), "module %q must not imply %q", m, code)
+		}
+		assert.Falsef(t, middleware.HasPermission(defaults[enums.UserRoleDriver], code),
+			"the driver default grant set must not imply %q", code)
+		assert.True(t, middleware.HasPermission([]string{code}, code))
+	}
+	// The two codes do not imply each other.
+	assert.False(t, middleware.HasPermission([]string{run}, manage))
+	assert.False(t, middleware.HasPermission([]string{manage}, run))
+}
+
+// DEV-2254: overriding the out-of-service gate is a supervisor decision, and the
+// ticket's proposed spelling `fleet.assets.out_of_service_override` could not
+// express it — `fleet` is a module every built-in role is granted at signup, and
+// HasPermission prefix-matches, so the dotted code would be held by everyone and
+// the "refused without the permission" criterion could never be observed. This
+// test is that argument, executable: if anyone re-dots the code, the module loop
+// below goes red.
+func TestAssetOutOfServiceOverride_IsFlatAndSupervisorOnly(t *testing.T) {
+	code := string(enums.PermAssetOutOfServiceOverride)
+	assert.Equal(t, "asset_out_of_service_override", code)
+	assert.NotContains(t, code, ".", "a dotted code is implied by its module and can never be refused")
+	assert.True(t, enums.IsValidPermissionCode(code), "must validate so custom roles can grant it")
+	assert.True(t, enums.IsCustomPermissionCode(code))
+
+	defaults := enums.DefaultRolePermissions()
+	assert.Contains(t, defaults[enums.UserRoleAdmin], code, "admin holds it by default")
+	assert.Contains(t, defaults[enums.UserRoleManager], code, "manager holds it by default")
+	for _, role := range []enums.UserRoleEnum{
+		enums.UserRoleDispatcher, enums.UserRoleFleet, enums.UserRoleDriver, enums.UserRoleOther,
+	} {
+		assert.NotContainsf(t, defaults[role], code, "role %s must NOT hold %s by default", role, code)
+	}
+
+	// The point of the flat spelling: no module grant may imply it.
+	for _, m := range enums.ModulePermissionCodes() {
+		assert.Falsef(t, middleware.HasPermission([]string{m}, code), "module %q must not imply %q", m, code)
+	}
+	assert.False(t, middleware.HasPermission(defaults[enums.UserRoleDispatcher], code),
+		"the dispatcher default grant set must not imply %q", code)
+	assert.True(t, middleware.HasPermission([]string{code}, code))
+}
+
+// baselineWithoutFleetMaintenance is the module baseline with `fleet` swapped
+// for its entities minus maintenance — what the non-shop roles hold (DEV-2502).
+func baselineWithoutFleetMaintenance() []string {
+	var out []string
+	for _, m := range enums.ModulePermissionCodes() {
+		if m != enums.FleetModuleCode && m != enums.TeamsModuleCode {
+			out = append(out, m)
+		}
+	}
+	// DEV-2510: `teams` is narrowed to every teams entity but person charges.
+	out = append(out, enums.TeamsEntitiesWithoutPersonCharges()...)
+	return append(out, enums.FleetEntitiesWithoutMaintenance()...)
+}
+
+// DEV-2979: the gross-only permission is in the catalog with its label, held by
+// admin by default and by nobody else — a company grants it to dispatchers itself.
+func TestDefaultRolePermissions_TripGrossEditIsAdminOnly(t *testing.T) {
+	gross := string(enums.PermTripGrossEdit)
+	assert.Contains(t, enums.CustomPermissionCodes(), gross)
+
+	for role, perms := range enums.DefaultRolePermissions() {
+		if role == enums.UserRoleAdmin {
+			assert.Contains(t, perms, gross, "admin must hold trip_gross_edit")
+			continue
+		}
+		assert.NotContainsf(t, perms, gross, "%s must NOT hold trip_gross_edit by default", role)
+	}
+}
+
+// DEV-3096: truck_vin_correct is a flat custom code held by admin only. The
+// truck VIN is fixed after create; this is the one governed way to change it.
+func TestTruckVINCorrect_AdminOnlyAndFlat(t *testing.T) {
+	code := string(enums.PermTruckVINCorrect)
+	assert.Equal(t, "truck_vin_correct", code)
+	assert.True(t, enums.IsValidPermissionCode(code), "must validate so custom roles can grant it")
+	assert.True(t, enums.IsCustomPermissionCode(code))
+
+	for role, perms := range enums.DefaultRolePermissions() {
+		if role == enums.UserRoleAdmin {
+			assert.Contains(t, perms, code, "admin holds it by default")
+			continue
+		}
+		assert.NotContainsf(t, perms, code, "%s must not hold truck_vin_correct by default", role)
+	}
+
+	// Flat code → no module grant (not even `fleet`) implies it.
+	for _, m := range enums.ModulePermissionCodes() {
+		assert.Falsef(t, middleware.HasPermission([]string{m}, code), "module %q must not imply %q", m, code)
+	}
+}

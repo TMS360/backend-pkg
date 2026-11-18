@@ -41,8 +41,11 @@ func (cb *CompanyBase) BeforeCreate(tx *gorm.DB) error {
 		return fmt.Errorf("create is forbidden for guests")
 	}
 
-	// NEW LOGIC: Always try to use the actor's CompanyID if they have one
-	if actor.Claims.CompanyID != nil && cb.CompanyID == uuid.Nil {
+	// NEW LOGIC: Always try to use the actor's CompanyID if they have one.
+	// Claims is nil for an internal system actor (WithSystemActor) — it carries no
+	// JWT — so it must be checked before dereferencing: such a writer must supply
+	// company_id itself, which the uuid.Nil branch below already enforces.
+	if actor.Claims != nil && actor.Claims.CompanyID != nil && cb.CompanyID == uuid.Nil {
 		cb.CompanyID = *actor.Claims.CompanyID
 	}
 

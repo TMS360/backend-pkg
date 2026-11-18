@@ -238,8 +238,27 @@ type Company struct {
 	// 60504"). City / state / zip components reuse phy_* / mail_* columns
 	// when needed for filtering — this field is the rendered one-liner.
 	BillingAddress string `protobuf:"bytes,19,opt,name=billing_address,json=billingAddress,proto3" json:"billing_address,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// billing_email — dedicated billing contact email rendered in the
+	// "Questions?" line of the Driver Pay Settlement PDF footer. Distinct from
+	// the general `email` (contact). Empty when not configured: the footer line
+	// is omitted.
+	BillingEmail string `protobuf:"bytes,20,opt,name=billing_email,json=billingEmail,proto3" json:"billing_email,omitempty"`
+	// logo — backend-files file id (UUID) of the tenant's company logo, drawn
+	// into the header of Invoice and Driver Pay Statement PDFs (DEV-699). Set
+	// via the saveCompanyLogo mutation. Absent when the tenant has not uploaded
+	// one: the header renders without a logo, never with a placeholder.
+	Logo *string `protobuf:"bytes,21,opt,name=logo,proto3,oneof" json:"logo,omitempty"`
+	// status — the tenant's ACCOUNT status (enums.CompanyStatus: ACTIVE /
+	// INACTIVE / BLOCKED), not its FMCSA authority. The two are unrelated: a
+	// carrier can hold perfectly good operating authority and still have a
+	// switched-off TMS360 account.
+	//
+	// Added for DEV-1858: a broker must not be able to offer a load to a carrier
+	// whose account is off, because nobody is there to answer it. Empty means the
+	// producer did not populate it — treat that as unknown, not as inactive.
+	Status        string `protobuf:"bytes,22,opt,name=status,proto3" json:"status,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *Company) Reset() {
@@ -405,6 +424,27 @@ func (x *Company) GetBillingAddress() string {
 	return ""
 }
 
+func (x *Company) GetBillingEmail() string {
+	if x != nil {
+		return x.BillingEmail
+	}
+	return ""
+}
+
+func (x *Company) GetLogo() string {
+	if x != nil && x.Logo != nil {
+		return *x.Logo
+	}
+	return ""
+}
+
+func (x *Company) GetStatus() string {
+	if x != nil {
+		return x.Status
+	}
+	return ""
+}
+
 var File_companies_companies_proto protoreflect.FileDescriptor
 
 const file_companies_companies_proto_rawDesc = "" +
@@ -425,7 +465,7 @@ const file_companies_companies_proto_rawDesc = "" +
 	"\vcompany_ids\x18\x01 \x03(\tR\n" +
 	"companyIds\"M\n" +
 	"\x19GetCompaniesByIDsResponse\x120\n" +
-	"\tcompanies\x18\x01 \x03(\v2\x12.companies.CompanyR\tcompanies\"\xaf\x04\n" +
+	"\tcompanies\x18\x01 \x03(\v2\x12.companies.CompanyR\tcompanies\"\x8e\x05\n" +
 	"\aCompany\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x14\n" +
@@ -449,7 +489,11 @@ const file_companies_companies_proto_rawDesc = "" +
 	"mail_state\x18\x10 \x01(\tR\tmailState\x12\x19\n" +
 	"\bmail_zip\x18\x11 \x01(\tR\amailZip\x12!\n" +
 	"\fmail_country\x18\x12 \x01(\tR\vmailCountry\x12'\n" +
-	"\x0fbilling_address\x18\x13 \x01(\tR\x0ebillingAddress2\xae\x01\n" +
+	"\x0fbilling_address\x18\x13 \x01(\tR\x0ebillingAddress\x12#\n" +
+	"\rbilling_email\x18\x14 \x01(\tR\fbillingEmail\x12\x17\n" +
+	"\x04logo\x18\x15 \x01(\tH\x00R\x04logo\x88\x01\x01\x12\x16\n" +
+	"\x06status\x18\x16 \x01(\tR\x06statusB\a\n" +
+	"\x05_logo2\xae\x01\n" +
 	"\x0eCompanyService\x12<\n" +
 	"\n" +
 	"ResolveIDs\x12\x18.companies.CompanyFilter\x1a\x14.filters.IDsResponse\x12^\n" +
@@ -502,6 +546,7 @@ func file_companies_companies_proto_init() {
 		return
 	}
 	file_companies_companies_proto_msgTypes[0].OneofWrappers = []any{}
+	file_companies_companies_proto_msgTypes[3].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{

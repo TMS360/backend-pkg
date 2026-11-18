@@ -1,0 +1,72 @@
+// Shared contract for the office global search (DEV-2044).
+//
+// One service (tms-loads) owns the public `globalSearch` GraphQL field and
+// fans out to every other service that owns searchable entities. Each provider
+// implements SearchService for the entities listed against its name in
+// searchcatalog.Catalog and ignores entity codes it does not own.
+syntax = "proto3";
+
+package search;
+
+option go_package = "github.com/TMS360/backend-pkg/proto/search";
+
+service SearchService {
+  rpc Search(SearchRequest) returns (SearchResponse);
+}
+
+message SearchRequest {
+  // Raw user text. Already trimmed and length-capped by the aggregator, but a
+  // provider must not trust that — normalize again (search.Normalize).
+  string query = 1;
+  // Entity codes the caller wants (searchcatalog codes, e.g. "DRIVER").
+  // Empty means "every entity you own". A provider silently skips codes it
+  // does not own — an unknown code is never an error.
+  repeated string entities = 2;
+  // Hits per entity. <= 0 means the provider's own default.
+  int32 limit_per_entity = 3;
+  // Tenant of the calling actor, taken from its token by the aggregator.
+  //
+  // Providers whose gRPC server runs the auth interceptor (tms-files,
+  // backend-tasks) have their own Actor and MUST prefer it, treating a
+  // mismatch as PermissionDenied. The remaining providers have no Actor on
+  // the gRPC path and scope by this value.
+  string company_id = 4;
+}
+
+message SearchResponse {
+  // One group per entity the provider actually searched. An entity the actor
+  // may not read is omitted, not returned empty — the aggregator already
+  // filters by permission, this is the provider's own defence in depth.
+  repeated SearchGroup groups = 1;
+}
+
+message SearchGroup {
+  string entity = 1;
+  // Matching rows, capped at 100 by the provider — never a full count.
+  int32 total = 2;
+  bool has_more = 3;
+  repeated SearchHit hits = 4;
+}
+
+message SearchHit {
+  string id = 1;
+  // Short identity of the row, e.g. "Load #67282" / "Marcus Hale".
+  string title = 2;
+  // One supporting line, e.g. "Chicago, IL -> Dallas, TX - IN_TRANSIT".
+  string subtitle = 3;
+  // Why this row is limited but still shown, e.g.
+  // "Inactive - you can open, not assign". Empty for ordinary rows.
+  // Inactive / terminated people and parked assets are never hidden.
+  string why = 4;
+  double score = 5;
+  repeated SearchMatch matches = 6;
+}
+
+// SearchMatch tells the client which field produced the hit so the row can
+// show "matched: Truck #1043".
+message SearchMatch {
+  // searchcatalog Field.Path or Relation.Path, e.g. "trip.truck.number".
+  string field = 1;
+  string label = 2;
+  string value = 3;
+}

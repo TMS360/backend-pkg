@@ -6,9 +6,11 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math"
 	"net/http"
 	"net/url"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/TMS360/backend-pkg/config"
@@ -17,6 +19,19 @@ import (
 // ErrInvalidCredentials is returned by TestConnection when the HERE API
 // rejects the configured API key with a 401 or 403 status.
 var ErrInvalidCredentials = errors.New("here: invalid credentials")
+
+// Billed HERE endpoints, as reported in the "op" attribute of here_call.
+const (
+	opRoutes     = "routes"
+	opGeocode    = "geocode"
+	opRevgeocode = "revgeocode"
+	opLookup     = "lookup"
+	// opTestConn is the credential probe behind the Settings "Test connection"
+	// button. It bills like any other revgeocode, so it is counted separately
+	// rather than folded into opRevgeocode, which would misattribute it to
+	// trip geocoding.
+	opTestConn = "revgeocode_testconn"
+)
 
 // AuthError is returned by doRequest when HERE responds with 401 or 403.
 // Callers use IsAuthError to detect this case and stop polling the tenant.
@@ -43,6 +58,7 @@ type RouteRequest struct {
 	TransportMode string // car, truck, pedestrian, bicycle, scooter
 	Currency      string
 	ReturnOptions []string // summary, polyline, instructions, etc.
+	Spans         []string // span attributes (HERE `spans=`), e.g. countryCode, stateCode
 
 	// Optional navigation extensions. Zero value preserves legacy behavior.
 	Via          []Coordinates    // intermediate waypoints (HERE `via=`, repeated)
@@ -51,6 +67,10 @@ type RouteRequest struct {
 	Alternatives int              // 0..6 — number of alternative routes
 	Lang         string           // BCP47, e.g. "en-US", "ru-RU"
 	Units        string           // "metric" | "imperial"
+	// OriginCourse is the vehicle's direction of travel at Origin, degrees
+	// clockwise from north (HERE waypoint option `course`). HERE then starts
+	// the route the way the vehicle faces instead of with a U-turn. Nil = unset.
+	OriginCourse *float64
 }
 
 type Coordinates struct {
@@ -81,6 +101,35 @@ type RouteSection struct {
 	Spans    []RouteSpan   `json:"spans,omitempty"`
 	Notices  []RouteNotice `json:"notices,omitempty"`
 	Language string        `json:"language,omitempty"`
+
+	// Tolls is filled only with `return=tolls`.
+	Tolls       []RouteToll       `json:"tolls,omitempty"`
+	TollSystems []RouteTollSystem `json:"tollSystems,omitempty"`
+}
+
+// RouteToll is one toll HERE expects on a section; each fare is one way to pay it.
+type RouteToll struct {
+	CountryCode string     `json:"countryCode,omitempty"`
+	TollSystem  string     `json:"tollSystem,omitempty"`
+	Fares       []TollFare `json:"fares,omitempty"`
+}
+
+// TollFare is a price option of a toll; ConvertedPrice is in the request's currency.
+type TollFare struct {
+	Name           string     `json:"name,omitempty"`
+	Price          *TollPrice `json:"price,omitempty"`
+	ConvertedPrice *TollPrice `json:"convertedPrice,omitempty"`
+}
+
+// TollPrice is an amount in a currency.
+type TollPrice struct {
+	Value    float64 `json:"value"`
+	Currency string  `json:"currency,omitempty"`
+}
+
+// RouteTollSystem names a toll operator of a section.
+type RouteTollSystem struct {
+	Name string `json:"name"`
 }
 
 type LocationInfo struct {
@@ -228,35 +277,52 @@ func NewClientWithToken(apiKey string) (*Client, error) {
 	}, nil
 }
 
-// doRequest performs HTTP request
-func (c *Client) doRequest(ctx context.Context, method, fullURL string) (*http.Response, error) {
+// doRequest performs HTTP request.
+//
+// op names the HERE endpoint being billed (routes, geocode, revgeocode, lookup)
+// and is passed in rather than parsed back out of fullURL, which carries the
+// apiKey and must never be logged.
+func (c *Client) doRequest(ctx context.Context, method, op, fullURL string) (*http.Response, error) {
+	started := time.Now()
+
 	req, err := http.NewRequestWithContext(ctx, method, fullURL, nil)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create request: %w", err)
+		return nil, fmt.Errorf("failed to create request: %w", redactURLErr(err))
 	}
 
 	req.Header.Set("Accept", "application/json")
 
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
+		err = redactURLErr(err)
+		// Never reached HERE, so nothing was billed — logged anyway so a
+		// network-level outage is visible in the same sample.
+		logCall(ctx, op, 0, started, err)
 		return nil, fmt.Errorf("failed to execute request: %w", err)
 	}
 
 	if resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden {
 		defer func() { _ = resp.Body.Close() }()
 		body, _ := io.ReadAll(resp.Body)
-		return nil, &AuthError{StatusCode: resp.StatusCode, Body: string(body)}
+		authErr := &AuthError{StatusCode: resp.StatusCode, Body: string(body)}
+		logCall(ctx, op, resp.StatusCode, started, authErr)
+		return nil, authErr
 	}
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		defer func() { _ = resp.Body.Close() }()
-		body, err := io.ReadAll(resp.Body)
-		if err != nil {
-			return nil, fmt.Errorf("received non-2xx status code: %d (failed to read response body: %w)", resp.StatusCode, err)
+		body, readErr := io.ReadAll(resp.Body)
+		if readErr != nil {
+			statusErr := fmt.Errorf("received non-2xx status code: %d (failed to read response body: %w)", resp.StatusCode, readErr)
+			logCall(ctx, op, resp.StatusCode, started, statusErr)
+			return nil, statusErr
 		}
-		return nil, fmt.Errorf("received non-2xx status code: %d, body: %s", resp.StatusCode, string(body))
+		statusErr := fmt.Errorf("received non-2xx status code: %d, body: %s", resp.StatusCode, string(body))
+		logCall(ctx, op, resp.StatusCode, started, statusErr)
+		return nil, statusErr
 	}
 
+	logCall(ctx, op, resp.StatusCode, started, nil)
 	return resp, nil
 }
 
@@ -265,7 +331,11 @@ func (c *Client) GetRoute(ctx context.Context, req RouteRequest) (*RouteResponse
 	params := url.Values{}
 
 	// Required parameters
-	params.Set("origin", fmt.Sprintf("%f,%f", req.Origin.Latitude, req.Origin.Longitude))
+	origin := fmt.Sprintf("%f,%f", req.Origin.Latitude, req.Origin.Longitude)
+	if req.OriginCourse != nil {
+		origin += fmt.Sprintf(";course=%d", int(math.Round(*req.OriginCourse))%360)
+	}
+	params.Set("origin", origin)
 	params.Set("destination", fmt.Sprintf("%f,%f", req.Destination.Latitude, req.Destination.Longitude))
 	params.Set("apiKey", c.apiKey)
 
@@ -288,6 +358,10 @@ func (c *Client) GetRoute(ctx context.Context, req RouteRequest) (*RouteResponse
 		params.Set("return", returnStr)
 	} else {
 		params.Set("return", "summary")
+	}
+
+	if len(req.Spans) > 0 {
+		params.Set("spans", strings.Join(req.Spans, ","))
 	}
 
 	if req.Currency != "" {
@@ -326,7 +400,7 @@ func (c *Client) GetRoute(ctx context.Context, req RouteRequest) (*RouteResponse
 
 	fullURL := fmt.Sprintf("%s/v8/routes?%s", c.routerHost, params.Encode())
 
-	resp, err := c.doRequest(ctx, http.MethodGet, fullURL)
+	resp, err := c.doRequest(ctx, http.MethodGet, opRoutes, fullURL)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get route: %w", err)
 	}
@@ -383,7 +457,7 @@ func (c *Client) Geocode(ctx context.Context, req GeocodeRequest) (*GeocodeRespo
 
 	fullURL := fmt.Sprintf("%s/v1/geocode?%s", c.geocodeHost, params.Encode())
 
-	resp, err := c.doRequest(ctx, http.MethodGet, fullURL)
+	resp, err := c.doRequest(ctx, http.MethodGet, opGeocode, fullURL)
 	if err != nil {
 		return nil, fmt.Errorf("failed to geocode: %w", err)
 	}
@@ -425,7 +499,7 @@ func (c *Client) ReverseGeocode(ctx context.Context, lat, lng float64) (*Geocode
 
 	fullURL := fmt.Sprintf("%s/v1/revgeocode?%s", c.geocodeHost, params.Encode())
 
-	resp, err := c.doRequest(ctx, http.MethodGet, fullURL)
+	resp, err := c.doRequest(ctx, http.MethodGet, opRevgeocode, fullURL)
 	if err != nil {
 		return nil, fmt.Errorf("failed to reverse geocode: %w", err)
 	}
@@ -491,7 +565,7 @@ func (c *Client) Lookup(ctx context.Context, req LookupRequest) (*GeocodeItem, e
 
 	fullURL := fmt.Sprintf("%s/v1/lookup?%s", c.lookupHost, params.Encode())
 
-	resp, err := c.doRequest(ctx, http.MethodGet, fullURL)
+	resp, err := c.doRequest(ctx, http.MethodGet, opLookup, fullURL)
 	if err != nil {
 		return nil, fmt.Errorf("failed to lookup: %w", err)
 	}
@@ -513,7 +587,14 @@ func (c *Client) LookupByID(ctx context.Context, id string) (*GeocodeItem, error
 // TestConnection validates the API key by making a lightweight authenticated
 // request (GET /v1/revgeocode?at=0,0&limit=1). Returns nil on success,
 // ErrInvalidCredentials on 401/403, or a wrapped error otherwise.
+//
+// This deliberately does not route through doRequest: callers match on
+// ErrInvalidCredentials (tms360-backend's integration classify), whereas
+// doRequest reports 401/403 as *AuthError. It bills all the same, so it logs
+// here_call directly to keep the outbound count whole.
 func (c *Client) TestConnection(ctx context.Context) error {
+	started := time.Now()
+
 	params := url.Values{}
 	params.Set("at", "0,0")
 	params.Set("limit", "1")
@@ -521,22 +602,60 @@ func (c *Client) TestConnection(ctx context.Context) error {
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.geocodeHost+"/v1/revgeocode?"+params.Encode(), nil)
 	if err != nil {
-		return fmt.Errorf("here: failed to create request: %w", err)
+		return fmt.Errorf("here: failed to create request: %w", redactURLErr(err))
 	}
 	req.Header.Set("Accept", "application/json")
 
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
-		return fmt.Errorf("here: network error: %w", err)
+		netErr := fmt.Errorf("here: network error: %w", redactURLErr(err))
+		logCall(ctx, opTestConn, 0, started, netErr)
+		return netErr
 	}
 	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden {
+		// Logged as an auth outcome even though the sentinel is not an
+		// *AuthError, so the sample groups it with other credential failures.
+		logCall(ctx, opTestConn, resp.StatusCode, started, &AuthError{StatusCode: resp.StatusCode})
 		return ErrInvalidCredentials
 	}
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		body, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("here: status %d: %s", resp.StatusCode, string(body))
+		statusErr := fmt.Errorf("here: status %d: %s", resp.StatusCode, string(body))
+		logCall(ctx, opTestConn, resp.StatusCode, started, statusErr)
+		return statusErr
 	}
+
+	logCall(ctx, opTestConn, resp.StatusCode, started, nil)
 	return nil
+}
+
+// redactURLErr scrubs the apiKey out of a *url.Error. net/http reports a
+// transport failure as *url.Error, whose text is the full request URL — and
+// HERE's credential rides in that URL — so without this the key reaches every
+// log line and Sentry event the error is wrapped into. The error keeps its
+// type and inner Err, so Timeout() and errors.Is(context.DeadlineExceeded)
+// still work for callers that retry.
+func redactURLErr(err error) error {
+	var ue *url.Error
+	if errors.As(err, &ue) {
+		ue.URL = redactAPIKey(ue.URL)
+	}
+	return err
+}
+
+// redactAPIKey replaces the apiKey query value with REDACTED and keeps the
+// rest of the URL for debugging. An unparseable URL is dropped entirely.
+func redactAPIKey(raw string) string {
+	u, err := url.Parse(raw)
+	if err != nil {
+		return ""
+	}
+	q := u.Query()
+	if q.Has("apiKey") {
+		q.Set("apiKey", "REDACTED")
+		u.RawQuery = q.Encode()
+	}
+	return u.String()
 }

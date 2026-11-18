@@ -45,29 +45,44 @@ func AsDateInUTC(t time.Time) time.Time {
 }
 
 // GetWeekRange возвращает начало и конец недели (Понедельник 00:00:00 и Воскресенье 23:59:59)
+//
+// Monday-only. A caller that must honour the company's first-day-of-week setting
+// (DEV-1909) uses GetWeekRangeOn with settings.FirstDayOfWeekFor(...).Weekday().
 func GetWeekRange(refDate time.Time) (time.Time, time.Time) {
-	return GetWeekStart(refDate), GetWeekEnd(refDate)
+	return GetWeekRangeOn(refDate, time.Monday)
 }
 
 func GetWeekStart(refDate time.Time) time.Time {
-	weekday := refDate.Weekday()
-	// Go's time.Weekday is an enum where Sunday is 0.
-	// We adjust it so Monday is 1 and Sunday is 7.
-	if weekday == time.Sunday {
-		weekday = 7
-	}
-	offset := int(weekday) - 1
+	return GetWeekStartOn(refDate, time.Monday)
+}
 
+func GetWeekEnd(refDate time.Time) time.Time {
+	return GetWeekEndOn(refDate, time.Monday)
+}
+
+// GetWeekRangeOn is GetWeekRange for a week that starts on firstDay: the first
+// day 00:00:00 and the seventh day 23:59:59.999999999, both in UTC.
+func GetWeekRangeOn(refDate time.Time, firstDay time.Weekday) (time.Time, time.Time) {
+	return GetWeekStartOn(refDate, firstDay), GetWeekEndOn(refDate, firstDay)
+}
+
+// GetWeekStartOn returns 00:00:00 UTC of the firstDay that opens the week
+// holding refDate.
+//
+// Deliberately not ISOWeek(): an ISO week starts on Monday by definition, so it
+// can never express a Sunday-first company.
+func GetWeekStartOn(refDate time.Time, firstDay time.Weekday) time.Time {
+	// Days elapsed since the week's first day, 0..6. Go counts Sunday as 0, so
+	// the +7 keeps the modulo positive for every combination.
+	offset := (int(refDate.Weekday()) - int(firstDay) + 7) % 7
 	start := refDate.AddDate(0, 0, -offset)
 	return time.Date(start.Year(), start.Month(), start.Day(), 0, 0, 0, 0, time.UTC)
 }
 
-func GetWeekEnd(refDate time.Time) time.Time {
-	// Reuse the Start logic to find Monday
-	start := GetWeekStart(refDate)
-
-	// Move forward to Sunday
-	end := start.AddDate(0, 0, 6)
+// GetWeekEndOn returns the last instant of the week holding refDate, for a week
+// that starts on firstDay.
+func GetWeekEndOn(refDate time.Time, firstDay time.Weekday) time.Time {
+	end := GetWeekStartOn(refDate, firstDay).AddDate(0, 0, 6)
 	return time.Date(end.Year(), end.Month(), end.Day(), 23, 59, 59, 999999999, time.UTC)
 }
 

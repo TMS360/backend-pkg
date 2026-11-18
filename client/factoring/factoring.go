@@ -8,8 +8,9 @@
 // interface that hides the transport so callers (backend-accounting) write the
 // submission flow once.
 //
-// v1 ships one implementation: TriumphSFTPProvider. Add more (TriumphAPI,
-// RTSSFTP, EcapitalAPI...) by writing a new file and registering it in
+// Implementations: TriumphSFTPProvider (triumph_sftp) and RTSSFTPProvider
+// (rts_sftp / rts_test_sftp — same adapter, different host). Add more
+// (TriumphAPI, EcapitalAPI...) by writing a new file and registering it in
 // registry.go.
 //
 // Credentials are per-company and stored in tms360-backend's `settings` table
@@ -37,12 +38,38 @@ type ProviderType string
 
 const (
 	ProviderTriumphSFTP ProviderType = "triumph_sftp"
+	// ProviderTriumphSFTPV2 is Triumph's new SFTP server: same files as
+	// triumph_sftp, key sign-in, pinned host key (DEV-4015).
+	ProviderTriumphSFTPV2 ProviderType = "triumph_sftp_v2"
+	ProviderRTSSFTP       ProviderType = "rts_sftp"
+	ProviderRTSTestSFTP   ProviderType = "rts_test_sftp"
 )
 
 // AllProviderTypes is the canonical list of supported provider types — used by
 // tms360-backend's credential validator and by gqlgen for the GraphQL enum.
 var AllProviderTypes = []ProviderType{
 	ProviderTriumphSFTP,
+	ProviderTriumphSFTPV2,
+	ProviderRTSSFTP,
+	ProviderRTSTestSFTP,
+}
+
+// IsTriumph reports whether pt is a Triumph SFTP provider (old or new server).
+// Use this where the Triumph file layout or invoice layout matters, not for
+// picking the dial host.
+func IsTriumph(pt ProviderType) bool {
+	return pt == ProviderTriumphSFTP || pt == ProviderTriumphSFTPV2
+}
+
+// UsesPrivateKey reports whether pt signs in with a private key instead of a
+// password.
+func UsesPrivateKey(pt ProviderType) bool { return pt == ProviderTriumphSFTPV2 }
+
+// IsRTS reports whether pt is an RTS Financial SFTP provider (prod or test).
+// Use this for rules, invoice PDF profile, and trigger-and-clear behaviour —
+// not for picking the dial host.
+func IsRTS(pt ProviderType) bool {
+	return pt == ProviderRTSSFTP || pt == ProviderRTSTestSFTP
 }
 
 // IsValid reports whether p is a known ProviderType. Useful for validating
@@ -97,10 +124,12 @@ type Credential struct {
 	Username             string       `json:"username"`
 	AccessKey            string       `json:"access_key,omitempty"`
 	Password             string       `json:"password"`
-	BillingAddress       string       `json:"billing_address,omitempty"`
-	RemitNotice          string       `json:"remit_notice,omitempty"`
+	// PrivateKey is the OpenSSH/PEM private key for key-sign-in providers
+	// (triumph_sftp_v2). Secret: never log it or put it in an error.
+	PrivateKey     string `json:"private_key,omitempty"`
+	BillingAddress string `json:"billing_address,omitempty"`
+	RemitNotice    string `json:"remit_notice,omitempty"`
 }
-
 
 // Progress is one upload-progress tick reported by a Provider during
 // SubmitBatch. Provider-neutral: SFTP, API, or any future factor reports the
@@ -130,6 +159,18 @@ type Provider interface {
 	// caller can surface live per-file progress. Implementations MUST treat a
 	// nil onProgress as "do not report".
 	SubmitBatch(ctx context.Context, batch Batch, onProgress ProgressFunc) (SubmitResult, error)
+
+	// BuildManifest renders this provider's CSV manifest for the given invoice
+	// lines — the same bytes SubmitBatch ships. Pure rendering: provider rule
+	// validation lives in ValidateInvoicesForProvider, NOT here, so archival /
+	// bookkeeping callers can always obtain the bytes even for a batch that
+	// would be rejected on submission.
+	BuildManifest(invoices []InvoiceLine) ([]byte, error)
+
+	// TestConnection opens the transport and closes it. No files are written.
+	// Auth failures return *AuthError so callers can tell bad login from a
+	// down host without treating this as a live send.
+	TestConnection(ctx context.Context) error
 }
 
 // Batch is the unit of submission: one InvoiceBatch from backend-accounting
@@ -180,6 +221,48 @@ func (e *AuthError) Error() string {
 }
 
 func (e *AuthError) Unwrap() error { return e.Cause }
+
+// HostKeyMismatchError is returned when the server's host key cannot be
+// accepted: it presented a key other than the pinned one (Got and Want are
+// SHA256 fingerprints), or no key type the client accepts (Got is empty).
+// Check with errors.As or IsHostKeyMismatch.
+type HostKeyMismatchError struct {
+	Host string
+	Got  string
+	Want string
+}
+
+func (e *HostKeyMismatchError) Error() string {
+	if e.Got == "" {
+		return fmt.Sprintf("factoring/sftp: host key of %s cannot be checked: the server offers no host key type accepted for the pinned key; connection refused", e.Host)
+	}
+	return fmt.Sprintf("factoring/sftp: host key of %s does not match the pinned key (server %s, pinned %s); connection refused",
+		e.Host, e.Got, e.Want)
+}
+
+// IsHostKeyMismatch reports whether err is (or wraps) a *HostKeyMismatchError.
+func IsHostKeyMismatch(err error) bool {
+	var hk *HostKeyMismatchError
+	return errors.As(err, &hk)
+}
+
+// DialError is a failed TCP connect (network down, blocked, refused, timed
+// out). Check with IsDialError.
+type DialError struct {
+	Addr  string
+	Cause error
+}
+
+func (e *DialError) Error() string {
+	return fmt.Sprintf("factoring/sftp: tcp dial %s: %v", e.Addr, e.Cause)
+}
+func (e *DialError) Unwrap() error { return e.Cause }
+
+// IsDialError reports whether err is (or wraps) a *DialError.
+func IsDialError(err error) bool {
+	var de *DialError
+	return errors.As(err, &de)
+}
 
 // IsAuthError reports whether err (or any error it wraps) is a *AuthError.
 func IsAuthError(err error) bool {

@@ -1,0 +1,461 @@
+package toll
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"os"
+	"strconv"
+	"strings"
+	"time"
+
+	"github.com/TMS360/backend-pkg/deployenv"
+)
+
+// PrePass column names, as printed in the weekly spreadsheet. Columns are
+// addressed by NAME and never by position: across four consecutive weekly
+// files the same "Toll $" column appeared in three different positions,
+// because PrePass inserts unnamed spacer columns that shift everything to
+// their right. Reading by index would silently mis-map entire files.
+const (
+	colPostDate    = "Post Date"
+	colInvoiceDate = "Invoice Date"
+	colSource      = "Source"
+	colReadType    = "Read Type"
+	colDeviceID    = "PP Device ID"
+	colAgencyRef   = "Toll Device ID or Plate"
+	colTruckID     = "Truck ID"
+	colAgency      = "Agency"
+	colEntryPlaza  = "Entry Plaza"
+	colEntryDate   = "Entry Date"
+	colEntryTime   = "Entry Time"
+	colExitPlaza   = "Exit Plaza"
+	colExitDate    = "Exit Date"
+	colExitTime    = "Exit Time"
+	colClass       = "Cl"
+	colMiles       = "Mi"
+	colAmount      = "Toll $"
+)
+
+// colAccount is the label PrePass puts beside the carrier account number on
+// the report's cover sheet, when the export includes one.
+const colAccount = "Account"
+
+// sftpHeaderAliases maps the column names of the DAILY csv PrePass drops into
+// the SFTP folder onto the names above, which are the ones the WEEKLY portal
+// spreadsheet prints. Same fields, same order, different spelling — the csv
+// writes "PostingDate" and "Toll_Amount" where the workbook writes "Post Date"
+// and "Toll $".
+//
+// One table, not a second parser: the daily file differs from the weekly one
+// only in how its header row is spelled, and a csv-only reader would have to
+// re-implement the date handling, the money handling and the plate/transponder
+// rule to gain nothing. tableAt registers both spellings against the same
+// column, so everything downstream keeps addressing columns by the portal name.
+//
+// Keys are lower case because that is how table.index is keyed.
+//
+// CustID is deliberately absent: it is the carrier account, and the account
+// check reads ParseResult.Account off a cover SHEET (findAccount), which a csv
+// does not have. Nothing consumes ParseResult.Account today, so mapping it
+// would add a field nobody reads.
+var sftpHeaderAliases = map[string]string{
+	"postingdate":  colPostDate,
+	"invoicedate":  colInvoiceDate,
+	"readtype":     colReadType,
+	"pptagid":      colDeviceID,
+	"etagid_plate": colAgencyRef,
+	"equipid":      colTruckID,
+	"entry_plaza":  colEntryPlaza,
+	"entry_date":   colEntryDate,
+	"entry_time":   colEntryTime,
+	"exit_plaza":   colExitPlaza,
+	"exit_date":    colExitDate,
+	"exit_time":    colExitTime,
+	"toll_class":   colClass,
+	"miles":        colMiles,
+	"toll_amount":  colAmount,
+	// Source and Agency are spelled identically in both files.
+}
+
+// PrePass default SFTP settings. Unlike factoring these are only fallbacks:
+// each carrier is issued its own folder, so host/port/directory normally come
+// from the company's stored credential and these apply when it leaves them
+// blank.
+const (
+	prePassSFTPPort = 22
+
+	envTestPrePassHost = "TEST_PREPASS_SFTP_HOST"
+	envTestPrePassPort = "TEST_PREPASS_SFTP_PORT"
+	envTestPrePassDir  = "TEST_PREPASS_SFTP_DIR"
+)
+
+// sftpFetcher is the read-side seam that lets tests replace the network.
+// Mirrors factoring's sftpUploader, inverted.
+type sftpFetcher interface {
+	List(remoteDir string, exts []string) ([]RemoteFile, error)
+	Fetch(remoteDir, name string) ([]byte, error)
+	Close() error
+}
+
+type dialFunc func(context.Context, sftpDialer) (sftpFetcher, error)
+
+func defaultSFTPDial(ctx context.Context, d sftpDialer) (sftpFetcher, error) {
+	return dialSFTP(ctx, d)
+}
+
+// PrePassSFTP pulls the weekly toll spreadsheet PrePass drops into a carrier's
+// SFTP folder. PrePass publishes no API — the file is the entire interface,
+// and it carries no transaction id, which is why rows are deduplicated by
+// content hash rather than by key.
+type PrePassSFTP struct {
+	host        string
+	port        int
+	directory   string
+	username    string
+	password    string
+	hostKey     string
+	accountName string
+
+	// blocked, when set, refuses every dial. A non-production deployment with
+	// no catcher override configured would otherwise dial whatever host the
+	// database row carries — which on a tenant copied out of production is
+	// PrePass itself (DEV-1799).
+	blocked error
+
+	dialFn dialFunc
+}
+
+// NewPrePassSFTP builds the provider from a stored credential, applying the
+// non-production folder override when one is configured.
+func NewPrePassSFTP(cred Credential) *PrePassSFTP {
+	host := strings.TrimSpace(cred.Host)
+	port := cred.Port
+	dir := strings.TrimSpace(cred.Directory)
+
+	// Outside Railway production point every carrier at our own catcher
+	// folder regardless of what the database says. Staging databases are
+	// restored from production, so without this a stage run would reach into
+	// the real PrePass account. Production is decided by Railway's own
+	// environment name, never the hand-typed APP_ENV (DEV-3306).
+	var blocked error
+	if !deployenv.IsProduction() {
+		if v := firstNonEmptyEnv(envTestPrePassHost); v != "" {
+			host = v
+		} else {
+			// Fail closed, not open. The stored host is the carrier's real
+			// PrePass address, and the whole point of a non-prod deployment is
+			// that it never reaches it. A loud error names the missing variable
+			// and the refused host; a silent dial reads the carrier's toll
+			// statements.
+			blocked = fmt.Errorf("%w: %s is unset (%s=%q), refusing to dial %q",
+				ErrRealServerBlocked, envTestPrePassHost, deployenv.RailwayEnvVar, deployenv.Name(), host)
+			host = ""
+		}
+		if v := firstNonEmptyEnv(envTestPrePassPort); v != "" {
+			if n, err := strconv.Atoi(v); err == nil && n > 0 {
+				port = n
+			}
+		}
+		if v := firstNonEmptyEnv(envTestPrePassDir); v != "" {
+			dir = v
+		}
+	}
+	if cred.UploadOnly {
+		// No folder to read: the company uploads files by hand (DEV-2489).
+		// Validate let the empty host through, so nothing may dial it.
+		blocked = ErrUploadOnly
+	}
+	if port == 0 {
+		port = prePassSFTPPort
+	}
+
+	return &PrePassSFTP{
+		blocked:     blocked,
+		host:        host,
+		port:        port,
+		directory:   dir,
+		username:    cred.Username,
+		password:    cred.Secret,
+		hostKey:     cred.HostKey,
+		accountName: strings.TrimSpace(cred.AccountName),
+		dialFn:      defaultSFTPDial,
+	}
+}
+
+// connect is the one place every dial goes through, so the non-prod guard
+// cannot be bypassed by a new caller.
+func (p *PrePassSFTP) connect(ctx context.Context) (sftpFetcher, error) {
+	if p.blocked != nil {
+		return nil, p.blocked
+	}
+	return p.dialFn(ctx, p.dialer())
+}
+
+func (p *PrePassSFTP) dialer() sftpDialer {
+	return sftpDialer{
+		Host:         p.host,
+		Port:         p.port,
+		Username:     p.username,
+		Password:     p.password,
+		ProviderType: ProviderPrePassSFTP,
+		HostKey:      p.hostKey,
+	}
+}
+
+// List returns the spreadsheets waiting in the carrier's folder, newest first.
+func (p *PrePassSFTP) List(ctx context.Context) ([]RemoteFile, error) {
+	c, err := p.connect(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = c.Close() }()
+	return c.List(p.directory, RulesFor(ProviderPrePassSFTP).FileExtensions)
+}
+
+// Fetch downloads one spreadsheet. The remote file is deliberately left in
+// place: it is the carrier's own record with PrePass, and re-reading it is
+// made harmless by row hashing.
+func (p *PrePassSFTP) Fetch(ctx context.Context, name string) ([]byte, error) {
+	c, err := p.connect(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = c.Close() }()
+	return c.Fetch(p.directory, name)
+}
+
+// TestConnection dials and closes without reading anything.
+func (p *PrePassSFTP) TestConnection(ctx context.Context) error {
+	c, err := p.connect(ctx)
+	if err != nil {
+		return err
+	}
+	return c.Close()
+}
+
+// Parse reads a PrePass export into normalised rows.
+//
+// Pure by contract — no network, no clock. This is what the manual-upload path
+// calls on bytes a human supplied, so the folder poll and the upload button
+// can never diverge in how a file is interpreted.
+//
+// A malformed row is collected into ParseResult.Errors rather than aborting:
+// PrePass files routinely carry a handful of bad rows, and losing the other
+// several hundred good ones would cost the carrier real money.
+func (p *PrePassSFTP) Parse(name string, content []byte) (ParseResult, error) {
+	sheets, err := readSheets(name, content)
+	if err != nil {
+		return ParseResult{}, err
+	}
+
+	// Locate the data tab by its headers. Some exports carry a cover sheet
+	// with the report parameters ahead of the data, so the first tab is not
+	// reliably the one we want.
+	//
+	// Post Date is not what identifies the table: a portal export by Exit date
+	// carries rows PrePass has not posted yet (DEV-2489). The amount plus the
+	// exit or the device column is what every PrePass layout has.
+	t, ok := findTable(sheets, colAmount, colExitDate)
+	if !ok {
+		t, ok = findTable(sheets, colAmount, colDeviceID)
+	}
+	if !ok {
+		return ParseResult{}, fmt.Errorf(
+			"%w: %q has no header row with %q and %q or %q",
+			ErrNotPrePassFile, name, colAmount, colExitDate, colDeviceID)
+	}
+
+	res := ParseResult{Account: findAccount(sheets, t.sheet)}
+	res.Rows = make([]Row, 0, len(t.rows))
+
+	for i, raw := range t.rows {
+		rowNum := t.headerRow + 1 + i // 1-based row in the source sheet
+		if isBlank(raw) {
+			res.Skipped++
+			continue
+		}
+		row, err := parsePrePassRow(t, rowNum, raw)
+		if err != nil {
+			var re RowError
+			if errors.As(err, &re) {
+				res.Errors = append(res.Errors, re)
+			} else {
+				res.Errors = append(res.Errors, RowError{RowNumber: rowNum, Err: err})
+			}
+			continue
+		}
+		res.Rows = append(res.Rows, row)
+	}
+
+	assignHashes(ProviderPrePassSFTP, res.Rows)
+	return res, nil
+}
+
+// parsePrePassRow maps one spreadsheet row onto Row.
+//
+// The hard requirements are a date and the amount. The date is Post Date or,
+// for a crossing PrePass has not posted yet, the Exit: agencies post late, and
+// a portal export by Exit date carries such rows (DEV-2489). A row without a
+// Post Date keeps PostDate zero, which is also what keeps HashRow of every
+// posted row exactly as it was. Everything else is best-effort, because an
+// unmatched row still has to reach a human rather than vanish.
+func parsePrePassRow(t table, rowNum int, raw []string) (Row, error) {
+	postRaw := t.cell(raw, colPostDate)
+	post, hasPost := ParseFileTime(postRaw)
+	exitAt := combineDateTime(t, raw, colExitDate, colExitTime)
+	switch {
+	case !hasPost && strings.TrimSpace(postRaw) != "":
+		// Something is written there and it is not a date: a broken row, not
+		// a crossing that is waiting to be posted.
+		return Row{}, RowError{
+			RowNumber: rowNum, Column: colPostDate, Value: postRaw,
+			Err: fmt.Errorf("unreadable date"),
+		}
+	case !hasPost && exitAt == nil:
+		return Row{}, RowError{
+			RowNumber: rowNum, Column: colPostDate, Value: postRaw,
+			Err: fmt.Errorf("no post date and no exit date"),
+		}
+	}
+
+	amountRaw := t.cell(raw, colAmount)
+	amount, err := ParseMoney(amountRaw)
+	if err != nil {
+		return Row{}, RowError{RowNumber: rowNum, Column: colAmount, Value: amountRaw, Err: err}
+	}
+
+	readType := parseReadType(t.cell(raw, colReadType))
+	agencyRef := strings.TrimSpace(t.cell(raw, colAgencyRef))
+
+	row := Row{
+		RowNumber:  rowNum,
+		PostDate:   post,
+		Source:     strings.TrimSpace(t.cell(raw, colSource)),
+		Agency:     strings.TrimSpace(t.cell(raw, colAgency)),
+		ReadType:   readType,
+		DeviceID:   NormalizeDeviceID(t.cell(raw, colDeviceID)),
+		AgencyRef:  agencyRef,
+		TruckRef:   NormalizeTruckRef(t.cell(raw, colTruckID)),
+		EntryPlaza: strings.TrimSpace(t.cell(raw, colEntryPlaza)),
+		ExitPlaza:  strings.TrimSpace(t.cell(raw, colExitPlaza)),
+		Class:      strings.TrimSpace(t.cell(raw, colClass)),
+		Miles:      strings.TrimSpace(t.cell(raw, colMiles)),
+		Amount:     amount,
+		Raw:        t.rowMap(raw),
+	}
+
+	// When the plaza could not read a transponder it photographs the plate and
+	// writes it into the same column that otherwise holds the agency's tag
+	// number. The two are only distinguishable by Read Type.
+	if readType == ReadPlate {
+		row.Plate = NormalizePlate(agencyRef)
+	}
+
+	if inv, ok := ParseFileTime(t.cell(raw, colInvoiceDate)); ok {
+		row.InvoiceDate = &inv
+	}
+	row.EntryAt = combineDateTime(t, raw, colEntryDate, colEntryTime)
+	row.ExitAt = exitAt
+
+	return row, nil
+}
+
+// parseReadType maps the file's wording onto the enum. An unrecognised value
+// is kept as ReadUnknown rather than rejected — the charge is still real, and
+// matching falls back to whichever identifier the row happens to carry.
+func parseReadType(s string) ReadType {
+	switch strings.ToLower(strings.TrimSpace(s)) {
+	case "transponder", "tag", "toll tag":
+		return ReadTransponder
+	case "plate", "licence plate", "license plate", "image", "video":
+		return ReadPlate
+	default:
+		return ReadUnknown
+	}
+}
+
+// combineDateTime reads a date column and, when the date carries no clock,
+// splices in the time column beside it.
+//
+// PrePass writes the full timestamp into BOTH columns, so the date alone is
+// usually enough; the splice covers exports that put a bare date in one and a
+// bare time in the other.
+func combineDateTime(t table, raw []string, dateCol, timeCol string) *time.Time {
+	d, ok := ParseFileTime(t.cell(raw, dateCol))
+	if !ok {
+		return nil
+	}
+	if d.Hour() != 0 || d.Minute() != 0 || d.Second() != 0 {
+		return &d
+	}
+	h, m, s, ok := parseTimeOfDay(t.cell(raw, timeCol))
+	if !ok {
+		return &d
+	}
+	out := time.Date(d.Year(), d.Month(), d.Day(), h, m, s, 0, d.Location())
+	return &out
+}
+
+// timeOfDayLayouts are the clock-only forms seen in the time columns.
+var timeOfDayLayouts = []string{"15:04:05", "15:04", "3:04:05 PM", "3:04 PM"}
+
+// parseTimeOfDay reads a clock from a cell that may hold a full timestamp, a
+// bare clock, or a fraction-of-day serial (Excel stores "17:23:46" as
+// 0.7248 when the cell holds a time and no date).
+func parseTimeOfDay(s string) (hour, minute, second int, ok bool) {
+	v := strings.TrimSpace(s)
+	if v == "" {
+		return 0, 0, 0, false
+	}
+	if ts, found := ParseFileTime(v); found {
+		return ts.Hour(), ts.Minute(), ts.Second(), true
+	}
+	for _, layout := range timeOfDayLayouts {
+		if ts, err := time.Parse(layout, v); err == nil {
+			return ts.Hour(), ts.Minute(), ts.Second(), true
+		}
+	}
+	if f, err := strconv.ParseFloat(v, 64); err == nil && f >= 0 && f < 1 {
+		secs := int(f*24*60*60 + 0.5)
+		return secs / 3600, (secs % 3600) / 60, secs % 60, true
+	}
+	return 0, 0, 0, false
+}
+
+// findAccount digs the carrier account number out of the report's cover
+// sheet. PrePass prints it beside an "Account" label; when the export has no
+// cover sheet the result is empty and the caller simply skips the check.
+func findAccount(sheets []sheet, dataSheet string) string {
+	for _, s := range sheets {
+		if s.name == dataSheet {
+			continue
+		}
+		for _, row := range s.rows {
+			for c, cell := range row {
+				if !strings.EqualFold(normalizeHeader(cell), colAccount) {
+					continue
+				}
+				// The value sits in the next non-empty cell to the right;
+				// PrePass pads label/value pairs with merged blank columns.
+				for _, v := range row[c+1:] {
+					if v = strings.TrimSpace(v); v != "" {
+						return v
+					}
+				}
+			}
+		}
+	}
+	return ""
+}
+
+// firstNonEmptyEnv returns the first of the named env vars whose trimmed value
+// is non-empty.
+func firstNonEmptyEnv(names ...string) string {
+	for _, name := range names {
+		if v := strings.TrimSpace(os.Getenv(name)); v != "" {
+			return v
+		}
+	}
+	return ""
+}

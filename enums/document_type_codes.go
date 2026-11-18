@@ -18,6 +18,10 @@ const (
 	SystemDocMCAuthority                              SystemDocTypeCode = "MC_AUTHORITY"
 	SystemDocPSSpottedLanternflyPermit                SystemDocTypeCode = "PS_SPOTTED_LANTERNFLY_PERMIT"
 	SystemDocPSSpottedLanternflyQuarantineRegulations SystemDocTypeCode = "PS_SPOTTED_LANTERNFLY_QUARANTINE_REGULATIONS"
+	// COMPANY (DEV-3093) — the rest of the BL-17 §17.4 Company tab set.
+	SystemDocBMC91       SystemDocTypeCode = "BMC_91"
+	SystemDocUCR         SystemDocTypeCode = "UCR"
+	SystemDocUSDOTMCS150 SystemDocTypeCode = "USDOT_MCS_150"
 
 	// TRUCK
 	SystemDocNMPermit              SystemDocTypeCode = "NM_PERMIT"
@@ -30,6 +34,8 @@ const (
 	// TRAILER
 	SystemDocTrailerAnnualInspection SystemDocTypeCode = "TRAILER_ANNUAL_INSPECTION"
 	SystemDocTrailerRegistration     SystemDocTypeCode = "TRAILER_REGISTRATION"
+	SystemDocTrailerInsurance        SystemDocTypeCode = "TRAILER_INSURANCE"
+	SystemDocTrailerTitle            SystemDocTypeCode = "TRAILER_TITLE"
 
 	// SHIPMENT
 	SystemDocRC            SystemDocTypeCode = "RC"
@@ -38,8 +44,35 @@ const (
 	SystemDocInvoice       SystemDocTypeCode = "INVOICE"
 	SystemDocShipmentOther SystemDocTypeCode = "SHIPMENT_OTHER"
 
-	// DRIVER
-	SystemPayStatement SystemDocTypeCode = "PAY_STATEMENT"
+	// DRIVER — the FMCSA driver qualification file (49 CFR 391.51) plus payroll.
+	SystemPayStatement                SystemDocTypeCode = "PAY_STATEMENT"
+	SystemDocDriverLicense            SystemDocTypeCode = "DRIVER_LICENSE"
+	SystemDocDriverMedicalCard        SystemDocTypeCode = "DRIVER_MEDICAL_CARD"
+	SystemDocDriverMVR                SystemDocTypeCode = "DRIVER_MVR"
+	SystemDocDriverRoadTest           SystemDocTypeCode = "DRIVER_ROAD_TEST"
+	SystemDocDriverApplication        SystemDocTypeCode = "DRIVER_APPLICATION"
+	SystemDocDriverPreviousEmployment SystemDocTypeCode = "DRIVER_PREVIOUS_EMPLOYMENT"
+
+	// CUSTOMER (DEV-2727) — a customer's (broker's) paperwork, kept on the
+	// carrier's customer card. Agreement, credit application and W-9 never
+	// expire; the bond and the certificate of insurance do.
+	SystemDocCustomerBrokerCarrierAgreement SystemDocTypeCode = "CUSTOMER_BROKER_CARRIER_AGREEMENT"
+	SystemDocCustomerCreditApplication      SystemDocTypeCode = "CUSTOMER_CREDIT_APPLICATION"
+	SystemDocCustomerSuretyBond             SystemDocTypeCode = "CUSTOMER_SURETY_BOND"
+	SystemDocCustomerW9                     SystemDocTypeCode = "CUSTOMER_W9"
+	SystemDocCustomerCertificateOfInsurance SystemDocTypeCode = "CUSTOMER_CERTIFICATE_OF_INSURANCE"
+
+	// Restricted DRIVER papers (DEV-3433) — very private, opened only with
+	// compliance_restricted_view. Neither expires nor is required.
+	SystemDocDriverSSNCard  SystemDocTypeCode = "DRIVER_SSN_CARD"
+	SystemDocDriverDrugTest SystemDocTypeCode = "DRIVER_DRUG_TEST"
+
+	// TRUCK_OWNER (DEV-3433) — a truck owner's own paperwork. Never required and
+	// never part of the dispatch check; the certificate of insurance expires.
+	SystemDocTruckOwnerAgreement              SystemDocTypeCode = "TRUCK_OWNER_AGREEMENT"
+	SystemDocTruckOwnerCertificateOfInsurance SystemDocTypeCode = "TRUCK_OWNER_CERTIFICATE_OF_INSURANCE"
+	SystemDocTruckOwnerW9                     SystemDocTypeCode = "TRUCK_OWNER_W9"
+	SystemDocTruckOwnerOther                  SystemDocTypeCode = "TRUCK_OWNER_OTHER"
 )
 
 func (c SystemDocTypeCode) String() string { return string(c) }
@@ -56,6 +89,9 @@ func (c SystemDocTypeCode) IsValid() bool {
 		SystemDocMCAuthority,
 		SystemDocPSSpottedLanternflyPermit,
 		SystemDocPSSpottedLanternflyQuarantineRegulations,
+		SystemDocBMC91,
+		SystemDocUCR,
+		SystemDocUSDOTMCS150,
 		SystemDocNMPermit,
 		SystemDocNYPermit,
 		SystemDocORPermit,
@@ -64,11 +100,31 @@ func (c SystemDocTypeCode) IsValid() bool {
 		SystemDocVehicleLeaseAgreement,
 		SystemDocTrailerAnnualInspection,
 		SystemDocTrailerRegistration,
+		SystemDocTrailerInsurance,
+		SystemDocTrailerTitle,
 		SystemDocRC,
 		SystemDocBOL,
 		SystemDocPOD,
 		SystemDocInvoice,
-		SystemPayStatement:
+		SystemDocShipmentOther,
+		SystemPayStatement,
+		SystemDocDriverLicense,
+		SystemDocDriverMedicalCard,
+		SystemDocDriverMVR,
+		SystemDocDriverRoadTest,
+		SystemDocDriverApplication,
+		SystemDocDriverPreviousEmployment,
+		SystemDocCustomerBrokerCarrierAgreement,
+		SystemDocCustomerCreditApplication,
+		SystemDocCustomerSuretyBond,
+		SystemDocCustomerW9,
+		SystemDocCustomerCertificateOfInsurance,
+		SystemDocDriverSSNCard,
+		SystemDocDriverDrugTest,
+		SystemDocTruckOwnerAgreement,
+		SystemDocTruckOwnerCertificateOfInsurance,
+		SystemDocTruckOwnerW9,
+		SystemDocTruckOwnerOther:
 		return true
 	default:
 		return false

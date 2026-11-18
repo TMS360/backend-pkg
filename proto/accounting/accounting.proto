@@ -1,0 +1,332 @@
+// pkg/proto/accounting/accounting.proto
+syntax = "proto3";
+
+package accounting;
+
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/TMS360/backend-pkg/proto/accounting";
+
+// AccountingService is backend-accounting's internal API.
+//
+// It exists because money has no other door: createAssetCharge and its siblings
+// are GraphQL mutations meant for a person, and there is no GraphQL client
+// between services in this fleet. The first caller is the maintenance work
+// order (backend-tasks, DEV-2252), which owes a repair charge the moment it
+// closes.
+//
+// PERMISSIONS ARE CHECKED BY THE CALLER, the same contract backend-load's gRPC
+// server carries: these calls arrive with an internal token rather than a user
+// JWT, so company_id and actor_id are passed explicitly and the calling service
+// has already gated the user action that led here.
+service AccountingService {
+  // Charge a truck or a trailer once — a repair bill, a tyre, a mirror.
+  //
+  // Where the money goes is decided by the FAULT, not by the caller: fault
+  // "driver" reaches the holder on that day and waits to be acknowledged,
+  // "dispatcher" reaches the named dispatcher, and the other three reach the
+  // company and the truck's P&L. Nobody to bill is never silently the company —
+  // it goes to the unrouted queue with a reason.
+  //
+  // NOT IDEMPOTENT. Accounting deliberately allows two identical charges (two
+  // tyres on one day is a real thing), so calling this twice posts twice. The
+  // caller owns the key: backend-tasks stores the returned charge_id on the
+  // work order and never calls again once it has one.
+  rpc CreateAssetCharge(CreateAssetChargeRequest) returns (CreateAssetChargeResponse);
+
+  // The per-truck weekly P&L (DEV-1926) over a window — the same rows the
+  // truckWeeklyPnl query serves the Payroll page, read-only. The first caller
+  // is the tms-teams Planning Board (DEV-2416), which decides who may see it.
+  //
+  // One row per (truck, week) with at least one settlement line or company-paid
+  // truck cost. A truck-week with no money is ABSENT, never zero-filled: "no
+  // settlement yet" and "earned nothing" read differently.
+  rpc ListTruckWeeklyPnL(ListTruckWeeklyPnLRequest) returns (ListTruckWeeklyPnLResponse);
+
+  // The live DRIVER pay statements each trip sits on (DEV-2604). backend-load
+  // asks before an office driver change: a trip whose pay is already on a
+  // statement keeps its driver, because the statement's balance lines hit the
+  // driver's balance the moment they are added.
+  //
+  // Live = not deleted and not superseded, any status from draft to locked.
+  // Owner statements are not listed. A trip on no statement is ABSENT.
+  rpc ListTripStatements(ListTripStatementsRequest) returns (ListTripStatementsResponse);
+
+  // The draft bill a shop sends for a completed task (DEV-2614, first caller
+  // the maintenance work order in backend-tasks, DEV-2615).
+  //
+  // IDEMPOTENT PER SOURCE. One live bill per (source_kind, source_id): a repeat
+  // call returns the bill that already exists instead of a second one, so the
+  // caller may retry after a lost answer. A cancelled bill does not count — a
+  // work order completed again after a reopen gets a new draft.
+  //
+  // The bill number is vendor_invoice_number when set, otherwise source_ref
+  // ("WO-00012"). Bill date and due date are bill_date. Lines with amount 0 are
+  // the caller's to drop; a request with no billable line is refused.
+  //
+  // A refusal carries a google.rpc.ErrorInfo detail: reason is the code
+  // (VENDOR_NOT_FOUND, VENDOR_INACTIVE, VENDOR_BILL_NUMBER_TAKEN,
+  // NO_BILLABLE_LINES), metadata["message"] the sentence a person reads. The
+  // caller shows that sentence, never the raw status text.
+  rpc CreateVendorBillFromTask(CreateVendorBillFromTaskRequest) returns (CreateVendorBillFromTaskResponse);
+
+  // A driver pay adjustment a resolved task owes (DEV-2618, first caller the
+  // safety case in backend-tasks, DEV-2619): "charge the driver $500" or "pay
+  // the driver $200".
+  //
+  // THE CALLER SENDS THE TOTAL, NOT THE CHANGE. desired_signed_amount is what
+  // the case should come to for the driver this round (negative = the driver
+  // pays, positive = the driver is paid). Accounting subtracts what is already
+  // approved or applied for this task and opens one adjustment for the
+  // difference — a re-resolve after an approved round gets a counter-adjustment,
+  // never a second full amount. No difference → no adjustment, adjustment_id
+  // empty.
+  //
+  // IDEMPOTENT PER (task_id, round). A repeat call returns the live adjustment
+  // of that round. A new round first rejects the task's still-requested
+  // adjustments of earlier rounds ("case reopened"), so two live ones never
+  // exist even when the reopen event is late.
+  //
+  // The adjustment opens as "requested" and waits for an accountant. Once
+  // approved it lands on the driver's next draft statement by itself, or parks
+  // until one exists. label is the statement line text ("SFT-00950 · Accident ·
+  // 2026-09-30"). Zero amount with nothing to undo, or no driver → InvalidArgument.
+  rpc RequestAdjustmentFromTask(RequestAdjustmentFromTaskRequest) returns (RequestAdjustmentFromTaskResponse);
+
+  // GetDriverFuelCardStates returns the fuel-card integration rows of the given
+  // drivers in the company (provider + sync status). A driver with no row is
+  // absent from the answer. Read-only.
+  rpc GetDriverFuelCardStates(GetDriverFuelCardStatesRequest) returns (GetDriverFuelCardStatesResponse);
+}
+
+message GetDriverFuelCardStatesRequest {
+  string company_id = 1;
+  repeated string driver_ids = 2;
+}
+
+message DriverFuelCardState {
+  string driver_id = 1;
+  string provider = 2;     // "relay"
+  string sync_status = 3;  // synced | pending | failed | inactive
+}
+
+message GetDriverFuelCardStatesResponse {
+  repeated DriverFuelCardState states = 1;
+}
+
+// AssetKind names which kind of equipment carries the charge.
+enum AssetKind {
+  ASSET_KIND_UNSPECIFIED = 0;
+  ASSET_KIND_TRUCK = 1;
+  ASSET_KIND_TRAILER = 2;
+}
+
+// ChargeFault is accounting's PayEventFault, the same five words tasks uses for
+// an incident resolution. It decides the payer.
+enum ChargeFault {
+  CHARGE_FAULT_UNSPECIFIED = 0;
+  CHARGE_FAULT_EQUIPMENT = 1;
+  CHARGE_FAULT_DRIVER = 2;
+  CHARGE_FAULT_DISPATCHER = 3;
+  CHARGE_FAULT_CUSTOMER = 4;
+  CHARGE_FAULT_NONE = 5;
+}
+
+// ChargeSourceKind records where a charge came from, so a row can always be
+// walked back to the thing that caused it.
+enum ChargeSourceKind {
+  CHARGE_SOURCE_KIND_UNSPECIFIED = 0;
+  CHARGE_SOURCE_KIND_MANUAL = 1;
+  CHARGE_SOURCE_KIND_TASK = 2;
+  CHARGE_SOURCE_KIND_WORK_ORDER = 3;
+}
+
+message CreateAssetChargeRequest {
+  string company_id = 1;
+  string actor_id = 2;
+
+  AssetKind asset_type = 3;
+  string asset_id = 4;
+
+  // The accounting type by CODE, not by id: the id is per-tenant and tasks has
+  // no business knowing accounting's chart of accounts. A repair charge sends
+  // "MAINTENANCE", which the seeded catalog already carries for every tenant.
+  // An unknown code is refused rather than invented.
+  string type_code = 5;
+
+  // Must be greater than zero. A work order that cost nothing (warranty) posts
+  // no charge at all rather than a zero one.
+  double amount = 6;
+
+  // The day the money belongs to — the service date, not the day the row was
+  // written. It decides which driver held the asset and which pay period pays.
+  google.protobuf.Timestamp charge_date = 7;
+
+  ChargeFault fault = 8;
+  ChargeSourceKind source_kind = 9;
+  // The work order (or task) this came from. Required unless source_kind is
+  // manual; it is how the charge is walked back and how the caller recognises
+  // its own row.
+  string source_id = 10;
+
+  // Who was blamed, when accounting cannot work it out — that is fault
+  // "dispatcher". For fault "driver" the holder on that day is the answer and
+  // this is ignored.
+  string fault_party_id = 11;
+
+  string note = 12;
+}
+
+message CreateAssetChargeResponse {
+  // The created row. The caller stores it and treats its presence as "this work
+  // order has been charged", which is what makes a retry safe.
+  string charge_id = 1;
+  // Where the row landed: "draft", "pending_ack", "posted" or "unrouted".
+  // A driver-fault charge waits in pending_ack until somebody acknowledges it.
+  string status = 2;
+  // Set when the charge found nobody to bill and went to the unrouted queue —
+  // no crew on the asset that day, or a dispatcher with no open statement. The
+  // charge exists either way; this says a person has to route it.
+  string unrouted_reason = 3;
+}
+
+message ListTruckWeeklyPnLRequest {
+  string company_id = 1;
+  // The window is [from, to): a statement belongs to it by the day its period
+  // starts, a truck charge by its charge date.
+  google.protobuf.Timestamp from = 2;
+  google.protobuf.Timestamp to = 3;
+  // Empty = every truck of the company.
+  repeated string truck_ids = 4;
+}
+
+// TruckWeekPnL is one truck's week: what it earned and where that went.
+message TruckWeekPnL {
+  string truck_id = 1;
+  // Monday of the ISO week the row is bucketed on (date_trunc('week')). A
+  // company whose week starts on another day should read its week as a
+  // [from, to) window and add up the rows, not match on this label.
+  google.protobuf.Timestamp week_start = 2;
+  double revenue = 3;
+  // What the company paid the drivers on this truck.
+  double driver_cost = 4;
+  // What the owner was owed.
+  double owner_pay = 5;
+  // Deductions taken on the owner's settlement for this truck.
+  double deductions = 6;
+  // What the carrier itself paid for this truck (DEV-2241).
+  double asset_costs = 7;
+  // revenue − driver_cost − owner_pay − asset_costs, derived by accounting so a
+  // caller never carries the formula. Negative is a real answer.
+  double company_share = 8;
+}
+
+message ListTruckWeeklyPnLResponse {
+  repeated TruckWeekPnL rows = 1;
+}
+
+message ListTripStatementsRequest {
+  string company_id = 1;
+  repeated string trip_ids = 2;
+}
+
+// TripStatement is one trip on one live driver statement.
+message TripStatement {
+  string trip_id = 1;
+  string statement_id = 2;
+  // The number a person reads as ST-000123.
+  int64 statement_number = 3;
+  // draft | under_review | approved | locked
+  string status = 4;
+}
+
+message ListTripStatementsResponse {
+  repeated TripStatement rows = 1;
+}
+
+// VendorBillSourceKind names the task a vendor bill came from.
+enum VendorBillSourceKind {
+  VENDOR_BILL_SOURCE_KIND_UNSPECIFIED = 0;
+  VENDOR_BILL_SOURCE_KIND_WORK_ORDER = 1;
+  // A safety case (DEV-2618): a body shop or a claim vendor after an accident.
+  VENDOR_BILL_SOURCE_KIND_SAFETY_CASE = 2;
+}
+
+// VendorBillLineInput is one billable line. The type travels as a CODE, the same
+// rule as CreateAssetChargeRequest.type_code: accounting resolves it per tenant
+// and picks the GL account from it.
+message VendorBillLineInput {
+  string type_code = 1;
+  // What the line was, as the shop wrote it ("TIRES", "Repair").
+  string description = 2;
+  // Greater than zero.
+  double amount = 3;
+}
+
+message CreateVendorBillFromTaskRequest {
+  string company_id = 1;
+  string actor_id = 2;
+
+  VendorBillSourceKind source_kind = 3;
+  // The task id. With source_kind it is the bill's idempotency key.
+  string source_id = 4;
+  // The task's human number ("WO-00012"): the bill number when the shop gave
+  // none, and how the bill names where it came from.
+  string source_ref = 5;
+
+  string vendor_id = 6;
+  // The shop's own invoice number. Empty means "use source_ref".
+  string vendor_invoice_number = 7;
+
+  // The service date — bill date and due date both.
+  google.protobuf.Timestamp bill_date = 8;
+
+  // The equipment every line is about.
+  AssetKind asset_type = 9;
+  string asset_id = 10;
+
+  repeated VendorBillLineInput lines = 11;
+}
+
+message CreateVendorBillFromTaskResponse {
+  // The live bill for this source — new, or the one that already existed.
+  string bill_id = 1;
+  string bill_number = 2;
+  // Accounting's own state word: "draft", "submitted", "approved", "paid".
+  string status = 3;
+  // True when the bill was there before this call (a retry).
+  bool already_existed = 4;
+  // The live bill's total. With a bill that is no longer a draft it lets the
+  // caller see that its own new total differs from what was approved (DEV-2948).
+  double total = 5;
+}
+
+message RequestAdjustmentFromTaskRequest {
+  string company_id = 1;
+  string actor_id = 2;
+
+  // The task id. With round it is the idempotency key.
+  string task_id = 3;
+  // The task's resolve round, counted by the caller: 1 on the first resolve,
+  // +1 after every reopen.
+  int32 round = 4;
+
+  string driver_id = 5;
+  // The total this task should come to for the driver this round: negative =
+  // the driver pays (charge), positive = the driver is paid.
+  double desired_signed_amount = 6;
+  // The statement line text, "SFT-00950 · Accident · 2026-09-30".
+  string label = 7;
+  // Free text kept on the adjustment for the accountant.
+  string reason = 8;
+}
+
+message RequestAdjustmentFromTaskResponse {
+  // Empty when nothing needed opening (the total did not change).
+  string adjustment_id = 1;
+  string display_number = 2;
+  // Accounting's own state word: "requested", "approved", "applied", ...
+  string status = 3;
+  // True when the adjustment was there before this call (a retry).
+  bool already_existed = 4;
+}

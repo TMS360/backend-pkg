@@ -16,9 +16,23 @@ import (
 	"github.com/google/uuid"
 )
 
-// IdentifyUser извлекает и проверяет JWT из заголовка Authorization и устанавливает информацию о пользователе в контекст
+// IdentifyUser извлекает и проверяет JWT из заголовка Authorization и устанавливает информацию о пользователе в контекст.
+//
+// Здесь же в контекст кладётся ClientOrigin (IP + user-agent). Это единственная
+// точка, которую подключают все сервисы, поэтому origin попадает в контекст
+// каждого запроса без правок в самих сабграфах — ровно так же, как actor.
+// tmsdb.writeEvent читает его при штамповке outbox-события (DEV-1411).
 func IdentifyUser(rsaPubKey *rsa.PublicKey) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
+		// 0. Origin ставим до аутентификации: он нужен и анонимным, и гостевым
+		// запросам, и запросам с невалидным токеном.
+		ctx.Request = ctx.Request.WithContext(
+			WithClientOrigin(ctx.Request.Context(), ResolveClientOrigin(ctx.Request)),
+		)
+		// DEV-3618: a trusted internal bulk read (X-Internal-Token +
+		// X-Bulk-Read-Limit) may ask list queries for pages above their ceiling.
+		ctx.Request = withRequestBulkReadLimit(ctx.Request)
+
 		// 1. Attempt System User Authentication
 		if authHeader := ctx.GetHeader("Authorization"); authHeader != "" {
 			actor, err := parseAuthToken(authHeader, rsaPubKey)
@@ -52,6 +66,66 @@ func RequireAuth() gin.HandlerFunc {
 
 		ctx.Next()
 	}
+}
+
+// RequirePerms is the REST mirror of the GraphQL @hasPerm directive. Both read
+// the perms IdentifyUserPerms stashed in ctx and check them with the same
+// hierarchical auth.HasPermission — so a route and a resolver gated on the same
+// code behave identically. Holding ANY of perms passes (OR semantics, like the
+// directive).
+func RequirePerms(perms ...string) gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		actor, err := GetActor(ctx.Request.Context())
+		if err != nil || actor == nil {
+			ctx.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+			return
+		}
+
+		// Mirror the directive's early-outs exactly.
+		if actor.IsGuest || actor.IsSuperAdmin() {
+			ctx.Next()
+			return
+		}
+
+		reqCtx := ctx.Request.Context()
+		if PermsUnresolved(reqCtx) {
+			// DEV-1555: infra failure loading perms is not a real grant denial.
+			ctx.AbortWithStatusJSON(http.StatusServiceUnavailable, gin.H{
+				"error":   "PERMS_UNRESOLVED",
+				"message": "permission service unavailable, please retry",
+			})
+			return
+		}
+
+		userPerms := GetUserPermsFromContext(reqCtx)
+		for _, required := range perms {
+			if HasPermission(userPerms, required) {
+				ctx.Next()
+				return
+			}
+		}
+
+		ctx.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "Forbidden: missing permission"})
+	}
+}
+
+// GetUserPermsFromContext returns the perms stashed by IdentifyUserPerms.
+// Missing context entry → empty slice, which means deny-all under
+// HasPermission's matching rules. The key and reader live in consts so auth
+// (which stashes the perms) does not have to import middleware.
+func GetUserPermsFromContext(ctx context.Context) []string {
+	if perms, ok := ctx.Value(consts.PermsCtx).([]string); ok {
+		return perms
+	}
+	return []string{}
+}
+
+// PermsUnresolved reports that IdentifyUserPerms failed to load the caller's
+// permission list for this request. Gates must treat this as a temporary
+// service failure, never as "missing permission" (DEV-1555).
+func PermsUnresolved(ctx context.Context) bool {
+	v, ok := ctx.Value(consts.PermsUnresolvedCtx).(bool)
+	return ok && v
 }
 
 // RequireAdmin guards routes that require an admin or super_admin role.

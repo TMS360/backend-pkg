@@ -3,6 +3,8 @@ package tmsdb
 import (
 	"context"
 	"encoding/json"
+	"fmt"
+	"log"
 	"reflect"
 	"strings"
 	"time"
@@ -94,9 +96,22 @@ func actorIdentity(ctx context.Context) (actorID, companyID *uuid.UUID) {
 func (m *GormTransactionManager) writeEvent(ctx context.Context, b *EventBuilder) error {
 	actorID, companyID := actorIdentity(ctx)
 
+	// Origin (IP + user-agent) кладёт в контекст middleware.IdentifyUser на входе
+	// HTTP-запроса. Для событий без запроса (Kafka-консьюмеры, крон, сидеры)
+	// контекст пустой -> оба поля nil, а не адрес самого сервиса (DEV-1411).
+	var actorIP, userAgent *string
+	if origin := middleware.GetClientOrigin(ctx); origin != nil {
+		if origin.IP != "" {
+			actorIP = utils.Pointer(origin.IP)
+		}
+		if origin.UserAgent != "" {
+			userAgent = utils.Pointer(origin.UserAgent)
+		}
+	}
+
 	dataBytes, err := json.Marshal(b.data)
 	if err != nil {
-		return err
+		return err // marshal-ошибка = реальный баг, до БД, txn не трогает — surface it
 	}
 
 	var changes []events.Change
@@ -107,12 +122,26 @@ func (m *GormTransactionManager) writeEvent(ctx context.Context, b *EventBuilder
 	rootType := b.rootType
 	rootID := b.rootID
 	if rootType == "" {
-		// Default: an event roots to itself. Aggregate-root queries will still find
-		// "self-rooted" leaves (shipments, users, …) via this default; nested leaves
-		// that omit WithRoot remain invisible to aggregate queries by design.
 		rootType = b.aggType
 		rootID = b.aggID
 	}
+
+	// Sensitivity is assigned on the PRODUCING side so the class travels with the
+	// event. An explicit WithSensitivity wins; otherwise classify from the
+	// event's structured shape (entity_type + changed field names), never from a
+	// rendered label. Empty stays empty only if the producer explicitly set it so.
+	sensitivity := b.sensitivity
+	if sensitivity == "" {
+		changedFields := make([]string, 0, len(changes))
+		for _, c := range changes {
+			changedFields = append(changedFields, c.Field)
+		}
+		sensitivity = events.Classify(m.sourceService, b.aggType, b.evtType, changedFields)
+	}
+
+	// The caller is always a participant (ACTOR); producers add SUBJECT/AFFECTED/
+	// ASSIGNED. Centralised so every emit path stamps the actor identically.
+	participants := events.WithActor(b.participants, actorID)
 
 	eventPayload := events.EventPayload{
 		SourceService:  m.sourceService,
@@ -124,9 +153,15 @@ func (m *GormTransactionManager) writeEvent(ctx context.Context, b *EventBuilder
 		Action:         b.evtType,
 		Data:           json.RawMessage(dataBytes),
 		Changes:        changes,
+		Reason:         b.reason,
+		ActorIP:        actorIP,
+		CorrelationID:  middleware.GetRequestID(ctx),
+		UserAgent:      userAgent,
 		Timestamp:      time.Now(),
 		RootEntityType: rootType,
 		RootEntityID:   rootID,
+		Sensitivity:    sensitivity,
+		Participants:   participants,
 	}
 
 	payloadBytes, err := json.Marshal(eventPayload)
@@ -134,7 +169,16 @@ func (m *GormTransactionManager) writeEvent(ctx context.Context, b *EventBuilder
 		return err
 	}
 
+	// Version 7 ids sort in the order they were created. The row id used to be
+	// a random v4 from Postgres, so the earliest row for an entity was a coin
+	// flip once a second event was written for it.
+	rowID, err := uuid.NewV7()
+	if err != nil {
+		return fmt.Errorf("outbox: id: %w", err)
+	}
+
 	event := &model.OutboxEvent{
+		ID:         rowID,
 		EntityID:   b.aggID,
 		EntityType: b.aggType,
 		EventType:  b.evtType,
@@ -144,8 +188,48 @@ func (m *GormTransactionManager) writeEvent(ctx context.Context, b *EventBuilder
 		CreatedAt:  time.Now(),
 	}
 
-	// Uses the active transaction from context automatically
-	return m.GetDB(ctx).Create(event).Error
+	db := m.GetDB(ctx)
+
+	// Savepoint возможен только внутри explicit-транзакции. Если publish вызван
+	// вне txn (auto-commit), сохраняем прежнее поведение — просто INSERT.
+	// Это же закрывает edge-кейс с вложенными транзакциями: savepoint'ы в PG
+	// стекаются на любую глубину, нам достаточно факта "мы в txn".
+	inTx := false
+	if db.Statement != nil {
+		_, inTx = db.Statement.ConnPool.(gorm.TxCommitter)
+	}
+	if !inTx {
+		return db.Create(event).Error
+	}
+
+	const sp = "publish_sp"
+	if err := db.Exec("SAVEPOINT " + sp).Error; err != nil {
+		return fmt.Errorf("outbox: savepoint: %w", err)
+	}
+
+	if createErr := db.Create(event).Error; createErr != nil {
+		// ROLLBACK TO SAVEPOINT снимает aborted-состояние, оставленное упавшим
+		// INSERT'ом, и возвращает txn к точке savepoint. Работа каллера до этого — жива.
+		if rbErr := db.Exec("ROLLBACK TO SAVEPOINT " + sp).Error; rbErr != nil {
+			// Провал rollback-to — единственный по-настоящему невосстановимый случай:
+			// txn застряла в abort. Пробрасываем, чтобы каллер откатился чисто.
+			return fmt.Errorf("outbox: rollback to savepoint (insert err: %v): %w", createErr, rbErr)
+		}
+		_ = db.Exec("RELEASE SAVEPOINT " + sp).Error // чистим, чтобы имя не шэдоуило при след. publish в этой же txn
+
+		// Non-fatal by design: лог + nil, каллер коммитит бизнес-данные.
+		// Trade-off: этот domain-event теряется.
+		log.Printf("outbox publish skipped (non-fatal) entity=%s/%s action=%s: %v",
+			event.EntityType, event.EntityID, event.EventType, createErr)
+		return nil
+	}
+
+	if err := db.Exec("RELEASE SAVEPOINT " + sp).Error; err != nil {
+		// INSERT уже прошёл; невыпущенный savepoint просто доживёт до COMMIT. Не валим каллера.
+		log.Printf("outbox: release savepoint after successful insert: %v", err)
+	}
+
+	return nil
 }
 
 func (m *GormTransactionManager) Filter(ctx context.Context, model interface{}) *FilterBuilder {
@@ -153,6 +237,14 @@ func (m *GormTransactionManager) Filter(ctx context.Context, model interface{}) 
 }
 
 // CalculateChanges compares two structs and returns a list of changes.
+//
+// Contract: audit change values are scalar-only. Object fields (nested struct,
+// map, slice/array of struct, pointer-to-struct) are skipped via
+// isAssociationField and MUST NOT produce a Change — an object value renders in
+// the activity feed as an unreadable Go map dump (e.g. a whole Shipment struct:
+// map[BillToID:<nil> BillingNote:<nil> ...]) that no human can diff by eye.
+// Scalars — including time.Time, uuid.UUID ([16]byte) and []byte — still diff.
+// This is guaranteed by TestCalculateChanges_* in gorm_tm_test.go; keep it green.
 func CalculateChanges(oldVal, newVal interface{}) []events.Change {
 	var changes []events.Change
 
@@ -182,7 +274,7 @@ func CalculateChanges(oldVal, newVal interface{}) []events.Change {
 
 		// Get the JSON tag (e.g., `json:"first_name,omitempty"`)
 		jsonTag := field.Tag.Get("json")
-		if jsonTag == "-" {
+		if jsonTag == "-" || isAssociationField(field.Type) {
 			continue // Skip explicitly ignored fields
 		}
 
@@ -206,4 +298,32 @@ func CalculateChanges(oldVal, newVal interface{}) []events.Change {
 	}
 
 	return changes
+}
+
+var timeType = reflect.TypeOf(time.Time{})
+
+// associations (pointer-to-struct, struct, slice/map of structs) не являются
+// колонками — они утекают в changes как "object -> null", когда old/new
+// загружены с разными preload'ами. Трекаем только скаляры.
+func isAssociationField(t reflect.Type) bool {
+	for t.Kind() == reflect.Ptr {
+		t = t.Elem()
+	}
+	switch t.Kind() {
+	case reflect.Struct:
+		return t != timeType // time.Time оставляем как скаляр
+	case reflect.Slice, reflect.Array:
+		elem := t.Elem()
+		for elem.Kind() == reflect.Ptr {
+			elem = elem.Elem()
+		}
+		if elem.Kind() == reflect.Uint8 {
+			return false // []byte и uuid.UUID([16]byte) — это скаляры
+		}
+		return elem.Kind() == reflect.Struct
+	case reflect.Map:
+		return true
+	default:
+		return false
+	}
 }

@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"os"
 	"path"
 	"strconv"
 	"strings"
@@ -32,9 +33,13 @@ type sftpDialer struct {
 	Port            int
 	Username        string
 	Password        string
-	ProviderType    ProviderType        // reported on AuthError; defaults to ProviderTriumphSFTP if empty
+	PrivateKey      []byte       // when set, sign in with this key instead of the password
+	ProviderType    ProviderType // reported on AuthError; defaults to ProviderTriumphSFTP if empty
 	DialTimeout     time.Duration
 	HostKeyCallback ssh.HostKeyCallback // nil → ssh.InsecureIgnoreHostKey()
+	// HostKeyAlgorithms, when set, limits the host key types the client asks
+	// for (a pinned key must be of a type the server then presents).
+	HostKeyAlgorithms []string
 }
 
 func dialSFTP(ctx context.Context, d sftpDialer) (*sftpClient, error) {
@@ -44,7 +49,14 @@ func dialSFTP(ctx context.Context, d sftpDialer) (*sftpClient, error) {
 	if d.Username == "" {
 		return nil, errors.New("factoring/sftp: username is empty")
 	}
-	if d.Password == "" {
+	auth := ssh.Password(d.Password)
+	if len(d.PrivateKey) > 0 {
+		signer, err := parsePrivateKey(d.PrivateKey)
+		if err != nil {
+			return nil, err
+		}
+		auth = ssh.PublicKeys(signer)
+	} else if d.Password == "" {
 		return nil, errors.New("factoring/sftp: password is empty")
 	}
 	port := d.Port
@@ -64,22 +76,32 @@ func dialSFTP(ctx context.Context, d sftpDialer) (*sftpClient, error) {
 	}
 
 	cfg := &ssh.ClientConfig{
-		User:            d.Username,
-		Auth:            []ssh.AuthMethod{ssh.Password(d.Password)},
-		HostKeyCallback: hkcb,
-		Timeout:         timeout,
+		User:              d.Username,
+		Auth:              []ssh.AuthMethod{auth},
+		HostKeyCallback:   hkcb,
+		HostKeyAlgorithms: d.HostKeyAlgorithms,
+		Timeout:           timeout,
 	}
 
 	addr := net.JoinHostPort(d.Host, strconv.Itoa(port))
 	dialer := &net.Dialer{Timeout: timeout}
 	tcpConn, err := dialer.DialContext(ctx, "tcp", addr)
 	if err != nil {
-		return nil, fmt.Errorf("factoring/sftp: tcp dial %s: %w", addr, err)
+		return nil, &DialError{Addr: addr, Cause: err}
 	}
 
 	sshConn, chans, reqs, err := ssh.NewClientConn(tcpConn, addr, cfg)
 	if err != nil {
 		_ = tcpConn.Close()
+		var hkErr *HostKeyMismatchError
+		if errors.As(err, &hkErr) {
+			return nil, hkErr
+		}
+		// Only a pinned host key (callback set by the caller) turns this into a
+		// host key problem; v1 and RTS keep the plain handshake error.
+		if d.HostKeyCallback != nil && strings.Contains(err.Error(), "no common algorithm for host key") {
+			return nil, &HostKeyMismatchError{Host: addr}
+		}
 		if isSSHAuthFailure(err) {
 			pt := d.ProviderType
 			if pt == "" {
@@ -98,6 +120,20 @@ func dialSFTP(ctx context.Context, d sftpDialer) (*sftpClient, error) {
 	}
 
 	return &sftpClient{ssh: sshClient, sftp: sftpConn}, nil
+}
+
+// testSFTPConnection dials and immediately closes. No directory create, no
+// upload — RTS treats a CSV drop as "grab and clear", so a probe must not
+// write anything.
+func testSFTPConnection(ctx context.Context, dial func(context.Context, sftpDialer) (sftpUploader, error), d sftpDialer) error {
+	if dial == nil {
+		dial = defaultSFTPDial
+	}
+	c, err := dial(ctx, d)
+	if err != nil {
+		return err
+	}
+	return c.Close()
 }
 
 func isSSHAuthFailure(err error) bool {
@@ -128,7 +164,10 @@ func (c *sftpClient) EnsureDir(remoteDir string) error {
 // Returns the full remote path that was written.
 func (c *sftpClient) Upload(remoteDir, filename string, content []byte) (string, error) {
 	remotePath := path.Join(remoteDir, filename)
-	f, err := c.sftp.Create(remotePath)
+	// O_WRONLY, not sftp.Create (which is O_RDWR): RTS-style write-only drop
+	// boxes reject the READ flag with SSH_FX_OP_UNSUPPORTED. Nothing reads the
+	// handle back, so write-only is correct for every provider.
+	f, err := c.sftp.OpenFile(remotePath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC)
 	if err != nil {
 		return "", fmt.Errorf("factoring/sftp: create %s: %w", remotePath, err)
 	}
@@ -140,6 +179,48 @@ func (c *sftpClient) Upload(remoteDir, filename string, content []byte) (string,
 		return "", fmt.Errorf("factoring/sftp: close %s: %w", remotePath, err)
 	}
 	return remotePath, nil
+}
+
+// Rename atomically moves remoteDir/from to remoteDir/to, replacing any
+// existing target. Used for trigger-safe manifest drops: the manifest is
+// uploaded under an inert temp name first, then renamed to its final
+// spreadsheet name — so a connection drop mid-write can never leave a
+// truncated file that the factor's poller would treat as a live trigger
+// (RTS ingests on any *.csv/*.xlsx the moment it appears). Prefers
+// POSIX rename (atomic replace); falls back to plain SFTP rename for
+// servers without the posix-rename@openssh.com extension.
+func (c *sftpClient) Rename(remoteDir, from, to string) error {
+	fromPath := path.Join(remoteDir, from)
+	toPath := path.Join(remoteDir, to)
+	if err := c.sftp.PosixRename(fromPath, toPath); err != nil {
+		if rerr := c.sftp.Rename(fromPath, toPath); rerr != nil {
+			return fmt.Errorf("factoring/sftp: rename %s -> %s: %w", fromPath, toPath, err)
+		}
+	}
+	return nil
+}
+
+// Remove deletes one remote file by its full path (as returned by Upload).
+// A file that is already gone counts as removed.
+func (c *sftpClient) Remove(remotePath string) error {
+	if err := c.sftp.Remove(remotePath); err != nil && !errors.Is(err, os.ErrNotExist) {
+		return fmt.Errorf("factoring/sftp: remove %s: %w", remotePath, err)
+	}
+	return nil
+}
+
+// Size reports the size of remoteDir/filename and whether it exists. A missing
+// file is (0, false, nil); any other error means the server could not tell.
+func (c *sftpClient) Size(remoteDir, filename string) (int64, bool, error) {
+	remotePath := path.Join(remoteDir, filename)
+	fi, err := c.sftp.Stat(remotePath)
+	if errors.Is(err, os.ErrNotExist) {
+		return 0, false, nil
+	}
+	if err != nil {
+		return 0, false, fmt.Errorf("factoring/sftp: stat %s: %w", remotePath, err)
+	}
+	return fi.Size(), true, nil
 }
 
 // Close releases the SFTP subsystem and the underlying SSH connection. Safe

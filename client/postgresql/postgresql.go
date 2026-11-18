@@ -151,13 +151,9 @@ func openGorm(dsn string) (*gorm.DB, error) {
 // gorm's default printed every "record not found" with its SQL and colour
 // codes; a 5-minute worker over every company then went past Railway's
 // 500 lines/sec and Railway dropped the rest, real errors included (DEV-3338).
+// The echo carries no values (DEV-4280): see NewRedactedGormLogger.
 func newGormLogger(w io.Writer) logger.Interface {
-	return logger.New(log.New(w, "", log.LstdFlags), logger.Config{
-		SlowThreshold:             500 * time.Millisecond,
-		LogLevel:                  logger.Warn,
-		IgnoreRecordNotFoundError: true,
-		Colorful:                  false,
-	})
+	return NewRedactedGormLogger(w)
 }
 
 func sessionTimeZone(cfg *pgx.ConnConfig) string {

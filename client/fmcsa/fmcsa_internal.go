@@ -131,6 +131,12 @@ func (c *client) GetCompany(ctx context.Context, dotNumber string) (*Result, err
 	fmt.Printf("Fmcsa Status: %s\n", resp.Status)
 	fmt.Printf("Fmcsa Body: %s\n", string(bodyBytes))
 
+	// A 404 means the DOT number is not registered with FMCSA. That is a valid
+	// "not found" result, not an API failure, so honor the documented contract.
+	if resp.StatusCode == http.StatusNotFound {
+		return nil, nil
+	}
+
 	if resp.StatusCode > 300 {
 		return nil, c.handleAPIError(resp.StatusCode, bodyBytes)
 	}

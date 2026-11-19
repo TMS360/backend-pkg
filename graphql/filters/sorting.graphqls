@@ -1,13 +1,17 @@
 """
-Sort input element.
+One sort rule for a list. Send several to sort by more than one column: the
+first is the main order and each next one breaks ties.
+
+A field the list does not allow is skipped without an error. When no rule
+applies, the list uses its own default order, usually newest created first.
 
 Examples:
-- { field: "created_at", order: desc }
+- { field: "createdAt", order: desc }
 - { field: "name", order: asc }
 """
 input SortInput {
-    """Field name to sort by"""
+    "Column to sort by. camelCase (createdAt) and snake_case (created_at) both work."
     field: String!
-    """Sort direction (default: asc)"""
+    "Sort direction. Ascending when not sent."
     order: SortOrder! = asc
 }

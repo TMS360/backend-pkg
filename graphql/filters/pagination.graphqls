@@ -1,11 +1,29 @@
+"""
+The page of a list that was actually served, with the counts a paginator needs.
+`limit` is the page size served, which can be smaller than the one asked for
+when the list's cap cut it.
+"""
 type Pagination @shareable {
+    "Page number served, starting at 1. A request for page 0 or below comes back as 1."
     page: Int!
+    "Rows per page actually served. Lower than asked when the list's cap cut it; 0 for a count-only request."
     limit: Int!
+    "Number of rows that match the filters, across all pages."
     total: Int!
+    "Number of pages at this limit. At least 1, even when nothing matches; 0 when limit is 0."
     totalPages: Int!
 }
 
+"""
+Which page of a list to return.
+
+Lists cap rows per page at 100 unless the list sets its own cap. A bigger limit
+is cut down to the cap, the pages step by the served size, and the reply's
+`pagination.limit` shows the size that was served.
+"""
 input PaginationInput {
+    "Page number, starting at 1. 0 or a negative number means page 1. A page past the last one returns no rows."
     page: Int!
+    "Rows per page. 0 returns no rows but still counts the total (with page 1 or more; page 0 with limit 0 means the default). Negative means the default, 20."
     limit: Int!
 }

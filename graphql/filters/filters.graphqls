@@ -1,56 +1,69 @@
-"""String comparison mode"""
+"""
+How text filters treat upper and lower case. It only changes startsWith,
+endsWith, like and regex: equals, not, in and notIn always match case exactly,
+and contains always ignores case.
+"""
 enum QueryMode {
-    """Case-sensitive (LIKE)"""
+    "Match case exactly (SQL LIKE and ~). Used when mode is not sent."
     default
-    """Case-insensitive (ILIKE)"""
+    "Ignore case (SQL ILIKE and ~*)."
     insensitive
 }
 
-"""Sort direction"""
+"""
+Direction of a sort. Rows with no value (null) come last when ascending and
+first when descending.
+"""
 enum SortOrder {
-    """Ascending"""
+    "Smallest first: A to Z, oldest to newest, low to high."
     asc
-    """Descending"""
+    "Largest first: Z to A, newest to oldest, high to low."
     desc
 }
 
 """
-String filter.
+Conditions on a text value. Every condition sent must hold (they combine with
+AND). A condition left out, or an empty in / notIn list, adds no filter.
+
+In contains, startsWith and endsWith the characters % and _ are not escaped:
+they still act as wildcards.
 
 Examples:
 - { equals: "John" }
-- { contains: "john", mode: insensitive }
+- { contains: "john" }
 - { in: ["active", "pending"] }
-- { startsWith: "admin@" }
+- { startsWith: "admin@", mode: insensitive }
 - { isNull: true }
 """
 input StringFilter {
-    """Exact match: field = value"""
+    "Value matches this text exactly, case included. mode does not apply."
     equals: String
-    """Negation: field != value"""
+    "Value differs from this text, case included. Rows with no value (null) are left out too."
     not: String
-    """Inclusion list: field IN (values)"""
+    "Value is one of these, case included. An empty list adds no filter, so every row passes."
     in: [String!]
-    """Exclusion list: field NOT IN (values)"""
+    "Value is none of these, case included. Rows with no value (null) are left out. An empty list adds no filter."
     notIn: [String!]
-    """Substring match: field LIKE '%value%'"""
+    "Value contains this text anywhere. Always ignores case, whatever mode says."
     contains: String
-    """Prefix match: field LIKE 'value%'"""
+    "Value starts with this text. Case follows mode."
     startsWith: String
-    """Suffix match: field LIKE '%value'"""
+    "Value ends with this text. Case follows mode."
     endsWith: String
-    """Raw LIKE pattern (use % and _ wildcards)"""
+    "Raw SQL LIKE pattern: % is any run of characters, _ is one character. Case follows mode."
     like: String
-    """Regular expression match: field ~ pattern"""
+    "POSIX regular expression the value must match (SQL ~). Case follows mode. An invalid pattern makes the query fail."
     regex: String
-    """Case sensitivity mode (default: case-sensitive)"""
+    "Case handling for startsWith, endsWith, like and regex. Case-sensitive when not sent."
     mode: QueryMode
-    """Null check: true = IS NULL, false = IS NOT NULL"""
+    "true keeps only rows with no value (null); false keeps only rows with a value. An empty string counts as a value."
     isNull: Boolean
 }
 
 """
-Integer filter.
+Conditions on a whole-number value. Every condition sent must hold (they
+combine with AND), so gte with lte makes a range. A condition left out, or an
+empty in / notIn list, adds no filter.
 
 Examples:
 - { equals: 25 }
@@ -58,138 +71,159 @@ Examples:
 - { gt: 0 }
 """
 input IntFilter {
-    """Exact match: field = value"""
+    "Value equals this number."
     equals: Int
-    """Negation: field != value"""
+    "Value differs from this number. Rows with no value (null) are left out too."
     not: Int
-    """Inclusion list: field IN (values)"""
+    "Value is one of these numbers. An empty list adds no filter, so every row passes."
     in: [Int!]
-    """Exclusion list: field NOT IN (values)"""
+    "Value is none of these numbers. Rows with no value (null) are left out. An empty list adds no filter."
     notIn: [Int!]
-    """Less than: field < value"""
+    "Value is below this number, not including it."
     lt: Int
-    """Less than or equal: field <= value"""
+    "Value is this number or below."
     lte: Int
-    """Greater than: field > value"""
+    "Value is above this number, not including it."
     gt: Int
-    """Greater than or equal: field >= value"""
+    "Value is this number or above."
     gte: Int
-    """Null check: true = IS NULL, false = IS NOT NULL"""
+    "true keeps only rows with no value (null); false keeps only rows with a value."
     isNull: Boolean
 }
 
 """
-Float filter.
+Conditions on a decimal number, such as an amount or a distance. Every
+condition sent must hold (they combine with AND), so gte with lte makes a
+range. A condition left out, or an empty in / notIn list, adds no filter.
 
 Examples:
 - { gte: 100.0, lte: 500.0 }
 - { gt: 1000.0 }
 """
 input FloatFilter {
-    """Exact match: field = value"""
+    "Value equals this number exactly."
     equals: Float
-    """Negation: field != value"""
+    "Value differs from this number. Rows with no value (null) are left out too."
     not: Float
-    """Inclusion list: field IN (values)"""
+    "Value is one of these numbers. An empty list adds no filter, so every row passes."
     in: [Float!]
-    """Exclusion list: field NOT IN (values)"""
+    "Value is none of these numbers. Rows with no value (null) are left out. An empty list adds no filter."
     notIn: [Float!]
-    """Less than: field < value"""
+    "Value is below this number, not including it."
     lt: Float
-    """Less than or equal: field <= value"""
+    "Value is this number or below."
     lte: Float
-    """Greater than: field > value"""
+    "Value is above this number, not including it."
     gt: Float
-    """Greater than or equal: field >= value"""
+    "Value is this number or above."
     gte: Float
-    """Null check: true = IS NULL, false = IS NOT NULL"""
-    isNull: Boolean
-}
-
-"""Boolean filter"""
-input BoolFilter {
-    """Exact match: field = true/false"""
-    equals: Boolean
-    """Null check: true = IS NULL, false = IS NOT NULL"""
+    "true keeps only rows with no value (null); false keeps only rows with a value."
     isNull: Boolean
 }
 
 """
-DateTime filter (ISO 8601).
+Conditions on a yes/no value. Both conditions must hold when both are sent.
+"""
+input BoolFilter {
+    "Value is true, or value is false. Rows with no value (null) match neither."
+    equals: Boolean
+    "true keeps only rows with no value (null); false keeps only rows with a value."
+    isNull: Boolean
+}
+
+"""
+Conditions on a date and time. Values are exact moments (see DateTime), and
+moments sent with different offsets compare as the same instant. Every
+condition sent must hold (they combine with AND), so gte with lt makes a
+period. A condition left out, or an empty in / notIn list, adds no filter.
+
+For one whole day, send gte at the start of the day and lt at the start of the
+next day, both in the time zone that day belongs to.
 
 Examples:
 - { gte: "2024-01-01T00:00:00Z", lt: "2024-02-01T00:00:00Z" }
 """
 input DateTimeFilter {
-    """Exact match: field = value"""
+    "Value is exactly this moment. For a day or a period, use a gte / lt range instead."
     equals: DateTime
-    """Negation: field != value"""
+    "Value is any moment other than this one. Rows with no value (null) are left out too."
     not: DateTime
-    """Inclusion list: field IN (values)"""
+    "Value is exactly one of these moments. An empty list adds no filter, so every row passes."
     in: [DateTime!]
-    """Exclusion list: field NOT IN (values)"""
+    "Value is none of these moments. Rows with no value (null) are left out. An empty list adds no filter."
     notIn: [DateTime!]
-    """Less than (before): field < value"""
+    "Value is before this moment, not including it."
     lt: DateTime
-    """Less than or equal (before or at): field <= value"""
+    "Value is at or before this moment."
     lte: DateTime
-    """Greater than (after): field > value"""
+    "Value is after this moment, not including it."
     gt: DateTime
-    """Greater than or equal (at or after): field >= value"""
+    "Value is at or after this moment."
     gte: DateTime
-    """Null check: true = IS NULL, false = IS NOT NULL"""
-    isNull: Boolean
-}
-
-"""ID filter"""
-input IDFilter {
-    """Exact match: field = value"""
-    equals: ID
-    """Negation: field != value"""
-    not: ID
-    """Inclusion list: field IN (values)"""
-    in: [ID!]
-    """Exclusion list: field NOT IN (values)"""
-    notIn: [ID!]
-    """Null check: true = IS NULL, false = IS NOT NULL"""
-    isNull: Boolean
-}
-
-"""UUID filter"""
-input UUIDFilter {
-    """Exact match: field = value"""
-    equals: UUID
-    """Negation: field != value"""
-    not: UUID
-    """Inclusion list: field IN (values)"""
-    in: [UUID!]
-    """Exclusion list: field NOT IN (values)"""
-    notIn: [UUID!]
-    """Null check: true = IS NULL, false = IS NOT NULL"""
+    "true keeps only rows with no value (null); false keeps only rows with a value."
     isNull: Boolean
 }
 
 """
-JSONB filter (PostgreSQL).
+Conditions on an identifier, compared as exact text. Every condition sent must
+hold (they combine with AND). A condition left out, or an empty in / notIn
+list, adds no filter.
+"""
+input IDFilter {
+    "Identifier equals this value exactly."
+    equals: ID
+    "Identifier differs from this value. Rows with no value (null) are left out too."
+    not: ID
+    "Identifier is one of these. An empty list adds no filter, so every row passes."
+    in: [ID!]
+    "Identifier is none of these. Rows with no value (null) are left out. An empty list adds no filter."
+    notIn: [ID!]
+    "true keeps only rows with no value (null); false keeps only rows with a value."
+    isNull: Boolean
+}
+
+"""
+Conditions on a UUID identifier. Values must be valid UUIDs; a malformed one is
+rejected before the query runs. Every condition sent must hold (they combine
+with AND). A condition left out, or an empty in / notIn list, adds no filter.
+"""
+input UUIDFilter {
+    "Identifier equals this UUID."
+    equals: UUID
+    "Identifier differs from this UUID. Rows with no value (null) are left out too."
+    not: UUID
+    "Identifier is one of these UUIDs. An empty list adds no filter, so every row passes."
+    in: [UUID!]
+    "Identifier is none of these UUIDs. Rows with no value (null) are left out. An empty list adds no filter."
+    notIn: [UUID!]
+    "true keeps only rows with no value (null); false keeps only rows with a value."
+    isNull: Boolean
+}
+
+"""
+Conditions on a JSON value stored as PostgreSQL jsonb. Every condition sent
+must hold (they combine with AND).
+
+Known problem: hasKey, hasKeys and hasAnyKey currently build an invalid
+database query, so a list call that sends any of them fails.
 
 Examples:
 - { contains: { role: "admin" } }
-- { hasKey: "email" }
-- { hasKeys: ["name", "email"] }
+- { isNull: false }
 """
 input JSONFilter {
-    """Exact match: field = value"""
+    "Value is exactly this JSON: same keys and values. Key order and spacing do not matter."
     equals: JSON
-    """JSON containment: field @> value (field contains the given JSON)"""
+    "Value contains this JSON: every key and value given is present (jsonb @>). Extra keys are fine."
     contains: JSON
-    """Reverse containment: field <@ value (field is contained by the given JSON)"""
+    "Value holds nothing beyond this JSON: all of its keys and values appear in the one given (jsonb <@)."
     containedBy: JSON
-    """Key existence: field ? key (JSON has the specified key)"""
+    "Meant to keep rows whose JSON has this top-level key. Currently broken: the query fails."
     hasKey: String
-    """All keys exist: field ?& keys (JSON has all specified keys)"""
+    "Meant to keep rows that have all of these top-level keys. Currently broken: the query fails. An empty list adds no filter."
     hasKeys: [String!]
-    """Any key exists: field ?| keys (JSON has at least one of the specified keys)"""
+    "Meant to keep rows that have at least one of these top-level keys. Currently broken: the query fails. An empty list adds no filter."
     hasAnyKey: [String!]
-    """Null check: true = IS NULL, false = IS NOT NULL"""
+    "true keeps only rows with no value (null); false keeps only rows with a value. A stored JSON null counts as a value."
     isNull: Boolean
 }

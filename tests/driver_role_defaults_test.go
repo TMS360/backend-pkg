@@ -85,6 +85,11 @@ func TestDEV2866_OfficeRolesUnchanged(t *testing.T) {
 	} {
 		perms := defaults[role]
 		for _, module := range []string{"shipments", "drivers", "accounting", "settings", "customers", "dashboard"} {
+			// DEV-4570: dispatcher and track_and_trace hold every settings
+			// entity but company-settings edit instead of the whole module.
+			if module == "settings" && (role == enums.UserRoleDispatcher || role == enums.UserRoleTrackAndTrace) {
+				continue
+			}
 			assert.Containsf(t, perms, module, "%s keeps the %s module", role, module)
 		}
 		assert.Truef(t, middleware.HasPermission(perms, "shipments.shipments.split"), "%s passes split via the module", role)

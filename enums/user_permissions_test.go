@@ -92,8 +92,9 @@ func TestDefaultRolePermissions_TripFinancialsMatrix(t *testing.T) {
 		assert.Containsf(t, defaults[role], edit, "%s must hold trip_financials_edit", role)
 	}
 
-	// dispatcher: modules only, NO edit (the divergence being fixed).
-	assert.Subset(t, defaults[enums.UserRoleDispatcher], baselineWithoutFleetMaintenance())
+	// dispatcher: modules only, NO edit (the divergence being fixed). Its
+	// `settings` is narrowed to everything but company-settings edit (DEV-4570).
+	assert.Subset(t, defaults[enums.UserRoleDispatcher], dispatcherBaseline())
 	assert.NotContains(t, defaults[enums.UserRoleDispatcher], edit,
 		"dispatcher must NOT hold trip_financials_edit by default")
 
@@ -264,6 +265,20 @@ func baselineWithoutFleetMaintenance() []string {
 	// DEV-2510: `teams` is narrowed to every teams entity but person charges.
 	out = append(out, enums.TeamsEntitiesWithoutPersonCharges()...)
 	return append(out, enums.FleetEntitiesWithoutMaintenance()...)
+}
+
+// dispatcherBaseline is baselineWithoutFleetMaintenance with `settings` swapped
+// for every settings entity but settings.company, plus settings.company.view
+// (DEV-4570).
+func dispatcherBaseline() []string {
+	var out []string
+	for _, m := range baselineWithoutFleetMaintenance() {
+		if m != enums.SettingsModuleCode {
+			out = append(out, m)
+		}
+	}
+	out = append(out, enums.SettingsEntitiesWithoutCompany()...)
+	return append(out, "settings.company.view")
 }
 
 // DEV-2979: the gross-only permission is in the catalog with its label, held by

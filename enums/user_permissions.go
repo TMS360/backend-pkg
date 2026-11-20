@@ -1465,6 +1465,16 @@ func DefaultRolePermissions() map[UserRoleEnum][]string {
 		out[role] = withoutPersonCharges(out[role], bag...)
 	}
 
+	// DEV-4570: company settings (Settings -> General: Empty miles mode, timezone,
+	// split trip, logo, setup items) are an admin decision; the dispatcher only
+	// reads them. The `settings` module in the baseline implies
+	// settings.company.edit, so on the dispatcher it is swapped for every
+	// settings entity except settings.company, plus settings.company.view —
+	// the shape AZSAFI's Dispatcher already has. Every other settings screen
+	// stays. Runs before the track_and_trace derivation below, so that role
+	// inherits the narrowed set (§4.17).
+	out[UserRoleDispatcher] = withoutCompanySettingsEdit(out[UserRoleDispatcher])
+
 	// DEV-1824 / BL-4 §4.17: Track & Trace is defined as "whatever dispatcher
 	// gets". Deriving it from the dispatcher entry instead of repeating the
 	// literal means the two sets can never drift — a perm added to dispatcher
@@ -1591,6 +1601,31 @@ func isPersonChargeEntity(code string) bool {
 // TeamsEntitiesWithoutPersonCharges plus the given person-charge leaves.
 func withoutPersonCharges(codes []string, personCharges ...string) []string {
 	return replaceModule(codes, TeamsModuleCode, TeamsEntitiesWithoutPersonCharges(), personCharges)
+}
+
+// SettingsModuleCode is the top-level settings module in PermissionCatalog.
+const SettingsModuleCode = "settings"
+
+const companySettingsEntity = "settings.company"
+
+// SettingsEntitiesWithoutCompany lists the settings module's entities except
+// settings.company, in catalog order (DEV-4570). A role holding these instead
+// of `settings` keeps every settings screen but company settings; a settings
+// entity added later is picked up here too.
+func SettingsEntitiesWithoutCompany() []string {
+	var out []string
+	for _, ent := range permIndex.moduleEntities[SettingsModuleCode] {
+		if ent != companySettingsEntity {
+			out = append(out, ent)
+		}
+	}
+	return out
+}
+
+// withoutCompanySettingsEdit replaces the `settings` module in codes with
+// SettingsEntitiesWithoutCompany plus settings.company.view.
+func withoutCompanySettingsEdit(codes []string) []string {
+	return replaceModule(codes, SettingsModuleCode, SettingsEntitiesWithoutCompany(), []string{companySettingsEntity + ".view"})
 }
 
 // replaceModule swaps the module code in codes for entities followed by extra;

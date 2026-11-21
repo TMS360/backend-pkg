@@ -90,6 +90,11 @@ func TestEveryPermConstantIsGrantable(t *testing.T) {
 	require.NotEmpty(t, consts, "the parser must find the Perm* constants, or this guardrail is vacuous")
 
 	for name, code := range consts {
+		if enums.IsRetiredPermission(code) {
+			// DEV-4171: kept so old rows and callers compile, but not offered.
+			assert.Falsef(t, enums.IsValidPermissionCode(code), "%s is retired but still grantable", name)
+			continue
+		}
 		if _, staffOnly := staffOnlyPermConstants[name]; staffOnly {
 			assert.Falsef(t, enums.IsValidPermissionCode(code),
 				"%s is listed staff-only but is grantable — drop it from staffOnlyPermConstants", name)

@@ -184,16 +184,17 @@ func TestReportsPermissions_FlatAndAdminAccountingOnly(t *testing.T) {
 	assert.Equal(t, "reports_run", run)
 	assert.Equal(t, "reports_manage", manage)
 
-	for _, code := range []string{run, manage} {
-		assert.Truef(t, enums.IsValidPermissionCode(code), "%q must validate so custom roles can grant it", code)
-		assert.Truef(t, enums.IsCustomPermissionCode(code), "%q must be a flat custom code", code)
-	}
+	assert.True(t, enums.IsValidPermissionCode(run), "reports_run must validate so custom roles can grant it")
+	assert.True(t, enums.IsCustomPermissionCode(run), "reports_run must be a flat custom code")
+	// DEV-4171: no server checks reports_manage, so it left the role editor and
+	// the defaults.
+	assert.False(t, enums.IsValidPermissionCode(manage), "reports_manage is no longer offered")
 
 	defaults := enums.DefaultRolePermissions()
-	// admin + accounting hold both by default.
+	// admin + accounting hold reports_run by default; nobody is seeded reports_manage.
 	for _, role := range []enums.UserRoleEnum{enums.UserRoleAdmin, enums.UserRoleAccounting} {
 		assert.Containsf(t, defaults[role], run, "%s must hold reports_run", role)
-		assert.Containsf(t, defaults[role], manage, "%s must hold reports_manage", role)
+		assert.NotContainsf(t, defaults[role], manage, "%s must not be seeded reports_manage", role)
 	}
 	// every other seeded role holds neither.
 	for _, role := range []enums.UserRoleEnum{

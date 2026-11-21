@@ -24,9 +24,11 @@ import (
 // the flat counterpart).
 
 // AC1 + AC2 — the family exists, sits under Settings next to the load status
-// list, and carries exactly view/create/edit/delete.
+// list, and carries exactly create/edit/delete. DEV-4171 removed "view": the
+// status list is read with no permission.
 func TestAssetStatusPerms_CatalogEntity(t *testing.T) {
-	assertDottedEntity(t, "settings.asset_status", "settings", "view", "create", "edit", "delete")
+	assertDottedEntity(t, "settings.asset_status", "settings", "create", "edit", "delete")
+	assert.False(t, enums.IsValidPermissionCode(string(enums.PermAssetStatusView)))
 
 	var label string
 	for _, e := range enums.PermissionCatalog {

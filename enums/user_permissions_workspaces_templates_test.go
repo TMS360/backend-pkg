@@ -49,7 +49,6 @@ func TestWorkspacesTemplates_ShapeAndValidity(t *testing.T) {
 	for _, leaf := range []enums.UserPermissionEnum{
 		enums.PermWorkspacesTemplatesView,
 		enums.PermWorkspacesTemplatesCreate,
-		enums.PermWorkspacesTemplatesEdit,
 	} {
 		code := string(leaf)
 		assert.True(t, enums.IsValidPermissionCode(code), "%q must be a valid grantable code", code)
@@ -59,17 +58,20 @@ func TestWorkspacesTemplates_ShapeAndValidity(t *testing.T) {
 		assert.Equal(t, "templates", parts[1])
 	}
 	assert.True(t, enums.IsValidPermissionCode("workspaces.templates"), "the entity code itself is valid")
+	// DEV-4171: the reserved "edit" is no longer offered — no server checks it.
+	assert.False(t, enums.IsValidPermissionCode(string(enums.PermWorkspacesTemplatesEdit)))
 }
 
 // The catalog carries the templates entity beside the existing workspaces
-// entities, with the view/create/edit actions and the right parent.
+// entities, with the view/create actions and the right parent (DEV-4171 removed
+// the reserved edit).
 func TestWorkspacesTemplates_CatalogEntry(t *testing.T) {
 	var found bool
 	for _, e := range enums.PermissionCatalog {
 		if e.Code == "workspaces.templates" {
 			found = true
 			assert.Equal(t, "workspaces", e.ParentCode)
-			assert.Equal(t, []string{"view", "create", "edit"}, e.Actions)
+			assert.Equal(t, []string{"view", "create"}, e.Actions)
 		}
 	}
 	assert.True(t, found, "the catalog contains the workspaces.templates entity")

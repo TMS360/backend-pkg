@@ -23,7 +23,6 @@ var dev4176Dotted = []enums.UserPermissionEnum{
 	enums.PermAccountingPayBatchesUnpost,
 	enums.PermAccountingPayBatchesRestore,
 	enums.PermAccountingRelayFuelView,
-	enums.PermAccountingReportConfigsView,
 	enums.PermAccountingReportConfigsEdit,
 	enums.PermSettingsDocTypesDelete,
 }
@@ -136,6 +135,9 @@ func TestDEV4176_EveryPermConstantIsKnown(t *testing.T) {
 			code, err := strconv.Unquote(lit.Value)
 			require.NoError(t, err)
 			seen++
+			if enums.IsRetiredPermission(code) {
+				continue // DEV-4171: retired, not offered
+			}
 			assert.Truef(t, enums.IsKnownPermission(code), "%s = %q is not in the role editor list", vs.Names[i].Name, code)
 		}
 		return true

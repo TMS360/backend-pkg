@@ -1805,6 +1805,9 @@ func (c *Client) DeleteWebhook(ctx context.Context, webhookID string) error {
 	path := fmt.Sprintf("/webhooks/%s", webhookID)
 	resp, err := c.doRequest(ctx, http.MethodDelete, path, nil)
 	if err != nil {
+		if isMissingWebhookError(err) {
+			return fmt.Errorf("%w: %w", ErrNotFound, err)
+		}
 		return err
 	}
 	defer func() {
@@ -1814,6 +1817,21 @@ func (c *Client) DeleteWebhook(ctx context.Context, webhookID string) error {
 	}()
 
 	return nil
+}
+
+// missingWebhookMarker is how Samsara answers DELETE /webhooks/{id} for an
+// id it no longer has: HTTP 400 {"message":"Webhook ID does not exist <id>"}
+// rather than a 404 (seen 2026-11-18).
+const missingWebhookMarker = "webhook id does not exist"
+
+// isMissingWebhookError reports whether err is Samsara's 400 for a webhook
+// that is already gone, so DeleteWebhook can report it as ErrNotFound.
+func isMissingWebhookError(err error) bool {
+	if err == nil {
+		return false
+	}
+	text := strings.ToLower(err.Error())
+	return strings.Contains(text, "status 400") && strings.Contains(text, missingWebhookMarker)
 }
 
 // CreateGeofenceWebhook создаёт webhook для событий геозон (helper)

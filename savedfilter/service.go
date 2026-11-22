@@ -4,11 +4,14 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
+	"net/http"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/TMS360/backend-pkg/middleware"
+	"github.com/TMS360/backend-pkg/response"
 	"github.com/TMS360/backend-pkg/tmsdb/model"
 	"github.com/google/uuid"
 )
@@ -19,6 +22,40 @@ var (
 	ErrMaxFiltersReached = errors.New("maximum number of saved filters reached")
 	ErrAccessDenied      = errors.New("access denied")
 )
+
+// rejection is a user-facing PublicError that still matches its package
+// sentinel via errors.Is, so callers that branch on ErrMaxFiltersReached or
+// ErrAccessDenied keep working while the GraphQL presenter treats the error as
+// a 4xx rejection (Sentry warning, real message) instead of a 500.
+type rejection struct {
+	response.PublicError
+	sentinel error
+}
+
+func (e *rejection) Unwrap() []error { return []error{e.PublicError, e.sentinel} }
+
+func errMaxFiltersReached(entity string) error {
+	return &rejection{
+		PublicError: response.NewCodedError(
+			"SAVED_FILTER_LIMIT_REACHED",
+			fmt.Sprintf("%s: entity=%s limit=%d", ErrMaxFiltersReached.Error(), entity, maxFiltersPerUser),
+			fmt.Sprintf("You can save up to %d filters per list. Delete one to save a new filter.", maxFiltersPerUser),
+			http.StatusUnprocessableEntity,
+			map[string]any{"limit": maxFiltersPerUser, "entity": entity},
+		),
+		sentinel: ErrMaxFiltersReached,
+	}
+}
+
+func errAccessDenied(reason string) error {
+	return &rejection{
+		PublicError: response.NewForbidden(
+			fmt.Sprintf("saved filter %s: %s", ErrAccessDenied.Error(), reason),
+			"You do not have access to this saved filter.",
+		),
+		sentinel: ErrAccessDenied,
+	}
+}
 
 type Service struct {
 	repo       Repository
@@ -68,8 +105,8 @@ func (s *Service) Count(ctx context.Context, entityType string, filter json.RawM
 
 func (s *Service) Create(ctx context.Context, input CreateInput) (*SavedFilter, error) {
 	actor, err := middleware.GetActor(ctx)
-	if err != nil {
-		return nil, ErrAccessDenied
+	if err != nil || actor == nil || actor.Claims == nil {
+		return nil, errAccessDenied("no authenticated actor")
 	}
 
 	count, err := s.repo.CountByUserAndEntity(ctx, actor.Claims.UserID, input.Entity)
@@ -77,7 +114,7 @@ func (s *Service) Create(ctx context.Context, input CreateInput) (*SavedFilter, 
 		return nil, err
 	}
 	if count >= maxFiltersPerUser {
-		return nil, ErrMaxFiltersReached
+		return nil, errMaxFiltersReached(input.Entity)
 	}
 
 	filter := &SavedFilter{
@@ -164,8 +201,8 @@ func (s *Service) Delete(ctx context.Context, id uuid.UUID) error {
 
 func (s *Service) List(ctx context.Context, entityType string) ([]*SavedFilterWithCount, error) {
 	actor, err := middleware.GetActor(ctx)
-	if err != nil {
-		return nil, ErrAccessDenied
+	if err != nil || actor == nil || actor.Claims == nil {
+		return nil, errAccessDenied("no authenticated actor")
 	}
 
 	filters, err := s.repo.ListByUserAndEntity(ctx, actor.Claims.UserID, entityType)
@@ -219,11 +256,11 @@ func (s *Service) GetByID(ctx context.Context, id uuid.UUID) (*SavedFilterWithCo
 
 func (s *Service) checkOwnership(ctx context.Context, filter *SavedFilter) error {
 	actor, err := middleware.GetActor(ctx)
-	if err != nil {
-		return ErrAccessDenied
+	if err != nil || actor == nil || actor.Claims == nil {
+		return errAccessDenied("no authenticated actor")
 	}
 	if filter.UserID != actor.Claims.UserID {
-		return ErrAccessDenied
+		return errAccessDenied("filter owned by another user")
 	}
 	return nil
 }

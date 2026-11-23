@@ -100,9 +100,13 @@ func deniedError(tech string) error {
 // Any one of `perms` being granted is sufficient (OR semantics, preserving
 // the prior directive's contract).
 //
-// Guests bypass the perm check. Guest access is granted per-field by
-// `@authGuest`, which verifies the share-link token's resource scope; a guest
-// reaching a field without `@authGuest` still fails closed at that directive.
+// A share-link guest is refused (403) unless the field itself carries
+// `@authGuest` (DEV-4758). That directive is the field's explicit opt-in for
+// guests: it checks the share-link token's resource kind and rate-limits, and
+// the resolver checks the shared record id. A guest has no role and no perms,
+// so on every other field `@hasPerm` is the only gate and it must say no. The
+// opt-in is read from the field definition, so it holds whichever order the
+// two directives are written in.
 //
 // Super-admins also bypass. A wiped or mid-migration role_permissions table
 // would otherwise lock super-admins out of every gated endpoint — this gives
@@ -113,7 +117,10 @@ func HasPermDirective(ctx context.Context, obj interface{}, next graphql.Resolve
 		return nil, consts.ErrUnauthorized
 	}
 	if actor.IsGuest {
-		return next(ctx)
+		if fieldAllowsGuest(ctx) {
+			return next(ctx)
+		}
+		return nil, deniedError("forbidden: share-link guests may not read this field (no @authGuest)")
 	}
 	if actor.IsSuperAdmin() {
 		return next(ctx)
@@ -138,4 +145,14 @@ func HasPermDirective(ctx context.Context, obj interface{}, next graphql.Resolve
 	}
 
 	return nil, response.NewForbidden("access denied: missing permission", "access denied: missing permission")
+}
+
+// fieldAllowsGuest reports whether the field being resolved is marked
+// `@authGuest` in the schema. No field context means no opt-in.
+func fieldAllowsGuest(ctx context.Context) bool {
+	fc := graphql.GetFieldContext(ctx)
+	if fc == nil || fc.Field.Field == nil || fc.Field.Definition == nil {
+		return false
+	}
+	return fc.Field.Definition.Directives.ForName("authGuest") != nil
 }

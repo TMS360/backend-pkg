@@ -1,6 +1,8 @@
 package middleware
 
 import (
+	"log/slog"
+	"sort"
 	"strings"
 	"time"
 
@@ -9,14 +11,27 @@ import (
 )
 
 // Cors echoes an Origin back (with credentials) only when it exactly matches an
-// entry of allowedOrigins. An empty list, or a "*" entry, allows nothing: a
-// wildcard is never combined with credentials.
+// entry of allowedOrigins. Entries are trimmed of spaces, surrounding double
+// quotes and a trailing "/", and lowercased (browsers send lowercase origins).
+// An empty list, or a "*" entry, allows nothing: a wildcard is never combined
+// with credentials.
 func Cors(allowedOrigins []string) gin.HandlerFunc {
 	allowed := make(map[string]struct{}, len(allowedOrigins))
 	for _, o := range allowedOrigins {
-		if o = strings.TrimRight(strings.TrimSpace(o), "/"); o != "" && o != "*" {
+		o = strings.TrimSpace(strings.Trim(strings.TrimSpace(o), `"`))
+		if o = strings.ToLower(strings.TrimRight(o, "/")); o != "" && o != "*" {
 			allowed[o] = struct{}{}
 		}
+	}
+	origins := make([]string, 0, len(allowed))
+	for o := range allowed {
+		origins = append(origins, o)
+	}
+	sort.Strings(origins)
+	if len(origins) == 0 {
+		slog.Warn("CORS allow-list is empty: no cross-origin request will be allowed")
+	} else {
+		slog.Info("CORS allow-list", "origins", origins)
 	}
 
 	cfg := cors.Config{

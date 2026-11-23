@@ -70,6 +70,10 @@ func RequireAuth() gin.HandlerFunc {
 // hierarchical auth.HasPermission — so a route and a resolver gated on the same
 // code behave identically. Holding ANY of perms passes (OR semantics, like the
 // directive).
+//
+// A share-link guest is always refused (DEV-4758): a guest holds no perms, and
+// a route that serves guests is mounted without RequirePerms behind
+// RequireAuthOrGuest + CheckGuestResource, which then check the shared record.
 func RequirePerms(perms ...string) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		actor, err := GetActor(ctx.Request.Context())
@@ -78,8 +82,11 @@ func RequirePerms(perms ...string) gin.HandlerFunc {
 			return
 		}
 
-		// Mirror the directive's early-outs exactly.
-		if actor.IsGuest || actor.IsSuperAdmin() {
+		if actor.IsGuest {
+			ctx.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "Forbidden: share links cannot use this route"})
+			return
+		}
+		if actor.IsSuperAdmin() {
 			ctx.Next()
 			return
 		}

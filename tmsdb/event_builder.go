@@ -21,15 +21,18 @@ import (
 // For self-rooted events the legacy shorthand tm.Publish(...) is equivalent
 // and shorter.
 type EventBuilder struct {
-	tm       *GormTransactionManager
-	aggType  string
-	evtType  string
-	aggID    uuid.UUID
-	rootType string
-	rootID   uuid.UUID
-	topic    string
-	data     interface{}
-	oldData  interface{}
+	tm           *GormTransactionManager
+	aggType      string
+	evtType      string
+	aggID        uuid.UUID
+	rootType     string
+	rootID       uuid.UUID
+	topic        string
+	data         interface{}
+	oldData      interface{}
+	reason       *string
+	sensitivity  events.Sensitivity
+	participants []events.Participant
 }
 
 // WithRoot attaches aggregate-root context so the event is discoverable via
@@ -57,11 +60,38 @@ func (b *EventBuilder) WithData(data interface{}) *EventBuilder {
 	return b
 }
 
+// WithReason attaches an optional human-supplied justification for the action
+// (e.g. why a dispatcher cleared a check-in). Stored as a nullable column by
+// backend-audit and surfaced in the load's activity trail. Most events omit it.
+func (b *EventBuilder) WithReason(reason string) *EventBuilder {
+	b.reason = &reason
+	return b
+}
+
 // WithOldData supplies the pre-change snapshot so the platform can compute a
 // field-level Changes diff. Pass the original struct (not a pointer to it is
 // fine; both pointers and values are accepted via reflection).
 func (b *EventBuilder) WithOldData(oldData interface{}) *EventBuilder {
 	b.oldData = oldData
+	return b
+}
+
+// WithSensitivity sets the event's sensitivity class explicitly, overriding the
+// automatic classification. Use it where only the producer knows the class —
+// e.g. tms-teams distinguishing a driver absence (HR) from a daily status
+// (OPERATIONAL), or tms-files marking a proof-of-delivery OPERATIONAL rather
+// than COMPLIANCE. When unset, writeEvent calls events.Classify.
+func (b *EventBuilder) WithSensitivity(s events.Sensitivity) *EventBuilder {
+	b.sensitivity = s
+	return b
+}
+
+// WithParticipants stamps the entities that took part in the action and the role
+// each played. The caller is added as ACTOR automatically, so producers pass
+// only SUBJECT / AFFECTED / ASSIGNED — e.g. a crew expanded to its drivers plus
+// the crew itself. Repeated calls append.
+func (b *EventBuilder) WithParticipants(ps ...events.Participant) *EventBuilder {
+	b.participants = append(b.participants, ps...)
 	return b
 }
 

@@ -5,6 +5,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/TMS360/backend-pkg/middleware"
 	"gorm.io/gorm"
 )
 
@@ -109,6 +110,10 @@ type JSONFilter struct {
 // PAGINATION
 // ============================================================================
 
+// DefaultLimit is the page size a list serves when the caller states no page
+// size of its own.
+const DefaultLimit = 20
+
 type PaginationInput struct {
 	Page  int32 `json:"page"`
 	Limit int32 `json:"limit"`
@@ -121,9 +126,25 @@ func (p *PaginationInput) GetOffset() int {
 	return int(p.Page-1) * p.GetLimit()
 }
 
+// isUnset reports whether the input states no preference at all: no pagination
+// object, or the wholly zero-value struct. GraphQL cannot produce the second
+// shape (PaginationInput declares both `page` and `limit` non-null), so it only
+// ever reaches here from Go call sites that pass an empty input to mean "just
+// give me a first page".
+func (p *PaginationInput) isUnset() bool {
+	return p == nil || (p.Page == 0 && p.Limit == 0)
+}
+
+// GetLimit resolves the page size to serve.
+//
+// DEV-903: `limit: 0` is an answer, not a missing value. It asks for an empty
+// page — zero rows, totals still counted — and must not be folded back into
+// DefaultLimit, or a caller that wanted just the count silently receives twenty
+// rows and believes that is the list. The explicit "use the default" sentinel
+// is a negative limit.
 func (p *PaginationInput) GetLimit() int {
-	if p == nil || p.Limit <= 0 {
-		return 20
+	if p.isUnset() || p.Limit < 0 {
+		return DefaultLimit
 	}
 	return int(p.Limit)
 }
@@ -142,26 +163,24 @@ type Pagination struct {
 	TotalPages int32 `json:"totalPages"`
 }
 
+// NewPagination reports the page that was actually served, so `limit` here is
+// the resolved page size rather than the raw request. An empty page (limit 0)
+// has no pages to walk through, so totalPages is 0: reporting 1 would invite
+// the client to ask for a page that can never hold a row.
 func NewPagination(input *PaginationInput, total int64) *Pagination {
-	var page int32 = 1
-	var limit int32 = 20
-
-	if input != nil {
-		if input.Page > 0 {
-			page = input.Page
-		}
-		if input.Limit > 0 {
-			limit = input.Limit
-		}
-	}
-
+	page := int32(input.GetPage())
+	limit := int32(input.GetLimit())
 	totalInt := int32(total)
-	totalPages := totalInt / limit
-	if totalInt%limit > 0 {
-		totalPages++
-	}
-	if totalPages == 0 {
-		totalPages = 1
+
+	var totalPages int32
+	if limit > 0 {
+		totalPages = totalInt / limit
+		if totalInt%limit > 0 {
+			totalPages++
+		}
+		if totalPages == 0 {
+			totalPages = 1
+		}
 	}
 
 	return &Pagination{
@@ -234,7 +253,7 @@ func (fb *FilterBuilder) String(col string, f *StringFilter) *FilterBuilder {
 		fb.db = fb.db.Where(col+" NOT IN ?", f.NotIn)
 	}
 	if f.Contains != nil {
-		fb.db = fb.db.Where(col+" "+like+" ?", "%"+*f.Contains+"%")
+		fb.db = fb.db.Where(col+" ILIKE ?", "%"+*f.Contains+"%")
 	}
 	if f.StartsWith != nil {
 		fb.db = fb.db.Where(col+" "+like+" ?", *f.StartsWith+"%")
@@ -700,18 +719,50 @@ func snakeToCamel(s string) string {
 // PAGINATION
 // ============================================================================
 
-// Paginate применяет пагинацию
-func (fb *FilterBuilder) Paginate(p *PaginationInput) *FilterBuilder {
-	limit := 20
-	offset := 0
+// pageCeiling is the biggest page Paginate serves: the list's own maxLimit,
+// lifted to the trusted bulk-read limit when the statement's context carries
+// one (DEV-3618, middleware.WithBulkReadLimit). It only ever raises the
+// ceiling — a list that already allows more keeps its own.
+func (fb *FilterBuilder) pageCeiling() int {
+	ceiling := fb.maxLimit
+	if fb.db != nil && fb.db.Statement != nil {
+		if bulk := middleware.BulkReadLimit(fb.db.Statement.Context); bulk > ceiling {
+			ceiling = bulk
+		}
+	}
+	return ceiling
+}
 
-	if p != nil {
-		limit = p.GetLimit()
-		offset = p.GetOffset()
+// Paginate применяет пагинацию. Call it after Count(), the way FindWithCount
+// does — Count() deliberately ignores whatever page is set.
+//
+// DEV-2596: when the list's ceiling cuts the requested page size, the served
+// size is written back into p. Repositories build their reply with
+// NewPagination(p, total) after this call, so the reply then states the page
+// that was actually served (`limit: 100`, totalPages over 100) instead of the
+// one that was asked for — and the offset steps by the served size too, so
+// page 2 starts at row 101 rather than skipping past rows nobody received.
+func (fb *FilterBuilder) Paginate(p *PaginationInput) *FilterBuilder {
+	limit := p.GetLimit()
+
+	if ceiling := fb.pageCeiling(); limit > ceiling {
+		limit = ceiling
+		if p != nil {
+			p.Limit = int32(limit)
+		}
+	}
+	offset := 0
+	if page := p.GetPage(); page > 1 {
+		offset = (page - 1) * limit
 	}
 
-	if limit > fb.maxLimit {
-		limit = fb.maxLimit
+	if limit == 0 {
+		// gorm will not let a zero LIMIT overwrite one the statement already
+		// carries (clause.Limit.MergeClause keeps the old value), and Count()
+		// leaves `LIMIT -1` behind, which renders as no LIMIT at all. Asking
+		// for Limit(0) on top of that would hand back every row — the exact
+		// opposite of the empty page. Drop the stale clause first.
+		delete(fb.db.Statement.Clauses, "LIMIT")
 	}
 
 	fb.db = fb.db.Limit(limit).Offset(offset)

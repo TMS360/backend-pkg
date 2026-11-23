@@ -23,7 +23,7 @@ func NewCommonProducer(addr, topic string, partitions, replications int) (*Commo
 	writer := &kafka.Writer{
 		Addr:     kafka.TCP(addr),
 		Topic:    topic,
-		Balancer: &kafka.LeastBytes{},
+		Balancer: &kafka.Hash{},
 		// Здесь можно добавить общие настройки: ReadTimeout, MaxAttempts и т.д.
 	}
 

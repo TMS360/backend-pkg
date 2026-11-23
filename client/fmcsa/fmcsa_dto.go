@@ -57,6 +57,17 @@ type Result struct {
 	LiveDataAvailable *bool   `json:"live_data_available,omitempty"`
 }
 
+// VerificationUnavailable reports whether the FMCSA live lookup for this result
+// failed (LiveDataAvailable explicitly false) and therefore left the operating
+// authority unknown (OperatingStatus nil). In that case the company is NOT proven
+// unauthorized — the upstream simply could not be reached — so callers must treat
+// it as retry-later, not as a rejection. Only the confirmed-unavailable case is
+// caught here; a nil status WITH live data present remains a genuine no-authority.
+func (result *Result) VerificationUnavailable() bool {
+	return result.OperatingStatus == nil &&
+		result.LiveDataAvailable != nil && !*result.LiveDataAvailable
+}
+
 func (result *Result) IsValid() bool {
 	if result.OperatingStatus == nil || strings.TrimSpace(strings.ToUpper(*result.OperatingStatus)) == "NOT AUTHORIZED" {
 		slog.Error("FMCSA result is not authorized", "DOT", result.DotNumber, "MC", result.McNumber)

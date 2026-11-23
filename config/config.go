@@ -26,6 +26,7 @@ type Config struct {
 	MailConfig        `mapstructure:"MAIL"`
 	SamsaraConfig     `mapstructure:"SAMSARA"`
 	HereConfig        `mapstructure:"HERE"`
+	GoogleMapsConfig  `mapstructure:"GOOGLE_MAPS"`
 	RelayConfig       `mapstructure:"RELAY"`
 	UspsConfig        `mapstructure:"USPS"`
 	FactoringConfig   `mapstructure:"FACTORING"`
@@ -41,8 +42,10 @@ func (c *Config) IsProduction() bool {
 }
 
 // ServiceURLs holds base URLs for peer services. Used by the tms-auth tenant-cleaner
-// orchestrator to fan deletes out to each PostgreSQL service. Set via env vars
-// SERVICES_AUTH_URL, SERVICES_BROKERS_URL, etc.
+// orchestrator to fan deletes out to each PostgreSQL service, and by
+// backend-workspaces to execute federated board reads through apollo-router
+// (RouterURL) as the acting user. Set via env vars SERVICES_AUTH_URL,
+// SERVICES_BROKERS_URL, SERVICES_ROUTER_URL, etc.
 type ServiceURLs struct {
 	AuthURL     string `mapstructure:"AUTH_URL"`
 	BrokersURL  string `mapstructure:"BROKERS_URL"`
@@ -50,6 +53,7 @@ type ServiceURLs struct {
 	TeamsURL    string `mapstructure:"TEAMS_URL"`
 	FilesURL    string `mapstructure:"FILES_URL"`
 	MediatorURL string `mapstructure:"MEDIATOR_URL"`
+	RouterURL   string `mapstructure:"ROUTER_URL"`
 }
 
 type HTTPServer struct {
@@ -117,6 +121,15 @@ type HereConfig struct {
 	RouterHost  string `mapstructure:"ROUTER_HOST"`
 	GeocodeHost string `mapstructure:"GEOCODE_HOST"`
 	LookupHost  string `mapstructure:"LOOKUP_HOST"`
+}
+
+// GoogleMapsConfig holds the non-secret Google Maps Platform hosts. The API key
+// is NOT stored here — it lives per-company in Redis under google_maps_api_key,
+// same as the HERE key. Geocoding and Places share one host; Routes v2 is a
+// separate service.
+type GoogleMapsConfig struct {
+	GeocodeHost string `mapstructure:"GEOCODE_HOST"`
+	RoutesHost  string `mapstructure:"ROUTES_HOST"`
 }
 
 type RelayConfig struct {

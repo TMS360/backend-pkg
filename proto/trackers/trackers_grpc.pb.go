@@ -21,10 +21,12 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	TrackersService_StreamVehicleVINs_FullMethodName  = "/trackers.TrackersService/StreamVehicleVINs"
-	TrackersService_GetActiveTripStops_FullMethodName = "/trackers.TrackersService/GetActiveTripStops"
-	TrackersService_GetTripStops_FullMethodName       = "/trackers.TrackersService/GetTripStops"
-	TrackersService_ApplyRouteETAs_FullMethodName     = "/trackers.TrackersService/ApplyRouteETAs"
+	TrackersService_StreamVehicleVINs_FullMethodName      = "/trackers.TrackersService/StreamVehicleVINs"
+	TrackersService_GetActiveTripStops_FullMethodName     = "/trackers.TrackersService/GetActiveTripStops"
+	TrackersService_GetTripStops_FullMethodName           = "/trackers.TrackersService/GetTripStops"
+	TrackersService_ApplyRouteETAs_FullMethodName         = "/trackers.TrackersService/ApplyRouteETAs"
+	TrackersService_GetDeadheadOrigin_FullMethodName      = "/trackers.TrackersService/GetDeadheadOrigin"
+	TrackersService_RecordOdometerReadings_FullMethodName = "/trackers.TrackersService/RecordOdometerReadings"
 )
 
 // TrackersServiceClient is the client API for TrackersService service.
@@ -43,6 +45,17 @@ type TrackersServiceClient interface {
 	// ApplyRouteETAs writes planned_arrival in batch for a list of stops, called
 	// by asset-tracking after the initial route build (replaces UpdateStopETA).
 	ApplyRouteETAs(ctx context.Context, in *ApplyRouteETAsRequest, opts ...grpc.CallOption) (*ApplyRouteETAsResponse, error)
+	// GetDeadheadOrigin resolves the deadhead-origin fallback for a trip whose
+	// seq=0 origin stop has no coordinates yet (Samsara asset-tracking OFF flow):
+	// reports the company's Samsara setting and, when OFF, the truck's previous
+	// delivered trip's final drop-off coordinates (DEV-1196).
+	GetDeadheadOrigin(ctx context.Context, in *GetDeadheadOriginRequest, opts ...grpc.CallOption) (*GetDeadheadOriginResponse, error)
+	// RecordOdometerReadings writes odometer readings for trucks and trailers
+	// through the same service method the manual GraphQL mutation uses, so the
+	// no-rollback rule and the audit entry exist once (DEV-2250). One reading per
+	// asset per call is the normal case; a batch answers per reading, because a
+	// rejected reading is an ordinary outcome here and must not fail the others.
+	RecordOdometerReadings(ctx context.Context, in *RecordOdometerReadingsRequest, opts ...grpc.CallOption) (*RecordOdometerReadingsResponse, error)
 }
 
 type trackersServiceClient struct {
@@ -102,6 +115,26 @@ func (c *trackersServiceClient) ApplyRouteETAs(ctx context.Context, in *ApplyRou
 	return out, nil
 }
 
+func (c *trackersServiceClient) GetDeadheadOrigin(ctx context.Context, in *GetDeadheadOriginRequest, opts ...grpc.CallOption) (*GetDeadheadOriginResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetDeadheadOriginResponse)
+	err := c.cc.Invoke(ctx, TrackersService_GetDeadheadOrigin_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *trackersServiceClient) RecordOdometerReadings(ctx context.Context, in *RecordOdometerReadingsRequest, opts ...grpc.CallOption) (*RecordOdometerReadingsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(RecordOdometerReadingsResponse)
+	err := c.cc.Invoke(ctx, TrackersService_RecordOdometerReadings_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // TrackersServiceServer is the server API for TrackersService service.
 // All implementations must embed UnimplementedTrackersServiceServer
 // for forward compatibility.
@@ -118,6 +151,17 @@ type TrackersServiceServer interface {
 	// ApplyRouteETAs writes planned_arrival in batch for a list of stops, called
 	// by asset-tracking after the initial route build (replaces UpdateStopETA).
 	ApplyRouteETAs(context.Context, *ApplyRouteETAsRequest) (*ApplyRouteETAsResponse, error)
+	// GetDeadheadOrigin resolves the deadhead-origin fallback for a trip whose
+	// seq=0 origin stop has no coordinates yet (Samsara asset-tracking OFF flow):
+	// reports the company's Samsara setting and, when OFF, the truck's previous
+	// delivered trip's final drop-off coordinates (DEV-1196).
+	GetDeadheadOrigin(context.Context, *GetDeadheadOriginRequest) (*GetDeadheadOriginResponse, error)
+	// RecordOdometerReadings writes odometer readings for trucks and trailers
+	// through the same service method the manual GraphQL mutation uses, so the
+	// no-rollback rule and the audit entry exist once (DEV-2250). One reading per
+	// asset per call is the normal case; a batch answers per reading, because a
+	// rejected reading is an ordinary outcome here and must not fail the others.
+	RecordOdometerReadings(context.Context, *RecordOdometerReadingsRequest) (*RecordOdometerReadingsResponse, error)
 	mustEmbedUnimplementedTrackersServiceServer()
 }
 
@@ -139,6 +183,12 @@ func (UnimplementedTrackersServiceServer) GetTripStops(context.Context, *GetTrip
 }
 func (UnimplementedTrackersServiceServer) ApplyRouteETAs(context.Context, *ApplyRouteETAsRequest) (*ApplyRouteETAsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ApplyRouteETAs not implemented")
+}
+func (UnimplementedTrackersServiceServer) GetDeadheadOrigin(context.Context, *GetDeadheadOriginRequest) (*GetDeadheadOriginResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetDeadheadOrigin not implemented")
+}
+func (UnimplementedTrackersServiceServer) RecordOdometerReadings(context.Context, *RecordOdometerReadingsRequest) (*RecordOdometerReadingsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method RecordOdometerReadings not implemented")
 }
 func (UnimplementedTrackersServiceServer) mustEmbedUnimplementedTrackersServiceServer() {}
 func (UnimplementedTrackersServiceServer) testEmbeddedByValue()                         {}
@@ -226,6 +276,42 @@ func _TrackersService_ApplyRouteETAs_Handler(srv interface{}, ctx context.Contex
 	return interceptor(ctx, in, info, handler)
 }
 
+func _TrackersService_GetDeadheadOrigin_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetDeadheadOriginRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(TrackersServiceServer).GetDeadheadOrigin(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: TrackersService_GetDeadheadOrigin_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(TrackersServiceServer).GetDeadheadOrigin(ctx, req.(*GetDeadheadOriginRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _TrackersService_RecordOdometerReadings_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RecordOdometerReadingsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(TrackersServiceServer).RecordOdometerReadings(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: TrackersService_RecordOdometerReadings_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(TrackersServiceServer).RecordOdometerReadings(ctx, req.(*RecordOdometerReadingsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // TrackersService_ServiceDesc is the grpc.ServiceDesc for TrackersService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -245,6 +331,14 @@ var TrackersService_ServiceDesc = grpc.ServiceDesc{
 			MethodName: "ApplyRouteETAs",
 			Handler:    _TrackersService_ApplyRouteETAs_Handler,
 		},
+		{
+			MethodName: "GetDeadheadOrigin",
+			Handler:    _TrackersService_GetDeadheadOrigin_Handler,
+		},
+		{
+			MethodName: "RecordOdometerReadings",
+			Handler:    _TrackersService_RecordOdometerReadings_Handler,
+		},
 	},
 	Streams: []grpc.StreamDesc{
 		{
@@ -257,11 +351,15 @@ var TrackersService_ServiceDesc = grpc.ServiceDesc{
 }
 
 const (
-	VehiclePositionService_GetVehicleRoute_FullMethodName    = "/trackers.VehiclePositionService/GetVehicleRoute"
-	VehiclePositionService_GetVehicleRoutes_FullMethodName   = "/trackers.VehiclePositionService/GetVehicleRoutes"
-	VehiclePositionService_SaveEstimatedRoute_FullMethodName = "/trackers.VehiclePositionService/SaveEstimatedRoute"
-	VehiclePositionService_GetEstimatedRoute_FullMethodName  = "/trackers.VehiclePositionService/GetEstimatedRoute"
-	VehiclePositionService_LookupGeocodeCache_FullMethodName = "/trackers.VehiclePositionService/LookupGeocodeCache"
+	VehiclePositionService_GetVehicleRoute_FullMethodName      = "/trackers.VehiclePositionService/GetVehicleRoute"
+	VehiclePositionService_GetVehicleRoutes_FullMethodName     = "/trackers.VehiclePositionService/GetVehicleRoutes"
+	VehiclePositionService_SaveEstimatedRoute_FullMethodName   = "/trackers.VehiclePositionService/SaveEstimatedRoute"
+	VehiclePositionService_GetEstimatedRoute_FullMethodName    = "/trackers.VehiclePositionService/GetEstimatedRoute"
+	VehiclePositionService_GetEstimatedRoutes_FullMethodName   = "/trackers.VehiclePositionService/GetEstimatedRoutes"
+	VehiclePositionService_LookupGeocodeCache_FullMethodName   = "/trackers.VehiclePositionService/LookupGeocodeCache"
+	VehiclePositionService_GetCurrentDutyStatus_FullMethodName = "/trackers.VehiclePositionService/GetCurrentDutyStatus"
+	VehiclePositionService_GetLatestFuelLevels_FullMethodName  = "/trackers.VehiclePositionService/GetLatestFuelLevels"
+	VehiclePositionService_ReadTruckNow_FullMethodName         = "/trackers.VehiclePositionService/ReadTruckNow"
 )
 
 // VehiclePositionServiceClient is the client API for VehiclePositionService service.
@@ -277,10 +375,31 @@ type VehiclePositionServiceClient interface {
 	SaveEstimatedRoute(ctx context.Context, in *SaveEstimatedRouteRequest, opts ...grpc.CallOption) (*SaveEstimatedRouteResponse, error)
 	// GetEstimatedRoute retrieves estimated route polylines for a trip
 	GetEstimatedRoute(ctx context.Context, in *GetEstimatedRouteRequest, opts ...grpc.CallOption) (*GetEstimatedRouteResponse, error)
+	// GetEstimatedRoutes returns the stored routes of many trips in one call
+	// (DEV-4042: a trip list reads its routes at once, not one call per trip).
+	// A trip with no stored route is absent from the answer. With
+	// without_polyline the legs carry no polyline and no coordinates.
+	GetEstimatedRoutes(ctx context.Context, in *GetEstimatedRoutesRequest, opts ...grpc.CallOption) (*GetEstimatedRoutesResponse, error)
 	// LookupGeocodeCache returns a previously cached HERE geocoding result so the
 	// caller can avoid a paid HERE API call. The result is the same JSON payload
 	// the caller would have built from the live HERE response.
 	LookupGeocodeCache(ctx context.Context, in *LookupGeocodeCacheRequest, opts ...grpc.CallOption) (*LookupGeocodeCacheResponse, error)
+	// GetCurrentDutyStatus returns each driver's latest HOS duty status from the
+	// ELD feed (driving, on_duty, off_duty, sleeper_berth, yard_move,
+	// personal_conveyance) and since when. Drivers with no HOS event in the last
+	// 7 days are absent. Scoped by company_id from the request (DEV-2694: the
+	// hourly crew message is not sent while a driver sleeps).
+	GetCurrentDutyStatus(ctx context.Context, in *GetCurrentDutyStatusRequest, opts ...grpc.CallOption) (*GetCurrentDutyStatusResponse, error)
+	// GetLatestFuelLevels returns, per truck, the latest non-empty fuel and DEF
+	// reading from the position history plus the position of the latest row.
+	// A narrow answer on purpose: GetVehicleRoute fails on big windows
+	// ("message larger than max"). Scoped by company_id from the request.
+	GetLatestFuelLevels(ctx context.Context, in *GetLatestFuelLevelsRequest, opts ...grpc.CallOption) (*GetLatestFuelLevelsResponse, error)
+	// ReadTruckNow asks Samsara for one truck's position, fuel % and DEF % right
+	// now (one stats call, 5 s limit). Each value carries the time Samsara gave.
+	// available = false when the truck has no Samsara link or Samsara failed;
+	// the caller then uses the stored reading. Nothing is written (DEV-4313).
+	ReadTruckNow(ctx context.Context, in *ReadTruckNowRequest, opts ...grpc.CallOption) (*ReadTruckNowResponse, error)
 }
 
 type vehiclePositionServiceClient struct {
@@ -331,10 +450,50 @@ func (c *vehiclePositionServiceClient) GetEstimatedRoute(ctx context.Context, in
 	return out, nil
 }
 
+func (c *vehiclePositionServiceClient) GetEstimatedRoutes(ctx context.Context, in *GetEstimatedRoutesRequest, opts ...grpc.CallOption) (*GetEstimatedRoutesResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetEstimatedRoutesResponse)
+	err := c.cc.Invoke(ctx, VehiclePositionService_GetEstimatedRoutes_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *vehiclePositionServiceClient) LookupGeocodeCache(ctx context.Context, in *LookupGeocodeCacheRequest, opts ...grpc.CallOption) (*LookupGeocodeCacheResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(LookupGeocodeCacheResponse)
 	err := c.cc.Invoke(ctx, VehiclePositionService_LookupGeocodeCache_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *vehiclePositionServiceClient) GetCurrentDutyStatus(ctx context.Context, in *GetCurrentDutyStatusRequest, opts ...grpc.CallOption) (*GetCurrentDutyStatusResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetCurrentDutyStatusResponse)
+	err := c.cc.Invoke(ctx, VehiclePositionService_GetCurrentDutyStatus_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *vehiclePositionServiceClient) GetLatestFuelLevels(ctx context.Context, in *GetLatestFuelLevelsRequest, opts ...grpc.CallOption) (*GetLatestFuelLevelsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetLatestFuelLevelsResponse)
+	err := c.cc.Invoke(ctx, VehiclePositionService_GetLatestFuelLevels_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *vehiclePositionServiceClient) ReadTruckNow(ctx context.Context, in *ReadTruckNowRequest, opts ...grpc.CallOption) (*ReadTruckNowResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ReadTruckNowResponse)
+	err := c.cc.Invoke(ctx, VehiclePositionService_ReadTruckNow_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -354,10 +513,31 @@ type VehiclePositionServiceServer interface {
 	SaveEstimatedRoute(context.Context, *SaveEstimatedRouteRequest) (*SaveEstimatedRouteResponse, error)
 	// GetEstimatedRoute retrieves estimated route polylines for a trip
 	GetEstimatedRoute(context.Context, *GetEstimatedRouteRequest) (*GetEstimatedRouteResponse, error)
+	// GetEstimatedRoutes returns the stored routes of many trips in one call
+	// (DEV-4042: a trip list reads its routes at once, not one call per trip).
+	// A trip with no stored route is absent from the answer. With
+	// without_polyline the legs carry no polyline and no coordinates.
+	GetEstimatedRoutes(context.Context, *GetEstimatedRoutesRequest) (*GetEstimatedRoutesResponse, error)
 	// LookupGeocodeCache returns a previously cached HERE geocoding result so the
 	// caller can avoid a paid HERE API call. The result is the same JSON payload
 	// the caller would have built from the live HERE response.
 	LookupGeocodeCache(context.Context, *LookupGeocodeCacheRequest) (*LookupGeocodeCacheResponse, error)
+	// GetCurrentDutyStatus returns each driver's latest HOS duty status from the
+	// ELD feed (driving, on_duty, off_duty, sleeper_berth, yard_move,
+	// personal_conveyance) and since when. Drivers with no HOS event in the last
+	// 7 days are absent. Scoped by company_id from the request (DEV-2694: the
+	// hourly crew message is not sent while a driver sleeps).
+	GetCurrentDutyStatus(context.Context, *GetCurrentDutyStatusRequest) (*GetCurrentDutyStatusResponse, error)
+	// GetLatestFuelLevels returns, per truck, the latest non-empty fuel and DEF
+	// reading from the position history plus the position of the latest row.
+	// A narrow answer on purpose: GetVehicleRoute fails on big windows
+	// ("message larger than max"). Scoped by company_id from the request.
+	GetLatestFuelLevels(context.Context, *GetLatestFuelLevelsRequest) (*GetLatestFuelLevelsResponse, error)
+	// ReadTruckNow asks Samsara for one truck's position, fuel % and DEF % right
+	// now (one stats call, 5 s limit). Each value carries the time Samsara gave.
+	// available = false when the truck has no Samsara link or Samsara failed;
+	// the caller then uses the stored reading. Nothing is written (DEV-4313).
+	ReadTruckNow(context.Context, *ReadTruckNowRequest) (*ReadTruckNowResponse, error)
 	mustEmbedUnimplementedVehiclePositionServiceServer()
 }
 
@@ -380,8 +560,20 @@ func (UnimplementedVehiclePositionServiceServer) SaveEstimatedRoute(context.Cont
 func (UnimplementedVehiclePositionServiceServer) GetEstimatedRoute(context.Context, *GetEstimatedRouteRequest) (*GetEstimatedRouteResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetEstimatedRoute not implemented")
 }
+func (UnimplementedVehiclePositionServiceServer) GetEstimatedRoutes(context.Context, *GetEstimatedRoutesRequest) (*GetEstimatedRoutesResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetEstimatedRoutes not implemented")
+}
 func (UnimplementedVehiclePositionServiceServer) LookupGeocodeCache(context.Context, *LookupGeocodeCacheRequest) (*LookupGeocodeCacheResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method LookupGeocodeCache not implemented")
+}
+func (UnimplementedVehiclePositionServiceServer) GetCurrentDutyStatus(context.Context, *GetCurrentDutyStatusRequest) (*GetCurrentDutyStatusResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetCurrentDutyStatus not implemented")
+}
+func (UnimplementedVehiclePositionServiceServer) GetLatestFuelLevels(context.Context, *GetLatestFuelLevelsRequest) (*GetLatestFuelLevelsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetLatestFuelLevels not implemented")
+}
+func (UnimplementedVehiclePositionServiceServer) ReadTruckNow(context.Context, *ReadTruckNowRequest) (*ReadTruckNowResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ReadTruckNow not implemented")
 }
 func (UnimplementedVehiclePositionServiceServer) mustEmbedUnimplementedVehiclePositionServiceServer() {
 }
@@ -477,6 +669,24 @@ func _VehiclePositionService_GetEstimatedRoute_Handler(srv interface{}, ctx cont
 	return interceptor(ctx, in, info, handler)
 }
 
+func _VehiclePositionService_GetEstimatedRoutes_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetEstimatedRoutesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(VehiclePositionServiceServer).GetEstimatedRoutes(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: VehiclePositionService_GetEstimatedRoutes_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(VehiclePositionServiceServer).GetEstimatedRoutes(ctx, req.(*GetEstimatedRoutesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _VehiclePositionService_LookupGeocodeCache_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(LookupGeocodeCacheRequest)
 	if err := dec(in); err != nil {
@@ -491,6 +701,60 @@ func _VehiclePositionService_LookupGeocodeCache_Handler(srv interface{}, ctx con
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(VehiclePositionServiceServer).LookupGeocodeCache(ctx, req.(*LookupGeocodeCacheRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _VehiclePositionService_GetCurrentDutyStatus_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetCurrentDutyStatusRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(VehiclePositionServiceServer).GetCurrentDutyStatus(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: VehiclePositionService_GetCurrentDutyStatus_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(VehiclePositionServiceServer).GetCurrentDutyStatus(ctx, req.(*GetCurrentDutyStatusRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _VehiclePositionService_GetLatestFuelLevels_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetLatestFuelLevelsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(VehiclePositionServiceServer).GetLatestFuelLevels(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: VehiclePositionService_GetLatestFuelLevels_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(VehiclePositionServiceServer).GetLatestFuelLevels(ctx, req.(*GetLatestFuelLevelsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _VehiclePositionService_ReadTruckNow_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ReadTruckNowRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(VehiclePositionServiceServer).ReadTruckNow(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: VehiclePositionService_ReadTruckNow_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(VehiclePositionServiceServer).ReadTruckNow(ctx, req.(*ReadTruckNowRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -519,8 +783,24 @@ var VehiclePositionService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _VehiclePositionService_GetEstimatedRoute_Handler,
 		},
 		{
+			MethodName: "GetEstimatedRoutes",
+			Handler:    _VehiclePositionService_GetEstimatedRoutes_Handler,
+		},
+		{
 			MethodName: "LookupGeocodeCache",
 			Handler:    _VehiclePositionService_LookupGeocodeCache_Handler,
+		},
+		{
+			MethodName: "GetCurrentDutyStatus",
+			Handler:    _VehiclePositionService_GetCurrentDutyStatus_Handler,
+		},
+		{
+			MethodName: "GetLatestFuelLevels",
+			Handler:    _VehiclePositionService_GetLatestFuelLevels_Handler,
+		},
+		{
+			MethodName: "ReadTruckNow",
+			Handler:    _VehiclePositionService_ReadTruckNow_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

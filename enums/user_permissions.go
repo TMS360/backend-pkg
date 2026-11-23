@@ -1,5 +1,10 @@
 package enums
 
+import (
+	"sort"
+	"strings"
+)
+
 // UserPermissionEnum is the canonical set of permission codes recognized by
 // the system. Permissions are dotted identifier strings (`module.entity.action`)
 // that GraphQL `@hasPerm` directives and service-layer checks consult; this
@@ -18,6 +23,712 @@ const (
 	PermSettingsCompanyEdit     UserPermissionEnum = "settings.company.edit"
 	PermDriversDriversView      UserPermissionEnum = "drivers.drivers.view"
 	PermDriversDriversEdit      UserPermissionEnum = "drivers.drivers.edit"
+
+	// DEV-1466 compliance documents — ONE grantable vocabulary, hierarchical under
+	// the `settings` module so a `settings` grant implies both leaves (exactly like
+	// every other settings.* entity). These constants MUST equal the
+	// PermissionCatalog leaves for `settings.compliance` below.
+	//
+	//   settings.compliance.view — read the compliance dashboard: entity files,
+	//                              cards, rollup status, and reminder mutes.
+	//   settings.compliance.edit — upload, renew, delete, and mute/unmute reminders.
+	//                              There is deliberately NO separate
+	//                              upload/renew/configure leaf: edit covers them all.
+	//
+	// The earlier flat `compliance.view|upload|renew` codes and the FE-only
+	// `compliance.configure|self-view` names are intentionally gone — none of them
+	// were ever in the catalog, so they could never be granted or satisfied.
+	// Office-user self-service has no leaf yet (not shipped): do not reintroduce a
+	// `self-view` phantom; add a real catalog leaf if/when product commits to it.
+	PermComplianceView UserPermissionEnum = "settings.compliance.view"
+	PermComplianceEdit UserPermissionEnum = "settings.compliance.edit"
+
+	// DEV-2349 truck & trailer status dictionary — who may edit the company's own
+	// list of asset statuses (DEV-2350 owns the list itself). Hierarchical under
+	// `settings`, deliberately the same shape as settings.load_status: the module
+	// row every existing tenant already holds implies all four leaves, so an
+	// existing company's admin sees the family ticked on the Roles page with no
+	// back-fill, and a custom role can still be narrowed leaf by leaf.
+	//
+	// Setting a status ON a truck stays fleet.maintenance.manage, and dispatching
+	// an out-of-service asset anyway stays asset_out_of_service_override
+	// (DEV-2254) — neither moves here.
+	PermAssetStatusView   UserPermissionEnum = "settings.asset_status.view"
+	PermAssetStatusCreate UserPermissionEnum = "settings.asset_status.create"
+	PermAssetStatusEdit   UserPermissionEnum = "settings.asset_status.edit"
+	PermAssetStatusDelete UserPermissionEnum = "settings.asset_status.delete"
+
+	// DEV-176 chart of accounts — the company's GL account tree and the
+	// operation → account mappings automated journal entries post through.
+	// Hierarchical under `settings`, like settings.accounting_types: the module
+	// grant covers existing tenants, the leaves let a custom role narrow it.
+	PermChartOfAccountsView UserPermissionEnum = "settings.chart_of_accounts.view"
+	PermChartOfAccountsEdit UserPermissionEnum = "settings.chart_of_accounts.edit"
+
+	// DEV-174 accounts payable — vendors and the bills they send. Hierarchical
+	// under `accounting` like accounting.invoices: CRUD refuses only a custom
+	// role. `pay` records and voids a bill payment. Approving a bill is NOT a
+	// leaf here — it is the flat vendor_bill_approve_level_1..3 below, because an
+	// approval must be refusable to a built-in role.
+	PermVendorsView       UserPermissionEnum = "accounting.vendors.view"
+	PermVendorsCreate     UserPermissionEnum = "accounting.vendors.create"
+	PermVendorsEdit       UserPermissionEnum = "accounting.vendors.edit"
+	PermVendorsDelete     UserPermissionEnum = "accounting.vendors.delete"
+	PermVendorBillsView   UserPermissionEnum = "accounting.vendor_bills.view"
+	PermVendorBillsCreate UserPermissionEnum = "accounting.vendor_bills.create"
+	PermVendorBillsEdit   UserPermissionEnum = "accounting.vendor_bills.edit"
+	PermVendorBillsDelete UserPermissionEnum = "accounting.vendor_bills.delete"
+	PermVendorBillsPay    UserPermissionEnum = "accounting.vendor_bills.pay"
+
+	// DEV-181 expenses — company spend entered by hand or from a company card,
+	// and the cards themselves. Hierarchical like their accounting/settings
+	// neighbours; approving an expense is the flat PermExpenseApprove below.
+	PermExpensesView     UserPermissionEnum = "accounting.expenses.view"
+	PermExpensesCreate   UserPermissionEnum = "accounting.expenses.create"
+	PermExpensesEdit     UserPermissionEnum = "accounting.expenses.edit"
+	PermExpensesDelete   UserPermissionEnum = "accounting.expenses.delete"
+	PermCompanyCardsView UserPermissionEnum = "settings.company_cards.view"
+	PermCompanyCardsEdit UserPermissionEnum = "settings.company_cards.edit"
+
+	// DEV-180 load profitability — per-load cost, profit and margin (view) and
+	// the manual cost lines added to a load (edit); the overhead allocation
+	// rules live under settings. Hierarchical: they refuse only a custom role,
+	// so margin and driver pay are visible to every built-in office role.
+	PermLoadProfitabilityView  UserPermissionEnum = "accounting.profitability.view"
+	PermLoadProfitabilityEdit  UserPermissionEnum = "accounting.profitability.edit"
+	PermOverheadAllocationView UserPermissionEnum = "settings.overhead_allocation.view"
+	PermOverheadAllocationEdit UserPermissionEnum = "settings.overhead_allocation.edit"
+
+	// DEV-183 tax — jurisdictions, rates, customer tax profiles and IFTA rates
+	// (settings.tax), and the filings, liabilities and IFTA returns built on
+	// them (accounting.tax_filings). Hierarchical: they refuse only a custom
+	// role.
+	PermTaxSettingsView UserPermissionEnum = "settings.tax.view"
+	PermTaxSettingsEdit UserPermissionEnum = "settings.tax.edit"
+	PermTaxFilingsView  UserPermissionEnum = "accounting.tax_filings.view"
+	PermTaxFilingsEdit  UserPermissionEnum = "accounting.tax_filings.edit"
+
+	// DEV-2240 asset charges — the money a truck or trailer costs (truck payment,
+	// trailer rent, a damage bill) and the case work around it. Hierarchical under
+	// the `fleet` module, exactly like fleet.trucks / fleet.trailers next door, so
+	// getPermissions renders them inside Fleet and Settings -> Roles can hand one
+	// action to a custom role without the others.
+	//
+	//   fleet.asset_charges.view       — read an asset's schedules, one-time
+	//                                    charges, and the who-held-it timeline.
+	//   fleet.asset_charges.manage     — create/edit/cancel a schedule or charge.
+	//   fleet.asset_charges.adjudicate — the case-handler powers on a disputed
+	//                                    charge: acknowledge on a driver's behalf,
+	//                                    change who is at fault, route a charge
+	//                                    that has no addressee yet.
+	//
+	// NOTE for callers: these are ordinary hierarchical codes, so a holder of the
+	// whole `fleet` module satisfies them (HasPermission matches ancestors), which
+	// is how every fleet leaf already behaves. The one asset permission that must
+	// escape that — dispatching an OUT_OF_SERVICE asset — is deliberately FLAT and
+	// already shipped as PermAssetOutOfServiceOverride (DEV-2254); do not add a
+	// dotted `fleet.assets.out_of_service_override` beside it.
+	PermAssetChargesView       UserPermissionEnum = "fleet.asset_charges.view"
+	PermAssetChargesManage     UserPermissionEnum = "fleet.asset_charges.manage"
+	PermAssetChargesAdjudicate UserPermissionEnum = "fleet.asset_charges.adjudicate"
+
+	// DEV-2510 / BL-6 §6.PC6 person charges — the charge list and the lines it
+	// puts on a person's week. Hierarchical under the `teams` module, so a
+	// `teams` grant (admin) implies every code below.
+	//
+	//   teams.person_charges.view   — read the charge list and the lines.
+	//   teams.person_charges.void   — cancel a line.
+	//   teams.person_charges.manage — edit the charge list (groups and types).
+	//
+	// APPLY is per department and lives on SIBLING entities, one per group
+	// department, each with the single action `apply`:
+	//
+	//   teams.person_charges_<department>.apply
+	//
+	// They are deliberately NOT children of `teams.person_charges`: a nested
+	// catalog entry would make `teams.person_charges` a MODULE in the catalog
+	// index, and ExpandPermissions would expand an existing `teams.person_charges`
+	// grant to the apply leaves only, dropping view/void/manage (the
+	// shipments.audit plan-exclusion trap). As siblings, `teams.person_charges`
+	// does not imply any apply either — HasPermission matches whole dot segments,
+	// so `teams.person_charges` is not an ancestor of
+	// `teams.person_charges_dispatch.apply`. A fleet user cannot post a dispatch
+	// charge because they lack that code, not because of their role name.
+	PermPersonChargesView   UserPermissionEnum = "teams.person_charges.view"
+	PermPersonChargesVoid   UserPermissionEnum = "teams.person_charges.void"
+	PermPersonChargesManage UserPermissionEnum = "teams.person_charges.manage"
+
+	PermPersonChargeApplyDispatch   UserPermissionEnum = "teams.person_charges_dispatch.apply"
+	PermPersonChargeApplyFleet      UserPermissionEnum = "teams.person_charges_fleet.apply"
+	PermPersonChargeApplyUpdate     UserPermissionEnum = "teams.person_charges_update.apply"
+	PermPersonChargeApplyAccounting UserPermissionEnum = "teams.person_charges_accounting.apply"
+	PermPersonChargeApplyDriver     UserPermissionEnum = "teams.person_charges_driver.apply"
+	PermPersonChargeApplyBonus      UserPermissionEnum = "teams.person_charges_bonus.apply"
+
+	// DEV-2240 maintenance — the shop side of an asset: service records, the work
+	// that takes a truck off the road, and the bills that come with it.
+	PermFleetMaintenanceView   UserPermissionEnum = "fleet.maintenance.view"
+	PermFleetMaintenanceManage UserPermissionEnum = "fleet.maintenance.manage"
+
+	// DEV-2240 incident resolution — closing the task an asset incident opened
+	// (damage, a violation) with an outcome. A separate leaf from the ordinary
+	// task transitions (PermTasksTransition) because an incident closes a MONEY
+	// case, not just a work item.
+	PermTaskIncidentsResolve UserPermissionEnum = "tasks.incidents.resolve"
+
+	// Projects/Task-Management module (backend-tasks). The work-item leaves live
+	// under a `tasks.tasks` ENTITY, not straight on the module (DEV-1335).
+	//
+	// They used to be spelled `tasks.view` / `tasks.create` / … — two segments,
+	// hanging off the module. Nothing could grant them: the catalog derives a
+	// grantable code from an entry's Code plus its Actions, the `tasks` module
+	// entry carries no actions, so `IsValidPermissionCode("tasks.create")` was
+	// false and assignPermissionsTo{Role,User} refused it. The tasks page worked
+	// only because the whole `tasks` module was granted and HasPermission matches
+	// ancestors — so "read tasks but do not create" could not be expressed at all,
+	// and a per-action deny override was impossible.
+	//
+	// backend-tasks' read queries had already settled on the three-segment
+	// `tasks.tasks.view`, which matches the module.entity.action shape every other
+	// module uses (and `tasks.teams.*` next door). These constants and the
+	// directives now agree with it. Existing grants are unaffected: they are all
+	// the `tasks` module code, which still implies every leaf below it.
+	PermTasksView       UserPermissionEnum = "tasks.tasks.view"
+	PermTasksCreate     UserPermissionEnum = "tasks.tasks.create"
+	PermTasksAssign     UserPermissionEnum = "tasks.tasks.assign"
+	PermTasksTransition UserPermissionEnum = "tasks.tasks.transition"
+	PermTasksReopen     UserPermissionEnum = "tasks.tasks.reopen"
+
+	// PermTasksDutiesManage gates the ROUTINE template (DEV-2385): create, edit,
+	// pause and resume of the standing duties a company repeats ("check ELD
+	// violations every weekday morning"). Reading routines needs only
+	// PermTasksView — a duty nobody may edit is still a duty everybody sees.
+	//
+	// Its own entity rather than a sixth action on tasks.tasks, for the same
+	// reason tasks.incidents is: writing the rule that opens work for a whole
+	// team every morning is a supervisor decision, not the same authority as
+	// creating one task.
+	PermTasksDutiesManage UserPermissionEnum = "tasks.duties.manage"
+
+	// Workspaces & custom boards module (backend-workspaces). These grants gate
+	// the GraphQL surface only; board/workspace data visibility additionally
+	// requires workspace membership (workspace_members roles, enforced in the
+	// service layer). Entity data shown on boards is resolved through
+	// apollo-router as the acting user, so the owning services' own @hasPerm
+	// and tenancy still apply on top of these codes.
+	PermWorkspacesView         UserPermissionEnum = "workspaces.workspaces.view"
+	PermWorkspacesCreate       UserPermissionEnum = "workspaces.workspaces.create"
+	PermWorkspacesEdit         UserPermissionEnum = "workspaces.workspaces.edit"
+	PermWorkspacesDelete       UserPermissionEnum = "workspaces.workspaces.delete"
+	PermWorkspacesBoardsView   UserPermissionEnum = "workspaces.boards.view"
+	PermWorkspacesBoardsCreate UserPermissionEnum = "workspaces.boards.create"
+	PermWorkspacesBoardsEdit   UserPermissionEnum = "workspaces.boards.edit"
+	PermWorkspacesBoardsDelete UserPermissionEnum = "workspaces.boards.delete"
+	// workspaces.values gates CELL-LEVEL access — the stored value inside a board
+	// cell — as distinct from workspaces.boards, which gates the board STRUCTURE
+	// (creating boards, adding/removing/retyping columns, groups, views). The two
+	// separate cleanly: a user may be allowed to type into cells without being
+	// allowed to reshape the board, or the reverse.
+	//   - workspaces.values.edit authorises WRITING and CLEARING a cell; it is what
+	//     the cell mutation enforces (backend-workspaces upsertBoardValue). It is
+	//     also the board-side half of the write-back correction authority (DEC-B):
+	//     correcting a value that writes back to an owning record needs BOTH this
+	//     and the owning service's own write permission.
+	//   - workspaces.values.view is the cell-level READ gate; the board read path
+	//     currently admits cell values under workspaces.boards.view, so this action
+	//     is reserved for a finer read split.
+	PermWorkspacesValuesView UserPermissionEnum = "workspaces.values.view"
+	PermWorkspacesValuesEdit UserPermissionEnum = "workspaces.values.edit"
+	// workspaces.templates gates the ready-made board TEMPLATE catalog (DEV-1385):
+	//   - workspaces.templates.view lists the templates (getBoardTemplates);
+	//   - workspaces.templates.create instantiates one into a workspace
+	//     (createBoardFromTemplate) — so .view ALONE cannot instantiate;
+	//   - workspaces.templates.edit is reserved for future template authoring.
+	// Granting the whole "workspaces" module implies all of these via hierarchical
+	// prefix matching — no separate grant is needed.
+	PermWorkspacesTemplatesView   UserPermissionEnum = "workspaces.templates.view"
+	PermWorkspacesTemplatesCreate UserPermissionEnum = "workspaces.templates.create"
+	PermWorkspacesTemplatesEdit   UserPermissionEnum = "workspaces.templates.edit"
+
+	// PermTripFinancialsEdit (DEV-1256) gates the hand-typed trip miles /
+	// gross-rate override (DEV-1257). It lives OUTSIDE the auto-granted module set
+	// (see ModulePermissionCodes / FinanceModuleCode), so only the Accounting role
+	// holds it by default (seeded by tms-auth); other roles receive it only via an
+	// explicit custom grant. Super-admin bypasses the check as usual.
+	PermTripFinancialsEdit    UserPermissionEnum = "trip_financials_edit"
+	PermTripFinancialsApprove UserPermissionEnum = "trip_financials_approve"
+
+	// PermTripGrossEdit (DEV-2979) is the narrow sibling of PermTripFinancialsEdit:
+	// its holder may change a trip's driver gross through the same governed
+	// override, but not the empty or loaded miles. Held by admin only by default;
+	// a company grants it to dispatchers itself.
+	PermTripGrossEdit UserPermissionEnum = "trip_gross_edit"
+
+	// PermTripReassignCommitted (DEV-1226) gates swapping/removing a trip's driver
+	// AFTER the driver has accepted the trip (DriversAccepted=true). A regular
+	// dispatcher can still edit other trip fields via shipments.trips.edit, but the
+	// late-stage driver change is limited to holders of this flat custom permission
+	// (dispatch managers, admins). Enforced inside the trip service layer, not via
+	// an @hasPerm on updateTrip, because it depends on runtime trip state.
+	PermTripReassignCommitted UserPermissionEnum = "trip_reassign_committed"
+
+	// PermTripDelete (DEV-2024) gates deleting a trip off a load. Until it
+	// existed, deleteTrip asked only that the caller be signed in: any user of
+	// any role — a driver in the mobile app included — could remove a trip that
+	// had already been dispatched, driven and delivered.
+	//
+	// FLAT, and that is the whole point. A dotted "shipments.trips.delete" would
+	// gate nothing: every built-in role is granted the shipments module at
+	// company registration, and HasPermission resolves a dotted code through its
+	// ancestors, so the module grant would imply the leaf for everyone. Same
+	// reasoning as trip_financials_edit and shipment_billing_approve before it.
+	PermTripDelete UserPermissionEnum = "trip_delete"
+
+	// PermFileDeleteAny gates deleting a file attachment the actor did not upload,
+	// or one whose uploader window has closed (deleteUserFile in tms-auth,
+	// deleteOrderFile in tms-loads). Without it an actor may only remove their OWN
+	// upload, and only inside the delete window.
+	//
+	// It MUST be a flat custom permission, not a `module.entity.delete` code: every
+	// built-in role — driver included — is seeded the full module baseline
+	// (see DefaultRolePermissions / ModulePermissionCodes), and HasPermission
+	// matches hierarchically, so holding "shipments" would satisfy
+	// "shipments.trip_files.delete". A dotted code therefore cannot express
+	// "office only". A flat code carries no dots, so it resolves by exact match and
+	// is default-deny for everyone it is not explicitly seeded to.
+	//
+	// Enforced in the service layer rather than via @hasPerm, because the rule
+	// depends on runtime row state (uploader identity + row age).
+	PermFileDeleteAny UserPermissionEnum = "file_delete_any"
+
+	// PermReportsRun / PermReportsManage gate the Dynamic Report Builder
+	// (BL-22 §22, epic DEV-1111). run = execute a saved report config and export
+	// it to CSV; manage = create / edit / delete report configs and read the
+	// execution/export audit log.
+	//
+	// Both are FLAT custom permissions (no dots), exactly like PermFileDeleteAny:
+	// a flat code resolves by EXACT match, so it is default-deny for every role it
+	// is not explicitly seeded to and can never be satisfied via a module prefix.
+	// That is the only shape that can honour BL-22 §22.1 "the broker portal role
+	// must never be granted reports.run" — a hierarchical top-level `reports`
+	// module would be swept into ModulePermissionCodes and auto-granted to EVERY
+	// role at signup (the exact thing §22.1 forbids). Seeded to Admin + Accounting
+	// only (see DefaultRolePermissions); external/portal roles (customer) get
+	// neither, by construction.
+	//
+	// Financial columns inside a report are additionally masked by data
+	// provenance: the reporting engine keys each money column on the OWNING
+	// service's view permission (Phase-1 settlement data → accounting.pay_statements.view)
+	// rather than a bare `accounting.view`, so a holder of reports_run without the
+	// underlying accounting-view sees those columns as "—", never a raw number.
+	PermReportsRun    UserPermissionEnum = "reports_run"
+	PermReportsManage UserPermissionEnum = "reports_manage"
+
+	// PermMailView / PermMailSend / PermMailEdit gate backend-mail: view = read
+	// threads, messages and delivery status; send = compose, send, schedule and
+	// draft; edit = labels, folders, bulk organisation and the company's sending
+	// identity.
+	//
+	// FLAT, for the same reason as PermFileDeleteAny, and here the cost of
+	// getting it wrong is larger. A top-level `mail` module would be swept into
+	// ModulePermissionCodes, which SetDefaultRolePerms grants to EVERY role at
+	// signup — driver included — and HasPermission matches hierarchically, so
+	// holding "mail" would satisfy both "mail_view" and "mail_send". Every
+	// driver in every new tenant would get read access to the company's whole
+	// mailbox and the ability to send as the company. A flat code carries no
+	// dots, resolves by exact match, and is default-deny until someone grants
+	// it deliberately.
+	PermMailView UserPermissionEnum = "mail_view"
+	PermMailSend UserPermissionEnum = "mail_send"
+	PermMailEdit UserPermissionEnum = "mail_edit"
+
+	// PermCallsView / PermCallsPlay gate the RingCentral call log (DEV-1753):
+	// view = the row (who called whom, when, on which company number); play =
+	// the audio RingCentral recorded.
+	//
+	// FLAT, for the same reason as PermMailView, and here the miss would be
+	// worse still. A top-level `calls` module would be swept into
+	// ModulePermissionCodes, which SetDefaultRolePerms grants to EVERY role at
+	// signup — driver included — and HasPermission matches hierarchically, so
+	// holding "calls" would satisfy both "calls_view" and "calls_play". Every
+	// driver in every tenant could listen to every dispatcher's conversations.
+	//
+	// The same trap is why the call log does NOT reuse
+	// settings.office_users.view: `settings` IS a top-level module in
+	// PermissionCatalog, so that code is already satisfied by every role in
+	// every tenant, driver included.
+	//
+	// The two are split on purpose: "Bob called at 15:04" is metadata, while the
+	// recording is a voice recording of a named person, and an office may
+	// reasonably want the first without the second.
+	PermCallsView UserPermissionEnum = "calls_view"
+	PermCallsPlay UserPermissionEnum = "calls_play"
+
+	// PermCallsViewHidden lets a role see hidden calls: list them
+	// (includeHidden), open one, play its recording and read its transcript
+	// (DEV-4240). Hiding a call keeps it from "other office users" (BL §8.96),
+	// so calls_view — held by dispatcher, manager and track_and_trace — must not
+	// be enough. Admin holds it by default; a tenant can give it to a custom role
+	// without the admin role. FLAT for the calls_view reason above.
+	PermCallsViewHidden UserPermissionEnum = "calls_view_hidden"
+
+	// PermSmsView / PermSmsSend gate driver texting (DEV-1897). FLAT for exactly
+	// the calls_view reason above: a top-level `sms` module would be auto-granted
+	// to every role at signup, drivers included, and a dot would let a prefix
+	// satisfy it. Viewing a thread and spending company money on an outbound
+	// text are split the same way metadata and recordings are.
+	PermSmsView UserPermissionEnum = "sms_view"
+	PermSmsSend UserPermissionEnum = "sms_send"
+
+	// Broker portal (DEV-1858, BL-20). Every one of these is FLAT — no dots —
+	// and the shape is not cosmetic.
+	//
+	// HasPermission splits a required code on "." and matches any prefix, so a
+	// dotted `broker.loads.create` would be satisfied by anyone holding `broker`.
+	// Worse, a top-level `broker` module would be swept into
+	// ModulePermissionCodes() and auto-granted to EVERY built-in role at signup —
+	// driver included — which would hand the whole office the broker portal. A
+	// flat code carries no dots, resolves by exact match, and is default-deny for
+	// every role it is not explicitly seeded to. Same reasoning as
+	// PermFileDeleteAny and PermReportsRun.
+	//
+	// The `broker_` prefix also matters on the way OUT: tms-auth's
+	// FilterBrokerPerms keeps only the `broker` family on a broker session and
+	// discards everything else, so a portal capability named anything other than
+	// `broker*` would be stripped before it ever reached a @hasPerm.
+	PermBrokerLoadsView   UserPermissionEnum = "broker_loads_view"
+	PermBrokerLoadsManage UserPermissionEnum = "broker_loads_manage"
+	PermBrokerOffersSend  UserPermissionEnum = "broker_offers_send"
+	// PermBrokerOffersRevoke covers both withdrawing an offer the carrier has not
+	// answered and uncovering a load they already accepted. One code: from the
+	// broker's side these are the same decision — take the load back — and the
+	// difference in consequence is enforced by state, not by permission.
+	PermBrokerOffersRevoke UserPermissionEnum = "broker_offers_revoke"
+	PermBrokerCarriersFind UserPermissionEnum = "broker_carriers_find"
+
+	// PermShipmentBillingApprove gates approving a completed shipment for billing
+	// — the office "good to go" step (verifyByBroker in tms-loads) and undoing it
+	// (DEV-1885). Held by default by admin, manager and accounting.
+	//
+	// FLAT, and here the shape is the whole ticket (DEV-1884). Two dotted
+	// alternatives both leak:
+	//   - `shipments.*`: every office role already holds the `shipments` module,
+	//     and HasPermission matches ancestors, so a dispatcher would get approve
+	//     for free — which is exactly what today's `shipments.shipments.edit`
+	//     check on verifyByBroker does wrong.
+	//   - the `accounting` module: it is a top-level code in PermissionCatalog and
+	//     therefore in ModulePermissionCodes(), which SetDefaultRolePerms grants to
+	//     EVERY built-in role at signup, driver included.
+	// A flat code carries no dots, resolves by exact match, and is default-deny
+	// for every role it is not explicitly seeded to — so a company can tick it on
+	// for dispatcher or a custom role, and nobody gets it by holding a module.
+	//
+	// Invoice batch and Record payment are unrelated and stay on the accounting
+	// module.
+	PermShipmentBillingApprove UserPermissionEnum = "shipment_billing_approve"
+
+	// PermAuditPlanExclusionEdit gates excluding a time range from a crew's weekly
+	// Dispatch KPI plan base, and revoking that exclusion (DEV-1933). It is a plan
+	// CORRECTION — "the truck was in the shop, do not count Tuesday" — and has no
+	// effect on driver availability, so it is deliberately separate from
+	// `shipments.audit.edit` (the day statuses) and from
+	// `drivers.driver_absences.*`.
+	//
+	// FLAT for the same reason as PermShipmentBillingApprove above, and the ticket's
+	// proposed spelling `shipments.audit.plan_exclusion.edit` cannot express it:
+	//   - as a dotted code it is implied by the `shipments` MODULE, which
+	//     ModulePermissionCodes() hands to every built-in role at signup — so every
+	//     role would hold it and the 403 the ticket asks for could never happen;
+	//   - as a nested PermissionCatalog entry under `shipments.audit` it would make
+	//     `shipments.audit` a MODULE in the catalog index, and ExpandPermissions
+	//     would then expand an existing `shipments.audit` grant to this leaf ONLY,
+	//     silently dropping `shipments.audit.view` / `.edit` from every role holding
+	//     it.
+	// Held by default by admin and manager (the dispatch-manager desk).
+	PermAuditPlanExclusionEdit UserPermissionEnum = "audit_plan_exclusion_edit"
+
+	// PermComplianceDispatchOverride gates dispatching a driver/truck/trailer whose
+	// required compliance document is missing or lapsed while the tenant has
+	// enforcement switched on for that document type (DEV-1880). The holder
+	// overrides ONE dispatch, with a mandatory reason recorded forever; the block
+	// itself stays in place for every later dispatch.
+	//
+	// FLAT for the same reason as PermShipmentBillingApprove above, and the
+	// ticket's proposed spelling `compliance.dispatch.override` cannot express it:
+	// a dotted code introduces a top-level `compliance` MODULE, and
+	// ModulePermissionCodes() hands every module to every built-in role at signup
+	// — so the "user without the permission is refused" acceptance criterion could
+	// never be observed. Reading the compliance dashboard stays
+	// `settings.compliance.view|edit`; this is the governed exception on top.
+	//
+	// Held by default by admin, manager and safety (the compliance desk). A
+	// dispatcher deliberately does NOT hold it: waiving a safety document is a
+	// supervisor decision, not a dispatch-desk one. A company widens it the usual
+	// way, in Settings -> Roles.
+	PermComplianceDispatchOverride UserPermissionEnum = "compliance_dispatch_override"
+
+	// PermComplianceCustomerOverride gates creating a load for a customer whose
+	// required document (agreement, W-9, insurance) is missing or lapsed while the
+	// tenant set that document type to "Block new loads" (DEV-2723). The holder
+	// overrides ONE load, with a mandatory reason recorded forever; the next load
+	// for the same customer is refused again. FLAT for the same reason as
+	// PermComplianceDispatchOverride above. Held by default by admin and
+	// accounting (the desks that own the customer relationship).
+	PermComplianceCustomerOverride UserPermissionEnum = "compliance_customer_override"
+
+	// PermMigrationRollback, PermMigrationUnlock and PermMigrationSignoff were the
+	// company-migration review codes (DEV-3428). DEV-3488 (BL §21.18): the
+	// migration is a dev-team job, so they are NOT in CustomPermissionCatalog,
+	// not grantable and held by no role. Only platform staff (super_admin, which
+	// @hasPerm lets through) pass a check on them. The names stay because
+	// tasks, accounting and files still gate their unlock mutations on
+	// PermMigrationUnlock.
+	PermMigrationRollback UserPermissionEnum = "migration_rollback"
+	PermMigrationUnlock   UserPermissionEnum = "migration_unlock"
+	PermMigrationSignoff  UserPermissionEnum = "migration_signoff"
+
+	// PermComplianceRestrictedView gates opening a document whose type is marked
+	// restricted — SSN card, drug test (DEV-3433, BL §17). A reader without it
+	// still sees the row, labelled "Restricted", but never the file. FLAT for the
+	// same reason as PermAssetOutOfServiceOverride above. Held by default by
+	// admin and safety (the compliance desk).
+	PermComplianceRestrictedView UserPermissionEnum = "compliance_restricted_view"
+
+	// PermPrivateDataView gates the full value of a private record detail — SSN,
+	// bank and account numbers, birth date, emergency contact, tax details
+	// (DEV-3506, BL §21.21). A reader without it sees dots; a holder sees the
+	// last 4 and may reveal the full value, each reveal audited. FLAT for the
+	// same reason as PermAssetOutOfServiceOverride below: a dotted code under a
+	// module would reach every office role. Held by default by admin,
+	// accounting and hr.
+	PermPrivateDataView UserPermissionEnum = "private_data_view"
+
+	// PermLoadLayoutsManage gates the company Load page layouts (DEV-3773, BL-27):
+	// publish a layout for a role, restore an earlier version, lock the page,
+	// mark sections required and link a role to a layout. FLAT for the same
+	// reason as PermPrivateDataView: a dotted settings.* code would be implied by
+	// the `settings` module every office role holds. Held by default by admin
+	// only; a company hands it to anyone else in Settings -> Roles.
+	PermLoadLayoutsManage UserPermissionEnum = "load_layouts_manage"
+
+	// DEV-4176: codes the services already checked that the role editor did not
+	// offer, so nobody but admin could pass them once AZSAFI moved to single
+	// rights. The dotted ones are new actions/entities in PermissionCatalog, so a
+	// role holding the parent entity or the `accounting`/`settings` module keeps
+	// passing through prefix matching.
+	PermAccountingInvoicesVoid      UserPermissionEnum = "accounting.invoices.void"
+	PermAccountingPayBatchesUnpost  UserPermissionEnum = "accounting.pay_batches.unpost"
+	PermAccountingPayBatchesRestore UserPermissionEnum = "accounting.pay_batches.restore"
+	PermAccountingRelayFuelView     UserPermissionEnum = "accounting.relay_fuel.view"
+	PermAccountingReportConfigsView UserPermissionEnum = "accounting.report_configs.view"
+	PermAccountingReportConfigsEdit UserPermissionEnum = "accounting.report_configs.edit"
+	PermSettingsDocTypesDelete      UserPermissionEnum = "settings.doc_types.delete"
+
+	// DEV-4176: standalone codes registered in CustomPermissionCatalog. They keep
+	// the exact spelling the services check (tms-files, backend-messaging), dots
+	// and hyphen included, because `compliance` and `chat` are NOT modules: a
+	// module would be handed to every built-in role by the baseline. Nobody can
+	// be granted the bare `compliance` / `chat` prefix (it does not validate), so
+	// in practice these match exactly.
+	//
+	// PermComplianceReceiveAlerts: who gets the customer document reminder when
+	// the tenant picked no alert roles (tms-files recipient_resolver).
+	PermComplianceReceiveAlerts UserPermissionEnum = "compliance.receive-alerts"
+	// PermChatRoomsCreateSecret: create or hide a secret chat room.
+	PermChatRoomsCreateSecret UserPermissionEnum = "chat.rooms.create_secret"
+	// PermChatRoomsAudit: see every chat room in the company (audit view).
+	PermChatRoomsAudit UserPermissionEnum = "chat.rooms.audit"
+
+	// PermAssetOutOfServiceOverride gates sending a trip to the driver when the
+	// truck or trailer on it is OUT_OF_SERVICE (DEV-2254). Like its compliance
+	// sibling above it waives ONE dispatch, with a mandatory reason recorded in
+	// dispatch_compliance_overrides; the asset stays out of service for the next
+	// dispatch. RETIRED is NOT waivable by anyone — the way back is unretireAsset
+	// or another asset — so no permission unlocks it.
+	//
+	// FLAT, and the ticket's proposed spelling `fleet.assets.out_of_service_override`
+	// cannot express it, for exactly the reason spelled out above: a dotted code
+	// hangs off the `fleet` MODULE, ModulePermissionCodes() hands every module to
+	// every built-in role at signup, and HasPermission() prefix-matches — so every
+	// holder of `fleet` would pass and the "user without the permission is refused"
+	// acceptance criterion could never be observed. Putting an out-of-service truck
+	// ON the road stays governed here; putting it out of service is ordinary fleet
+	// work under `fleet.maintenance.manage`.
+	//
+	// Held by default by admin and manager. Fleet and dispatcher deliberately do
+	// NOT hold it: a broken truck is taken off the road by the maintenance desk,
+	// and overruling that is a supervisor decision. A company widens it the usual
+	// way, in Settings -> Roles.
+	PermAssetOutOfServiceOverride UserPermissionEnum = "asset_out_of_service_override"
+
+	// PermTruckVINCorrect gates correcting a truck's VIN (DEV-3096). The VIN is
+	// fixed once the truck is added — updateTruck has no vin — because GPS,
+	// odometer and Samsara find the truck by it. A wrong VIN is corrected with a
+	// reason, recorded in truck history. FLAT for the same reason as
+	// PermAssetOutOfServiceOverride above. Held by default by admin only.
+	PermTruckVINCorrect UserPermissionEnum = "truck_vin_correct"
+
+	// PermInvoiceUnrecordPayment gates taking a recorded customer payment back off
+	// an invoice (DEV-2038) — the accountant marked the wrong invoice paid, or the
+	// cheque bounced. It is deliberately SEPARATE from the permission that records
+	// the payment: whoever closes an invoice must not be able to reopen it alone,
+	// or one slip of the hand both closes and reopens it with no second pair of
+	// eyes on either move.
+	//
+	// FLAT for the same reason as PermShipmentBillingApprove: HasPermission splits
+	// a required code on "." and matches any prefix, so a dotted
+	// `accounting.invoices.unrecord_payment` would be satisfied by anyone holding
+	// `accounting` — which every accounting-side role already does. The whole
+	// point of a second permission is that the payment-recorder does not have it
+	// by default, and a dotted code would hand it to them silently.
+	//
+	// Seeded to admin and auditor only. Accounting records payments; undoing one
+	// is a supervisory correction.
+	PermInvoiceUnrecordPayment UserPermissionEnum = "invoice_unrecord_payment"
+
+	// PermInvoiceRecordPayment gates recording that the customer paid a SENT
+	// invoice (DEV-2366) — the single recordPayment and the bulk recordPayments,
+	// which share one internal path. It is the twin of PermInvoiceUnrecordPayment
+	// above: recording closes an invoice, un-recording reopens it, and the two
+	// stay separate codes so neither move is one person's unilateral round trip.
+	//
+	// FLAT, and this one is a FIX rather than a fresh design. The mutation shipped
+	// gated on `accounting.invoices.record_payment`, which is not a leaf of the
+	// `accounting.invoices` catalog entry (its Actions are view/create/edit) and is
+	// therefore not even grantable — yet it never refused anyone, because
+	// HasPermission splits the required code on "." and matches any prefix, so the
+	// bare `accounting` module satisfied it. ModulePermissionCodes() hands that
+	// module to every built-in role at signup, so in practice every office user
+	// could close an invoice, dispatcher included. A flat code carries no dots,
+	// degenerates to exact match, and is default-deny until granted.
+	//
+	// Seeded to admin, manager and accounting — the desks that collect money.
+	// Dispatcher deliberately does NOT hold it; a tenant that wants it wider ticks
+	// it on in Settings -> Roles.
+	PermInvoiceRecordPayment UserPermissionEnum = "invoice_record_payment"
+
+	// PermAuditLogView gates reading the COMPANY activity log — tms-audit's
+	// `getAudits` (DEV-2220). Until this code existed the tenant log was gated by
+	// ROLE (`@hasRole(roles: ["admin", "auditor"])`), so there was no checkbox an
+	// admin could tick: a manager who needed the log could only be made an admin.
+	// That is the bug — the Roles page must be able to say yes.
+	//
+	// FLAT for the PermSmsView / PermShipmentBillingApprove reason: a dotted
+	// `audit.log.view` (or any `<module>.…` spelling) would be swept into
+	// ModulePermissionCodes(), auto-granted to EVERY built-in role at signup, and
+	// HasPermission matches hierarchically — so holding the module would satisfy
+	// the leaf and every driver would read the company log. A flat code carries no
+	// dots, resolves by exact match, and is default-deny until granted.
+	//
+	// Deliberately NOT `shipments.audit.view`: that one gates the dispatcher Audit
+	// BOARD (a different page, and one every dispatch role already holds).
+	//
+	// Seeded to admin, manager and auditor. It does NOT gate the cross-tenant
+	// `getAuditsAll` (super_admin only, unchanged), and it is not required to read
+	// one's OWN actions — a self-scoped read passes without it.
+	PermAuditLogView UserPermissionEnum = "audit_log_view"
+
+	// PermGeneralLedgerView gates reading the general ledger (DEV-177): journal
+	// entries, an account's ledger and the trial balance. The ledger exposes
+	// payroll, loans, equity and bank balances in one place, so reading it must
+	// be refusable.
+	//
+	// PermJournalEntryManage gates hand-made journal entries: create, edit,
+	// delete, post and reverse. Automated entries (pay batches, invoices,
+	// payments) carry no GL gate of their own — they inherit the gate of the
+	// business mutation that posts them, so an accountant without this code can
+	// still post payroll.
+	//
+	// FLAT for the PermAuditLogView reason: a dotted `accounting.general_ledger.*`
+	// hangs off the `accounting` module every built-in role (driver included)
+	// holds at signup, and HasPermission prefix-matches, so it would refuse
+	// nobody.
+	//
+	// general_ledger_view is seeded to admin, accounting and auditor;
+	// journal_entry_manage to admin and accounting.
+	PermGeneralLedgerView  UserPermissionEnum = "general_ledger_view"
+	PermJournalEntryManage UserPermissionEnum = "journal_entry_manage"
+
+	// PermVendorBillApproveLevel1..3 gate approving a vendor bill at one level of
+	// the approval chain (DEV-174). Level 1 is always required; levels 2 and 3
+	// are required once the bill amount crosses the company threshold. Level N
+	// is checked by exactly code N — the service knows which level a bill is on,
+	// so holding level 3 does not approve level 1. Level 3 also guards editing
+	// the thresholds: lowering them is the same power as approving.
+	//
+	// PermVendorBillPaymentVoid gates voiding a recorded bill payment — the AP
+	// twin of PermInvoiceUnrecordPayment, seeded to the same roles for the same
+	// reason: whoever records a payment must not reverse it unaided.
+	//
+	// FLAT for the PermInvoiceUnrecordPayment reason: every built-in role holds
+	// the `accounting` module, so a dotted approval would refuse nobody.
+	//
+	// Seeded: level 1 — admin, manager, accounting; level 2 — admin, manager;
+	// level 3 — admin; payment void — admin, auditor.
+	PermVendorBillApproveLevel1 UserPermissionEnum = "vendor_bill_approve_level_1"
+	PermVendorBillApproveLevel2 UserPermissionEnum = "vendor_bill_approve_level_2"
+	PermVendorBillApproveLevel3 UserPermissionEnum = "vendor_bill_approve_level_3"
+	PermVendorBillPaymentVoid   UserPermissionEnum = "vendor_bill_payment_void"
+
+	// PermExpenseApprove gates approving, rejecting and voiding an expense,
+	// marking it reimbursed, and setting the expense approval threshold
+	// (DEV-181) — raising the threshold is the same power as approving
+	// everything under it.
+	//
+	// FLAT for the PermInvoiceUnrecordPayment reason: every built-in role holds
+	// `accounting`, so a dotted `accounting.expenses.approve` would let any user
+	// approve their own spend. Seeded to admin and accounting.
+	PermExpenseApprove UserPermissionEnum = "expense_approve"
+
+	// PermStatementReviewResolve gates approving or declining a pay-review item —
+	// backend-accounting's resolveStatementReview (DEV-2548). Approve books the
+	// difference as an adjustment on the driver's next open statement, so it is
+	// a decision on a driver's pay.
+	//
+	// FLAT, and a FIX in the DEV-2366 mould: the mutation shipped gated on
+	// `accounting.statement_balance_entries.create`, which HasPermission's prefix
+	// match lets the bare `accounting` module satisfy — and every built-in office
+	// role holds that module at signup. So a dispatcher could edit a trip's miles
+	// and then approve the pay difference their own edit created.
+	//
+	// Seeded to admin and accounting. Not manager, not dispatcher; a tenant that
+	// wants it wider ticks it on in Settings -> Roles.
+	PermStatementReviewResolve UserPermissionEnum = "statement_review_resolve"
+
+	// PermOwnerEscrowRelease gates handing a truck owner's held escrow back —
+	// backend-accounting's releaseTruckOwnerEscrow (DEV-2821). The release pays
+	// down what the owner owes first and pays the rest out on their settlement,
+	// and it cannot be undone.
+	//
+	// FLAT: a dotted `accounting.…` code is satisfied by the `accounting` module
+	// every built-in office role holds, and the rule is that an ordinary
+	// accountant is refused.
+	//
+	// Seeded to admin only. A tenant hands it to a senior accountant in
+	// Settings -> Roles.
+	PermOwnerEscrowRelease UserPermissionEnum = "owner_escrow_release"
+
+	// PermShipmentsShipmentsSplit gates splitting an in-transit load onto a
+	// recovery trip — tms-loads splitOrder (DEV-2866). A driver does this from
+	// the app, but splitOrder used to share shipments.shipments.edit with
+	// cancel, edit and mark-paid, so a driver who could split could also do
+	// those. Its own leaf lets the driver role hold split alone. Office roles
+	// hold the `shipments` module, which implies this leaf, so they lose nothing.
+	PermShipmentsShipmentsSplit UserPermissionEnum = "shipments.shipments.split"
+
+	// The rest of the driver app's calls (DEV-2866) — see DriverRolePermissions.
+	PermShipmentsShipmentsView UserPermissionEnum = "shipments.shipments.view"
+	PermShipmentsTripsView     UserPermissionEnum = "shipments.trips.view"
+	PermShipmentsTripStopsView UserPermissionEnum = "shipments.trip_stops.view"
+	PermSettingsFilesView      UserPermissionEnum = "settings.files.view"
+	PermSettingsDocTypesView   UserPermissionEnum = "settings.doc_types.view"
+	PermSettingsDriverAppView  UserPermissionEnum = "settings.driver_app.view"
+
+	// PermShipmentsTripFilesCreate is the upload half of trip files
+	// (addTripFile, addTripStopFile): the driver uploads BOL and POD from the
+	// app (DEV-2949). The office-side attach and edit stay on
+	// shipments.trip_files.edit.
+	PermShipmentsTripFilesCreate UserPermissionEnum = "shipments.trip_files.create"
 )
 
 // PermissionCatalogEntry describes one row written to the permissions table.
@@ -48,52 +759,141 @@ var PermissionCatalog = []PermissionCatalogEntry{
 	{Code: "accounting", Label: "Accounting"},
 	{Code: "customers", Label: "Customers"},
 	{Code: "settings", Label: "Settings"},
+	{Code: "tasks", Label: "Tasks"},
+	{Code: "workspaces", Label: "Workspaces"},
+	// DEV-2692: fuel-stop planning (backend-fuel). A module, so every built-in
+	// role gets it through the module baseline at signup and existing tenants
+	// through the tms-auth back-fill migration. HasPermission matches by dotted
+	// prefix, so fuel.plans holders pass create AND send; the split only bites
+	// for custom roles. Drivers are cut off by @auth(actorTypes) in backend-fuel.
+	{Code: "fuel", Label: "Fuel"},
+
+	// === fuel entities ===
+	{Code: "fuel.plans", ParentCode: "fuel", Label: "Fuel plans", Actions: []string{"view", "create", "send"}},
+	{Code: "fuel.settings", ParentCode: "fuel", Label: "Fuel settings", Actions: []string{"view", "edit"}},
+
+	// === tasks entities ===
+	// tasks.tasks is the work-item page itself (getTasks/createTask/assign/
+	// transition/reopen in backend-tasks). Without this entry the codes those
+	// operations require were not grantable at all — see the PermTasks* comment.
+	{Code: "tasks.tasks", ParentCode: "tasks", Label: "Tasks", Actions: []string{"view", "create", "assign", "transition", "reopen"}},
+	{Code: "tasks.teams", ParentCode: "tasks", Label: "Task teams", Actions: []string{"view", "create", "edit", "delete"}},
+	// DEV-2240: resolving an incident closes a money case (a damage charge, a
+	// violation), so it is its own entity rather than a sixth action on
+	// tasks.tasks — a company can hand incident closure to its case handlers
+	// without handing them every task transition.
+	{Code: "tasks.incidents", ParentCode: "tasks", Label: "Incidents", Actions: []string{"resolve"}},
+	// DEV-2385: routines ("standing duties") are templates that open one task per
+	// period. Managing them is a dotted entity under the `tasks` module, so every
+	// tenant's admin/manager already holds it through the module baseline and no
+	// back-fill migration is needed — only FLAT custom codes are default-deny.
+	{Code: "tasks.duties", ParentCode: "tasks", Label: "Routines", Actions: []string{"manage"}},
+
+	// === workspaces entities (backend-workspaces custom boards) ===
+	{Code: "workspaces.workspaces", ParentCode: "workspaces", Label: "Workspaces", Actions: []string{"view", "create", "edit", "delete"}},
+	{Code: "workspaces.boards", ParentCode: "workspaces", Label: "Boards", Actions: []string{"view", "create", "edit", "delete"}},
+	// workspaces.values gates the cell VALUE (read/edit), not the board structure
+	// (that is workspaces.boards). See the PermWorkspacesValues* constants above.
+	{Code: "workspaces.values", ParentCode: "workspaces", Label: "Board values", Actions: []string{"view", "edit"}},
+	// workspaces.templates gates the board-template catalog: view lists templates,
+	// create instantiates one, edit is reserved for template authoring (DEV-1385).
+	{Code: "workspaces.templates", ParentCode: "workspaces", Label: "Board templates", Actions: []string{"view", "create", "edit"}},
 
 	// === dashboard entities ===
 	{Code: "dashboard.stats", ParentCode: "dashboard", Label: "Stats", Actions: []string{"view"}},
 	{Code: "dashboard.hierarchy", ParentCode: "dashboard", Label: "Company hierarchy", Actions: []string{"view"}},
 
 	// === shipments entities ===
-	{Code: "shipments.shipments", ParentCode: "shipments", Label: "Shipments", Actions: []string{"view", "create", "edit", "delete"}},
+	// `split` (DEV-2866) is splitOrder alone, so a driver can split a load
+	// without the edit/cancel/mark-paid that `edit` carries.
+	{Code: "shipments.shipments", ParentCode: "shipments", Label: "Shipments", Actions: []string{"view", "create", "edit", "delete", "split"}},
 	{Code: "shipments.legs", ParentCode: "shipments", Label: "Shipment legs", Actions: []string{"view", "create", "edit", "delete"}},
 	{Code: "shipments.trips", ParentCode: "shipments", Label: "Trips", Actions: []string{"view", "edit"}},
 	{Code: "shipments.trip_stops", ParentCode: "shipments", Label: "Trip stops", Actions: []string{"view", "edit"}},
 	{Code: "shipments.trip_files", ParentCode: "shipments", Label: "Trip files", Actions: []string{"view", "create", "edit"}},
-	{Code: "shipments.other_pay", ParentCode: "shipments", Label: "Other pay", Actions: []string{"create", "edit", "delete"}},
-	{Code: "shipments.driver_expense", ParentCode: "shipments", Label: "Driver expense", Actions: []string{"create", "edit", "delete"}},
+	{Code: "shipments.other_pay", ParentCode: "shipments", Label: "Other pay", Actions: []string{"view", "create", "edit", "delete"}},
+	{Code: "shipments.driver_expense", ParentCode: "shipments", Label: "Driver expense", Actions: []string{"view", "create", "edit", "delete"}},
 	{Code: "shipments.rc_files", ParentCode: "shipments", Label: "RC files", Actions: []string{"view", "create"}},
 	{Code: "shipments.share", ParentCode: "shipments", Label: "Share links", Actions: []string{"view", "create", "delete"}},
-	{Code: "shipments.audit", ParentCode: "shipments", Label: "Shipment audit", Actions: []string{"view", "edit"}},
+	// `lock` (DEV-1934) closes a reviewed team-week: it freezes the money and the
+	// Dispatch KPI, and reopening one needs the same right plus a reason. It is a
+	// third ACTION on the audit entity rather than a new entity, so a company that
+	// grants `shipments.audit` keeps getting everything the audit board can do, and
+	// a custom role can hand out view+edit without the sign-off authority.
+	{Code: "shipments.audit", ParentCode: "shipments", Label: "Shipment audit", Actions: []string{"view", "edit", "lock"}},
 
 	// === drivers entities ===
-	{Code: "drivers.drivers", ParentCode: "drivers", Label: "Drivers", Actions: []string{"view", "create", "edit"}},
+	{Code: "drivers.drivers", ParentCode: "drivers", Label: "Drivers", Actions: []string{"view", "create", "edit", "delete"}},
 	{Code: "drivers.tariff_assignment", ParentCode: "drivers", Label: "Tariff assignment", Actions: []string{"view", "edit"}},
 	{Code: "drivers.balance", ParentCode: "drivers", Label: "Driver balance", Actions: []string{"view", "create", "edit", "delete"}},
 	{Code: "drivers.scheduled_payments", ParentCode: "drivers", Label: "Scheduled payments", Actions: []string{"view", "create", "edit", "delete"}},
 	{Code: "drivers.one_time_charges", ParentCode: "drivers", Label: "One-time charges", Actions: []string{"view", "create", "edit", "delete"}},
 	{Code: "drivers.weekly_deductions", ParentCode: "drivers", Label: "Weekly deductions", Actions: []string{"view", "create", "edit", "delete"}},
+	{Code: "drivers.driver_absences", ParentCode: "drivers", Label: "Driver absences", Actions: []string{"view", "create", "edit", "delete"}},
 
 	// === teams entities ===
 	{Code: "teams.teams", ParentCode: "teams", Label: "Teams", Actions: []string{"view", "edit"}},
 	{Code: "teams.crews", ParentCode: "teams", Label: "Crews", Actions: []string{"view", "create", "edit", "delete"}},
 	{Code: "teams.dispatchers", ParentCode: "teams", Label: "Dispatchers", Actions: []string{"view", "create", "delete"}},
+	// DEV-2510: person charges. view/void/manage are actions on one entity; apply
+	// is one SIBLING entity per department (see PermPersonChargesView) so that
+	// `teams.person_charges` stays an entity and never swallows the apply codes.
+	{Code: "teams.person_charges", ParentCode: "teams", Label: "Person charges", Actions: []string{"view", "void", "manage"}},
+	{Code: "teams.person_charges_dispatch", ParentCode: "teams", Label: "Person charges: apply dispatch types", Actions: []string{"apply"}},
+	{Code: "teams.person_charges_fleet", ParentCode: "teams", Label: "Person charges: apply fleet types", Actions: []string{"apply"}},
+	{Code: "teams.person_charges_update", ParentCode: "teams", Label: "Person charges: apply update types", Actions: []string{"apply"}},
+	{Code: "teams.person_charges_accounting", ParentCode: "teams", Label: "Person charges: apply accounting types", Actions: []string{"apply"}},
+	{Code: "teams.person_charges_driver", ParentCode: "teams", Label: "Person charges: apply driver types", Actions: []string{"apply"}},
+	{Code: "teams.person_charges_bonus", ParentCode: "teams", Label: "Person charges: apply bonus types", Actions: []string{"apply"}},
 
 	// === fleet entities ===
 	{Code: "fleet.trucks", ParentCode: "fleet", Label: "Trucks", Actions: []string{"view", "create", "edit", "delete"}},
 	{Code: "fleet.trailers", ParentCode: "fleet", Label: "Trailers", Actions: []string{"view", "create", "edit"}},
+	// DEV-2240: what an asset costs. `adjudicate` is a third action rather than a
+	// separate entity so a company that grants `fleet.asset_charges` keeps getting
+	// everything the Finances tab can do, while a custom role can be handed
+	// view-only or view+adjudicate without the power to create schedules.
+	{Code: "fleet.asset_charges", ParentCode: "fleet", Label: "Asset charges", Actions: []string{"view", "manage", "adjudicate"}},
+	// DEV-2240: the shop side of an asset — service records and the work orders
+	// that take a truck off the road. Putting an asset OUT_OF_SERVICE is ordinary
+	// work under `manage`; dispatching one anyway is the flat, governed
+	// asset_out_of_service_override (DEV-2254), not a leaf here.
+	{Code: "fleet.maintenance", ParentCode: "fleet", Label: "Maintenance", Actions: []string{"view", "manage"}},
 
 	// === accounting entities ===
-	{Code: "accounting.invoices", ParentCode: "accounting", Label: "Invoices", Actions: []string{"view", "create", "edit"}},
+	{Code: "accounting.invoices", ParentCode: "accounting", Label: "Invoices", Actions: []string{"view", "create", "edit", "void"}},
 	{Code: "accounting.invoice_batches", ParentCode: "accounting", Label: "Invoice batches", Actions: []string{"view", "create", "edit"}},
 	{Code: "accounting.credit_memos", ParentCode: "accounting", Label: "Credit memos", Actions: []string{"view", "create"}},
+	// accounting.credit (DEV-178): the customer credit profile — limit, manual
+	// hold, collections escalation, write-off and the collections log. `edit`
+	// changes the profile and appends to the log; `override` lifts an active
+	// credit hold for a bounded number of days (an approval-level power kept
+	// apart from `edit` so an AR clerk can flag risk without being able to wave
+	// freight through). Reads ride accounting.invoices.view — the credit panel
+	// sits on the same customer card as the invoice stats.
+	{Code: "accounting.credit", ParentCode: "accounting", Label: "Customer credit", Actions: []string{"edit", "override"}},
 	{Code: "accounting.billing", ParentCode: "accounting", Label: "Billing", Actions: []string{"view"}},
-	{Code: "accounting.pay_batches", ParentCode: "accounting", Label: "Pay batches", Actions: []string{"view", "create"}},
-	{Code: "accounting.pay_statements", ParentCode: "accounting", Label: "Pay statements", Actions: []string{"view", "edit"}},
+	{Code: "accounting.pay_batches", ParentCode: "accounting", Label: "Pay batches", Actions: []string{"view", "create", "edit", "delete", "unpost", "restore"}},
+	{Code: "accounting.pay_statements", ParentCode: "accounting", Label: "Pay statements", Actions: []string{"view", "create", "edit", "delete"}},
 	{Code: "accounting.statement_trips", ParentCode: "accounting", Label: "Statement trips", Actions: []string{"view", "create", "edit", "delete"}},
 	{Code: "accounting.statement_deductions", ParentCode: "accounting", Label: "Statement deductions", Actions: []string{"create", "edit", "delete"}},
 	{Code: "accounting.statement_other_pay", ParentCode: "accounting", Label: "Statement other pay", Actions: []string{"create", "edit", "delete"}},
 	{Code: "accounting.statement_balance_entries", ParentCode: "accounting", Label: "Statement balance entries", Actions: []string{"create", "edit", "delete"}},
 	{Code: "accounting.comments", ParentCode: "accounting", Label: "Statement comments", Actions: []string{"view", "create"}},
+	// DEV-174: accounts payable. Approval is the flat vendor_bill_approve_level_N,
+	// not an action here.
+	{Code: "accounting.vendors", ParentCode: "accounting", Label: "Vendors", Actions: []string{"view", "create", "edit", "delete"}},
+	{Code: "accounting.vendor_bills", ParentCode: "accounting", Label: "Vendor bills", Actions: []string{"view", "create", "edit", "delete", "pay"}},
+	// DEV-181: approval is the flat expense_approve, not an action here.
+	{Code: "accounting.expenses", ParentCode: "accounting", Label: "Expenses", Actions: []string{"view", "create", "edit", "delete"}},
+	{Code: "accounting.profitability", ParentCode: "accounting", Label: "Load profitability", Actions: []string{"view", "edit"}},
+	{Code: "accounting.tax_filings", ParentCode: "accounting", Label: "Tax filings & IFTA", Actions: []string{"view", "edit"}},
+	// DEV-4176: Relay fuel transactions (backend-accounting fuel screens) and
+	// report setups (report_config). Both were checked by the server before they
+	// could be ticked; as `accounting` entities every holder of the module keeps
+	// them through prefix matching.
+	{Code: "accounting.relay_fuel", ParentCode: "accounting", Label: "Relay fuel transactions", Actions: []string{"view"}},
+	{Code: "accounting.report_configs", ParentCode: "accounting", Label: "Report setups", Actions: []string{"view", "edit"}},
 
 	// === customers entities ===
 	{Code: "customers.brokers", ParentCode: "customers", Label: "Brokers", Actions: []string{"view", "create"}},
@@ -101,17 +901,120 @@ var PermissionCatalog = []PermissionCatalogEntry{
 	// === settings entities ===
 	{Code: "settings.files", ParentCode: "settings", Label: "Company files", Actions: []string{"view"}},
 	{Code: "settings.company", ParentCode: "settings", Label: "Company settings", Actions: []string{"view", "edit"}},
-	{Code: "settings.doc_types", ParentCode: "settings", Label: "Document types", Actions: []string{"view", "create", "edit"}},
+	{Code: "settings.doc_types", ParentCode: "settings", Label: "Document types", Actions: []string{"view", "create", "edit", "delete"}},
 	{Code: "settings.team_settings", ParentCode: "settings", Label: "Team settings", Actions: []string{"view", "edit"}},
 	{Code: "settings.driver_app", ParentCode: "settings", Label: "Driver app config", Actions: []string{"view", "edit"}},
 	{Code: "settings.driver_tariffs", ParentCode: "settings", Label: "Driver tariffs", Actions: []string{"view", "create", "edit", "delete"}},
 	{Code: "settings.load_status", ParentCode: "settings", Label: "Load status settings", Actions: []string{"view", "create", "edit", "delete"}},
+	// DEV-2349: the company-editable truck & trailer status list (DEV-2350).
+	// Same shape as the load status list above; see PermAssetStatus* for why no
+	// per-role seeding or back-fill is needed.
+	{Code: "settings.asset_status", ParentCode: "settings", Label: "Truck & trailer status settings", Actions: []string{"view", "create", "edit", "delete"}},
 	{Code: "settings.integration", ParentCode: "settings", Label: "Integrations", Actions: []string{"view", "edit"}},
-	{Code: "settings.reassignment", ParentCode: "settings", Label: "Reassignment", Actions: []string{"view", "delete"}},
+	{Code: "settings.reassignment", ParentCode: "settings", Label: "Reassignment", Actions: []string{"view", "create", "edit", "delete"}},
 	{Code: "settings.reward_plans", ParentCode: "settings", Label: "Reward plans", Actions: []string{"view", "edit"}},
 	{Code: "settings.accounting_types", ParentCode: "settings", Label: "Accounting types", Actions: []string{"view", "create", "edit"}},
+	{Code: "settings.chart_of_accounts", ParentCode: "settings", Label: "Chart of accounts", Actions: []string{"view", "edit"}},
+	{Code: "settings.company_cards", ParentCode: "settings", Label: "Company credit cards", Actions: []string{"view", "edit"}},
+	{Code: "settings.overhead_allocation", ParentCode: "settings", Label: "Overhead allocation", Actions: []string{"view", "edit"}},
+	{Code: "settings.tax", ParentCode: "settings", Label: "Tax", Actions: []string{"view", "edit"}},
 	{Code: "settings.office_users", ParentCode: "settings", Label: "Office users", Actions: []string{"view", "create", "edit"}},
 	{Code: "settings.office_roles", ParentCode: "settings", Label: "Office roles", Actions: []string{"view", "edit"}},
+	{Code: "settings.pdf_layouts", ParentCode: "settings", Label: "PDF layouts", Actions: []string{"view", "edit"}},
+	// DEV-1466: the ONLY compliance vocabulary. `view` = read dashboard/list/cards/
+	// status/mutes; `edit` = upload/renew/delete/mute. A `settings` module grant
+	// implies both leaves via HasPermission prefix-matching (see PermComplianceView /
+	// PermComplianceEdit), so no separate per-role leaf seeding is required.
+	{Code: "settings.compliance", ParentCode: "settings", Label: "Compliance", Actions: []string{"view", "edit"}},
+}
+
+// CustomPermissionEntry is a standalone, NON-hierarchical permission: a flat
+// code (no `module.entity.action` structure) that is resolved by exact match
+// only. Because it carries no dots, middleware.HasPermission reduces to an
+// exact-match for it — no module can imply it via prefix, and it implies
+// nothing. Custom permissions live OUTSIDE PermissionCatalog (so they are never
+// swept into ModulePermissionCodes → default-deny) yet are fully grantable:
+// they validate, they can be assigned to roles/users, and @hasPerm checks them
+// exactly like standard codes.
+type CustomPermissionEntry struct {
+	Code  string
+	Label string
+}
+
+// CustomPermissionCatalog is the source of truth for flat, governed permissions
+// that fall outside the standard module.entity.action grid. The admin UI renders
+// them as standalone checkboxes (see getPermissions), and they are
+// grantable/revocable per company via custom roles like any other code.
+var CustomPermissionCatalog = []CustomPermissionEntry{
+	{Code: string(PermTripFinancialsEdit), Label: "Edit trip miles & gross rate"},
+	{Code: string(PermTripGrossEdit), Label: "Edit driver gross only"},
+	// Registered and grantable via custom roles, but NOT default-seeded to any
+	// role yet — reserved for a future maker-checker approval flow (see
+	// DefaultRolePermissions).
+	{Code: string(PermTripFinancialsApprove), Label: "Approve trip financial changes"},
+	{Code: string(PermTripReassignCommitted), Label: "Reassign driver after trip accepted"},
+	{Code: string(PermFileDeleteAny), Label: "Delete any uploaded file"},
+	{Code: string(PermReportsRun), Label: "Run & export reports"},
+	{Code: string(PermReportsManage), Label: "Manage report configs & view report audit log"},
+	{Code: string(PermMailView), Label: "View mail"},
+	{Code: string(PermMailSend), Label: "Send mail"},
+	{Code: string(PermMailEdit), Label: "Manage mail (labels, folders, sending identity)"},
+	{Code: string(PermCallsView), Label: "View the call log"},
+	{Code: string(PermCallsPlay), Label: "Play call recordings"},
+	{Code: string(PermCallsViewHidden), Label: "See hidden calls"},
+	{Code: string(PermSmsView), Label: "View driver text messages"},
+	{Code: string(PermSmsSend), Label: "Text a driver"},
+	{Code: string(PermBrokerLoadsView), Label: "Broker portal: view own loads"},
+	{Code: string(PermBrokerLoadsManage), Label: "Broker portal: create & edit own loads"},
+	{Code: string(PermBrokerOffersSend), Label: "Broker portal: offer a load to a carrier"},
+	{Code: string(PermBrokerOffersRevoke), Label: "Broker portal: withdraw an offer or uncover a load"},
+	{Code: string(PermBrokerCarriersFind), Label: "Broker portal: search carriers"},
+	{Code: string(PermShipmentBillingApprove), Label: "Approve loads for billing"},
+	{Code: string(PermAuditPlanExclusionEdit), Label: "Exclude a time range from the Dispatch KPI plan"},
+	{Code: string(PermComplianceDispatchOverride), Label: "Dispatch despite a blocking compliance document"},
+	{Code: string(PermAssetOutOfServiceOverride), Label: "Dispatch an out-of-service truck or trailer"},
+	{Code: string(PermTruckVINCorrect), Label: "Correct a truck's VIN"},
+	{Code: string(PermComplianceCustomerOverride), Label: "Create a load despite a blocking customer document"},
+	{Code: string(PermTripDelete), Label: "Delete a trip from a load"},
+	{Code: string(PermInvoiceUnrecordPayment), Label: "Un-record a customer payment on an invoice"},
+	{Code: string(PermInvoiceRecordPayment), Label: "Record a customer payment on an invoice"},
+	{Code: string(PermAuditLogView), Label: "View the company activity log"},
+	{Code: string(PermGeneralLedgerView), Label: "View the general ledger and trial balance"},
+	{Code: string(PermJournalEntryManage), Label: "Create, post and reverse manual journal entries"},
+	{Code: string(PermVendorBillApproveLevel1), Label: "Approve vendor bills: level 1"},
+	{Code: string(PermVendorBillApproveLevel2), Label: "Approve vendor bills: level 2"},
+	{Code: string(PermVendorBillApproveLevel3), Label: "Approve vendor bills: level 3 and edit approval thresholds"},
+	{Code: string(PermVendorBillPaymentVoid), Label: "Void a payment on a vendor bill"},
+	{Code: string(PermExpenseApprove), Label: "Approve, reject and void expenses; set the expense approval threshold"},
+	{Code: string(PermStatementReviewResolve), Label: "Approve or decline a driver pay review"},
+	{Code: string(PermOwnerEscrowRelease), Label: "Release a truck owner's escrow"},
+	{Code: string(PermComplianceRestrictedView), Label: "Open restricted documents (SSN card, drug test)"},
+	{Code: string(PermPrivateDataView), Label: "See private data (SSN, bank, birth date, emergency contact)"},
+	{Code: string(PermLoadLayoutsManage), Label: "Manage company Load page layouts"},
+	{Code: string(PermComplianceReceiveAlerts), Label: "Compliance: receive customer document alerts"},
+	{Code: string(PermChatRoomsCreateSecret), Label: "Chat: create a secret room"},
+	{Code: string(PermChatRoomsAudit), Label: "Chat: see all chat rooms (audit)"},
+}
+
+// CustomPermissionCodes returns just the flat custom permission codes, in
+// declaration order.
+func CustomPermissionCodes() []string {
+	out := make([]string, 0, len(CustomPermissionCatalog))
+	for _, c := range CustomPermissionCatalog {
+		out = append(out, c.Code)
+	}
+	return out
+}
+
+// IsCustomPermissionCode reports whether code is a registered flat custom
+// permission (as opposed to a standard hierarchical catalog code).
+func IsCustomPermissionCode(code string) bool {
+	for _, c := range CustomPermissionCatalog {
+		if c.Code == code {
+			return true
+		}
+	}
+	return false
 }
 
 // validPermissionCodes indexes every grantable key (modules, entities, and
@@ -126,7 +1029,185 @@ func buildValidPermissionCodes() map[string]struct{} {
 			m[e.Code+"."+a] = struct{}{}
 		}
 	}
+	// Flat custom permissions are grantable too, so they must validate for the
+	// assignPermissionsTo{User,Role} mutations.
+	for _, c := range CustomPermissionCatalog {
+		m[c.Code] = struct{}{}
+	}
 	return m
+}
+
+// catalogIndex is the derived, read-only view of PermissionCatalog that
+// ExpandPermissions / RollupPermissions consult. It is built once at package
+// init (permIndex) so neither function re-scans the catalog per call. The two
+// maps double as the module/entity sets — a code is a module iff it keys
+// moduleEntities, an entity iff it keys entityLeaves — so there is one source
+// of truth per fact.
+type catalogIndex struct {
+	moduleEntities map[string][]string // module code -> its entity codes
+	entityLeaves   map[string][]string // entity code -> its full leaf codes (entity.action)
+	entityModule   map[string]string   // entity code -> its module code
+}
+
+func (ix catalogIndex) isModule(code string) bool { _, ok := ix.moduleEntities[code]; return ok }
+func (ix catalogIndex) isEntity(code string) bool { _, ok := ix.entityLeaves[code]; return ok }
+
+var permIndex = buildCatalogIndex()
+
+func buildCatalogIndex() catalogIndex {
+	ix := catalogIndex{
+		moduleEntities: make(map[string][]string),
+		entityLeaves:   make(map[string][]string),
+		entityModule:   make(map[string]string),
+	}
+	for _, e := range PermissionCatalog {
+		if e.ParentCode == "" {
+			// Register the module even if it has no entities yet, so isModule
+			// recognises it.
+			if _, ok := ix.moduleEntities[e.Code]; !ok {
+				ix.moduleEntities[e.Code] = nil
+			}
+			continue
+		}
+		ix.entityModule[e.Code] = e.ParentCode
+		ix.moduleEntities[e.ParentCode] = append(ix.moduleEntities[e.ParentCode], e.Code)
+		leaves := make([]string, 0, len(e.Actions))
+		for _, a := range e.Actions {
+			leaves = append(leaves, e.Code+"."+a)
+		}
+		ix.entityLeaves[e.Code] = leaves
+	}
+	return ix
+}
+
+// ExpandPermissions returns the concrete leaf codes implied by codes, per
+// PermissionCatalog: a module code expands to every leaf of its entities, an
+// entity code expands to its own leaves, and any other code (an already-leaf
+// action, a flat custom code, or an unrecognised code) is kept unchanged. The
+// result is deduplicated and sorted. It never drops an input grant, so it is
+// the safe way to bring a mixed set of module/entity/leaf codes to a single
+// granularity before set algebra (merge, diff).
+func ExpandPermissions(codes []string) []string {
+	set := make(map[string]struct{}, len(codes)*4)
+	for _, c := range codes {
+		switch {
+		case c == "":
+			// skip
+		case permIndex.isModule(c):
+			for _, ent := range permIndex.moduleEntities[c] {
+				for _, leaf := range permIndex.entityLeaves[ent] {
+					set[leaf] = struct{}{}
+				}
+			}
+		case permIndex.isEntity(c):
+			for _, leaf := range permIndex.entityLeaves[c] {
+				set[leaf] = struct{}{}
+			}
+		default:
+			set[c] = struct{}{}
+		}
+	}
+	return sortedKeys(set)
+}
+
+// RollupPermissions is the inverse of ExpandPermissions: it replaces a complete
+// set of children with their single parent code. If every catalog leaf of an
+// entity is held, the entity code is emitted instead of the leaves; if every
+// entity of a module is held, the module code is emitted instead of the
+// entities. A code held via an already-present ancestor (e.g. an
+// `accounting.invoices.view` leaf when `accounting` is present) is dropped as
+// redundant — so this subsumes the old prefix-only CompactHierarchy. Codes with
+// no catalog parent (flat custom codes, unrecognised codes) are preserved as-is.
+// The result is deduplicated and sorted and never drops a grant.
+func RollupPermissions(codes []string) []string {
+	present := make(map[string]struct{}, len(codes))
+	for _, c := range codes {
+		if c != "" {
+			present[c] = struct{}{}
+		}
+	}
+
+	// An entity is complete when every one of its leaves is held (present, or
+	// implied by a present ancestor); a module is complete when every one of its
+	// entities is complete.
+	completeEntities := make(map[string]struct{})
+	for ent, leaves := range permIndex.entityLeaves {
+		if len(leaves) > 0 && allImpliedBy(leaves, present) {
+			completeEntities[ent] = struct{}{}
+		}
+	}
+	completeModules := make(map[string]struct{})
+	for mod, ents := range permIndex.moduleEntities {
+		if len(ents) > 0 && allIn(ents, completeEntities) {
+			completeModules[mod] = struct{}{}
+		}
+	}
+
+	// The rolled-up set is the minimal representatives — complete modules, plus
+	// complete entities whose module isn't itself complete — together with every
+	// present code they don't already cover (leaves of incomplete entities, flat
+	// custom codes, unknown codes). Building it this way guarantees no grant is
+	// dropped: a present code is emitted unless a representative implies it.
+	out := make(map[string]struct{}, len(present))
+	for mod := range completeModules {
+		out[mod] = struct{}{}
+	}
+	for ent := range completeEntities {
+		if _, moduleComplete := completeModules[permIndex.entityModule[ent]]; !moduleComplete {
+			out[ent] = struct{}{}
+		}
+	}
+	for c := range present {
+		if !impliedBy(c, out) {
+			out[c] = struct{}{}
+		}
+	}
+	return sortedKeys(out)
+}
+
+// impliedBy reports whether code, or any of its dotted-prefix ancestors, is a
+// member of set — the same self-or-ancestor rule middleware.HasPermission uses
+// (`accounting` implies `accounting.invoices.view`). It scans dot boundaries in
+// place, so it allocates nothing (it runs once per catalog leaf per rollup).
+func impliedBy(code string, set map[string]struct{}) bool {
+	if _, ok := set[code]; ok {
+		return true
+	}
+	for i := len(code) - 1; i > 0; i-- {
+		if code[i] == '.' {
+			if _, ok := set[code[:i]]; ok {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func allImpliedBy(codes []string, set map[string]struct{}) bool {
+	for _, c := range codes {
+		if !impliedBy(c, set) {
+			return false
+		}
+	}
+	return true
+}
+
+func allIn(codes []string, set map[string]struct{}) bool {
+	for _, c := range codes {
+		if _, ok := set[c]; !ok {
+			return false
+		}
+	}
+	return true
+}
+
+func sortedKeys(set map[string]struct{}) []string {
+	out := make([]string, 0, len(set))
+	for c := range set {
+		out = append(out, c)
+	}
+	sort.Strings(out)
+	return out
 }
 
 // String satisfies fmt.Stringer.
@@ -143,6 +1224,30 @@ func IsValidPermissionCode(code string) bool {
 	return ok
 }
 
+// devTeamPermissionCodes are checked by the server but deliberately NOT
+// grantable in the role editor: unlocking or rolling back imported records
+// stays with the dev team (DEV-4176 out of scope). They are known, not
+// grantable.
+var devTeamPermissionCodes = map[string]struct{}{
+	string(PermMigrationRollback): {},
+	string(PermMigrationUnlock):   {},
+	string(PermMigrationSignoff):  {},
+}
+
+// IsKnownPermission reports whether a code a service checks (@hasPerm,
+// HasPermission, ...) is one the platform knows: every grantable code
+// (IsValidPermissionCode) plus the dev-team-only migration_* codes. The
+// per-service build check (permcheck) fails on any code for which this is
+// false, so a right can no longer be checked without being tickable in
+// Settings -> Roles (DEV-4176).
+func IsKnownPermission(code string) bool {
+	if IsValidPermissionCode(code) {
+		return true
+	}
+	_, ok := devTeamPermissionCodes[code]
+	return ok
+}
+
 // AllUserPermissions returns every grantable code in the catalog — modules,
 // entities, and synthesized action leaves. Order is not stable; callers that
 // need deterministic order should sort the result.
@@ -154,17 +1259,386 @@ func AllUserPermissions() []string {
 	return out
 }
 
-// ModulePermissionCodes returns just the top-level module codes from the
-// catalog (entries with no ParentCode) in declaration order. These are the
-// codes the auth service grants to every role on company signup so the
+// ModulePermissionCodes returns the top-level module codes the auth service
+// grants to EVERY role on company signup (the all-modules default) so a fresh
 // tenant has working defaults; hierarchical prefix matching covers every
 // entity/action below each module.
+//
+// DEV-1256: the finance module (FinanceModuleCode) is deliberately excluded — a
+// governed permission (finance.trip_miles.override) must sit OUTSIDE the set
+// every role receives automatically, so nobody is swept in by this broad default.
+// It is granted to Accounting by the seeder and to others only via custom roles.
 func ModulePermissionCodes() []string {
 	out := make([]string, 0, 8)
 	for _, e := range PermissionCatalog {
 		if e.ParentCode == "" {
 			out = append(out, e.Code)
 		}
+	}
+	return out
+}
+
+// DefaultRolePermissions maps each built-in role to the exact permission codes
+// it receives by default at company signup (and, for existing tenants, via the
+// back-fill migration). It replaces the former "every role gets every module"
+// uniform grant: each role is listed explicitly, so a role's default set can
+// diverge from the others.
+//
+// Every office role's baseline is the full module set (ModulePermissionCodes),
+// except that DEV-2502 swaps `fleet` for its entities minus maintenance on the
+// roles that do not run the shop; on top of that, dispatcher and accounting receive
+// their governed flat custom permission (DEV-1256) — trip_financials_edit and
+// trip_financials_approve respectively. super_admin bypasses all permission
+// checks, so it is intentionally omitted; a role absent from the map receives
+// no default grant. Trim an individual role's slice here to narrow its defaults
+// without touching any other role.
+//
+// Each role gets its own copy of the slice, so a caller may mutate the returned
+// value without cross-contaminating other roles.
+func DefaultRolePermissions() map[UserRoleEnum][]string {
+	base := ModulePermissionCodes()
+	withExtra := func(extra ...string) []string {
+		out := make([]string, 0, len(base)+len(extra))
+		out = append(out, base...)
+		out = append(out, extra...)
+		return out
+	}
+	out := map[UserRoleEnum][]string{
+		// DEV-1256 / BL §7.5: hand-editing trip miles & gross rate
+		// (trip_financials_edit) is held by default by admin and accounting only.
+		// A regular dispatcher does NOT get it (a custom role may add it later).
+		// trip_gross_edit (DEV-2979): admin only. Accounting already edits gross
+		// through trip_financials_edit; dispatchers get it when the company grants it.
+		// trip_financials_approve is intentionally NOT seeded to any role — it stays
+		// registered/grantable for a future maker-checker flow, but seeding it now
+		// would leave accounting with approve-and-no-edit, the exact divergence this
+		// matrix fixes.
+		// DEV-1227 / BL §7.5: reassigning a committed trip's driver
+		// (trip_reassign_committed) is held by default by manager AND admin.
+		// A regular dispatcher does NOT get it (a custom role may add it later).
+		// file_delete_any: removing someone else's upload (or one past the uploader
+		// window) is an office-supervisor action, so it goes to admin and manager
+		// only. Every other role — driver included — falls back to the
+		// "own upload, inside the window" path.
+		// reports_run / reports_manage (BL-22 §22.1): the report builder is an
+		// admin + accounting capability. Both are flat custom perms, so every other
+		// role — including any external/portal (customer) role — is default-deny.
+		// shipment_billing_approve (DEV-1884): approving a completed load for
+		// billing is an admin / manager / accounting decision. Dispatcher does NOT
+		// get it by default — and neither does track_and_trace, which is derived
+		// from dispatcher below. A company that wants it wider ticks it on for a
+		// role in Settings -> Roles; it stays revocable the same way.
+		// audit_plan_exclusion_edit (DEV-1933): excluding a range from a crew's plan
+		// base is a supervisor correction, so admin and manager hold it. A regular
+		// dispatcher does NOT — they would otherwise be able to shrink the target
+		// they are measured against.
+		// sms_view / sms_send (DEV-1897): texting a driver is the same
+		// dispatch-desk surface as calling one, so admin, manager and dispatcher
+		// hold both. Driver gets neither — the thread is the office's record of
+		// texting drivers, and sms_send spends company money per message.
+		// calls_view / calls_play (DEV-1753): the RingCentral call log is a
+		// dispatch-desk surface, so admin, manager and dispatcher get it. Driver
+		// gets NEITHER, deliberately — the log is a record of the office calling
+		// drivers, and a recording is a named person's voice. Keep it that way; if
+		// a tenant wants a wider audience, that is a custom role, not a default.
+		// calls_view_hidden (DEV-4240): admin only. Hidden calls do not play for
+		// other office users (BL §8.96), so manager and dispatcher do not get it.
+		// compliance_dispatch_override (DEV-1880): waiving a missing or lapsed
+		// safety document for one dispatch is a supervisor decision, so admin,
+		// manager and safety hold it. Dispatcher does NOT — and therefore neither
+		// does track_and_trace, which is derived from dispatcher below.
+		// trip_delete (DEV-2024): removing a trip destroys the record of who was
+		// sent where, so admin and manager only. A dispatcher who needs a load to
+		// stop already has two paths that keep the history — cancel the load, or
+		// clear a mistaken stop mark with a reason — and the refusal names them.
+		// invoice_unrecord_payment (DEV-2038): taking a recorded payment back off an
+		// invoice is a supervisory correction, so admin and auditor hold it — the
+		// two roles the ticket names ("По умолчанию — admin и аудитор"), and its
+		// first AC is written for the auditor.
+		// Accounting deliberately does NOT get it by default even though it records
+		// the payments — that separation is the entire point of a second code.
+		// audit_log_view (DEV-2220): reading the company activity log used to be a
+		// ROLE check, so an admin had no checkbox to hand it to a manager who needed
+		// it. Seeded to admin, auditor (the two the role gate already let in) and
+		// manager (the role the ticket adds). Dispatcher does NOT get it — the log
+		// carries every desk's moves; a tenant that wants it wider ticks it on in
+		// Settings -> Roles. Reading one's OWN actions needs no code at all.
+		// general_ledger_view / journal_entry_manage (DEV-177): the ledger is read
+		// by admin, accounting and auditor (the auditor reviews the books) and
+		// written by hand by admin and accounting only. Manager and dispatcher get
+		// neither — payroll and bank balances are not a dispatch-desk read.
+		// vendor_bill_approve_level_1..3 (DEV-174): each higher level narrows the
+		// holders — level 1 admin, manager, accounting; level 2 admin, manager;
+		// level 3 admin only. vendor_bill_payment_void mirrors
+		// invoice_unrecord_payment: admin and auditor, not accounting, which
+		// records the payment.
+		// expense_approve (DEV-181): admin and accounting. Manager and dispatcher
+		// enter expenses but do not approve them.
+		// invoice_record_payment (DEV-2366): admin, manager and accounting — the
+		// desks that collect money. NOT dispatcher: the mutation was effectively
+		// open to every office role until this code existed, because its old dotted
+		// spelling was satisfied by the `accounting` module. NOT auditor either;
+		// the auditor's move is the reverse one, invoice_unrecord_payment.
+		// mail_view / mail_send / mail_edit (DEV-2466): the company mailbox is an
+		// office surface, so the three codes are default-deny and a driver never
+		// reads it. They were left off EVERY role, admin included — and the admin
+		// role is locked (guardRoleMatrixAuthority), so a company admin could not
+		// tick them on for themselves and saw "access denied" on a shipped feature.
+		// The PM rule is that the company admin always holds every permission, so
+		// admin gets all three here. No other role is widened: a tenant hands mail
+		// to a manager or an accountant through a custom role or a user grant.
+		// compliance_customer_override (DEV-2723): booking a load for a customer
+		// missing a blocking document is a commercial-risk call, so admin and
+		// accounting. Dispatcher does NOT — the refusal exists for the dispatch desk.
+		// statement_review_resolve (DEV-2548): admin and accounting. Approving a
+		// pay review books money on a driver's statement; the old dotted gate was
+		// satisfied by the `accounting` module every office role holds, so a
+		// dispatcher could approve the difference their own miles edit created.
+		// private_data_view (DEV-3506): admin, accounting and hr — the desks that
+		// handle pay, tax and personnel files. Dispatch, safety and fleet do not.
+		// load_layouts_manage (DEV-3773): admin only. Company Load page layouts
+		// reach every user of a role, so a tenant widens it in Settings -> Roles.
+		// compliance.receive-alerts / chat.rooms.* (DEV-4176): the roles that
+		// passed before the codes could be ticked. Alerts: admin and accounting.
+		// Secret rooms: admin and hr; the all-rooms audit view: admin, hr and
+		// auditor — the same roles backend-messaging still lets in by name.
+		// owner_escrow_release (DEV-2821): admin only. Releasing escrow moves held
+		// money out and is not reversible, so the accounting role does NOT hold it.
+		UserRoleAdmin:      withExtra(string(PermTripFinancialsEdit), string(PermTripGrossEdit), string(PermTripReassignCommitted), string(PermFileDeleteAny), string(PermReportsRun), string(PermReportsManage), string(PermCallsView), string(PermCallsPlay), string(PermCallsViewHidden), string(PermSmsView), string(PermSmsSend), string(PermShipmentBillingApprove), string(PermAuditPlanExclusionEdit), string(PermComplianceDispatchOverride), string(PermAssetOutOfServiceOverride), string(PermTripDelete), string(PermInvoiceUnrecordPayment), string(PermAuditLogView), string(PermGeneralLedgerView), string(PermJournalEntryManage), string(PermVendorBillApproveLevel1), string(PermVendorBillApproveLevel2), string(PermVendorBillApproveLevel3), string(PermVendorBillPaymentVoid), string(PermExpenseApprove), string(PermInvoiceRecordPayment), string(PermMailView), string(PermMailSend), string(PermMailEdit), string(PermStatementReviewResolve), string(PermComplianceCustomerOverride), string(PermOwnerEscrowRelease), string(PermTruckVINCorrect), string(PermComplianceRestrictedView), string(PermPrivateDataView), string(PermLoadLayoutsManage), string(PermComplianceReceiveAlerts), string(PermChatRoomsCreateSecret), string(PermChatRoomsAudit)),
+		UserRoleManager:    withExtra(string(PermTripReassignCommitted), string(PermFileDeleteAny), string(PermCallsView), string(PermCallsPlay), string(PermSmsView), string(PermSmsSend), string(PermShipmentBillingApprove), string(PermAuditPlanExclusionEdit), string(PermComplianceDispatchOverride), string(PermAssetOutOfServiceOverride), string(PermTripDelete), string(PermAuditLogView), string(PermVendorBillApproveLevel1), string(PermVendorBillApproveLevel2), string(PermInvoiceRecordPayment)),
+		UserRoleAccounting: withExtra(string(PermTripFinancialsEdit), string(PermReportsRun), string(PermReportsManage), string(PermShipmentBillingApprove), string(PermGeneralLedgerView), string(PermJournalEntryManage), string(PermVendorBillApproveLevel1), string(PermExpenseApprove), string(PermInvoiceRecordPayment), string(PermStatementReviewResolve), string(PermComplianceCustomerOverride), string(PermPrivateDataView), string(PermComplianceReceiveAlerts)),
+		UserRoleFleet:      withExtra(),
+		UserRoleSafety:     withExtra(string(PermComplianceDispatchOverride), string(PermComplianceRestrictedView)),
+		UserRoleHr:         withExtra(string(PermPrivateDataView), string(PermChatRoomsCreateSecret), string(PermChatRoomsAudit)),
+		// DEV-1409: the auditor gets the same module baseline as its peers. Most of
+		// its governed powers (locked-statement corrections, revised-invoice voids,
+		// reading the tenant audit log) are gated by role, not by a permission code.
+		// DEV-2038 gives it its first seeded custom code: invoice_unrecord_payment.
+		// Undoing a recorded payment is exactly the class of governed correction the
+		// auditor role exists for. (DEV-2094: the code was named in the comments
+		// from the start and never actually seeded, so an auditor-only user was
+		// refused on unrecordPayment.)
+		UserRoleAuditor:    withExtra(string(PermInvoiceUnrecordPayment), string(PermAuditLogView), string(PermGeneralLedgerView), string(PermVendorBillPaymentVoid), string(PermChatRoomsAudit)),
+		UserRoleDispatcher: withExtra(string(PermCallsView), string(PermCallsPlay), string(PermSmsView), string(PermSmsSend)),
+		// DEV-2866: the driver gets only what the driver app calls, not the
+		// office module baseline. See DriverRolePermissions.
+		UserRoleDriver: DriverRolePermissions(),
+		UserRoleOther:  withExtra(),
+	}
+
+	// DEV-2502 / BL-15: fleet maintenance (service records, work orders, taking
+	// a truck off the road) belongs to the roles that run the shop. The `fleet`
+	// module in the baseline implies every fleet leaf, maintenance included, so
+	// for the other roles it is swapped for the fleet entities minus maintenance —
+	// trucks, trailers and asset charges stay exactly as before. Dispatcher,
+	// accounting and auditor keep a read of maintenance; hr, driver and other get
+	// none. admin, manager, fleet and safety keep the whole module. Runs before
+	// the track_and_trace derivation below, so that role inherits the view.
+	for role, maintenance := range map[UserRoleEnum][]string{
+		UserRoleDispatcher: {string(PermFleetMaintenanceView)},
+		UserRoleAccounting: {string(PermFleetMaintenanceView)},
+		UserRoleAuditor:    {string(PermFleetMaintenanceView)},
+		UserRoleHr:         nil,
+		UserRoleOther:      nil,
+	} {
+		out[role] = withoutFleetMaintenance(out[role], maintenance...)
+	}
+
+	// DEV-2510 / BL-6 §6.PC6: person charges belong to departments. The `teams`
+	// module in the baseline implies every person-charge code, so on every role
+	// but admin it is swapped for the teams entities minus person charges, plus
+	// the role's own bag. Roles not listed here (hr, auditor, driver, other) get
+	// no person-charge code. There is no built-in "update" role, so update apply
+	// is handed out in Settings -> Roles. Runs before the track_and_trace
+	// derivation below, so that role inherits the dispatcher bag (§4.17).
+	view, void, manage := string(PermPersonChargesView), string(PermPersonChargesVoid), string(PermPersonChargesManage)
+	for role, bag := range map[UserRoleEnum][]string{
+		UserRoleDispatcher: {view, string(PermPersonChargeApplyDispatch)},
+		UserRoleManager:    {view, void, string(PermPersonChargeApplyDispatch), string(PermPersonChargeApplyBonus)},
+		UserRoleFleet:      {view, string(PermPersonChargeApplyFleet)},
+		UserRoleAccounting: {view, void, manage, string(PermPersonChargeApplyAccounting), string(PermPersonChargeApplyBonus)},
+		UserRoleSafety:     {view, string(PermPersonChargeApplyDriver)},
+		UserRoleHr:         nil,
+		UserRoleAuditor:    nil,
+		UserRoleOther:      nil,
+	} {
+		out[role] = withoutPersonCharges(out[role], bag...)
+	}
+
+	// DEV-4570: company settings (Settings -> General: Empty miles mode, timezone,
+	// split trip, logo, setup items) are an admin decision; the dispatcher only
+	// reads them. The `settings` module in the baseline implies
+	// settings.company.edit, so on the dispatcher it is swapped for every
+	// settings entity except settings.company, plus settings.company.view —
+	// the shape AZSAFI's Dispatcher already has. Every other settings screen
+	// stays. Runs before the track_and_trace derivation below, so that role
+	// inherits the narrowed set (§4.17).
+	out[UserRoleDispatcher] = withoutCompanySettingsEdit(out[UserRoleDispatcher])
+
+	// DEV-1824 / BL-4 §4.17: Track & Trace is defined as "whatever dispatcher
+	// gets". Deriving it from the dispatcher entry instead of repeating the
+	// literal means the two sets can never drift — a perm added to dispatcher
+	// tomorrow is inherited here for free, which is the whole contract of the
+	// role. (The exclusion from Teams comes from the NAME, not from the perms:
+	// tms-teams matches the literal "dispatcher".)
+	out[UserRoleTrackAndTrace] = append([]string(nil), out[UserRoleDispatcher]...)
+
+	// Broker portal (DEV-1858). These roles deliberately get NO module baseline:
+	// every code in ModulePermissionCodes() is an office module, and a broker is
+	// not an office user. withExtra() is therefore NOT used here — seeding the
+	// baseline would read like the broker has shipments/settings/reports access,
+	// and would only be invisible because tms-auth strips it on the way out.
+	// Default-deny by construction is the stronger guarantee.
+	//
+	// Both roles hold the same portal capabilities. The admin/user split in
+	// DEV-1857 is about inviting other broker users, which is gated by ROLE, not
+	// by a permission code — so there is nothing to differentiate here, and
+	// inventing a difference would be a rule nobody asked for.
+	brokerPortal := []string{
+		string(PermBrokerLoadsView),
+		string(PermBrokerLoadsManage),
+		string(PermBrokerOffersSend),
+		string(PermBrokerOffersRevoke),
+		string(PermBrokerCarriersFind),
+	}
+	out[UserRoleBrokerAdmin] = append([]string(nil), brokerPortal...)
+	out[UserRoleBrokerUser] = append([]string(nil), brokerPortal...)
+
+	return out
+}
+
+// DriverRolePermissions is the built-in driver role's default set: the codes
+// behind the calls the driver app makes, and nothing else (DEV-2866, narrowed
+// by DEV-2949 to what the app really calls).
+//
+//   - trips and stops: read (getTrips, getTrip, getTripStops, User.activeTrip)
+//   - trip files: upload BOL/POD only (addTripFile, addTripStopFile)
+//   - split a load: its own leaf (splitOrder), not shipments.shipments.edit
+//   - company and vehicle files the app reads (getCompanyFiles,
+//     getDriverVehicleFiles)
+//   - the driver app config (getDriverAppConfig)
+//
+// Accept trip, chat, notifications and location need no code (@auth only).
+// Deliberately absent: the load list and load export (shipments.shipments.view),
+// office file attach/edit (shipments.trip_files.edit), the document-type
+// picker (settings.doc_types.view), the rate-confirmation files
+// (shipments.rc_files.view), manualCheckIn/manualCheckOut
+// (shipments.trip_stops.edit) and updateTruck (fleet.trucks.edit) — the app
+// does not call them. tms-auth's back-fill migration
+// 20261012120000_driver_role_app_codes_only.sql writes the same list.
+func DriverRolePermissions() []string {
+	return []string{
+		string(PermShipmentsTripsView),
+		string(PermShipmentsTripStopsView),
+		string(PermShipmentsTripFilesCreate),
+		string(PermShipmentsShipmentsSplit),
+		string(PermSettingsFilesView),
+		string(PermSettingsDriverAppView),
+	}
+}
+
+// FleetModuleCode is the top-level fleet module in PermissionCatalog.
+const FleetModuleCode = "fleet"
+
+// FleetEntitiesWithoutMaintenance lists the fleet module's entities except
+// fleet.maintenance, in catalog order (DEV-2502). A role holding these instead
+// of `fleet` keeps every fleet page but maintenance; a fleet entity added later
+// is picked up here too.
+func FleetEntitiesWithoutMaintenance() []string {
+	var out []string
+	for _, ent := range permIndex.moduleEntities[FleetModuleCode] {
+		if ent != fleetMaintenanceEntity {
+			out = append(out, ent)
+		}
+	}
+	return out
+}
+
+const fleetMaintenanceEntity = "fleet.maintenance"
+
+// withoutFleetMaintenance replaces the `fleet` module in codes with
+// FleetEntitiesWithoutMaintenance plus the given maintenance leaves.
+func withoutFleetMaintenance(codes []string, maintenance ...string) []string {
+	return replaceModule(codes, FleetModuleCode, FleetEntitiesWithoutMaintenance(), maintenance)
+}
+
+// TeamsModuleCode is the top-level teams module in PermissionCatalog.
+const TeamsModuleCode = "teams"
+
+// PersonChargeEntities lists the person-charge entities in catalog order
+// (DEV-2510): `teams.person_charges` and its apply siblings.
+func PersonChargeEntities() []string {
+	var out []string
+	for _, ent := range permIndex.moduleEntities[TeamsModuleCode] {
+		if isPersonChargeEntity(ent) {
+			out = append(out, ent)
+		}
+	}
+	return out
+}
+
+// TeamsEntitiesWithoutPersonCharges lists the teams module's entities except
+// the person-charge ones, in catalog order (DEV-2510). A role holding these
+// instead of `teams` keeps every teams page; a teams entity added later is
+// picked up here too.
+func TeamsEntitiesWithoutPersonCharges() []string {
+	var out []string
+	for _, ent := range permIndex.moduleEntities[TeamsModuleCode] {
+		if !isPersonChargeEntity(ent) {
+			out = append(out, ent)
+		}
+	}
+	return out
+}
+
+const personChargesEntity = "teams.person_charges"
+
+func isPersonChargeEntity(code string) bool {
+	return code == personChargesEntity || strings.HasPrefix(code, personChargesEntity+"_")
+}
+
+// withoutPersonCharges replaces the `teams` module in codes with
+// TeamsEntitiesWithoutPersonCharges plus the given person-charge leaves.
+func withoutPersonCharges(codes []string, personCharges ...string) []string {
+	return replaceModule(codes, TeamsModuleCode, TeamsEntitiesWithoutPersonCharges(), personCharges)
+}
+
+// SettingsModuleCode is the top-level settings module in PermissionCatalog.
+const SettingsModuleCode = "settings"
+
+const companySettingsEntity = "settings.company"
+
+// SettingsEntitiesWithoutCompany lists the settings module's entities except
+// settings.company, in catalog order (DEV-4570). A role holding these instead
+// of `settings` keeps every settings screen but company settings; a settings
+// entity added later is picked up here too.
+func SettingsEntitiesWithoutCompany() []string {
+	var out []string
+	for _, ent := range permIndex.moduleEntities[SettingsModuleCode] {
+		if ent != companySettingsEntity {
+			out = append(out, ent)
+		}
+	}
+	return out
+}
+
+// withoutCompanySettingsEdit replaces the `settings` module in codes with
+// SettingsEntitiesWithoutCompany plus settings.company.view.
+func withoutCompanySettingsEdit(codes []string) []string {
+	return replaceModule(codes, SettingsModuleCode, SettingsEntitiesWithoutCompany(), []string{companySettingsEntity + ".view"})
+}
+
+// replaceModule swaps the module code in codes for entities followed by extra;
+// every other code is kept in place.
+func replaceModule(codes []string, module string, entities, extra []string) []string {
+	out := make([]string, 0, len(codes)+len(entities)+len(extra))
+	for _, c := range codes {
+		if c != module {
+			out = append(out, c)
+			continue
+		}
+		out = append(out, entities...)
+		out = append(out, extra...)
 	}
 	return out
 }

@@ -64,4 +64,23 @@ message Company {
   // 60504"). City / state / zip components reuse phy_* / mail_* columns
   // when needed for filtering — this field is the rendered one-liner.
   string billing_address   = 19;
+  // billing_email — dedicated billing contact email rendered in the
+  // "Questions?" line of the Driver Pay Settlement PDF footer. Distinct from
+  // the general `email` (contact). Empty when not configured: the footer line
+  // is omitted.
+  string billing_email     = 20;
+  // logo — backend-files file id (UUID) of the tenant's company logo, drawn
+  // into the header of Invoice and Driver Pay Statement PDFs (DEV-699). Set
+  // via the saveCompanyLogo mutation. Absent when the tenant has not uploaded
+  // one: the header renders without a logo, never with a placeholder.
+  optional string logo     = 21;
+  // status — the tenant's ACCOUNT status (enums.CompanyStatus: ACTIVE /
+  // INACTIVE / BLOCKED), not its FMCSA authority. The two are unrelated: a
+  // carrier can hold perfectly good operating authority and still have a
+  // switched-off TMS360 account.
+  //
+  // Added for DEV-1858: a broker must not be able to offer a load to a carrier
+  // whose account is off, because nobody is there to answer it. Empty means the
+  // producer did not populate it — treat that as unknown, not as inactive.
+  string status            = 22;
 }

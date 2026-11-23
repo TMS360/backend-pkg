@@ -21,6 +21,20 @@ func NewConflict(tech, user string) PublicError {
 	return NewError(tech, user, http.StatusConflict)
 }
 
+// NewConflictWithExtensions is NewConflict with a structured payload attached.
+// The map is forwarded verbatim to gqlErr.Extensions by the GraphQL presenter.
+func NewConflictWithExtensions(tech, user string, ext map[string]any) PublicError {
+	return NewErrorWithExtensions(tech, user, http.StatusConflict, ext)
+}
+
+// NewCodedConflict is NewConflictWithExtensions plus a stable string code that
+// the GraphQL presenter puts in extensions.code. Prefer it over embedding a
+// token in the technical message when the client needs to branch on the
+// rejection kind (e.g. "INVOICE_TRANSITION_INVALID").
+func NewCodedConflict(code, tech, user string, ext map[string]any) PublicError {
+	return NewCodedError(code, tech, user, http.StatusConflict, ext)
+}
+
 func NewForbidden(tech, user string) PublicError {
 	return NewError(tech, user, http.StatusForbidden)
 }

@@ -7,17 +7,101 @@ import (
 	"net/http"
 
 	"github.com/99designs/gqlgen/graphql"
+	"github.com/TMS360/backend-pkg/client/postgresql"
 	"github.com/TMS360/backend-pkg/middleware"
 	"github.com/TMS360/backend-pkg/observability"
 	"github.com/TMS360/backend-pkg/response"
 	"github.com/TMS360/backend-pkg/validate"
 	"github.com/vektah/gqlparser/v2/gqlerror"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
+)
+
+// grpcPublicError translates a gRPC status error from a downstream subservice
+// into a user-facing GraphQL error. A gRPC call that fails across the wire
+// arrives here as an opaque status error (often fmt.Errorf-wrapped by the
+// resolver), so without this it falls into the 500-class fallback and the
+// client sees INTERNAL_SERVER_ERROR for what is a plain user condition
+// (bad input, precondition, upstream temporarily down). Only codes a service
+// sets deliberately for the caller are mapped; server-fault codes
+// (Unknown/Internal/DataLoss/…) return ok=false and stay 500. Uses errors.As so
+// a wrapped status is still found. The status Message is surfaced as-is because
+// services set it intentionally for these caller-facing codes.
+func grpcPublicError(err error) (message, code string, httpStatus int, ok bool) {
+	type grpcStatuser interface{ GRPCStatus() *status.Status }
+	var gs grpcStatuser
+	if !errors.As(err, &gs) {
+		return "", "", 0, false
+	}
+	st := gs.GRPCStatus()
+	switch st.Code() {
+	case codes.InvalidArgument:
+		return st.Message(), "BAD_USER_INPUT", http.StatusBadRequest, true
+	case codes.FailedPrecondition:
+		return st.Message(), "FAILED_PRECONDITION", http.StatusUnprocessableEntity, true
+	case codes.Unavailable:
+		return st.Message(), "SERVICE_UNAVAILABLE", http.StatusServiceUnavailable, true
+	case codes.NotFound:
+		return st.Message(), "NOT_FOUND", http.StatusNotFound, true
+	case codes.AlreadyExists:
+		return st.Message(), "ALREADY_EXISTS", http.StatusConflict, true
+	case codes.PermissionDenied:
+		return st.Message(), "FORBIDDEN", http.StatusForbidden, true
+	case codes.Unauthenticated:
+		return st.Message(), "UNAUTHENTICATED", http.StatusUnauthorized, true
+	case codes.ResourceExhausted:
+		return st.Message(), "RESOURCE_EXHAUSTED", http.StatusTooManyRequests, true
+	default:
+		// Unknown, Internal, DataLoss, Unimplemented, Aborted, DeadlineExceeded
+		// — server-fault class; keep the 500 handling. Canceled is handled
+		// separately by isClientCanceled (a caller abort, not a server fault).
+		return "", "", 0, false
+	}
+}
+
+// statusClientClosedRequest is the de-facto (nginx) status for a request the
+// client abandoned before the server responded.
+const statusClientClosedRequest = 499
+
+// isClientCanceled reports whether err stems from the caller aborting the
+// request (navigation away, router/client cancel) rather than a server fault.
+// Such errors are expected noise and must not be captured as Sentry errors.
+func isClientCanceled(ctx context.Context, err error) bool {
+	if errors.Is(err, context.Canceled) {
+		return true
+	}
+	type grpcStatuser interface{ GRPCStatus() *status.Status }
+	var gs grpcStatuser
+	if errors.As(err, &gs) && gs.GRPCStatus().Code() == codes.Canceled {
+		return true
+	}
+	return ctx != nil && errors.Is(ctx.Err(), context.Canceled)
+}
+
+// captureFunc / captureWarningFunc report to Sentry at Error / Warning level.
+// Indirected through package vars so tests can assert which severity each path
+// uses: server faults (5xx) capture as errors, user rejections (4xx) as
+// warnings.
+var (
+	captureFunc        = observability.CaptureWithCtx
+	captureWarningFunc = observability.CaptureWarningWithCtx
 )
 
 // NewErrorPresenter creates a consistent error formatter for all services.
 // Every emitted error carries `code` and `requestId` in extensions so clients
 // can branch on the code (never the message) and quote the request ID for
-// support. 5xx errors are also captured to Sentry via observability.
+// support. 5xx errors are captured to Sentry as errors (they alert); 4xx
+// PublicErrors are captured as warnings so user friction is queryable without
+// paging anyone.
+//
+// extensions.code precedence, highest first:
+//  1. a response.CodedError's ErrorCodeString(), when non-empty — the stable
+//     string contract (e.g. "INVOICE_TRANSITION_INVALID");
+//  2. PublicError.ErrorCode(), the legacy int (0 unless a service sets it);
+//  3. the gRPC-mapped string set, or "INTERNAL_SERVER_ERROR"/"VALIDATION_ERROR".
+//
+// The payload map from Extensions() can never supply `code` or `status` — those
+// two keys are reserved so a caller cannot break the shared contract.
 func NewErrorPresenter(isDebug bool) graphql.ErrorPresenterFunc {
 	return func(ctx context.Context, err error) *gqlerror.Error {
 		requestID := middleware.GetRequestID(ctx)
@@ -37,21 +121,91 @@ func NewErrorPresenter(isDebug bool) graphql.ErrorPresenterFunc {
 
 		// 2. Check for your custom "PublicError"
 		var customErr response.PublicError
-		if errors.As(err, &customErr) {
+		if !errors.As(err, &customErr) {
+			// Backstop: a raw Postgres constraint violation (FK/unique/check/
+			// not-null/exclusion) is a routine user-input error, not a server
+			// fault. Map it to a public 4xx so a service that forgot to
+			// translate still returns a clean message — and route it through the
+			// same handling below (surfaced as a Sentry warning, not an error).
+			if pub, ok := postgresql.AsPublicError(err); ok {
+				customErr = pub
+			}
+		}
+
+		if customErr != nil {
 			gqlErr.Message = customErr.UserMessage()
 			gqlErr.Extensions = map[string]any{
 				"code":   customErr.ErrorCode(),
 				"status": customErr.ErrorStatus(),
 			}
-			// Capture server-side errors (5xx) to Sentry. 4xx are user errors —
-			// noisy and rarely actionable for ops.
-			if customErr.ErrorStatus() >= http.StatusInternalServerError {
-				observability.CaptureWithCtx(ctx, err)
+			// Merge the error's structured payload (if any) so callers can attach
+			// details like a blocking resource's id/number that the FE reads
+			// directly from extensions instead of parsing the human message.
+			// code/status are reserved keys — the payload cannot overwrite them.
+			for k, v := range customErr.Extensions() {
+				if k == "code" || k == "status" {
+					continue
+				}
+				gqlErr.Extensions[k] = v
+			}
+			// A CodedError carries a stable machine-readable string code. Applied
+			// AFTER the merge loop on purpose: the reserved-key invariant above
+			// still holds (a payload map can never shadow `code`), while the code
+			// the error was CONSTRUCTED with wins. Without this, extensions.code is
+			// customErr.ErrorCode() — an int no constructor populates, so every 4xx
+			// ships `"code": 0` and clients are forced to parse the message.
+			var coded response.CodedError
+			if errors.As(err, &coded) {
+				if s := coded.ErrorCodeString(); s != "" {
+					gqlErr.Extensions["code"] = s
+				}
+			}
+			// 5xx are server faults — capture as errors (they alert). 4xx are
+			// user-facing rejections — capture as warnings so friction is
+			// queryable in Sentry without paging anyone, unless the rejection
+			// opted out via response.Unreported: an expected race the client
+			// resolves on its own (DEV-2222) is noise, not friction. The opt-out
+			// never applies to 5xx — a server fault is always reported.
+			switch {
+			case customErr.ErrorStatus() >= http.StatusInternalServerError:
+				captureFunc(ctx, err)
+			case response.IsUnreported(err):
+				// Deliberately silent: the construction line is already in the logs.
+			default:
+				captureWarningFunc(ctx, err)
+			}
+		} else if msg, code, httpStatus, ok := grpcPublicError(err); ok {
+			// A gRPC status from a downstream subservice carrying a caller-facing
+			// code (bad input / precondition / upstream unavailable). Present it as
+			// a clean user error instead of masking it as a 500. Capture as a
+			// warning — user friction, never page.
+			gqlErr.Message = msg
+			gqlErr.Extensions = map[string]any{"code": code, "status": httpStatus}
+			captureWarningFunc(ctx, err)
+		} else if isClientCanceled(ctx, err) {
+			// The caller aborted the request (navigated away, router/client
+			// cancel). Not a server fault — never capture to Sentry.
+			slog.Debug("GraphQL request canceled by client", "err", err, "path", gqlErr.Path, "request_id", requestID)
+			gqlErr.Message = "Request canceled"
+			gqlErr.Extensions = map[string]any{
+				"code":   "REQUEST_CANCELED",
+				"status": statusClientClosedRequest,
+			}
+		} else if errors.Is(err, context.DeadlineExceeded) {
+			// A timeout is worth seeing, but should not page — capture as warning.
+			slog.Warn("GraphQL request deadline exceeded", "err", err, "path", gqlErr.Path, "request_id", requestID)
+			captureWarningFunc(ctx, err)
+			if !isDebug {
+				gqlErr.Message = "Request timed out"
+				gqlErr.Extensions = map[string]any{
+					"code":   "DEADLINE_EXCEEDED",
+					"status": http.StatusGatewayTimeout,
+				}
 			}
 		} else {
 			// 3. Unexpected errors — always treat as 500-class.
 			slog.Error("GraphQL Internal Error", "err", err, "path", gqlErr.Path, "request_id", requestID)
-			observability.CaptureWithCtx(ctx, err)
+			captureFunc(ctx, err)
 
 			if !isDebug {
 				gqlErr.Message = "Internal Server Error"

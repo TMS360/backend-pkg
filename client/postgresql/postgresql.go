@@ -1,17 +1,26 @@
 package postgresql
 
 import (
+	"context"
 	"errors"
 	"fmt"
+	"io"
 	"log"
+	"os"
+	"strings"
 	"time"
 
 	"github.com/TMS360/backend-pkg/config"
+	"github.com/TMS360/backend-pkg/response"
 	"github.com/TMS360/backend-pkg/tmsdb"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/jackc/pgx/v5/stdlib"
 
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
 )
 
 // Default Postgres pool sizes. Conservative so N services × pool ≪ Railway
@@ -22,6 +31,22 @@ const (
 	defaultPostgresMaxIdleConns = 2
 )
 
+// connDSNOptions are the connection settings appended to every DSN.
+//
+// connect_timeout only: this driver is pgx, not libpq. pgx does not recognise
+// libpq's keepalives / keepalives_idle / keepalives_interval / keepalives_count
+// and forwards anything it does not know to the server as a runtime parameter,
+// where Postgres answers FATAL: unrecognized configuration parameter. Adding
+// them took the whole service down on start — the connection could not be
+// opened at all.
+//
+// pgx already keeps TCP alive through its default dialer (5 minute period);
+// what closes the real gap is recycling idle connections faster than the
+// network reaps them — see SetConnMaxIdleTime below. Tightening the TCP period
+// is possible, but it belongs in the dialer (net.Dialer.KeepAlive via
+// pgx.ConnConfig.DialFunc), not in the DSN.
+const connDSNOptions = "connect_timeout=5"
+
 type Client struct {
 }
 
@@ -29,7 +54,7 @@ func EnsureDatabase(cfg config.PostgresSQLConfig) error {
 	initialDSN := fmt.Sprintf("host=%s user=%s password=%s dbname=postgres port=%s sslmode=%s TimeZone=%s",
 		cfg.Host, cfg.User, cfg.Password, cfg.Port, cfg.SSLMode, cfg.TimeZone)
 
-	db, err := gorm.Open(postgres.Open(initialDSN), &gorm.Config{})
+	db, err := openGorm(initialDSN)
 	if err != nil {
 		return fmt.Errorf("failed to connect to postgres database: %w", err)
 	}
@@ -59,12 +84,10 @@ func NewClient(cfg config.PostgresSQLConfig) (*gorm.DB, error) {
 		log.Fatalf("%v", err)
 	}
 
-	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%s sslmode=%s TimeZone=%s",
-		cfg.Host, cfg.User, cfg.Password, cfg.DBName, cfg.Port, cfg.SSLMode, cfg.TimeZone)
+	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%s sslmode=%s TimeZone=%s %s",
+		cfg.Host, cfg.User, cfg.Password, cfg.DBName, cfg.Port, cfg.SSLMode, cfg.TimeZone, connDSNOptions)
 
-	fmt.Println("dsn: ", dsn)
-
-	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
+	db, err := openGorm(dsn)
 	if err != nil {
 		log.Fatalf("failed to connect database: %v", err)
 	}
@@ -87,7 +110,11 @@ func NewClient(cfg config.PostgresSQLConfig) (*gorm.DB, error) {
 		}
 		sqlDB.SetMaxOpenConns(maxOpen)
 		sqlDB.SetMaxIdleConns(maxIdle)
-		sqlDB.SetConnMaxIdleTime(5 * time.Minute)
+		// Shorter than the idle window a private network will silently reap.
+		// Five minutes was long enough for a connection to die in the pool and
+		// be handed out afterwards; a minute keeps the pool warm without
+		// keeping corpses in it.
+		sqlDB.SetConnMaxIdleTime(time.Minute)
 		sqlDB.SetConnMaxLifetime(30 * time.Minute)
 		log.Printf("postgres pool: max_open=%d max_idle=%d", maxOpen, maxIdle)
 	}
@@ -95,9 +122,80 @@ func NewClient(cfg config.PostgresSQLConfig) (*gorm.DB, error) {
 	return db, nil
 }
 
+// openGorm is the only place the pgx protocol is chosen. EnsureDatabase and
+// NewClient both use it. Simple protocol turns off pgx's prepared-statement
+// cache, so an ALTER during deploy cannot return 0A000 from a stale plan.
+// The check for that lives in postgresql_test.go.
+//
+// The pool is ours because gorm skips AfterConnect when Conn is set. That
+// hook keeps the timestamp ScanLocation gorm would have taken from the DSN
+// time zone, and scans timestamptz as UTC. Text "+00" on a UTC host otherwise
+// comes back as time.Local, and reflect.DeepEqual then rejects the same
+// instant built with time.UTC (DEV-2586).
+func openGorm(dsn string) (*gorm.DB, error) {
+	// The DSN carries the database password. It used to be printed here on
+	// every start, which put the credential in the logs of every service.
+	cfg, err := pgx.ParseConfig(dsn)
+	if err != nil {
+		return nil, fmt.Errorf("parse postgres dsn: %w", err)
+	}
+	cfg.DefaultQueryExecMode = pgx.QueryExecModeSimpleProtocol
+
+	sqlDB := stdlib.OpenDB(*cfg, stdlib.OptionAfterConnect(func(ctx context.Context, conn *pgx.Conn) error {
+		return registerTimeCodecs(conn.TypeMap(), sessionTimeZone(cfg))
+	}))
+	return gorm.Open(postgres.New(postgres.Config{Conn: sqlDB}), &gorm.Config{Logger: newGormLogger(os.Stdout)})
+}
+
+// newGormLogger keeps gorm's SQL echo for real errors and slow queries only.
+// gorm's default printed every "record not found" with its SQL and colour
+// codes; a 5-minute worker over every company then went past Railway's
+// 500 lines/sec and Railway dropped the rest, real errors included (DEV-3338).
+// The echo carries no values (DEV-4280): see NewRedactedGormLogger.
+func newGormLogger(w io.Writer) logger.Interface {
+	return NewRedactedGormLogger(w)
+}
+
+func sessionTimeZone(cfg *pgx.ConnConfig) string {
+	for _, key := range []string{"TimeZone", "timezone", "time_zone"} {
+		if v := cfg.RuntimeParams[key]; v != "" {
+			return v
+		}
+	}
+	return ""
+}
+
+func registerTimeCodecs(m *pgtype.Map, tz string) error {
+	if tz != "" {
+		loc, err := time.LoadLocation(tz)
+		if err != nil {
+			return err
+		}
+		m.RegisterType(&pgtype.Type{
+			Name:  "timestamp",
+			OID:   pgtype.TimestampOID,
+			Codec: &pgtype.TimestampCodec{ScanLocation: loc},
+		})
+	}
+	m.RegisterType(&pgtype.Type{
+		Name:  "timestamptz",
+		OID:   pgtype.TimestamptzOID,
+		Codec: &pgtype.TimestamptzCodec{ScanLocation: time.UTC},
+	})
+	return nil
+}
+
 const (
 	// PgUniqueViolationCode is the PostgreSQL error code for unique constraint violation.
 	PgUniqueViolationCode = "23505"
+	// PgForeignKeyViolationCode is the PostgreSQL error code for foreign key violation.
+	PgForeignKeyViolationCode = "23503"
+	// PgNotNullViolationCode is the PostgreSQL error code for not-null violation.
+	PgNotNullViolationCode = "23502"
+	// PgCheckViolationCode is the PostgreSQL error code for check constraint violation.
+	PgCheckViolationCode = "23514"
+	// PgExclusionViolationCode is the PostgreSQL error code for exclusion constraint violation.
+	PgExclusionViolationCode = "23P01"
 )
 
 // IsUniqueConstraintError checks if the error is a PostgreSQL unique constraint violation.
@@ -111,4 +209,54 @@ func IsUniqueConstraintError(err error) bool {
 	}
 
 	return false
+}
+
+// AsPublicError translates a raw *pgconn.PgError for a client-facing constraint
+// violation into a response.PublicError with a clean 4xx user message. It lets
+// the GraphQL/REST layer degrade a routine user-input error (FK/unique/check/
+// not-null/exclusion) into a proper 400/409 even when a service forgets to
+// translate it, instead of leaking a generic 500.
+//
+// The constraint name is placed ONLY in the technical (first) argument and must
+// never reach the user. Returns (nil, false) for anything that is not a
+// recognized *pgconn.PgError so callers can fall back to their default handling.
+func AsPublicError(err error) (response.PublicError, bool) {
+	var pgErr *pgconn.PgError
+	if !errors.As(err, &pgErr) {
+		return nil, false
+	}
+
+	switch pgErr.Code {
+	case PgForeignKeyViolationCode:
+		// PostgreSQL populates Detail with "... is still referenced from table X"
+		// for delete-side violations and "... is not present in table X" for
+		// insert-side violations. Return a semantically correct message for each.
+		if strings.Contains(pgErr.Detail, "still referenced from") {
+			return response.NewBadRequest(
+				"foreign key violation: "+pgErr.ConstraintName,
+				"This record cannot be deleted because it is still in use.",
+			), true
+		}
+		return response.NewBadRequest(
+			"foreign key violation: "+pgErr.ConstraintName,
+			"A referenced record was not found.",
+		), true
+	case PgUniqueViolationCode:
+		return response.NewConflict(
+			"unique violation: "+pgErr.ConstraintName,
+			"This record already exists.",
+		), true
+	case PgExclusionViolationCode:
+		return response.NewConflict(
+			"exclusion violation: "+pgErr.ConstraintName,
+			"This conflicts with an existing record.",
+		), true
+	case PgCheckViolationCode, PgNotNullViolationCode:
+		return response.NewBadRequest(
+			"constraint violation: "+pgErr.ConstraintName,
+			"Some required information is missing or invalid.",
+		), true
+	default:
+		return nil, false
+	}
 }

@@ -38,6 +38,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -68,6 +69,20 @@ type Client interface {
 	// longer holds. Idempotent: a no-op (Resolved=false, no error) when nothing
 	// is open.
 	ResolveForValidation(ctx context.Context, p ResolveParams) (ResolveResult, error)
+	// ListOpenAuditChecks reports the audit checks of one team-week that are
+	// still waiting for a department's verdict (DEV-2448). Read-only: an empty
+	// crew list, a week with no checks and a crew with none all answer with an
+	// empty slice and no error.
+	ListOpenAuditChecks(ctx context.Context, p OpenAuditChecksParams) ([]OpenAuditCheck, error)
+	// CreateAuditCheck opens one audit check (DEV-2445), or returns the one
+	// already open for the same claim — idempotent per (crew, day), or per
+	// (truck, day) for a truck-day-with-no-driver check, so a producer retry
+	// never makes a second card.
+	CreateAuditCheck(ctx context.Context, p AuditCheckParams) (AuditCheckResult, error)
+	// GetAuditCheckAnswer reads one check's current verdict straight from the
+	// task — the repair path for a lost answered event. A check nobody has
+	// answered yet returns (nil, nil), never an error.
+	GetAuditCheckAnswer(ctx context.Context, taskID uuid.UUID) (*AuditCheckAnswer, error)
 	// Close releases the underlying connection (a no-op when the client wraps a
 	// caller-owned connection or a raw generated client).
 	Close() error
@@ -110,6 +125,80 @@ type ResolveParams struct {
 type ResolveResult struct {
 	TaskID   string
 	Resolved bool // true = a task was auto-resolved; false = nothing was open
+}
+
+// OpenAuditChecksParams names ONE team-week by the crew-weeks it is made of.
+// The caller owns the Audit board, so it already knows its crews — the tasks
+// service never calls back to find them.
+type OpenAuditChecksParams struct {
+	CrewIDs []uuid.UUID
+	// WeekStart is the naive company-local week start ("2026-09-22"), exactly as
+	// the producer wrote it on the check. Never an instant (DEV-2076).
+	WeekStart string
+}
+
+// OpenAuditCheck is one check still waiting for an answer — what a refusal has
+// to name so the manager knows who to go and ask.
+type OpenAuditCheck struct {
+	TaskID     uuid.UUID
+	CrewID     uuid.UUID
+	Day        string // YYYY-MM-DD
+	StatusName string
+	// Department is the well-known key of the department that owes the answer
+	// ("maintenance", "safety", …); empty when the check was never routed.
+	Department string
+	Title      string
+}
+
+// AuditCheckParams is one whole audit-check claim (DEV-2445) — everything the
+// department needs to answer it, sent in ONE call so the tasks service never
+// calls the dispatch service back. Dates are naive company-local YYYY-MM-DD
+// strings, never instants (DEV-2076).
+type AuditCheckParams struct {
+	// The day under question and what it was closed with.
+	Day         string // YYYY-MM-DD
+	WeekStart   string // YYYY-MM-DD
+	StatusName  string
+	Explanation string // optional
+	CaseNumber  string // optional, e.g. "WO-1182"
+
+	// The crew-week the day belongs to and who set it. BOTH are Nil on a
+	// truck-day-with-no-driver check: no crew held the truck and nobody set a
+	// status — the system noticed the gap.
+	CrewID uuid.UUID
+	SetBy  uuid.UUID
+
+	// Who answers, and who may not.
+	Department     string // well-known key ("maintenance", …)
+	DispatcherIDs  []uuid.UUID
+	ManagerID      *uuid.UUID
+	DispatchTeamID *uuid.UUID
+
+	// What the day is about — the crew's truck, or its driver when it has none.
+	EntityType string // truck | driver
+	EntityID   uuid.UUID
+
+	Title       string // optional; empty = generated from status + day
+	Description string // optional
+
+	// The other records the card links to beside its subject: the crew's
+	// driver and the loads it ran that day. Optional; Nil / empty are skipped.
+	DriverID uuid.UUID
+	LoadIDs  []uuid.UUID
+}
+
+// AuditCheckResult is the outcome of CreateAuditCheck.
+type AuditCheckResult struct {
+	TaskID  uuid.UUID
+	Created bool // false = the same claim's check already existed (retry)
+}
+
+// AuditCheckAnswer is a department's verdict read back from the task.
+type AuditCheckAnswer struct {
+	Outcome    string // confirmed | rejected — lower-case, as the task stores it
+	Note       string
+	AnsweredBy uuid.UUID
+	AnsweredAt time.Time
 }
 
 type client struct {
@@ -232,6 +321,151 @@ func (c *client) ResolveForValidation(ctx context.Context, p ResolveParams) (Res
 		return ResolveResult{}, fmt.Errorf("tasks: resolve task: %w", err)
 	}
 	return ResolveResult{TaskID: resp.GetTaskId(), Resolved: resp.GetResolved()}, nil
+}
+
+func (c *client) ListOpenAuditChecks(ctx context.Context, p OpenAuditChecksParams) ([]OpenAuditCheck, error) {
+	if strings.TrimSpace(p.WeekStart) == "" {
+		return nil, errors.New("tasks: week_start is required")
+	}
+	// Nothing to ask about is a legitimate answer, not a round trip: a team-week
+	// with no crews has no checks by construction.
+	if len(p.CrewIDs) == 0 {
+		return nil, nil
+	}
+	ids := make([]string, 0, len(p.CrewIDs))
+	for _, id := range p.CrewIDs {
+		if id == uuid.Nil {
+			continue
+		}
+		ids = append(ids, id.String())
+	}
+	if len(ids) == 0 {
+		return nil, nil
+	}
+
+	ctx, cancel := c.withTimeout(ctx)
+	defer cancel()
+
+	resp, err := c.svc.ListOpenAuditChecks(ctx, &pb.ListOpenAuditChecksRequest{
+		CrewIds:   ids,
+		WeekStart: strings.TrimSpace(p.WeekStart),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("tasks: list open audit checks: %w", err)
+	}
+
+	out := make([]OpenAuditCheck, 0, len(resp.GetChecks()))
+	for _, c := range resp.GetChecks() {
+		// A row whose ids do not parse is a corrupt record, not a reason to hide
+		// the rest: the caller's refusal still has to name the other checks.
+		taskID, _ := uuid.Parse(c.GetTaskId())
+		crewID, _ := uuid.Parse(c.GetCrewId())
+		out = append(out, OpenAuditCheck{
+			TaskID:     taskID,
+			CrewID:     crewID,
+			Day:        c.GetDay(),
+			StatusName: c.GetStatusName(),
+			Department: c.GetDepartment(),
+			Title:      c.GetTitle(),
+		})
+	}
+	return out, nil
+}
+
+func (c *client) CreateAuditCheck(ctx context.Context, p AuditCheckParams) (AuditCheckResult, error) {
+	// Refused BEFORE any network call: without these the server cannot even
+	// name the claim, so the round trip is a guaranteed BadRequest.
+	switch {
+	case strings.TrimSpace(p.Day) == "":
+		return AuditCheckResult{}, errors.New("tasks: audit check day is required")
+	case strings.TrimSpace(p.WeekStart) == "":
+		return AuditCheckResult{}, errors.New("tasks: audit check week_start is required")
+	case strings.TrimSpace(p.StatusName) == "":
+		return AuditCheckResult{}, errors.New("tasks: audit check status_name is required")
+	case p.EntityType == "" || p.EntityID == uuid.Nil:
+		return AuditCheckResult{}, errors.New("tasks: audit check entity is required")
+	}
+
+	req := &pb.CreateAuditCheckRequest{
+		Day:         strings.TrimSpace(p.Day),
+		WeekStart:   strings.TrimSpace(p.WeekStart),
+		StatusName:  strings.TrimSpace(p.StatusName),
+		Explanation: p.Explanation,
+		CaseNumber:  p.CaseNumber,
+		Department:  strings.TrimSpace(p.Department),
+		EntityType:  p.EntityType,
+		EntityId:    p.EntityID.String(),
+		Title:       strings.TrimSpace(p.Title),
+		Description: p.Description,
+	}
+	// Nil means "absent" on the wire, not the zero UUID: a truck-day check has
+	// no crew and no setter, and sending zeros would make the server treat them
+	// as real (unparseable-as-absent) parties.
+	if p.CrewID != uuid.Nil {
+		req.CrewId = p.CrewID.String()
+	}
+	if p.SetBy != uuid.Nil {
+		req.SetBy = p.SetBy.String()
+	}
+	if p.ManagerID != nil && *p.ManagerID != uuid.Nil {
+		req.ManagerId = p.ManagerID.String()
+	}
+	if p.DispatchTeamID != nil && *p.DispatchTeamID != uuid.Nil {
+		req.DispatchTeamId = p.DispatchTeamID.String()
+	}
+	if p.DriverID != uuid.Nil {
+		req.DriverId = p.DriverID.String()
+	}
+	for _, id := range p.LoadIDs {
+		if id != uuid.Nil {
+			req.LoadIds = append(req.LoadIds, id.String())
+		}
+	}
+	for _, id := range p.DispatcherIDs {
+		if id != uuid.Nil {
+			req.DispatcherIds = append(req.DispatcherIds, id.String())
+		}
+	}
+
+	ctx, cancel := c.withTimeout(ctx)
+	defer cancel()
+
+	resp, err := c.svc.CreateAuditCheck(ctx, req)
+	if err != nil {
+		return AuditCheckResult{}, fmt.Errorf("tasks: create audit check: %w", err)
+	}
+	taskID, err := uuid.Parse(resp.GetTaskId())
+	if err != nil {
+		return AuditCheckResult{}, fmt.Errorf("tasks: create audit check: bad task id %q", resp.GetTaskId())
+	}
+	return AuditCheckResult{TaskID: taskID, Created: resp.GetCreated()}, nil
+}
+
+func (c *client) GetAuditCheckAnswer(ctx context.Context, taskID uuid.UUID) (*AuditCheckAnswer, error) {
+	if taskID == uuid.Nil {
+		return nil, errors.New("tasks: task id is required")
+	}
+
+	ctx, cancel := c.withTimeout(ctx)
+	defer cancel()
+
+	resp, err := c.svc.GetAuditCheckAnswer(ctx, &pb.GetAuditCheckAnswerRequest{TaskId: taskID.String()})
+	if err != nil {
+		return nil, fmt.Errorf("tasks: get audit check answer: %w", err)
+	}
+	if !resp.GetAnswered() {
+		return nil, nil
+	}
+	by, _ := uuid.Parse(resp.GetAnsweredBy())
+	a := &AuditCheckAnswer{
+		Outcome:    resp.GetOutcome(),
+		Note:       resp.GetNote(),
+		AnsweredBy: by,
+	}
+	if ts := resp.GetAnsweredAt(); ts != nil {
+		a.AnsweredAt = ts.AsTime()
+	}
+	return a, nil
 }
 
 func (c *client) withTimeout(ctx context.Context) (context.Context, context.CancelFunc) {

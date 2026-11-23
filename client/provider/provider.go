@@ -7,7 +7,9 @@ import (
 	"sync"
 
 	"github.com/TMS360/backend-pkg/cache"
+	"github.com/TMS360/backend-pkg/keycrypt"
 	"github.com/TMS360/backend-pkg/middleware"
+	"github.com/TMS360/backend-pkg/observability"
 )
 
 // ClientProvider builds a per-company client on demand by reading the tenant's
@@ -115,15 +117,41 @@ func (p *ClientProvider[T]) fetchAPIKey(ctx context.Context, companyID string) (
 	if err != nil {
 		return "", fmt.Errorf("provider: %s not found for company %s: %w", p.settingKey, companyID, err)
 	}
+	return decodeAPIKey(ctx, companyID, p.settingKey, data)
+}
 
+// decodeAPIKey turns the cached JSON string into a usable key.
+func decodeAPIKey(ctx context.Context, companyID, settingKey string, data []byte) (string, error) {
 	var apiKey string
 	if err := json.Unmarshal(data, &apiKey); err != nil {
-		return "", fmt.Errorf("provider: failed to unmarshal %s for company %s: %w", p.settingKey, companyID, err)
+		return "", fmt.Errorf("provider: failed to unmarshal %s for company %s: %w", settingKey, companyID, err)
+	}
+
+	apiKey, err := openSetting(ctx, companyID, settingKey, apiKey)
+	if err != nil {
+		return "", err
 	}
 
 	if apiKey == "" {
-		return "", fmt.Errorf("provider: %s is empty for company %s", p.settingKey, companyID)
+		return "", fmt.Errorf("provider: %s is empty for company %s", settingKey, companyID)
 	}
 
 	return apiKey, nil
+}
+
+// reportOpenFailure sends an unopenable key to Sentry; a seam for tests.
+var reportOpenFailure = observability.CaptureWithCtx
+
+// openSetting opens a sealed integration key (DEV-3295); a plain one passes
+// through. A value that cannot be opened (wrong secret, damaged value) fails
+// that one integration for that company — the same "not connected" outcome as
+// a missing key — and is reported to Sentry, never with the value itself.
+func openSetting(ctx context.Context, companyID, settingKey, stored string) (string, error) {
+	plain, err := keycrypt.OpenSetting(companyID, settingKey, stored)
+	if err != nil {
+		err = fmt.Errorf("provider: %s for company %s cannot be opened: %w", settingKey, companyID, err)
+		reportOpenFailure(ctx, err)
+		return "", err
+	}
+	return plain, nil
 }

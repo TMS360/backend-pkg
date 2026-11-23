@@ -28,7 +28,7 @@
 //
 // Timezone/Location/Now read the ACTING user's company out of the context. On
 // gRPC, Kafka and cron paths there is no actor, and those would silently read an
-// unprefixed key and fall back to UTC — use the ForCompany variants there. This
+// unprefixed key and fall back to Default — use the ForCompany variants there. This
 // mirrors the pairing settings.SamsaraAssetTrackingOnForCompany already uses.
 //
 // # Not in scope
@@ -55,11 +55,21 @@ import (
 )
 
 // Default is what an unconfigured, unreachable or unparseable timezone resolves
-// to. It is deliberately UTC and not the Central default tms-auth shows in its
-// settings screen: a tenant whose setting is switched off must behave exactly
-// like one that never had it, and every consumer of this package predates the
-// setting existing.
-const Default = "UTC"
+// to. It is Central (DEV-4604): every customer is a US carrier, tms-auth seeds
+// Central at sign-up and shows it for an unset row, so a company with no row, a
+// switched-off row or a broken value must read the same zone everywhere. A
+// company that chose UTC on purpose stores "UTC" and still gets UTC.
+const Default = "America/Chicago"
+
+// defaultLocation is Default, loaded once. The embedded tzdata makes the load
+// infallible in practice; the UTC fallback only keeps "never nil" true.
+var defaultLocation = func() *time.Location {
+	loc, err := time.LoadLocation(Default)
+	if err != nil {
+		return time.UTC
+	}
+	return loc
+}()
 
 // settingKey is the unscoped cache key. cache.Get prefixes the acting company;
 // cache.ScopedKey prefixes an explicit one. Defined once so the two can never
@@ -82,7 +92,7 @@ func Timezone(ctx context.Context) string {
 
 // TimezoneForCompany returns the named company's IANA timezone name, or Default.
 // This is the variant for gRPC, Kafka consumers and cron jobs, where ctx carries
-// no actor and Timezone would read an unprefixed key and always answer UTC.
+// no actor and Timezone would read an unprefixed key and always answer Default.
 func TimezoneForCompany(ctx context.Context, companyID string) string {
 	if cache.Client() == nil || companyID == "" {
 		return Default
@@ -93,7 +103,7 @@ func TimezoneForCompany(ctx context.Context, companyID string) string {
 }
 
 // Location returns the acting company's *time.Location. It never returns nil:
-// an absent, unreachable or unparseable setting yields time.UTC, so a caller can
+// an absent, unreachable or unparseable setting yields Default, so a caller can
 // always use the result directly.
 func Location(ctx context.Context) *time.Location {
 	return locationOf(ctx, Timezone(ctx))
@@ -142,19 +152,23 @@ func WallClockIn(t time.Time, loc *time.Location) time.Time {
 	)
 }
 
-// ParseLocation resolves an IANA timezone name, falling back to time.UTC. It
+// ParseLocation resolves an IANA timezone name, falling back to Default. It
 // never returns nil. ok is false only for a non-empty name that failed to load.
 //
-// Note that time.LoadLocation("") succeeds and yields UTC, which is why an empty
-// name is reported as ok: it is indistinguishable from an unset setting and must
-// not be logged as a misconfiguration.
+// An empty name is an unset setting: it resolves to Default and is reported as
+// ok, so it is not logged as a misconfiguration. It is checked before
+// time.LoadLocation, which would otherwise read "" as UTC. An explicit "UTC" is a
+// company's own choice and stays UTC.
 func ParseLocation(tz string) (loc *time.Location, ok bool) {
-	if tz == "" || tz == Default {
+	switch tz {
+	case "", Default:
+		return defaultLocation, true
+	case "UTC":
 		return time.UTC, true
 	}
 	loc, err := time.LoadLocation(tz)
 	if err != nil {
-		return time.UTC, false
+		return defaultLocation, false
 	}
 	return loc, true
 }
@@ -183,5 +197,5 @@ func nowIn(ctx context.Context, tz string) time.Time {
 }
 
 func warnUnknown(ctx context.Context, tz string) {
-	slog.WarnContext(ctx, "company timezone: unknown zone, falling back to UTC", "timezone", tz)
+	slog.WarnContext(ctx, "company timezone: unknown zone, falling back to default", "timezone", tz, "default", Default)
 }

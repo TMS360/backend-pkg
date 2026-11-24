@@ -151,6 +151,15 @@ type UserClaims struct {
 	// rejected by tmsgraphql.ReadOnlyGuard. Set on the RMS service identity.
 	ReadOnly bool `json:"ro,omitempty"`
 
+	// Scope (scp) and ConnectorTokenID (cid) are set only on the short internal
+	// token tms-auth issues to the AI connector in exchange for a personal access
+	// token (DEV-3927). Scope is the PAT's scopes, space separated; cid is the PAT
+	// id. aud and jti ride in RegisteredClaims (Audience, ID). No service reads
+	// them: scopes are enforced only in backend-mcp. Web and mobile tokens never
+	// carry them, so their claims are unchanged.
+	Scope            string `json:"scp,omitempty"`
+	ConnectorTokenID string `json:"cid,omitempty"`
+
 	// --- Guest/Share Fields ---
 	Resource   string    `json:"res,omitempty"`
 	ResourceID uuid.UUID `json:"res_id,omitempty"`

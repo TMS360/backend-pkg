@@ -6,7 +6,10 @@ import (
 	"fmt"
 	"html/template"
 	"io"
+	"io/fs"
 	"strconv"
+	"strings"
+	texttemplate "text/template"
 
 	"github.com/TMS360/backend-pkg/config"
 	"gopkg.in/gomail.v2"
@@ -105,13 +108,22 @@ func (s *SMTPSender) SendEmailWithAttachments(to []string, subject string, templ
 	if err != nil {
 		return fmt.Errorf("failed to parse template: %w", err)
 	}
+	text, err := renderTextPart(s.templates, templateFile, data)
+	if err != nil {
+		return fmt.Errorf("failed to parse text template: %w", err)
+	}
 
 	// B. Construct the Message
 	m := gomail.NewMessage()
 	m.SetHeader("From", s.from)
 	m.SetHeader("To", to...)
 	m.SetHeader("Subject", subject)
-	m.SetBody("text/html", body)
+	if text != "" {
+		m.SetBody("text/plain", text)
+		m.AddAlternative("text/html", body)
+	} else {
+		m.SetBody("text/html", body)
+	}
 
 	// C. Attach in-memory files (if any).
 	for _, att := range attachments {
@@ -153,6 +165,31 @@ func (s *SMTPSender) parseTemplate(templateName string, data interface{}) (strin
 // Shared by all Sender implementations.
 func renderTemplate(templates embed.FS, templateName string, data interface{}) (string, error) {
 	t, err := template.ParseFS(templates, "templates/"+templateName)
+	if err != nil {
+		return "", err
+	}
+
+	var buf bytes.Buffer
+	if err := t.Execute(&buf, data); err != nil {
+		return "", err
+	}
+
+	return buf.String(), nil
+}
+
+// renderTextPart renders the plain-text twin of an HTML template: for
+// "welcome.html" that is "welcome.txt" in the same folder, executed with
+// text/template and the same data. No such file means no text part ("").
+func renderTextPart(templates embed.FS, templateName string, data interface{}) (string, error) {
+	if !strings.HasSuffix(templateName, ".html") {
+		return "", nil
+	}
+	name := "templates/" + strings.TrimSuffix(templateName, ".html") + ".txt"
+	if _, err := fs.Stat(templates, name); err != nil {
+		return "", nil
+	}
+
+	t, err := texttemplate.ParseFS(templates, name)
 	if err != nil {
 		return "", err
 	}

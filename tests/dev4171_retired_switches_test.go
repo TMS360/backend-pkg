@@ -71,10 +71,15 @@ func TestDEV4171_OldGrantsStayAndRollUp(t *testing.T) {
 }
 
 // Edge case: removing a leaf makes the rest of its entity "the whole entity".
-// A role holding invoice batches view+create now rolls up to the entity — it
-// passes exactly the same checks, because no server checks the removed edit.
+// Invoice batches edit is NOT retired: accounting checks it on
+// submitBatchToFactoring (a money action). A role holding only view+create must
+// stay two leaves and never roll up to the entity, or it would pass that check.
 func TestDEV4171_EntityRollUpAfterRemoval(t *testing.T) {
+	assert.False(t, enums.IsRetiredPermission("accounting.invoice_batches.edit"))
+	assert.True(t, enums.IsValidPermissionCode("accounting.invoice_batches.edit"))
 	got := enums.RollupPermissions([]string{"accounting.invoice_batches.view", "accounting.invoice_batches.create"})
+	assert.ElementsMatch(t, []string{"accounting.invoice_batches.view", "accounting.invoice_batches.create"}, got)
+	got = enums.RollupPermissions([]string{"accounting.invoice_batches.view", "accounting.invoice_batches.create", "accounting.invoice_batches.edit"})
 	assert.Equal(t, []string{"accounting.invoice_batches"}, got)
 	got = enums.RollupPermissions([]string{"dashboard.stats.view"})
 	assert.Equal(t, []string{"dashboard"}, got, "stats is the only dashboard entity left")

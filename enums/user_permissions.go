@@ -873,7 +873,7 @@ var PermissionCatalog = []PermissionCatalogEntry{
 
 	// === accounting entities ===
 	{Code: "accounting.invoices", ParentCode: "accounting", Label: "Invoices", Actions: []string{"view", "create", "edit", "void"}},
-	{Code: "accounting.invoice_batches", ParentCode: "accounting", Label: "Invoice batches", Actions: []string{"view", "create"}},
+	{Code: "accounting.invoice_batches", ParentCode: "accounting", Label: "Invoice batches", Actions: []string{"view", "create", "edit"}},
 	// accounting.credit (DEV-178): the customer credit profile — limit, manual
 	// hold, collections escalation, write-off and the collections log. `edit`
 	// changes the profile and appends to the log; `override` lifts an active
@@ -1016,7 +1016,6 @@ var RetiredPermissionCodes = map[string]string{
 	"accounting.statement_other_pay":    "entity: no server checks any of its actions",
 	"accounting.comments":               "entity: no server checks any of its actions",
 	"dashboard.hierarchy":               "entity: no server checks any of its actions",
-	"accounting.invoice_batches.edit":   "no server checks it; batches are changed under create",
 	"accounting.report_configs.view":    "report setups are read with @auth only",
 	"settings.asset_status.view":        "the status list is read with no permission",
 	string(PermWorkspacesValuesView):    "reserved read split; cells are read under workspaces.boards.view",

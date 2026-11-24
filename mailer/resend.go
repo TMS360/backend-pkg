@@ -76,7 +76,7 @@ func (s *ResendSender) send(to []string, subject, templateFile string, data inte
 	}
 	text, err := renderTextPart(s.templates, templateFile, data)
 	if err != nil {
-		return "", fmt.Errorf("failed to parse text template: %w", err)
+		return "", fmt.Errorf("failed to render text part: %w", err)
 	}
 
 	payload := resendPayload{

@@ -389,13 +389,45 @@ func (c *Client) doPost(ctx context.Context, op, fullURL string, payload []byte)
 	return c.finish(ctx, op, started, req)
 }
 
+// redactedError is a transport error whose text no longer carries the API key.
+// Unwrap keeps the cause, so errors.Is(err, context.Canceled) and timeout checks
+// still match.
+type redactedError struct {
+	msg string
+	err error
+}
+
+func (e *redactedError) Error() string { return e.msg }
+func (e *redactedError) Unwrap() error { return e.err }
+
+// scrub makes a transport error safe to log and return (DEV-4759). Geocoding and
+// Places take the credential as a `key` query parameter, and net/http puts the
+// full request URL, query included, into the *url.Error it returns, so the error
+// would otherwise carry the key into every caller's log line. The URL is dropped
+// (the caller already knows the operation) and the key is blanked wherever else
+// it appears in the message.
+func (c *Client) scrub(err error) error {
+	msg := err.Error()
+	var ue *url.Error
+	if errors.As(err, &ue) {
+		// Wrap the cause, not the *url.Error, so nothing can errors.As the URL back out.
+		msg = ue.Op + " request failed: " + ue.Err.Error()
+		err = ue.Err
+	}
+	if c.apiKey != "" {
+		msg = strings.ReplaceAll(msg, c.apiKey, "[redacted]")
+		msg = strings.ReplaceAll(msg, url.QueryEscape(c.apiKey), "[redacted]")
+	}
+	return &redactedError{msg: msg, err: err}
+}
+
 func (c *Client) finish(ctx context.Context, op string, started time.Time, req *http.Request) ([]byte, error) {
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
 		// Never reached Google, so nothing was billed — logged anyway so a
 		// network-level outage is visible in the same sample.
 		logCall(ctx, op, 0, started, err)
-		return nil, fmt.Errorf("failed to execute request: %w", err)
+		return nil, fmt.Errorf("failed to execute request (%s): %w", op, c.scrub(err))
 	}
 	defer func() { _ = resp.Body.Close() }()
 

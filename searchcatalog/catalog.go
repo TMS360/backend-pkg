@@ -11,7 +11,7 @@ package searchcatalog
 //	CREW                     tms-teams   internal/domain/{driver_crew,local_driver}.go
 //	TASK                     backend-tasks internal/domain/task.go
 //	FILE                     tms-files   internal/domain/{file,file_link,document_type}.go
-//	INVOICE/PAY_STATEMENT    backend-accounting internal/domain/{invoice,statement}.go
+//	INVOICE/PAY_STATEMENT/TRUCK_OWNER_STATEMENT backend-accounting internal/domain/{invoice,statement}.go
 //
 // Order matters: it is the order the groups come back in, so the entities an
 // office user asks for most often come first.
@@ -298,6 +298,21 @@ var Catalog = []Entity{
 		},
 		Relations: []Relation{
 			{Path: "payStatement.driver.name", Label: "Driver", Kind: KindText, Target: EntityDriver, Remote: true},
+		},
+	},
+
+	// =====================================================================
+	// TRUCK_OWNER_STATEMENT — backend-accounting (DEV-4664). A truck owner's
+	// settlement, found by its TO- number. Same money right as the driver
+	// statement; never the money on it. Finding the owner by name lives in
+	// tms-loads, where Truck Owners are kept.
+	// =====================================================================
+	{
+		Code: EntityTruckOwnerStatement, Label: "Owner statements",
+		Service: ServiceAccounting, Permission: "accounting.pay_statements.view",
+		Fields: []Field{
+			{Path: "truckOwnerStatement.number", Label: "Statement #", Kind: KindNumber},
+			{Path: "truckOwnerStatement.status", Label: "Status", Kind: KindStatus},
 		},
 	},
 }

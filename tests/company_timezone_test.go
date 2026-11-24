@@ -5,7 +5,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/TMS360/backend-pkg/cache"
 	"github.com/TMS360/backend-pkg/companytz"
+	"github.com/go-redis/redis/v8"
 
 	"github.com/stretchr/testify/suite"
 )
@@ -74,30 +76,61 @@ func (s *CompanyTimezoneSuite) TestWallClockHoldsAcrossDST() {
 	}
 }
 
-// Unset and UTC are the same answer and neither is a misconfiguration — most
-// tenants are in this state and must not generate a warning.
-func (s *CompanyTimezoneSuite) TestUnsetAndUTCAreNotErrors() {
-	instant := time.Date(2026, time.September, 4, 19, 17, 0, 0, time.UTC)
+// DEV-4604 AC1: an unset timezone is Central, not UTC, and is not a
+// misconfiguration — it must not generate a warning.
+func (s *CompanyTimezoneSuite) TestUnsetIsCentralAndNotAnError() {
+	s.Equal(chicago, companytz.Default)
 
+	instant := s.instantAt(chicago, 2026, time.September, 4, 14, 17)
 	for _, tz := range []string{"", companytz.Default} {
 		now, ok := companytz.WallClock(instant, tz)
 		s.True(ok, "an unset timezone is a default, not a misconfiguration")
-		s.Equal(instant, now)
+		s.Equal(naive(2026, time.September, 4, 14, 17), now, "tz=%q", tz)
+
+		loc, ok := companytz.ParseLocation(tz)
+		s.True(ok)
+		s.Equal(chicago, loc.String(), "tz=%q", tz)
 	}
 }
 
-// A stored zone that does not resolve must be distinguishable from unset, so the
-// caller can log it — but must still produce a usable time rather than nil.
-func (s *CompanyTimezoneSuite) TestUnknownZoneFallsBackAndReportsIt() {
+// DEV-4604 AC2: a company that chose UTC on purpose still gets UTC.
+func (s *CompanyTimezoneSuite) TestExplicitUTCStaysUTC() {
 	instant := time.Date(2026, time.September, 4, 19, 17, 0, 0, time.UTC)
+
+	now, ok := companytz.WallClock(instant, "UTC")
+	s.True(ok)
+	s.Equal(instant, now)
+
+	loc, ok := companytz.ParseLocation("UTC")
+	s.True(ok)
+	s.Equal("UTC", loc.String())
+}
+
+// DEV-4604 AC3: a company that chose another zone still gets that zone.
+func (s *CompanyTimezoneSuite) TestOtherZoneIsKept() {
+	instant := s.instantAt("America/New_York", 2026, time.September, 4, 15, 17)
+
+	now, ok := companytz.WallClock(instant, "America/New_York")
+	s.True(ok)
+	s.Equal(naive(2026, time.September, 4, 15, 17), now)
+
+	loc, ok := companytz.ParseLocation("America/New_York")
+	s.True(ok)
+	s.Equal("America/New_York", loc.String())
+}
+
+// DEV-4604 AC4: a stored zone that does not resolve falls back to Central, and
+// stays distinguishable from unset (ok=false) so the caller still logs it.
+func (s *CompanyTimezoneSuite) TestUnknownZoneFallsBackToCentralAndReportsIt() {
+	instant := s.instantAt(chicago, 2026, time.September, 4, 14, 17)
 
 	now, ok := companytz.WallClock(instant, "Mars/Olympus_Mons")
 	s.False(ok)
-	s.Equal(instant, now)
+	s.Equal(naive(2026, time.September, 4, 14, 17), now)
 
 	loc, ok := companytz.ParseLocation("Mars/Olympus_Mons")
 	s.False(ok)
-	s.Equal(time.UTC, loc)
+	s.Equal(chicago, loc.String())
 }
 
 // ParseLocation never hands back nil, and WallClockIn tolerates one anyway —
@@ -126,11 +159,28 @@ func (s *CompanyTimezoneSuite) TestZoneDatabaseIsAvailable() {
 func (s *CompanyTimezoneSuite) TestNoCacheDegradesQuietly() {
 	ctx := context.Background()
 
-	s.Equal(companytz.Default, companytz.Timezone(ctx))
-	s.Equal(companytz.Default, companytz.TimezoneForCompany(ctx, "8b1f0f3e-0000-4000-8000-000000000000"))
-	s.Equal(time.UTC, companytz.Location(ctx))
-	s.Equal(time.UTC, companytz.LocationForCompany(ctx, "8b1f0f3e-0000-4000-8000-000000000000"))
-	s.WithinDuration(time.Now().UTC(), companytz.Now(ctx), time.Minute)
+	s.Equal(chicago, companytz.Timezone(ctx))
+	s.Equal(chicago, companytz.TimezoneForCompany(ctx, "8b1f0f3e-0000-4000-8000-000000000000"))
+	s.Equal(chicago, companytz.Location(ctx).String())
+	s.Equal(chicago, companytz.LocationForCompany(ctx, "8b1f0f3e-0000-4000-8000-000000000000").String())
+	central, _ := companytz.WallClock(time.Now(), chicago)
+	s.WithinDuration(central, companytz.Now(ctx), time.Minute)
+	s.WithinDuration(central, companytz.NowForCompany(ctx, "8b1f0f3e-0000-4000-8000-000000000000"), time.Minute)
+}
+
+// DEV-4604 edge case: the cache is configured but unreachable. The read fails,
+// and the answer is Central, not UTC, without a panic.
+func (s *CompanyTimezoneSuite) TestUnreachableCacheAnswersCentral() {
+	rdb := redis.NewClient(&redis.Options{Addr: "127.0.0.1:1", DialTimeout: 50 * time.Millisecond, MaxRetries: -1})
+	cache.Init(rdb)
+	s.T().Cleanup(func() {
+		cache.Init(nil)
+		_ = rdb.Close()
+	})
+
+	ctx := context.Background()
+	s.Equal(chicago, companytz.TimezoneForCompany(ctx, "8b1f0f3e-0000-4000-8000-000000000000"))
+	s.Equal(chicago, companytz.LocationForCompany(ctx, "8b1f0f3e-0000-4000-8000-000000000000").String())
 }
 
 // An empty company id cannot address a tenant key; answering Default is the only

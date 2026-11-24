@@ -111,7 +111,7 @@ func (s *SMTPSender) SendEmailWithAttachments(to []string, subject string, templ
 	}
 	text, err := renderTextPart(s.templates, templateFile, data)
 	if err != nil {
-		return fmt.Errorf("failed to parse text template: %w", err)
+		return fmt.Errorf("failed to render text part: %w", err)
 	}
 
 	// B. Construct the Message

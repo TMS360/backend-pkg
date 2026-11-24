@@ -1,0 +1,37 @@
+// pkg/proto/audit/audit.proto
+syntax = "proto3";
+
+package audit;
+
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/TMS360/backend-pkg/proto/audit";
+
+// AuditFacts serves counts over the audit trail for RMS facts that the
+// consuming services (load, teams, accounting) declare with rules.Provide.
+service AuditFacts {
+  // company_id, entity_types, from and to are required; to > from and the
+  // window is at most 400 days. The server answers codes.InvalidArgument
+  // otherwise and never runs the read unscoped.
+  rpc CountEvents(CountEventsRequest) returns (CountEventsResponse);
+}
+
+message CountEventsRequest {
+  string company_id = 1;              // tenant UUID (required); never from the token alone
+  repeated string entity_types = 2;   // required, at least one
+  repeated string actions = 3;        // optional
+  string participant_id = 4;          // optional (driver / dispatcher / user)
+  string entity_id = 5;               // optional
+  repeated string changed_fields = 6; // optional: match changes[].field
+  string actor_id = 7;                // optional
+  google.protobuf.Timestamp from = 8; // required
+  google.protobuf.Timestamp to = 9;   // required, exclusive
+}
+
+message CountEventsResponse {
+  int64 count = 1;                        // distinct event_id
+  google.protobuf.Timestamp last_at = 2;  // unset when count = 0
+  // Earliest row of these entity_types for the company. A caller whose from
+  // is before covered_from must treat the fact as unknown, not as zero.
+  google.protobuf.Timestamp covered_from = 3;
+}

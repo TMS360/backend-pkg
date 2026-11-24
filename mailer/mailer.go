@@ -3,6 +3,7 @@ package mailer
 import (
 	"bytes"
 	"embed"
+	"errors"
 	"fmt"
 	"html/template"
 	"io"
@@ -185,8 +186,10 @@ func renderTextPart(templates embed.FS, templateName string, data interface{}) (
 		return "", nil
 	}
 	name := "templates/" + strings.TrimSuffix(templateName, ".html") + ".txt"
-	if _, err := fs.Stat(templates, name); err != nil {
+	if _, err := fs.Stat(templates, name); errors.Is(err, fs.ErrNotExist) {
 		return "", nil
+	} else if err != nil {
+		return "", err
 	}
 
 	t, err := texttemplate.ParseFS(templates, name)

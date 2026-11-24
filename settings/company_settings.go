@@ -14,7 +14,7 @@ import (
 	"github.com/go-redis/redis/v8"
 )
 
-// GetCompanyTimezone reads the company's timezone setting (default UTC) so the daily
+// GetCompanyTimezone reads the company's timezone setting (default companytz.Default, Central) so the daily
 // cap resets on the company-local day.
 //
 // Deprecated: use companytz.Timezone, or companytz.Location / companytz.Now when

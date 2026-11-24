@@ -477,6 +477,18 @@ const (
 	// accounting and hr.
 	PermPrivateDataView UserPermissionEnum = "private_data_view"
 
+	// PermIntegrationsAIConnectorUse (DEV-3935): may connect an AI assistant
+	// (Claude Code, Cursor) to the user's own TMS data through a personal access
+	// token, and keep using it. Standalone and default-deny on purpose: seeded to
+	// no built-in role, `integrations` is NOT a module (a module would be handed
+	// to every built-in role by the baseline), and nobody can be granted the bare
+	// `integrations` / `integrations.ai_connector` prefix because neither
+	// validates, so in practice it matches exactly. A company admin ticks it on
+	// in the role editor for the roles that may connect. It is checked together
+	// with the platform flag feature.ai_connector, when a token is created and
+	// on every exchange.
+	PermIntegrationsAIConnectorUse UserPermissionEnum = "integrations.ai_connector.use"
+
 	// PermAssetOutOfServiceOverride gates sending a trip to the driver when the
 	// truck or trailer on it is OUT_OF_SERVICE (DEV-2254). Like its compliance
 	// sibling above it waives ONE dispatch, with a mandatory reason recorded in
@@ -920,6 +932,7 @@ var CustomPermissionCatalog = []CustomPermissionEntry{
 	{Code: string(PermStatementReviewResolve), Label: "Approve or decline a driver pay review"},
 	{Code: string(PermOwnerEscrowRelease), Label: "Release a truck owner's escrow"},
 	{Code: string(PermPrivateDataView), Label: "See private data (SSN, bank, birth date, emergency contact)"},
+	{Code: string(PermIntegrationsAIConnectorUse), Label: "Connect an AI assistant to my TMS data"},
 }
 
 // CustomPermissionCodes returns just the flat custom permission codes, in

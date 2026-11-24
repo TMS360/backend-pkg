@@ -364,7 +364,7 @@ func (c *Client) doGet(ctx context.Context, op, fullURL string) ([]byte, error) 
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, fullURL, nil)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create request: %w", err)
+		return nil, fmt.Errorf("failed to create request: %w", redactURLErr(err))
 	}
 	req.Header.Set("Accept", "application/json")
 
@@ -389,13 +389,27 @@ func (c *Client) doPost(ctx context.Context, op, fullURL string, payload []byte)
 	return c.finish(ctx, op, started, req)
 }
 
+// redactURLErr blanks the request URL in a *url.Error (DEV-4759), the same way
+// client/here does. Geocoding and Places take the credential as a `key` query
+// parameter, and net/http puts the full request URL into the *url.Error it
+// returns, so without this the key reaches every log line the error is wrapped
+// into. The error keeps its type and inner Err, so Timeout() and
+// errors.Is(context.DeadlineExceeded) still work for callers that retry.
+func redactURLErr(err error) error {
+	var ue *url.Error
+	if errors.As(err, &ue) {
+		ue.URL = ""
+	}
+	return err
+}
+
 func (c *Client) finish(ctx context.Context, op string, started time.Time, req *http.Request) ([]byte, error) {
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
 		// Never reached Google, so nothing was billed — logged anyway so a
 		// network-level outage is visible in the same sample.
 		logCall(ctx, op, 0, started, err)
-		return nil, fmt.Errorf("failed to execute request: %w", err)
+		return nil, fmt.Errorf("failed to execute request (%s): %w", op, redactURLErr(err))
 	}
 	defer func() { _ = resp.Body.Close() }()
 

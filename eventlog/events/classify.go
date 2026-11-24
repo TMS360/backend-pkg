@@ -85,6 +85,9 @@ var securityEntities = map[string]bool{
 	// The role catalog itself: renaming, hiding or deleting a role changes who
 	// can do what just as surely as editing its permission matrix (DEV-1867).
 	"roles": true,
+	// Personal access tokens of the AI connector: creating or revoking one is a
+	// change of who can reach the account from outside (DEV-3928).
+	"connector_tokens": true,
 }
 
 func isSecurityAction(action string) bool {

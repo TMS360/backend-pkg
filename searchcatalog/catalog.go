@@ -312,7 +312,6 @@ var Catalog = []Entity{
 		Service: ServiceAccounting, Permission: "accounting.pay_statements.view",
 		Fields: []Field{
 			{Path: "truckOwnerStatement.number", Label: "Statement #", Kind: KindNumber},
-			{Path: "truckOwnerStatement.status", Label: "Status", Kind: KindStatus},
 		},
 	},
 }

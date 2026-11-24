@@ -53,6 +53,9 @@ const (
 	// Setting a status ON a truck stays fleet.maintenance.manage, and dispatching
 	// an out-of-service asset anyway stays asset_out_of_service_override
 	// (DEV-2254) — neither moves here.
+	//
+	// DEV-4171: the status list is read with no permission, so "view" is no
+	// longer offered in the role editor. The constant stays; old grants are inert.
 	PermAssetStatusView   UserPermissionEnum = "settings.asset_status.view"
 	PermAssetStatusCreate UserPermissionEnum = "settings.asset_status.create"
 	PermAssetStatusEdit   UserPermissionEnum = "settings.asset_status.edit"
@@ -234,16 +237,17 @@ const (
 	//     also the board-side half of the write-back correction authority (DEC-B):
 	//     correcting a value that writes back to an owning record needs BOTH this
 	//     and the owning service's own write permission.
-	//   - workspaces.values.view is the cell-level READ gate; the board read path
-	//     currently admits cell values under workspaces.boards.view, so this action
-	//     is reserved for a finer read split.
+	//   - workspaces.values.view was reserved for a finer read split; the board
+	//     read path admits cell values under workspaces.boards.view. DEV-4171
+	//     took it out of the role editor (no server checks it); the constant stays.
 	PermWorkspacesValuesView UserPermissionEnum = "workspaces.values.view"
 	PermWorkspacesValuesEdit UserPermissionEnum = "workspaces.values.edit"
 	// workspaces.templates gates the ready-made board TEMPLATE catalog (DEV-1385):
 	//   - workspaces.templates.view lists the templates (getBoardTemplates);
 	//   - workspaces.templates.create instantiates one into a workspace
 	//     (createBoardFromTemplate) — so .view ALONE cannot instantiate;
-	//   - workspaces.templates.edit is reserved for future template authoring.
+	//   - workspaces.templates.edit was reserved for template authoring; DEV-4171
+	//     took it out of the role editor (no server checks it); the constant stays.
 	// Granting the whole "workspaces" module implies all of these via hierarchical
 	// prefix matching — no separate grant is needed.
 	PermWorkspacesTemplatesView   UserPermissionEnum = "workspaces.templates.view"
@@ -321,6 +325,11 @@ const (
 	// service's view permission (Phase-1 settlement data → accounting.pay_statements.view)
 	// rather than a bare `accounting.view`, so a holder of reports_run without the
 	// underlying accounting-view sees those columns as "—", never a raw number.
+	//
+	// DEV-4171: reports_manage is no longer offered in the role editor or seeded
+	// to any role — no server checks it (report configs are gated on
+	// accounting.report_configs.edit). The constant stays so old rows and
+	// callers still compile; old grants are inert.
 	PermReportsRun    UserPermissionEnum = "reports_run"
 	PermReportsManage UserPermissionEnum = "reports_manage"
 
@@ -541,6 +550,8 @@ const (
 	PermAccountingPayBatchesUnpost  UserPermissionEnum = "accounting.pay_batches.unpost"
 	PermAccountingPayBatchesRestore UserPermissionEnum = "accounting.pay_batches.restore"
 	PermAccountingRelayFuelView     UserPermissionEnum = "accounting.relay_fuel.view"
+	// DEV-4171: report setups are read with @auth only, so "view" is no longer
+	// offered in the role editor. The constant stays; old grants are inert.
 	PermAccountingReportConfigsView UserPermissionEnum = "accounting.report_configs.view"
 	PermAccountingReportConfigsEdit UserPermissionEnum = "accounting.report_configs.edit"
 	PermSettingsDocTypesDelete      UserPermissionEnum = "settings.doc_types.delete"
@@ -813,16 +824,17 @@ var PermissionCatalog = []PermissionCatalogEntry{
 	// === workspaces entities (backend-workspaces custom boards) ===
 	{Code: "workspaces.workspaces", ParentCode: "workspaces", Label: "Workspaces", Actions: []string{"view", "create", "edit", "delete"}},
 	{Code: "workspaces.boards", ParentCode: "workspaces", Label: "Boards", Actions: []string{"view", "create", "edit", "delete"}},
-	// workspaces.values gates the cell VALUE (read/edit), not the board structure
-	// (that is workspaces.boards). See the PermWorkspacesValues* constants above.
-	{Code: "workspaces.values", ParentCode: "workspaces", Label: "Board values", Actions: []string{"view", "edit"}},
+	// workspaces.values gates the cell VALUE edit, not the board structure (that
+	// is workspaces.boards). See the PermWorkspacesValues* constants above.
+	// DEV-4171: "view" was removed from the role editor — no server checks it.
+	{Code: "workspaces.values", ParentCode: "workspaces", Label: "Board values", Actions: []string{"edit"}},
 	// workspaces.templates gates the board-template catalog: view lists templates,
-	// create instantiates one, edit is reserved for template authoring (DEV-1385).
-	{Code: "workspaces.templates", ParentCode: "workspaces", Label: "Board templates", Actions: []string{"view", "create", "edit"}},
+	// create instantiates one (DEV-1385). DEV-4171: the reserved "edit" was
+	// removed from the role editor — no server checks it.
+	{Code: "workspaces.templates", ParentCode: "workspaces", Label: "Board templates", Actions: []string{"view", "create"}},
 
 	// === dashboard entities ===
 	{Code: "dashboard.stats", ParentCode: "dashboard", Label: "Stats", Actions: []string{"view"}},
-	{Code: "dashboard.hierarchy", ParentCode: "dashboard", Label: "Company hierarchy", Actions: []string{"view"}},
 
 	// === shipments entities ===
 	// `split` (DEV-2866) is splitOrder alone, so a driver can split a load
@@ -848,7 +860,6 @@ var PermissionCatalog = []PermissionCatalogEntry{
 	{Code: "drivers.tariff_assignment", ParentCode: "drivers", Label: "Tariff assignment", Actions: []string{"view", "edit"}},
 	{Code: "drivers.balance", ParentCode: "drivers", Label: "Driver balance", Actions: []string{"view", "create", "edit", "delete"}},
 	{Code: "drivers.scheduled_payments", ParentCode: "drivers", Label: "Scheduled payments", Actions: []string{"view", "create", "edit", "delete"}},
-	{Code: "drivers.one_time_charges", ParentCode: "drivers", Label: "One-time charges", Actions: []string{"view", "create", "edit", "delete"}},
 	{Code: "drivers.weekly_deductions", ParentCode: "drivers", Label: "Weekly deductions", Actions: []string{"view", "create", "edit", "delete"}},
 	{Code: "drivers.driver_absences", ParentCode: "drivers", Label: "Driver absences", Actions: []string{"view", "create", "edit", "delete"}},
 
@@ -884,7 +895,6 @@ var PermissionCatalog = []PermissionCatalogEntry{
 	// === accounting entities ===
 	{Code: "accounting.invoices", ParentCode: "accounting", Label: "Invoices", Actions: []string{"view", "create", "edit", "void"}},
 	{Code: "accounting.invoice_batches", ParentCode: "accounting", Label: "Invoice batches", Actions: []string{"view", "create", "edit"}},
-	{Code: "accounting.credit_memos", ParentCode: "accounting", Label: "Credit memos", Actions: []string{"view", "create"}},
 	// accounting.credit (DEV-178): the customer credit profile — limit, manual
 	// hold, collections escalation, write-off and the collections log. `edit`
 	// changes the profile and appends to the log; `override` lifts an active
@@ -897,10 +907,7 @@ var PermissionCatalog = []PermissionCatalogEntry{
 	{Code: "accounting.pay_batches", ParentCode: "accounting", Label: "Pay batches", Actions: []string{"view", "create", "edit", "delete", "unpost", "restore"}},
 	{Code: "accounting.pay_statements", ParentCode: "accounting", Label: "Pay statements", Actions: []string{"view", "create", "edit", "delete"}},
 	{Code: "accounting.statement_trips", ParentCode: "accounting", Label: "Statement trips", Actions: []string{"view", "create", "edit", "delete"}},
-	{Code: "accounting.statement_deductions", ParentCode: "accounting", Label: "Statement deductions", Actions: []string{"create", "edit", "delete"}},
-	{Code: "accounting.statement_other_pay", ParentCode: "accounting", Label: "Statement other pay", Actions: []string{"create", "edit", "delete"}},
 	{Code: "accounting.statement_balance_entries", ParentCode: "accounting", Label: "Statement balance entries", Actions: []string{"create", "edit", "delete"}},
-	{Code: "accounting.comments", ParentCode: "accounting", Label: "Statement comments", Actions: []string{"view", "create"}},
 	// DEV-174: accounts payable. Approval is the flat vendor_bill_approve_level_N,
 	// not an action here.
 	{Code: "accounting.vendors", ParentCode: "accounting", Label: "Vendors", Actions: []string{"view", "create", "edit", "delete"}},
@@ -914,7 +921,7 @@ var PermissionCatalog = []PermissionCatalogEntry{
 	// could be ticked; as `accounting` entities every holder of the module keeps
 	// them through prefix matching.
 	{Code: "accounting.relay_fuel", ParentCode: "accounting", Label: "Relay fuel transactions", Actions: []string{"view"}},
-	{Code: "accounting.report_configs", ParentCode: "accounting", Label: "Report setups", Actions: []string{"view", "edit"}},
+	{Code: "accounting.report_configs", ParentCode: "accounting", Label: "Report setups", Actions: []string{"edit"}},
 
 	// === customers entities ===
 	{Code: "customers.brokers", ParentCode: "customers", Label: "Brokers", Actions: []string{"view", "create"}},
@@ -930,7 +937,7 @@ var PermissionCatalog = []PermissionCatalogEntry{
 	// DEV-2349: the company-editable truck & trailer status list (DEV-2350).
 	// Same shape as the load status list above; see PermAssetStatus* for why no
 	// per-role seeding or back-fill is needed.
-	{Code: "settings.asset_status", ParentCode: "settings", Label: "Truck & trailer status settings", Actions: []string{"view", "create", "edit", "delete"}},
+	{Code: "settings.asset_status", ParentCode: "settings", Label: "Truck & trailer status settings", Actions: []string{"create", "edit", "delete"}},
 	{Code: "settings.integration", ParentCode: "settings", Label: "Integrations", Actions: []string{"view", "edit"}},
 	{Code: "settings.reassignment", ParentCode: "settings", Label: "Reassignment", Actions: []string{"view", "create", "edit", "delete"}},
 	{Code: "settings.reward_plans", ParentCode: "settings", Label: "Reward plans", Actions: []string{"view", "edit"}},
@@ -976,7 +983,6 @@ var CustomPermissionCatalog = []CustomPermissionEntry{
 	{Code: string(PermTripReassignCommitted), Label: "Reassign driver after trip accepted"},
 	{Code: string(PermFileDeleteAny), Label: "Delete any uploaded file"},
 	{Code: string(PermReportsRun), Label: "Run & export reports"},
-	{Code: string(PermReportsManage), Label: "Manage report configs & view report audit log"},
 	{Code: string(PermMailView), Label: "View mail"},
 	{Code: string(PermMailSend), Label: "Send mail"},
 	{Code: string(PermMailEdit), Label: "Manage mail (labels, folders, sending identity)"},
@@ -1017,6 +1023,43 @@ var CustomPermissionCatalog = []CustomPermissionEntry{
 	{Code: string(PermComplianceReceiveAlerts), Label: "Compliance: receive customer document alerts"},
 	{Code: string(PermChatRoomsCreateSecret), Label: "Chat: create a secret room"},
 	{Code: string(PermChatRoomsAudit), Label: "Chat: see all chat rooms (audit)"},
+}
+
+// RetiredPermissionCodes lists the switches DEV-4171 took out of the role
+// editor because no server checks them, with the reason. They are not valid,
+// not known (a service that starts checking one fails its permcheck test and
+// must put it back), and not seeded. The rows roles and users already hold are
+// left in the database: they grant nothing, and they are the only record of
+// what a role held. tms-auth hides them from the editor and keeps them on save.
+// An entity listed here was removed whole, so its leaves are retired too.
+var RetiredPermissionCodes = map[string]string{
+	"drivers.one_time_charges":          "entity: no server checks any of its actions",
+	"accounting.credit_memos":           "entity: no server checks any of its actions",
+	"accounting.statement_deductions":   "entity: no server checks any of its actions",
+	"accounting.statement_other_pay":    "entity: no server checks any of its actions",
+	"accounting.comments":               "entity: no server checks any of its actions",
+	"dashboard.hierarchy":               "entity: no server checks any of its actions",
+	"accounting.report_configs.view":    "report setups are read with @auth only",
+	"settings.asset_status.view":        "the status list is read with no permission",
+	string(PermWorkspacesValuesView):    "reserved read split; cells are read under workspaces.boards.view",
+	string(PermWorkspacesTemplatesEdit): "reserved for template authoring that does not exist",
+	string(PermReportsManage):           "report setups are gated on accounting.report_configs.edit",
+}
+
+// IsRetiredPermission reports whether code is a retired switch or a leaf of a
+// retired entity (RetiredPermissionCodes).
+func IsRetiredPermission(code string) bool {
+	if _, ok := RetiredPermissionCodes[code]; ok {
+		return true
+	}
+	for i := len(code) - 1; i > 0; i-- {
+		if code[i] == '.' {
+			if _, ok := RetiredPermissionCodes[code[:i]]; ok {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // CustomPermissionCodes returns just the flat custom permission codes, in
@@ -1427,9 +1470,9 @@ func DefaultRolePermissions() map[UserRoleEnum][]string {
 		// auditor — the same roles backend-messaging still lets in by name.
 		// owner_escrow_release (DEV-2821): admin only. Releasing escrow moves held
 		// money out and is not reversible, so the accounting role does NOT hold it.
-		UserRoleAdmin:      withExtra(string(PermTripFinancialsEdit), string(PermTripGrossEdit), string(PermTripReassignCommitted), string(PermFileDeleteAny), string(PermReportsRun), string(PermReportsManage), string(PermCallsView), string(PermCallsPlay), string(PermCallsViewHidden), string(PermSmsView), string(PermSmsSend), string(PermShipmentBillingApprove), string(PermAuditPlanExclusionEdit), string(PermComplianceDispatchOverride), string(PermAssetOutOfServiceOverride), string(PermTripDelete), string(PermInvoiceUnrecordPayment), string(PermAuditLogView), string(PermGeneralLedgerView), string(PermJournalEntryManage), string(PermVendorBillApproveLevel1), string(PermVendorBillApproveLevel2), string(PermVendorBillApproveLevel3), string(PermVendorBillPaymentVoid), string(PermExpenseApprove), string(PermInvoiceRecordPayment), string(PermMailView), string(PermMailSend), string(PermMailEdit), string(PermStatementReviewResolve), string(PermComplianceCustomerOverride), string(PermOwnerEscrowRelease), string(PermTruckVINCorrect), string(PermComplianceRestrictedView), string(PermPrivateDataView), string(PermLoadLayoutsManage), string(PermComplianceReceiveAlerts), string(PermChatRoomsCreateSecret), string(PermChatRoomsAudit), string(PermOrgChartEdit), string(PermDutyRosterManage)),
+		UserRoleAdmin:      withExtra(string(PermTripFinancialsEdit), string(PermTripGrossEdit), string(PermTripReassignCommitted), string(PermFileDeleteAny), string(PermReportsRun), string(PermCallsView), string(PermCallsPlay), string(PermCallsViewHidden), string(PermSmsView), string(PermSmsSend), string(PermShipmentBillingApprove), string(PermAuditPlanExclusionEdit), string(PermComplianceDispatchOverride), string(PermAssetOutOfServiceOverride), string(PermTripDelete), string(PermInvoiceUnrecordPayment), string(PermAuditLogView), string(PermGeneralLedgerView), string(PermJournalEntryManage), string(PermVendorBillApproveLevel1), string(PermVendorBillApproveLevel2), string(PermVendorBillApproveLevel3), string(PermVendorBillPaymentVoid), string(PermExpenseApprove), string(PermInvoiceRecordPayment), string(PermMailView), string(PermMailSend), string(PermMailEdit), string(PermStatementReviewResolve), string(PermComplianceCustomerOverride), string(PermOwnerEscrowRelease), string(PermTruckVINCorrect), string(PermComplianceRestrictedView), string(PermPrivateDataView), string(PermLoadLayoutsManage), string(PermComplianceReceiveAlerts), string(PermChatRoomsCreateSecret), string(PermChatRoomsAudit), string(PermOrgChartEdit), string(PermDutyRosterManage)),
 		UserRoleManager:    withExtra(string(PermTripReassignCommitted), string(PermFileDeleteAny), string(PermCallsView), string(PermCallsPlay), string(PermSmsView), string(PermSmsSend), string(PermShipmentBillingApprove), string(PermAuditPlanExclusionEdit), string(PermComplianceDispatchOverride), string(PermAssetOutOfServiceOverride), string(PermTripDelete), string(PermAuditLogView), string(PermVendorBillApproveLevel1), string(PermVendorBillApproveLevel2), string(PermInvoiceRecordPayment), string(PermOrgChartEdit)),
-		UserRoleAccounting: withExtra(string(PermTripFinancialsEdit), string(PermReportsRun), string(PermReportsManage), string(PermShipmentBillingApprove), string(PermGeneralLedgerView), string(PermJournalEntryManage), string(PermVendorBillApproveLevel1), string(PermExpenseApprove), string(PermInvoiceRecordPayment), string(PermStatementReviewResolve), string(PermComplianceCustomerOverride), string(PermPrivateDataView), string(PermComplianceReceiveAlerts)),
+		UserRoleAccounting: withExtra(string(PermTripFinancialsEdit), string(PermReportsRun), string(PermShipmentBillingApprove), string(PermGeneralLedgerView), string(PermJournalEntryManage), string(PermVendorBillApproveLevel1), string(PermExpenseApprove), string(PermInvoiceRecordPayment), string(PermStatementReviewResolve), string(PermComplianceCustomerOverride), string(PermPrivateDataView), string(PermComplianceReceiveAlerts)),
 		UserRoleFleet:      withExtra(),
 		UserRoleSafety:     withExtra(string(PermComplianceDispatchOverride), string(PermComplianceRestrictedView)),
 		UserRoleHr:         withExtra(string(PermPrivateDataView), string(PermChatRoomsCreateSecret), string(PermChatRoomsAudit), string(PermOrgChartEdit)),

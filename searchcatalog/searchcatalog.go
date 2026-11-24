@@ -63,6 +63,8 @@ const (
 	EntityFile         = "FILE"
 	EntityInvoice      = "INVOICE"
 	EntityPayStatement = "PAY_STATEMENT"
+	// EntityTruckOwnerStatement is a truck owner (TO-) settlement (DEV-4664).
+	EntityTruckOwnerStatement = "TRUCK_OWNER_STATEMENT"
 )
 
 // FieldKind tells the query classifier whether a field is worth searching for

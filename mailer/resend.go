@@ -74,12 +74,17 @@ func (s *ResendSender) send(to []string, subject, templateFile string, data inte
 	if err != nil {
 		return "", fmt.Errorf("failed to parse template: %w", err)
 	}
+	text, err := renderTextPart(s.templates, templateFile, data)
+	if err != nil {
+		return "", fmt.Errorf("failed to parse text template: %w", err)
+	}
 
 	payload := resendPayload{
 		From:    s.from,
 		To:      to,
 		Subject: subject,
 		HTML:    body,
+		Text:    text,
 	}
 
 	for _, att := range attachments {
@@ -140,6 +145,7 @@ type resendPayload struct {
 	To          []string           `json:"to"`
 	Subject     string             `json:"subject"`
 	HTML        string             `json:"html"`
+	Text        string             `json:"text,omitempty"`
 	Attachments []resendAttachment `json:"attachments,omitempty"`
 	Tags        []resendTag        `json:"tags,omitempty"`
 }

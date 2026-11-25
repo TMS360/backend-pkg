@@ -98,6 +98,21 @@ type Actor struct {
 	Token    *string
 	IsSystem bool
 	IsGuest  bool
+
+	// Connector marks a token whose audience is ConnectorAudience: the short
+	// internal token tms-auth issues to the AI connector. REST routes refuse it
+	// unless they opt in (middleware.AllowConnector). What it may do in GraphQL
+	// follows Claims.ReadOnly, not this flag.
+	Connector bool
+}
+
+// ConnectorAudience is the aud of the internal token the AI connector calls the
+// gateway with. Ordinary session tokens carry no aud.
+const ConnectorAudience = "tms-mcp"
+
+// IsReadOnly reports whether the actor's token may only read (UserClaims.ReadOnly).
+func (actor *Actor) IsReadOnly() bool {
+	return actor != nil && actor.Claims != nil && actor.Claims.ReadOnly
 }
 
 // IsSuperAdmin reports whether the actor carries the super-admin role.
@@ -147,8 +162,8 @@ type UserClaims struct {
 	ActorType ActorType  `json:"actor_type"`
 	Roles     []string   `json:"roles"`
 
-	// ReadOnly marks a token that may only read: every mutation made with it is
-	// rejected by tmsgraphql.ReadOnlyGuard. Set on the RMS service identity.
+	// ReadOnly marks a token that may only read: every mutation and subscription
+	// made with it is rejected by tmsgraphql.ReadOnlyGuard.
 	ReadOnly bool `json:"ro,omitempty"`
 
 	// --- Guest/Share Fields ---

@@ -90,6 +90,10 @@ func TestDEV2866_OfficeRolesUnchanged(t *testing.T) {
 			if module == "settings" && (role == enums.UserRoleDispatcher || role == enums.UserRoleTrackAndTrace) {
 				continue
 			}
+			// DEV-4839: the floor desks hold no Accounting right.
+			if module == "accounting" && isDEV4839FloorRole(role) {
+				continue
+			}
 			assert.Containsf(t, perms, module, "%s keeps the %s module", role, module)
 		}
 		assert.Truef(t, middleware.HasPermission(perms, "shipments.shipments.split"), "%s passes split via the module", role)

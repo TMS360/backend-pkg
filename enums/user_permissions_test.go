@@ -274,7 +274,8 @@ func baselineWithoutFleetMaintenance() []string {
 func dispatcherBaseline() []string {
 	var out []string
 	for _, m := range baselineWithoutFleetMaintenance() {
-		if m != enums.SettingsModuleCode {
+		// DEV-4839: the dispatcher holds no Accounting right.
+		if m != enums.SettingsModuleCode && m != enums.AccountingModuleCode {
 			out = append(out, m)
 		}
 	}

@@ -38,8 +38,10 @@ func TestInvoiceRecordPayment_FixesTheDottedCodeThatNeverRefused(t *testing.T) {
 	dispatcher, ok := defaults[enums.UserRoleDispatcher]
 	require.True(t, ok, "dispatcher must be in the default matrix")
 
-	assert.True(t, middleware.HasPermission(dispatcher, "accounting.invoices.record_payment"),
-		"the old dotted code was satisfied by the `accounting` module every office role holds — "+
+	// The module baseline (before DEV-4839 every office role held it) satisfied
+	// the old dotted code.
+	assert.True(t, middleware.HasPermission(enums.ModulePermissionCodes(), "accounting.invoices.record_payment"),
+		"the old dotted code was satisfied by the `accounting` module — "+
 			"this is the defect DEV-2366 fixes, and the reason the new code is flat")
 
 	assert.False(t, middleware.HasPermission(dispatcher, code),

@@ -24,7 +24,9 @@ func TestStatementReviewResolve_DispatcherRefused(t *testing.T) {
 	dispatcher, ok := defaults[enums.UserRoleDispatcher]
 	require.True(t, ok, "dispatcher must be in the default matrix")
 
-	assert.True(t, middleware.HasPermission(dispatcher, "accounting.statement_balance_entries.create"),
+	// The module baseline (before DEV-4839 every office role held it) passed
+	// the old gate.
+	assert.True(t, middleware.HasPermission(enums.ModulePermissionCodes(), "accounting.statement_balance_entries.create"),
 		"the old gate refused nobody — this is the defect DEV-2548 fixes")
 	assert.False(t, middleware.HasPermission(dispatcher, string(enums.PermStatementReviewResolve)),
 		"a dispatcher must be refused on resolveStatementReview")

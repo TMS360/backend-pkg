@@ -1,0 +1,38 @@
+// DEV-3927: the AI connector (backend-mcp) swaps a personal access token for a
+// short-lived, read-only internal token. Served by tms-auth.
+//
+// The caller authenticates with the shared secret MCP_EXCHANGE_SECRET sent as
+// gRPC metadata "x-mcp-exchange-secret". It is NOT GRPC_INTERNAL_TOKEN, and
+// backend-mcp never holds GRPC_INTERNAL_TOKEN. A missing or wrong secret is
+// codes.Unauthenticated; an unset secret on the server refuses every call.
+syntax = "proto3";
+
+package connectortoken.v1;
+
+option go_package = "github.com/TMS360/backend-pkg/proto/connectortoken";
+
+service ConnectorTokens {
+  // Exchange validates a personal access token (tms_pat_...) and, only if the
+  // owner may still use the connector, returns an RS256 internal token of at
+  // most 300 seconds: the user's sub, company_id, roles and actor_type plus
+  // ro=true, aud, scp, jti and cid. The token is for apollo-router on the
+  // private network and is never shown to the outside client.
+  //
+  // Refusals: Unauthenticated for a bad exchange secret or a bad, revoked,
+  // expired or ineligible token (one answer for all, so nothing is learned
+  // from it); Unavailable when a dependency is down. Never a partial answer.
+  rpc Exchange(ExchangeRequest) returns (ExchangeResponse);
+}
+
+message ExchangeRequest {
+  // The secret as the client holds it: tms_pat_ followed by base62.
+  string pat = 1;
+  // The User-Agent of the MCP client request; used only to label the token in
+  // the owner's list (Claude Code / Cursor / unknown).
+  string user_agent = 2;
+}
+
+message ExchangeResponse {
+  string access_token = 1;
+  int64 expires_at_unix = 2;
+}

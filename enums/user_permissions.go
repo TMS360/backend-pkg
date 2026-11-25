@@ -573,14 +573,14 @@ const (
 
 	// PermIntegrationsAIConnectorUse (DEV-3935): may connect an AI assistant
 	// (Claude Code, Cursor) to the user's own TMS data through a personal access
-	// token, and keep using it. Standalone and default-deny on purpose: seeded to
-	// no built-in role, `integrations` is NOT a module (a module would be handed
-	// to every built-in role by the baseline), and nobody can be granted the bare
-	// `integrations` / `integrations.ai_connector` prefix because neither
-	// validates, so in practice it matches exactly. A company admin ticks it on
-	// in the role editor for the roles that may connect. It is checked together
-	// with the platform flag feature.ai_connector, when a token is created and
-	// on every exchange.
+	// token, and keep using it. The company admin holds it by default (owner
+	// decision 2026-11-24); every other role gets it only when an admin ticks it
+	// on in the role editor. Standalone on purpose: `integrations` is NOT a module
+	// (a module would be handed to every built-in role by the baseline), and
+	// nobody can be granted the bare `integrations` / `integrations.ai_connector`
+	// prefix because neither validates, so in practice it matches exactly. It is
+	// checked together with the platform flag feature.ai_connector, when a token
+	// is created and on every exchange.
 	PermIntegrationsAIConnectorUse UserPermissionEnum = "integrations.ai_connector.use"
 
 	// PermAssetOutOfServiceOverride gates sending a trip to the driver when the
@@ -1483,7 +1483,7 @@ func DefaultRolePermissions() map[UserRoleEnum][]string {
 		// auditor — the same roles backend-messaging still lets in by name.
 		// owner_escrow_release (DEV-2821): admin only. Releasing escrow moves held
 		// money out and is not reversible, so the accounting role does NOT hold it.
-		UserRoleAdmin:      withExtra(string(PermTripFinancialsEdit), string(PermTripGrossEdit), string(PermTripReassignCommitted), string(PermFileDeleteAny), string(PermReportsRun), string(PermCallsView), string(PermCallsPlay), string(PermCallsViewHidden), string(PermSmsView), string(PermSmsSend), string(PermShipmentBillingApprove), string(PermAuditPlanExclusionEdit), string(PermComplianceDispatchOverride), string(PermAssetOutOfServiceOverride), string(PermTripDelete), string(PermInvoiceUnrecordPayment), string(PermAuditLogView), string(PermGeneralLedgerView), string(PermJournalEntryManage), string(PermVendorBillApproveLevel1), string(PermVendorBillApproveLevel2), string(PermVendorBillApproveLevel3), string(PermVendorBillPaymentVoid), string(PermExpenseApprove), string(PermInvoiceRecordPayment), string(PermMailView), string(PermMailSend), string(PermMailEdit), string(PermStatementReviewResolve), string(PermComplianceCustomerOverride), string(PermOwnerEscrowRelease), string(PermTruckVINCorrect), string(PermComplianceRestrictedView), string(PermPrivateDataView), string(PermLoadLayoutsManage), string(PermComplianceReceiveAlerts), string(PermChatRoomsCreateSecret), string(PermChatRoomsAudit), string(PermOrgChartEdit), string(PermDutyRosterManage)),
+		UserRoleAdmin:      withExtra(string(PermTripFinancialsEdit), string(PermTripGrossEdit), string(PermTripReassignCommitted), string(PermFileDeleteAny), string(PermReportsRun), string(PermCallsView), string(PermCallsPlay), string(PermCallsViewHidden), string(PermSmsView), string(PermSmsSend), string(PermShipmentBillingApprove), string(PermAuditPlanExclusionEdit), string(PermComplianceDispatchOverride), string(PermAssetOutOfServiceOverride), string(PermTripDelete), string(PermInvoiceUnrecordPayment), string(PermAuditLogView), string(PermGeneralLedgerView), string(PermJournalEntryManage), string(PermVendorBillApproveLevel1), string(PermVendorBillApproveLevel2), string(PermVendorBillApproveLevel3), string(PermVendorBillPaymentVoid), string(PermExpenseApprove), string(PermInvoiceRecordPayment), string(PermMailView), string(PermMailSend), string(PermMailEdit), string(PermStatementReviewResolve), string(PermComplianceCustomerOverride), string(PermOwnerEscrowRelease), string(PermTruckVINCorrect), string(PermComplianceRestrictedView), string(PermPrivateDataView), string(PermLoadLayoutsManage), string(PermComplianceReceiveAlerts), string(PermChatRoomsCreateSecret), string(PermChatRoomsAudit), string(PermOrgChartEdit), string(PermDutyRosterManage), string(PermIntegrationsAIConnectorUse)),
 		UserRoleManager:    withExtra(string(PermTripReassignCommitted), string(PermFileDeleteAny), string(PermCallsView), string(PermCallsPlay), string(PermSmsView), string(PermSmsSend), string(PermShipmentBillingApprove), string(PermAuditPlanExclusionEdit), string(PermComplianceDispatchOverride), string(PermAssetOutOfServiceOverride), string(PermTripDelete), string(PermAuditLogView), string(PermVendorBillApproveLevel1), string(PermVendorBillApproveLevel2), string(PermInvoiceRecordPayment), string(PermOrgChartEdit)),
 		UserRoleAccounting: withExtra(string(PermTripFinancialsEdit), string(PermReportsRun), string(PermShipmentBillingApprove), string(PermGeneralLedgerView), string(PermJournalEntryManage), string(PermVendorBillApproveLevel1), string(PermExpenseApprove), string(PermInvoiceRecordPayment), string(PermStatementReviewResolve), string(PermComplianceCustomerOverride), string(PermPrivateDataView), string(PermComplianceReceiveAlerts)),
 		UserRoleFleet:      withExtra(),

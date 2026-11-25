@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"slices"
 	"strings"
 
 	"github.com/TMS360/backend-pkg/consts"
@@ -63,6 +64,9 @@ func RequireAuth() gin.HandlerFunc {
 			ctx.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
 			return
 		}
+		if refuseConnector(ctx, actor) {
+			return
+		}
 
 		ctx.Next()
 	}
@@ -81,6 +85,9 @@ func RequirePerms(perms ...string) gin.HandlerFunc {
 			return
 		}
 
+		if refuseConnector(ctx, actor) {
+			return
+		}
 		// Mirror the directive's early-outs exactly.
 		if actor.IsGuest || actor.IsSuperAdmin() {
 			ctx.Next()
@@ -166,14 +173,44 @@ func RequireSuperAdmin() gin.HandlerFunc {
 // RequireAuthOrGuest allows access if there's a valid-authenticated user or a guest token, but not if unauthenticated
 func RequireAuthOrGuest() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
-		_, err := GetActor(ctx.Request.Context())
+		actor, err := GetActor(ctx.Request.Context())
 		if err != nil {
 			ctx.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+			return
+		}
+		if refuseConnector(ctx, actor) {
 			return
 		}
 
 		ctx.Next()
 	}
+}
+
+type connectorAllowedKey struct{}
+
+// AllowConnector opts a REST route in to the AI connector's token. RequireAuth,
+// RequireAuthOrGuest and RequirePerms refuse that token (403) on every other
+// route. Put it in front of them in the handler chain:
+//
+//	api.GET(path, AllowConnector(), RequireAuth(), handler)
+func AllowConnector() gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		ctx.Request = ctx.Request.WithContext(context.WithValue(ctx.Request.Context(), connectorAllowedKey{}, true))
+		ctx.Next()
+	}
+}
+
+// refuseConnector answers 403 and reports true when a connector token reaches a
+// route that did not opt in with AllowConnector.
+func refuseConnector(ctx *gin.Context, actor *consts.Actor) bool {
+	if actor == nil || !actor.Connector {
+		return false
+	}
+	if allowed, _ := ctx.Request.Context().Value(connectorAllowedKey{}).(bool); allowed {
+		return false
+	}
+	ctx.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "Forbidden: this token cannot use this route"})
+	return true
 }
 
 // CheckGuestResource checks if the actor is a guest and if so, verifies that their claims allow access to the specified resources.
@@ -255,9 +292,10 @@ func parseAuthToken(authHeader string, publicKey *rsa.PublicKey) (*consts.Actor,
 	claims.PopulateMaps()
 
 	return &consts.Actor{
-		ID:      claims.UserID,
-		Claims:  claims,
-		Token:   utils.Pointer(tokenString),
-		IsGuest: false,
+		ID:        claims.UserID,
+		Claims:    claims,
+		Token:     utils.Pointer(tokenString),
+		IsGuest:   false,
+		Connector: slices.Contains(claims.Audience, consts.ConnectorAudience),
 	}, nil
 }

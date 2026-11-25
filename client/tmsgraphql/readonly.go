@@ -13,14 +13,14 @@ import (
 )
 
 // CodeReadOnlyToken / MsgReadOnlyToken are what a caller with a read-only token
-// gets on a mutation (extensions.code, status 403).
+// gets on a mutation or a subscription (extensions.code, status 403).
 const (
 	CodeReadOnlyToken = "READ_ONLY_TOKEN"
-	MsgReadOnlyToken  = "this token is read-only: mutations are not allowed"
+	MsgReadOnlyToken  = "this token is read-only: only queries are allowed"
 )
 
-// ReadOnlyGuard rejects every mutation made with a read-only token
-// (UserClaims.ReadOnly), before any resolver runs.
+// ReadOnlyGuard rejects every mutation and subscription made with a read-only
+// token (UserClaims.ReadOnly), before any resolver runs. Only queries pass.
 //
 // The RMS service identity (DEV-3270) reads the gateway for one company and
 // must never write. Its permissions are view-only, but that relies on every
@@ -29,11 +29,11 @@ const (
 func ReadOnlyGuard() graphql.OperationMiddleware {
 	return func(ctx context.Context, next graphql.OperationHandler) graphql.ResponseHandler {
 		oc := graphql.GetOperationContext(ctx)
-		if oc == nil || oc.Operation == nil || oc.Operation.Operation != ast.Mutation {
+		if oc == nil || oc.Operation == nil || oc.Operation.Operation == ast.Query {
 			return next(ctx)
 		}
 		actor, err := consts.GetActor(ctx)
-		if err != nil || actor.Claims == nil || !actor.Claims.ReadOnly {
+		if err != nil || !actor.IsReadOnly() {
 			return next(ctx)
 		}
 		// The response context (and its presenter) is created after operation

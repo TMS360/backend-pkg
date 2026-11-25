@@ -1260,7 +1260,8 @@ func ModulePermissionCodes() []string {
 //
 // Every office role's baseline is the full module set (ModulePermissionCodes),
 // except that DEV-2502 swaps `fleet` for its entities minus maintenance on the
-// roles that do not run the shop; on top of that, dispatcher and accounting receive
+// roles that do not run the shop, and DEV-4839 drops the `accounting` module
+// from dispatcher, track_and_trace, fleet, safety and hr; on top of that, dispatcher and accounting receive
 // their governed flat custom permission (DEV-1256) — trip_financials_edit and
 // trip_financials_approve respectively. super_admin bypasses all permission
 // checks, so it is intentionally omitted; a role absent from the map receives
@@ -1443,6 +1444,16 @@ func DefaultRolePermissions() map[UserRoleEnum][]string {
 	// inherits the narrowed set (§4.17).
 	out[UserRoleDispatcher] = withoutCompanySettingsEdit(out[UserRoleDispatcher])
 
+	// DEV-4839: the `accounting` module passes every money action by prefix
+	// (void a revised invoice, unpost a pay batch, delete a pay statement), so
+	// the floor desks — dispatcher, fleet, safety and hr — hold no Accounting
+	// right at all, the shape AZSAFI's production roles already run with.
+	// Admin, accounting, manager, auditor and other keep the module. Runs
+	// before the track_and_trace derivation below, so that role inherits it.
+	for _, role := range []UserRoleEnum{UserRoleDispatcher, UserRoleFleet, UserRoleSafety, UserRoleHr} {
+		out[role] = withoutAccounting(out[role])
+	}
+
 	// DEV-1824 / BL-4 §4.17: Track & Trace is defined as "whatever dispatcher
 	// gets". Deriving it from the dispatcher entry instead of repeating the
 	// literal means the two sets can never drift — a perm added to dispatcher
@@ -1586,6 +1597,22 @@ func SettingsEntitiesWithoutCompany() []string {
 		if ent != companySettingsEntity {
 			out = append(out, ent)
 		}
+	}
+	return out
+}
+
+// AccountingModuleCode is the module that covers every accounting.* code.
+const AccountingModuleCode = "accounting"
+
+// withoutAccounting drops the `accounting` module and every accounting.* code
+// from codes; every other code is kept in place.
+func withoutAccounting(codes []string) []string {
+	out := make([]string, 0, len(codes))
+	for _, c := range codes {
+		if c == AccountingModuleCode || strings.HasPrefix(c, AccountingModuleCode+".") {
+			continue
+		}
+		out = append(out, c)
 	}
 	return out
 }

@@ -342,8 +342,11 @@ func (c *Client) GetRoute(ctx context.Context, req RouteRequest) (*RouteResponse
 		params.Set("currency", req.Currency)
 	}
 
-	// Departure time
-	if req.DepartureTime != nil {
+	// Departure time. A time-independent request wins over any time set below it,
+	// including the "now" CalculateMultiStopRoute fills in.
+	if TimeIndependentRoute(ctx) {
+		params.Set("departureTime", "any")
+	} else if req.DepartureTime != nil {
 		params.Set("departureTime", req.DepartureTime.Format(time.RFC3339))
 	}
 

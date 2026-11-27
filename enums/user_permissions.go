@@ -706,6 +706,8 @@ const (
 	PermChatRoomsCreateSecret UserPermissionEnum = "chat.rooms.create_secret"
 	// PermChatRoomsAudit: see every chat room in the company (audit view).
 	PermChatRoomsAudit UserPermissionEnum = "chat.rooms.audit"
+	// PermChatMessagesLink: link a message to another chat (DEV-4881).
+	PermChatMessagesLink UserPermissionEnum = "chat.messages.link"
 )
 
 var PermissionCatalog = []PermissionCatalogEntry{
@@ -949,6 +951,7 @@ var CustomPermissionCatalog = []CustomPermissionEntry{
 	{Code: string(PermComplianceReceiveAlerts), Label: "Compliance: receive customer document alerts"},
 	{Code: string(PermChatRoomsCreateSecret), Label: "Chat: create a secret room"},
 	{Code: string(PermChatRoomsAudit), Label: "Chat: see all chat rooms (audit)"},
+	{Code: string(PermChatMessagesLink), Label: "Chat: link a message to another chat"},
 }
 
 // CustomPermissionCodes returns just the flat custom permission codes, in
@@ -1252,9 +1255,13 @@ func ModulePermissionCodes() []string {
 // value without cross-contaminating other roles.
 func DefaultRolePermissions() map[UserRoleEnum][]string {
 	base := ModulePermissionCodes()
+	// DEV-4881: every office role could link a message before the right
+	// existed, so it is part of the office baseline; the driver does not use
+	// withExtra and stays without it.
 	withExtra := func(extra ...string) []string {
-		out := make([]string, 0, len(base)+len(extra))
+		out := make([]string, 0, len(base)+len(extra)+1)
 		out = append(out, base...)
+		out = append(out, string(PermChatMessagesLink))
 		out = append(out, extra...)
 		return out
 	}

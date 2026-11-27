@@ -78,7 +78,8 @@ func TestUserRoleAuditor_GetsTheModuleBaseline(t *testing.T) {
 			string(enums.PermAuditLogView),
 			string(enums.PermGeneralLedgerView),
 			string(enums.PermVendorBillPaymentVoid),
-			string(enums.PermChatRoomsAudit)),
+			string(enums.PermChatRoomsAudit),
+			string(enums.PermChatMessagesLink)),
 		perms,
 		"baseline plus the governed codes seeded to the auditor: DEV-2038's "+
 			"correction, DEV-2220's activity-log read and DEV-177's ledger read, DEV-174's bill payment void; every other auditor "+
@@ -98,6 +99,7 @@ func TestUserRoleAuditor_HoldsOnlyTheSeededCustomCodes(t *testing.T) {
 		string(enums.PermGeneralLedgerView):      {}, // DEV-177
 		string(enums.PermVendorBillPaymentVoid):  {}, // DEV-174
 		string(enums.PermChatRoomsAudit):         {}, // DEV-4176
+		string(enums.PermChatMessagesLink):       {}, // DEV-4881, every office role
 	}
 	for code := range seeded {
 		assert.Contains(t, perms, code)

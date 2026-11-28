@@ -77,7 +77,7 @@ const AccessDeniedMessage = "You are not allowed to do this. Ask an administrato
 // AccessDeniedCode is the stable machine-readable code clients branch on. It
 // matches the code the shared gRPC mapping already uses for PermissionDenied,
 // so a client has one code for "not allowed" no matter where it came from.
-const AccessDeniedCode = "FORBIDDEN"
+const AccessDeniedCode = response.CodeForbidden
 
 // deniedError builds the 403 every directive denial returns. tech is for the
 // log and for Sentry; the caller only ever sees AccessDeniedMessage, so a

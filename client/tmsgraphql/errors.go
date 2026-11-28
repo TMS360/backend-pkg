@@ -46,7 +46,7 @@ func grpcPublicError(err error) (message, code string, httpStatus int, ok bool) 
 	case codes.AlreadyExists:
 		return st.Message(), "ALREADY_EXISTS", http.StatusConflict, true
 	case codes.PermissionDenied:
-		return st.Message(), "FORBIDDEN", http.StatusForbidden, true
+		return st.Message(), response.CodeForbidden, http.StatusForbidden, true
 	case codes.Unauthenticated:
 		return st.Message(), "UNAUTHENTICATED", http.StatusUnauthorized, true
 	case codes.ResourceExhausted:

@@ -35,8 +35,17 @@ func NewCodedConflict(code, tech, user string, ext map[string]any) PublicError {
 	return NewCodedError(code, tech, user, http.StatusConflict, ext)
 }
 
+// CodeForbidden is the one machine-readable code for "not allowed" (DEV-4882).
+// The @hasPerm/@hasRole directives, the gRPC PermissionDenied mapping and
+// NewForbidden all answer with it, so a client branches on a single code no
+// matter where the refusal came from.
+const CodeForbidden = "FORBIDDEN"
+
+// NewForbidden answers 403 with extensions.code CodeForbidden. Before DEV-4882
+// it carried no string code, so every service refusal shipped `"code": 0`.
+// A refusal that needs its own code still uses NewCodedError directly.
 func NewForbidden(tech, user string) PublicError {
-	return NewError(tech, user, http.StatusForbidden)
+	return NewCodedError(CodeForbidden, tech, user, http.StatusForbidden, nil)
 }
 
 func NewUnauthorized(tech, user string) PublicError {
